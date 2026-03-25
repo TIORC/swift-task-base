@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      approvals: {
+        Row: {
+          approver_id: string
+          comments: string | null
+          created_at: string
+          id: string
+          level: string
+          status: string
+          task_id: string
+        }
+        Insert: {
+          approver_id: string
+          comments?: string | null
+          created_at?: string
+          id?: string
+          level: string
+          status?: string
+          task_id: string
+        }
+        Update: {
+          approver_id?: string
+          comments?: string | null
+          created_at?: string
+          id?: string
+          level?: string
+          status?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approvals_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           content: string
@@ -282,6 +320,41 @@ export type Database = {
         }
         Relationships: []
       }
+      xp_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          task_id: string
+          user_id: string
+          xp_earned: number
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          task_id: string
+          user_id: string
+          xp_earned?: number
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+          xp_earned?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xp_logs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -296,7 +369,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "member"
+      app_role: "admin" | "member" | "dev" | "lider" | "gestor"
       task_priority: "low" | "medium" | "high" | "urgent"
       task_status:
         | "backlog"
@@ -433,7 +506,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "member"],
+      app_role: ["admin", "member", "dev", "lider", "gestor"],
       task_priority: ["low", "medium", "high", "urgent"],
       task_status: [
         "backlog",
