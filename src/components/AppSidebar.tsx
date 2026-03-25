@@ -106,6 +106,7 @@ export function AppSidebar() {
                 {user?.user_metadata?.full_name || user?.email}
               </p>
               <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+              <UserXPBadge />
             </div>
           )}
           <Button

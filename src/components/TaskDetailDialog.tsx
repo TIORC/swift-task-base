@@ -279,6 +279,9 @@ export function TaskDetailDialog({ task, open, onOpenChange }: TaskDetailDialogP
           </div>
         )}
 
+        {/* Approval Flow */}
+        <TaskApprovalSection taskId={task.id} taskStatus={task.status} />
+
         {/* Attachments */}
         <TaskAttachments taskId={task.id} />
 
