@@ -399,6 +399,9 @@ const Dashboard = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* AI Insights */}
+      <AIInsightsPanel />
     </div>
   );
 };
