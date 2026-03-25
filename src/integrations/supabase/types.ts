@@ -75,24 +75,30 @@ export type Database = {
         Row: {
           description: string | null
           duration_minutes: number
+          ended_at: string | null
           id: string
           logged_at: string
+          started_at: string
           task_id: string
           user_id: string
         }
         Insert: {
           description?: string | null
-          duration_minutes: number
+          duration_minutes?: number
+          ended_at?: string | null
           id?: string
           logged_at?: string
+          started_at?: string
           task_id: string
           user_id: string
         }
         Update: {
           description?: string | null
           duration_minutes?: number
+          ended_at?: string | null
           id?: string
           logged_at?: string
+          started_at?: string
           task_id?: string
           user_id?: string
         }

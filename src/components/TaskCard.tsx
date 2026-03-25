@@ -14,9 +14,10 @@ const priorityConfig: Record<string, { label: string; className: string }> = {
 interface TaskCardProps {
   task: Task;
   index: number;
+  onClick?: (task: Task) => void;
 }
 
-export function TaskCard({ task, index }: TaskCardProps) {
+export function TaskCard({ task, index, onClick }: TaskCardProps) {
   const priority = priorityConfig[task.priority] || priorityConfig.medium;
   const initials = task.profiles?.full_name
     ? task.profiles.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
@@ -33,7 +34,8 @@ export function TaskCard({ task, index }: TaskCardProps) {
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          className={`rounded-lg border border-border bg-card p-3 space-y-2.5 transition-shadow ${
+          onClick={() => onClick?.(task)}
+          className={`rounded-lg border border-border bg-card p-3 space-y-2.5 transition-shadow cursor-pointer hover:ring-1 hover:ring-primary/30 ${
             snapshot.isDragging ? "shadow-lg shadow-primary/10 ring-1 ring-primary/30" : ""
           }`}
         >
