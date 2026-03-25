@@ -121,6 +121,7 @@ export function useSubmitApproval() {
           action,
           xp_earned: XP_VALUES[action],
         });
+        checkAndAwardMedals(user!.id);
 
         // If gestor approved, grant executor XP to assigned user
         if (level === "gestor") {
@@ -137,6 +138,7 @@ export function useSubmitApproval() {
               action: "executed",
               xp_earned: XP_VALUES.executed,
             });
+            checkAndAwardMedals(task.assigned_to);
           }
 
           // Move task to done
