@@ -100,11 +100,39 @@ export function useCreateTask() {
 
 export function useUpdateTask() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: TablesUpdate<"tasks"> & { id: string }) => {
+      // Get old task to detect assignment changes
+      const { data: oldTask } = await supabase.from("tasks").select("assigned_to, title").eq("id", id).single();
+
       const { data, error } = await supabase.from("tasks").update(updates).eq("id", id).select().single();
       if (error) throw error;
+
+      // Notify on assignment change
+      if (
+        user &&
+        updates.assigned_to &&
+        updates.assigned_to !== oldTask?.assigned_to &&
+        updates.assigned_to !== user.id
+      ) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", user.id)
+          .single();
+        const senderName = profile?.full_name || user.email || "Alguém";
+
+        await supabase.from("notifications").insert({
+          user_id: updates.assigned_to,
+          type: "assigned",
+          task_id: id,
+          message: `${senderName} atribuiu a tarefa "${oldTask?.title || "sem título"}" a você`,
+          created_by: user.id,
+        });
+      }
+
       return data;
     },
     onSuccess: () => {
