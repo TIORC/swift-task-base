@@ -25,6 +25,7 @@ import { useState, useEffect } from "react";
 import { TaskComments } from "@/components/TaskComments";
 import { TaskAttachments } from "@/components/TaskAttachments";
 import { ResponsibilityHistorySection } from "@/components/ResponsibilityHistory";
+import { TaskApprovalSection } from "@/components/TaskApprovalSection";
 
 const priorityOptions = [
   { value: "low", label: "Baixa" },
@@ -277,6 +278,9 @@ export function TaskDetailDialog({ task, open, onOpenChange }: TaskDetailDialogP
             </div>
           </div>
         )}
+
+        {/* Approval Flow */}
+        <TaskApprovalSection taskId={task.id} taskStatus={task.status} />
 
         {/* Attachments */}
         <TaskAttachments taskId={task.id} />
