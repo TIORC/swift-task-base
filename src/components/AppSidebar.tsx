@@ -26,6 +26,8 @@ const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Kanban", url: "/kanban", icon: Columns3 },
   { title: "Tarefas", url: "/tasks", icon: ListTodo },
+  { title: "Modo Foco", url: "/focus", icon: Target },
+  { title: "Dependências", url: "/dependencies", icon: GitBranch },
   { title: "Automações", url: "/automations", icon: Zap },
   { title: "Ranking", url: "/ranking", icon: Trophy },
   { title: "Notificações", url: "/notifications", icon: Bell },
