@@ -261,6 +261,9 @@ export function TaskDetailDialog({ task, open, onOpenChange }: TaskDetailDialogP
             </div>
           </div>
         )}
+
+        {/* Comments */}
+        <TaskComments taskId={task.id} />
       </DialogContent>
     </Dialog>
   );
