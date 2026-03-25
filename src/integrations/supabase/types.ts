@@ -338,6 +338,27 @@ export type Database = {
           },
         ]
       }
+      user_medals: {
+        Row: {
+          awarded_at: string
+          id: string
+          medal_key: string
+          user_id: string
+        }
+        Insert: {
+          awarded_at?: string
+          id?: string
+          medal_key: string
+          user_id: string
+        }
+        Update: {
+          awarded_at?: string
+          id?: string
+          medal_key?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
