@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { runAutomationEngine } from "@/hooks/useAutomationRules";
 
 export type Task = Tables<"tasks"> & {
   profiles?: { full_name: string | null; avatar_url: string | null } | null;
