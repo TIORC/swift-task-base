@@ -2,6 +2,7 @@ import { LayoutDashboard, Columns3, ListTodo, Bell, LogOut } from "lucide-react"
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useUnreadCount } from "@/hooks/useNotifications";
 import {
   Sidebar,
   SidebarContent,
@@ -32,6 +33,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const unreadCount = useUnreadCount();
 
   const isActive = (path: string) =>
     path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
@@ -71,7 +73,14 @@ export function AppSidebar() {
                       className="hover:bg-sidebar-accent"
                       activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
                     >
-                      <item.icon className="h-4 w-4" />
+                      <div className="relative">
+                        <item.icon className="h-4 w-4" />
+                        {item.url === "/notifications" && unreadCount > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[8px] font-bold text-primary-foreground">
+                            {unreadCount > 9 ? "9+" : unreadCount}
+                          </span>
+                        )}
+                      </div>
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>

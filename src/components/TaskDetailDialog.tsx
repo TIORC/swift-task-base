@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Play, Square, Clock, Trash2, User, Timer } from "lucide-react";
 import { useState, useEffect } from "react";
+import { TaskComments } from "@/components/TaskComments";
 
 const priorityOptions = [
   { value: "low", label: "Baixa" },
