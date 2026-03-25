@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useTasks, useDeleteTask, COLUMNS } from "@/hooks/useTasks";
+import { useTasks, useDeleteTask, COLUMNS, Task } from "@/hooks/useTasks";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
+import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ const Tasks = () => {
   const { data: tasks, isLoading } = useTasks();
   const deleteTask = useDeleteTask();
   const [createOpen, setCreateOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   if (isLoading) {
     return (
@@ -62,7 +64,8 @@ const Tasks = () => {
                 return (
                   <div
                     key={task.id}
-                    className="flex items-center gap-4 rounded-lg border border-border bg-secondary/30 p-3"
+                    onClick={() => setSelectedTask(task)}
+                    className="flex items-center gap-4 rounded-lg border border-border bg-secondary/30 p-3 cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{task.title}</p>
@@ -98,7 +101,7 @@ const Tasks = () => {
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => deleteTask.mutate(task.id)}
+                      onClick={(e) => { e.stopPropagation(); deleteTask.mutate(task.id); }}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -111,6 +114,7 @@ const Tasks = () => {
       </Card>
 
       <CreateTaskDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} />
     </div>
   );
 };

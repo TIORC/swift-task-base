@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { DragDropContext, Droppable, DropResult } from "@hello-pangea/dnd";
-import { useTasks, useUpdateTask, COLUMNS, TaskStatus } from "@/hooks/useTasks";
+import { useTasks, useUpdateTask, COLUMNS, TaskStatus, Task } from "@/hooks/useTasks";
 import { TaskCard } from "@/components/TaskCard";
+import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2 } from "lucide-react";
@@ -11,6 +12,7 @@ const Kanban = () => {
   const updateTask = useUpdateTask();
   const [createOpen, setCreateOpen] = useState(false);
   const [createStatus, setCreateStatus] = useState<TaskStatus>("backlog");
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const tasksByStatus = COLUMNS.reduce(
     (acc, col) => {
@@ -24,7 +26,6 @@ const Kanban = () => {
     if (!result.destination) return;
     const { draggableId, destination } = result;
     const newStatus = destination.droppableId as TaskStatus;
-
     updateTask.mutate({ id: draggableId, status: newStatus as any });
   };
 
@@ -87,7 +88,7 @@ const Kanban = () => {
                       }`}
                     >
                       {colTasks.map((task, i) => (
-                        <TaskCard key={task.id} task={task} index={i} />
+                        <TaskCard key={task.id} task={task} index={i} onClick={setSelectedTask} />
                       ))}
                       {provided.placeholder}
                       {colTasks.length === 0 && !snapshot.isDraggingOver && (
@@ -103,6 +104,7 @@ const Kanban = () => {
       </DragDropContext>
 
       <CreateTaskDialog open={createOpen} onOpenChange={setCreateOpen} defaultStatus={createStatus} />
+      <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} />
     </div>
   );
 };
