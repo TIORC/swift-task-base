@@ -14,6 +14,7 @@ import Kanban from "./pages/Kanban";
 import Tasks from "./pages/Tasks";
 import Notifications from "./pages/Notifications";
 import Automations from "./pages/Automations";
+import Ranking from "./pages/Ranking";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
