@@ -42,6 +42,7 @@ const AppRoutes = () => (
     <Route path="/kanban" element={<ProtectedRoute><Kanban /></ProtectedRoute>} />
     <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
     <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+    <Route path="/automations" element={<ProtectedRoute><Automations /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );

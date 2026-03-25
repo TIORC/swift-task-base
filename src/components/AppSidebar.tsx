@@ -26,6 +26,7 @@ const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Kanban", url: "/kanban", icon: Columns3 },
   { title: "Tarefas", url: "/tasks", icon: ListTodo },
+  { title: "Automações", url: "/automations", icon: Zap },
   { title: "Notificações", url: "/notifications", icon: Bell },
 ];
 

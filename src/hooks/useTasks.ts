@@ -134,6 +134,17 @@ export function useUpdateTask() {
         });
       }
 
+      // Run automation engine for changed fields
+      if (user && updates.status && updates.status !== oldTask?.assigned_to) {
+        await runAutomationEngine(id, "status", updates.status as string, user.id);
+      }
+      if (user && updates.priority) {
+        await runAutomationEngine(id, "priority", updates.priority as string, user.id);
+      }
+      if (user && updates.assigned_to) {
+        await runAutomationEngine(id, "assigned_to", updates.assigned_to, user.id);
+      }
+
       return data;
     },
     onSuccess: () => {
