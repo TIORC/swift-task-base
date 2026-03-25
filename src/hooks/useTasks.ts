@@ -1,0 +1,131 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+
+export type Task = Tables<"tasks"> & {
+  profiles?: { full_name: string | null; avatar_url: string | null } | null;
+  total_minutes?: number;
+};
+
+export type TaskStatus = "backlog" | "pending" | "todo" | "in_progress" | "review" | "done" | "discarded";
+
+export const COLUMNS: { status: TaskStatus; title: string }[] = [
+  { status: "backlog", title: "Backlog" },
+  { status: "pending", title: "Pendente" },
+  { status: "in_progress", title: "Em Andamento" },
+  { status: "review", title: "Em Validação" },
+  { status: "done", title: "Concluído" },
+  { status: "discarded", title: "Descartado" },
+];
+
+export function useTasks() {
+  return useQuery({
+    queryKey: ["tasks"],
+    queryFn: async () => {
+      const { data: tasks, error } = await supabase
+        .from("tasks")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      // Fetch profiles for assigned users
+      const userIds = [...new Set(tasks.map((t) => t.assigned_to).filter(Boolean))] as string[];
+      let profilesMap: Record<string, { full_name: string | null; avatar_url: string | null }> = {};
+
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, full_name, avatar_url")
+          .in("id", userIds);
+
+        if (profiles) {
+          profilesMap = Object.fromEntries(profiles.map((p) => [p.id, p]));
+        }
+      }
+
+      // Fetch time logs aggregated
+      const { data: timeLogs } = await supabase
+        .from("time_logs")
+        .select("task_id, duration_minutes");
+
+      const timeMap: Record<string, number> = {};
+      timeLogs?.forEach((log) => {
+        timeMap[log.task_id] = (timeMap[log.task_id] || 0) + log.duration_minutes;
+      });
+
+      return tasks.map((t) => ({
+        ...t,
+        profiles: t.assigned_to ? profilesMap[t.assigned_to] || null : null,
+        total_minutes: timeMap[t.id] || 0,
+      })) as Task[];
+    },
+  });
+}
+
+export function useProfiles() {
+  return useQuery({
+    queryKey: ["profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id, full_name, avatar_url");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useCreateTask() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (task: Omit<TablesInsert<"tasks">, "created_by">) => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .insert({ ...task, created_by: user!.id })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast.success("Tarefa criada com sucesso!");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useUpdateTask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: TablesUpdate<"tasks"> & { id: string }) => {
+      const { data, error } = await supabase.from("tasks").update(updates).eq("id", id).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useDeleteTask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("tasks").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast.success("Tarefa excluída!");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
