@@ -52,6 +52,42 @@ export type Database = {
           },
         ]
       }
+      automation_rules: {
+        Row: {
+          action_type: string
+          action_value: string | null
+          created_at: string
+          created_by: string
+          enabled: boolean
+          id: string
+          name: string
+          trigger_field: string
+          trigger_value: string
+        }
+        Insert: {
+          action_type: string
+          action_value?: string | null
+          created_at?: string
+          created_by: string
+          enabled?: boolean
+          id?: string
+          name: string
+          trigger_field: string
+          trigger_value: string
+        }
+        Update: {
+          action_type?: string
+          action_value?: string | null
+          created_at?: string
+          created_by?: string
+          enabled?: boolean
+          id?: string
+          name?: string
+          trigger_field?: string
+          trigger_value?: string
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           content: string

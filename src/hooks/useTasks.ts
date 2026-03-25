@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { runAutomationEngine } from "@/hooks/useAutomationRules";
 
 export type Task = Tables<"tasks"> & {
   profiles?: { full_name: string | null; avatar_url: string | null } | null;
@@ -131,6 +132,17 @@ export function useUpdateTask() {
           message: `${senderName} atribuiu a tarefa "${oldTask?.title || "sem título"}" a você`,
           created_by: user.id,
         });
+      }
+
+      // Run automation engine for changed fields
+      if (user && updates.status && updates.status !== oldTask?.assigned_to) {
+        await runAutomationEngine(id, "status", updates.status as string, user.id);
+      }
+      if (user && updates.priority) {
+        await runAutomationEngine(id, "priority", updates.priority as string, user.id);
+      }
+      if (user && updates.assigned_to) {
+        await runAutomationEngine(id, "assigned_to", updates.assigned_to, user.id);
       }
 
       return data;
