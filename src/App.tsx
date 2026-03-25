@@ -13,6 +13,7 @@ import Dashboard from "./pages/Index";
 import Kanban from "./pages/Kanban";
 import Tasks from "./pages/Tasks";
 import Notifications from "./pages/Notifications";
+import Automations from "./pages/Automations";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
