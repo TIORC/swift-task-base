@@ -3,6 +3,7 @@ import { useTasks, useProfiles, COLUMNS } from "@/hooks/useTasks";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AIInsightsPanel } from "@/components/AIInsightsPanel";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
@@ -398,6 +399,9 @@ const Dashboard = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* AI Insights */}
+      <AIInsightsPanel />
     </div>
   );
 };
