@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CheckSquare } from "lucide-react";
+import { UserXPBadge } from "@/components/UserXPBadge";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
