@@ -25,6 +25,7 @@ import { useState, useEffect } from "react";
 import { TaskComments } from "@/components/TaskComments";
 import { TaskAttachments } from "@/components/TaskAttachments";
 import { ResponsibilityHistorySection } from "@/components/ResponsibilityHistory";
+import { TaskApprovalSection } from "@/components/TaskApprovalSection";
 
 const priorityOptions = [
   { value: "low", label: "Baixa" },
