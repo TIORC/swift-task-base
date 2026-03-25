@@ -26,6 +26,7 @@ import { TaskComments } from "@/components/TaskComments";
 import { TaskAttachments } from "@/components/TaskAttachments";
 import { ResponsibilityHistorySection } from "@/components/ResponsibilityHistory";
 import { TaskApprovalSection } from "@/components/TaskApprovalSection";
+import { TaskDependencies } from "@/components/TaskDependencies";
 
 const priorityOptions = [
   { value: "low", label: "Baixa" },
