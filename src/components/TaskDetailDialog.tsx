@@ -1,5 +1,6 @@
 import { Task, useUpdateTask, useDeleteTask, useProfiles, COLUMNS } from "@/hooks/useTasks";
 import { useTimeTracker, useTaskTimeLogs, formatTime, formatMinutes } from "@/hooks/useTimeTracker";
+import { useLogResponsibilityChange } from "@/hooks/useResponsibilityHistory";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,8 @@ import {
 import { Play, Square, Clock, Trash2, User, Timer } from "lucide-react";
 import { useState, useEffect } from "react";
 import { TaskComments } from "@/components/TaskComments";
+import { TaskAttachments } from "@/components/TaskAttachments";
+import { ResponsibilityHistorySection } from "@/components/ResponsibilityHistory";
 
 const priorityOptions = [
   { value: "low", label: "Baixa" },
@@ -42,8 +45,9 @@ export function TaskDetailDialog({ task, open, onOpenChange }: TaskDetailDialogP
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
   const { data: profiles } = useProfiles();
+  const logResponsibility = useLogResponsibilityChange();
   const { isRunning, elapsed, start, stop } = useTimeTracker(task?.id ?? null);
-  const { logs, userSummaries, totalMinutes, loading: logsLoading } = useTaskTimeLogs(
+  const { logs, userSummaries, totalMinutes } = useTaskTimeLogs(
     open && task ? task.id : null
   );
 
@@ -67,12 +71,24 @@ export function TaskDetailDialog({ task, open, onOpenChange }: TaskDetailDialogP
 
   const handleSave = () => {
     if (!task) return;
+
+    // Log responsibility change if assigned_to changed
+    const newAssigned = assignedTo === "none" ? null : assignedTo || null;
+    const oldAssigned = task.assigned_to || null;
+    if (newAssigned !== oldAssigned) {
+      logResponsibility.mutate({
+        taskId: task.id,
+        fromUserId: oldAssigned,
+        toUserId: newAssigned,
+      });
+    }
+
     updateTask.mutate({
       id: task.id,
       title,
       description: description || null,
       priority: priority as any,
-      assigned_to: assignedTo || null,
+      assigned_to: newAssigned,
       status: status as any,
     });
     setEditing(false);
@@ -131,7 +147,6 @@ export function TaskDetailDialog({ task, open, onOpenChange }: TaskDetailDialogP
               )}
             </div>
           </div>
-
           <div className="flex items-center gap-4 text-sm">
             <div className="text-muted-foreground">
               Total: <span className="text-foreground font-medium">{formatMinutes(displayTotal)}</span>
@@ -177,7 +192,7 @@ export function TaskDetailDialog({ task, open, onOpenChange }: TaskDetailDialogP
               </div>
               <div className="space-y-2">
                 <Label>Responsável</Label>
-                <Select value={assignedTo} onValueChange={setAssignedTo}>
+                <Select value={assignedTo || "none"} onValueChange={setAssignedTo}>
                   <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Nenhum</SelectItem>
@@ -262,6 +277,12 @@ export function TaskDetailDialog({ task, open, onOpenChange }: TaskDetailDialogP
             </div>
           </div>
         )}
+
+        {/* Attachments */}
+        <TaskAttachments taskId={task.id} />
+
+        {/* Responsibility History */}
+        <ResponsibilityHistorySection taskId={task.id} />
 
         {/* Comments */}
         <TaskComments taskId={task.id} />
