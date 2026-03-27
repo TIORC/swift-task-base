@@ -2,20 +2,13 @@ import { useState } from "react";
 import { useTasks, useDeleteTask, COLUMNS, Task } from "@/hooks/useTasks";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/PageHeader";
+import { StatusBadge } from "@/components/StatusBadge";
+import { EmptyState } from "@/components/EmptyState";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, Loader2, Trash2, Clock } from "lucide-react";
-
-const priorityConfig: Record<string, { label: string; className: string }> = {
-  low: { label: "Baixa", className: "bg-muted text-muted-foreground" },
-  medium: { label: "Média", className: "bg-primary/20 text-primary" },
-  high: { label: "Alta", className: "bg-warning/20 text-warning" },
-  urgent: { label: "Urgente", className: "bg-destructive/20 text-destructive" },
-};
-
-const statusMap = Object.fromEntries(COLUMNS.map((c) => [c.status, c.title]));
+import { Plus, Loader2, Trash2, Clock, ListTodo } from "lucide-react";
 
 const Tasks = () => {
   const { data: tasks, isLoading } = useTasks();
@@ -32,86 +25,85 @@ const Tasks = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Tarefas</h1>
-          <p className="text-muted-foreground">Gerencie todas as tarefas do time.</p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Tarefa
-        </Button>
-      </div>
+    <div className="space-y-6 max-w-5xl">
+      <PageHeader
+        title="Tarefas"
+        description="Gerencie todas as tarefas do time."
+        icon={<ListTodo className="h-5 w-5" />}
+        actions={
+          <Button onClick={() => setCreateOpen(true)} className="h-9">
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Tarefa
+          </Button>
+        }
+      />
 
-      <Card className="border-border">
-        <CardHeader>
-          <CardTitle className="text-foreground">Lista de Tarefas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!tasks || tasks.length === 0 ? (
-            <p className="text-muted-foreground">Nenhuma tarefa criada ainda.</p>
-          ) : (
-            <div className="space-y-2">
-              {tasks.map((task) => {
-                const priority = priorityConfig[task.priority] || priorityConfig.medium;
-                const initials = task.profiles?.full_name
-                  ? task.profiles.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
-                  : null;
-                const hours = Math.floor((task.total_minutes || 0) / 60);
-                const mins = (task.total_minutes || 0) % 60;
+      {!tasks || tasks.length === 0 ? (
+        <Card className="shadow-card">
+          <CardContent className="p-0">
+            <EmptyState
+              icon={ListTodo}
+              title="Nenhuma tarefa criada"
+              description="Comece criando sua primeira tarefa."
+              actionLabel="Criar Tarefa"
+              onAction={() => setCreateOpen(true)}
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {tasks.map((task) => {
+            const initials = task.profiles?.full_name
+              ? task.profiles.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+              : null;
+            const hours = Math.floor((task.total_minutes || 0) / 60);
+            const mins = (task.total_minutes || 0) % 60;
 
-                return (
-                  <div
-                    key={task.id}
-                    onClick={() => setSelectedTask(task)}
-                    className="flex items-center gap-4 rounded-lg border border-border bg-secondary/30 p-3 cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{task.title}</p>
-                      {task.description && (
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">{task.description}</p>
-                      )}
-                    </div>
+            return (
+              <div
+                key={task.id}
+                onClick={() => setSelectedTask(task)}
+                className="flex items-center gap-4 rounded-xl border border-border bg-card p-3.5 cursor-pointer
+                  shadow-card hover:shadow-card-hover hover:border-primary/20 transition-all duration-150"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{task.title}</p>
+                  {task.description && (
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">{task.description}</p>
+                  )}
+                </div>
 
-                    <Badge variant="secondary" className="text-[10px] shrink-0">
-                      {statusMap[task.status] || task.status}
-                    </Badge>
+                <StatusBadge type="status" value={task.status} />
+                <StatusBadge type="priority" value={task.priority} />
 
-                    <Badge variant="secondary" className={`text-[10px] shrink-0 ${priority.className}`}>
-                      {priority.label}
-                    </Badge>
-
-                    {(task.total_minutes || 0) > 0 && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                        <Clock className="h-3 w-3" />
-                        {hours > 0 ? `${hours}h ${mins}m` : `${mins}m`}
-                      </div>
-                    )}
-
-                    {initials && (
-                      <Avatar className="h-6 w-6 shrink-0">
-                        <AvatarFallback className="bg-primary/20 text-primary text-[9px]">
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
-                      onClick={(e) => { e.stopPropagation(); deleteTask.mutate(task.id); }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                {(task.total_minutes || 0) > 0 && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                    <Clock className="h-3 w-3" />
+                    {hours > 0 ? `${hours}h ${mins}m` : `${mins}m`}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                )}
+
+                {initials && (
+                  <Avatar className="h-6 w-6 shrink-0">
+                    <AvatarFallback className="bg-primary/10 text-primary text-[9px] font-semibold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                  onClick={(e) => { e.stopPropagation(); deleteTask.mutate(task.id); }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <CreateTaskDialog open={createOpen} onOpenChange={setCreateOpen} />
       <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} />

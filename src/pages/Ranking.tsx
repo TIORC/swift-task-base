@@ -4,6 +4,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
 import { Trophy, Medal, Star, Loader2, Zap, TrendingUp } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -12,11 +14,7 @@ const Ranking = () => {
   const { data: myData } = useMyGamification();
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   const actionLabels: Record<string, string> = {
@@ -26,73 +24,38 @@ const Ranking = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Engajamento</h1>
-        <p className="text-muted-foreground">XP, ranking, níveis e medalhas do time.</p>
-      </div>
+    <div className="space-y-6 max-w-3xl">
+      <PageHeader title="Engajamento" description="XP, ranking, níveis e medalhas." icon={<Trophy className="h-5 w-5" />} />
 
       <Tabs defaultValue="ranking" className="space-y-4">
-        <TabsList className="bg-secondary">
-          <TabsTrigger value="ranking">
-            <Trophy className="h-4 w-4 mr-1.5" />
-            Ranking
-          </TabsTrigger>
-          <TabsTrigger value="me">
-            <Star className="h-4 w-4 mr-1.5" />
-            Meu Progresso
-          </TabsTrigger>
-          <TabsTrigger value="medals">
-            <Medal className="h-4 w-4 mr-1.5" />
-            Medalhas
-          </TabsTrigger>
+        <TabsList className="bg-muted/50 p-1 rounded-xl">
+          <TabsTrigger value="ranking" className="rounded-lg"><Trophy className="h-4 w-4 mr-1.5" />Ranking</TabsTrigger>
+          <TabsTrigger value="me" className="rounded-lg"><Star className="h-4 w-4 mr-1.5" />Meu Progresso</TabsTrigger>
+          <TabsTrigger value="medals" className="rounded-lg"><Medal className="h-4 w-4 mr-1.5" />Medalhas</TabsTrigger>
         </TabsList>
 
-        {/* RANKING TAB */}
-        <TabsContent value="ranking" className="space-y-3">
+        <TabsContent value="ranking" className="space-y-2">
           {!ranking || ranking.length === 0 ? (
-            <Card className="border-border">
-              <CardContent className="flex flex-col items-center py-16">
-                <Trophy className="h-12 w-12 text-muted-foreground/40 mb-4" />
-                <p className="text-muted-foreground">Nenhum XP registrado ainda.</p>
-              </CardContent>
-            </Card>
+            <Card className="shadow-card"><CardContent className="p-0"><EmptyState icon={Trophy} title="Nenhum XP registrado" /></CardContent></Card>
           ) : (
             ranking.map((entry, i) => {
               const podium = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
-              const initials = entry.full_name
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .slice(0, 2)
-                .toUpperCase();
-
+              const initials = entry.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
               return (
-                <Card
-                  key={entry.user_id}
-                  className={`border-border transition-all ${i === 0 ? "ring-1 ring-primary/30 bg-primary/5" : ""}`}
-                >
-                  <CardContent className="flex items-center gap-4 py-4">
-                    <span className="text-lg font-bold w-8 text-center shrink-0">
-                      {podium || `${i + 1}`}
-                    </span>
+                <Card key={entry.user_id} className={`shadow-card transition-all duration-150 hover:shadow-card-hover ${i === 0 ? "ring-1 ring-primary/20" : ""}`}>
+                  <CardContent className="flex items-center gap-4 py-4 px-5">
+                    <span className="text-lg font-bold w-8 text-center shrink-0">{podium || `${i + 1}`}</span>
                     <Avatar className="h-10 w-10 shrink-0">
-                      <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                        {initials}
-                      </AvatarFallback>
+                      <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">{initials}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold text-foreground truncate">{entry.full_name}</p>
-                        <Badge variant="secondary" className="text-[10px] shrink-0">
-                          {entry.level.icon} {entry.level.name}
-                        </Badge>
+                        <Badge variant="outline" className="text-[10px] shrink-0">{entry.level.icon} {entry.level.name}</Badge>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         <Progress value={entry.level.progressToNext} className="h-1.5 flex-1" />
-                        <span className="text-[10px] text-muted-foreground shrink-0">
-                          Nv. {entry.level.level}
-                        </span>
+                        <span className="text-[10px] text-muted-foreground shrink-0">Nv. {entry.level.level}</span>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
@@ -103,15 +66,11 @@ const Ranking = () => {
                       <div className="flex gap-0.5 shrink-0">
                         {entry.medals.slice(0, 4).map((key) => (
                           <Tooltip key={key}>
-                            <TooltipTrigger asChild>
-                              <span className="text-sm cursor-default">{MEDAL_DEFS[key]?.icon || "🏅"}</span>
-                            </TooltipTrigger>
+                            <TooltipTrigger asChild><span className="text-sm cursor-default">{MEDAL_DEFS[key]?.icon || "🏅"}</span></TooltipTrigger>
                             <TooltipContent>{MEDAL_DEFS[key]?.name || key}</TooltipContent>
                           </Tooltip>
                         ))}
-                        {entry.medals.length > 4 && (
-                          <span className="text-[10px] text-muted-foreground">+{entry.medals.length - 4}</span>
-                        )}
+                        {entry.medals.length > 4 && <span className="text-[10px] text-muted-foreground">+{entry.medals.length - 4}</span>}
                       </div>
                     )}
                   </CardContent>
@@ -121,12 +80,11 @@ const Ranking = () => {
           )}
         </TabsContent>
 
-        {/* MY PROGRESS TAB */}
         <TabsContent value="me" className="space-y-4">
           {myData ? (
             <>
-              <Card className="border-border">
-                <CardContent className="py-6">
+              <Card className="shadow-card">
+                <CardContent className="py-6 px-6">
                   <div className="flex items-center gap-4">
                     <div className="text-4xl">{myData.level.icon}</div>
                     <div className="flex-1">
@@ -135,8 +93,7 @@ const Ranking = () => {
                       <div className="flex items-center gap-2 mt-2">
                         <Progress value={myData.level.progressToNext} className="h-2 flex-1" />
                         <span className="text-xs text-muted-foreground">
-                          {myData.totalXp} XP
-                          {myData.level.nextLevel && ` / ${myData.level.nextLevel.minXp}`}
+                          {myData.totalXp} XP{myData.level.nextLevel && ` / ${myData.level.nextLevel.minXp}`}
                         </span>
                       </div>
                     </div>
@@ -148,12 +105,10 @@ const Ranking = () => {
                 </CardContent>
               </Card>
 
-              {/* Levels roadmap */}
-              <Card className="border-border">
+              <Card className="shadow-card">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm text-foreground flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-primary" />
-                    Níveis
+                    <TrendingUp className="h-4 w-4 text-primary" />Níveis
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -161,18 +116,13 @@ const Ranking = () => {
                     {LEVELS.map((l) => {
                       const reached = myData.totalXp >= l.minXp;
                       return (
-                        <div
-                          key={l.level}
-                          className={`flex items-center gap-3 rounded-md p-2 ${reached ? "bg-primary/10" : "bg-secondary/30 opacity-50"}`}
-                        >
+                        <div key={l.level} className={`flex items-center gap-3 rounded-xl p-2.5 transition-colors ${reached ? "bg-primary/5" : "bg-muted/30 opacity-50"}`}>
                           <span className="text-lg">{l.icon}</span>
                           <div className="flex-1">
-                            <p className={`text-sm font-medium ${reached ? "text-foreground" : "text-muted-foreground"}`}>
-                              {l.name}
-                            </p>
+                            <p className={`text-sm font-medium ${reached ? "text-foreground" : "text-muted-foreground"}`}>{l.name}</p>
                           </div>
                           <span className="text-xs text-muted-foreground">{l.minXp} XP</span>
-                          {reached && <Badge className="bg-primary/20 text-primary text-[10px]">✓</Badge>}
+                          {reached && <Badge variant="outline" className="text-[10px] text-primary border-primary/20">✓</Badge>}
                         </div>
                       );
                     })}
@@ -180,14 +130,10 @@ const Ranking = () => {
                 </CardContent>
               </Card>
 
-              {/* Recent XP */}
               {myData.recentXp.length > 0 && (
-                <Card className="border-border">
+                <Card className="shadow-card">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-foreground flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-primary" />
-                      XP Recente
-                    </CardTitle>
+                    <CardTitle className="text-sm text-foreground flex items-center gap-2"><Zap className="h-4 w-4 text-primary" />XP Recente</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-1.5">
@@ -195,10 +141,8 @@ const Ranking = () => {
                         <div key={i} className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">{actionLabels[log.action] || log.action}</span>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(log.created_at).toLocaleDateString("pt-BR")}
-                            </span>
-                            <Badge variant="secondary" className="text-[10px] text-primary">+{log.xp_earned} XP</Badge>
+                            <span className="text-xs text-muted-foreground">{new Date(log.created_at).toLocaleDateString("pt-BR")}</span>
+                            <Badge variant="outline" className="text-[10px] text-primary border-primary/20">+{log.xp_earned} XP</Badge>
                           </div>
                         </div>
                       ))}
@@ -208,30 +152,23 @@ const Ranking = () => {
               )}
             </>
           ) : (
-            <Card className="border-border">
-              <CardContent className="py-12 text-center">
-                <p className="text-muted-foreground">Conclua tarefas para ganhar XP!</p>
-              </CardContent>
-            </Card>
+            <Card className="shadow-card"><CardContent className="p-0"><EmptyState icon={Star} title="Conclua tarefas para ganhar XP!" /></CardContent></Card>
           )}
         </TabsContent>
 
-        {/* MEDALS TAB */}
         <TabsContent value="medals" className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {Object.entries(MEDAL_DEFS).map(([key, medal]) => {
               const earned = myData?.medals.includes(key);
               return (
-                <Card key={key} className={`border-border transition-all ${earned ? "ring-1 ring-primary/30" : "opacity-40"}`}>
-                  <CardContent className="flex items-center gap-3 py-4">
+                <Card key={key} className={`shadow-card transition-all duration-150 ${earned ? "ring-1 ring-primary/20" : "opacity-40"}`}>
+                  <CardContent className="flex items-center gap-3 py-4 px-5">
                     <span className="text-2xl">{medal.icon}</span>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold ${earned ? "text-foreground" : "text-muted-foreground"}`}>
-                        {medal.name}
-                      </p>
+                      <p className={`text-sm font-semibold ${earned ? "text-foreground" : "text-muted-foreground"}`}>{medal.name}</p>
                       <p className="text-xs text-muted-foreground">{medal.description}</p>
                     </div>
-                    {earned && <Badge className="bg-primary/20 text-primary text-[10px] shrink-0">Conquistada!</Badge>}
+                    {earned && <Badge variant="outline" className="text-[10px] text-primary border-primary/20 shrink-0">✓</Badge>}
                   </CardContent>
                 </Card>
               );

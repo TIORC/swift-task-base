@@ -2,18 +2,15 @@ import { useState, useEffect } from "react";
 import { useTasks, Task, useUpdateTask, COLUMNS } from "@/hooks/useTasks";
 import { useTimeTracker, formatTime, formatMinutes } from "@/hooks/useTimeTracker";
 import { useTaskTimeLogs } from "@/hooks/useTimeTracker";
+import { PageHeader } from "@/components/PageHeader";
+import { StatusBadge } from "@/components/StatusBadge";
+import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Play, Square, Target, ChevronLeft, ArrowRight, Clock, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-
-const priorityLabels: Record<string, string> = {
-  low: "Baixa", medium: "Média", high: "Alta", urgent: "Urgente",
-};
-
-const statusMap = Object.fromEntries(COLUMNS.map((c) => [c.status, c.title]));
 
 const FocusMode = () => {
   const { data: tasks } = useTasks();
@@ -55,41 +52,38 @@ const FocusMode = () => {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-2xl space-y-8">
+      <div className="w-full max-w-xl space-y-8 animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate(-1)} className="text-muted-foreground">
+          <Button variant="ghost" onClick={() => navigate(-1)} className="text-muted-foreground h-9">
             <ChevronLeft className="h-4 w-4 mr-1" />
             Voltar
           </Button>
-          <div className="flex items-center gap-2 text-primary">
-            <Target className="h-5 w-5" />
-            <span className="font-semibold">Modo Foco</span>
-          </div>
+          <PageHeader title="Modo Foco" icon={<Target className="h-5 w-5" />} />
           <div className="w-20" />
         </div>
 
         {!activeTask ? (
-          <div className="text-center py-20">
-            <Target className="h-16 w-16 mx-auto text-muted-foreground mb-4 opacity-30" />
-            <p className="text-xl text-muted-foreground">Nenhuma tarefa atribuída a você</p>
-            <p className="text-sm text-muted-foreground mt-1">Tarefas atribuídas aparecerão aqui</p>
-          </div>
+          <EmptyState
+            icon={Target}
+            title="Nenhuma tarefa atribuída"
+            description="Tarefas atribuídas a você aparecerão aqui."
+          />
         ) : (
           <>
-            {/* Timer - Hero */}
-            <div className="text-center space-y-4">
-              <div className={`text-7xl font-mono font-bold tracking-tight ${isRunning ? "text-primary animate-pulse" : "text-foreground"}`}>
+            {/* Timer Hero */}
+            <div className="text-center space-y-5">
+              <div className={`text-7xl font-mono font-bold tracking-tighter ${isRunning ? "text-primary" : "text-foreground"}`}>
                 {formatTime(elapsed)}
               </div>
-              <div className="flex items-center justify-center gap-4">
+              <div className="flex items-center justify-center gap-3">
                 {isRunning ? (
-                  <Button size="lg" variant="destructive" onClick={stop} className="px-8">
+                  <Button size="lg" variant="destructive" onClick={stop} className="px-8 h-12 rounded-xl">
                     <Square className="h-5 w-5 mr-2" />
                     Pausar
                   </Button>
                 ) : (
-                  <Button size="lg" onClick={start} className="px-8">
+                  <Button size="lg" onClick={start} className="px-8 h-12 rounded-xl">
                     <Play className="h-5 w-5 mr-2" />
                     Iniciar
                   </Button>
@@ -97,48 +91,43 @@ const FocusMode = () => {
               </div>
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
-                Total acumulado: <span className="text-foreground font-medium">{formatMinutes(displayTotal)}</span>
+                Total: <span className="text-foreground font-semibold">{formatMinutes(displayTotal)}</span>
               </div>
             </div>
 
             {/* Task Card */}
-            <div className="rounded-xl border border-border bg-card p-6 space-y-4">
-              <h2 className="text-xl font-semibold text-foreground">{activeTask.title}</h2>
-              {activeTask.description && (
-                <p className="text-sm text-muted-foreground leading-relaxed">{activeTask.description}</p>
-              )}
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">{statusMap[activeTask.status] || activeTask.status}</Badge>
-                <Badge variant="secondary" className={
-                  activeTask.priority === "urgent" ? "bg-destructive/20 text-destructive" :
-                  activeTask.priority === "high" ? "bg-warning/20 text-warning" :
-                  activeTask.priority === "medium" ? "bg-primary/20 text-primary" :
-                  "bg-muted text-muted-foreground"
-                }>
-                  {priorityLabels[activeTask.priority] || activeTask.priority}
-                </Badge>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" onClick={handleComplete} className="flex-1">
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Concluir
-                </Button>
-                {myTasks.length > 1 && (
-                  <Button variant="secondary" onClick={handleNext} className="flex-1">
-                    Próxima
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
+            <Card className="shadow-card">
+              <CardContent className="p-6 space-y-4">
+                <h2 className="text-lg font-semibold text-foreground">{activeTask.title}</h2>
+                {activeTask.description && (
+                  <p className="text-sm text-muted-foreground leading-relaxed">{activeTask.description}</p>
                 )}
-              </div>
-            </div>
+                <div className="flex flex-wrap gap-2">
+                  <StatusBadge type="status" value={activeTask.status} />
+                  <StatusBadge type="priority" value={activeTask.priority} />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" onClick={handleComplete} className="flex-1 h-10 rounded-xl">
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Concluir
+                  </Button>
+                  {myTasks.length > 1 && (
+                    <Button variant="secondary" onClick={handleNext} className="flex-1 h-10 rounded-xl">
+                      Próxima
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Task Selector */}
             {myTasks.length > 1 && (
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground font-medium">Suas tarefas ({myTasks.length})</p>
                 <Select value={activeTaskId || ""} onValueChange={setActiveTaskId}>
-                  <SelectTrigger className="bg-secondary border-border">
+                  <SelectTrigger className="rounded-xl">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
