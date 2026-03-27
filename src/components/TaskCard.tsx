@@ -1,15 +1,8 @@
 import { Task } from "@/hooks/useTasks";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/StatusBadge";
 import { Clock } from "lucide-react";
 import { Draggable } from "@hello-pangea/dnd";
-
-const priorityConfig: Record<string, { label: string; className: string }> = {
-  low: { label: "Baixa", className: "bg-muted text-muted-foreground" },
-  medium: { label: "Média", className: "bg-primary/20 text-primary" },
-  high: { label: "Alta", className: "bg-warning/20 text-warning" },
-  urgent: { label: "Urgente", className: "bg-destructive/20 text-destructive" },
-};
 
 interface TaskCardProps {
   task: Task;
@@ -18,7 +11,6 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, index, onClick }: TaskCardProps) {
-  const priority = priorityConfig[task.priority] || priorityConfig.medium;
   const initials = task.profiles?.full_name
     ? task.profiles.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
     : null;
@@ -35,16 +27,14 @@ export function TaskCard({ task, index, onClick }: TaskCardProps) {
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           onClick={() => onClick?.(task)}
-          className={`rounded-lg border border-border bg-card p-3 space-y-2.5 transition-shadow cursor-pointer hover:ring-1 hover:ring-primary/30 ${
-            snapshot.isDragging ? "shadow-lg shadow-primary/10 ring-1 ring-primary/30" : ""
-          }`}
+          className={`rounded-xl border border-border bg-card p-3.5 space-y-2.5 transition-all duration-150 cursor-pointer
+            hover:shadow-card-hover hover:border-primary/20
+            ${snapshot.isDragging ? "shadow-card-hover ring-2 ring-primary/20 rotate-1" : "shadow-card"}`}
         >
           <p className="text-sm font-medium text-foreground leading-snug">{task.title}</p>
 
           <div className="flex items-center justify-between gap-2">
-            <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${priority.className}`}>
-              {priority.label}
-            </Badge>
+            <StatusBadge type="priority" value={task.priority} />
 
             {(task.total_minutes || 0) > 0 && (
               <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -57,7 +47,7 @@ export function TaskCard({ task, index, onClick }: TaskCardProps) {
           {initials && (
             <div className="flex items-center gap-1.5">
               <Avatar className="h-5 w-5">
-                <AvatarFallback className="bg-primary/20 text-primary text-[9px]">
+                <AvatarFallback className="bg-primary/10 text-primary text-[9px] font-semibold">
                   {initials}
                 </AvatarFallback>
               </Avatar>

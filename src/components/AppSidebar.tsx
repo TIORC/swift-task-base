@@ -50,47 +50,50 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-5">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary shadow-sm">
             <CheckSquare className="h-4 w-4 text-primary-foreground" />
           </div>
           {!collapsed && (
-            <span className="text-lg font-bold text-sidebar-foreground">TaskFlow</span>
+            <span className="text-lg font-bold text-foreground tracking-tight">TaskFlow</span>
           )}
         </div>
       </SidebarHeader>
 
       <Separator className="bg-sidebar-border" />
 
-      <SidebarContent>
+      <SidebarContent className="px-2">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs uppercase tracking-wider text-muted-foreground">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold px-3 mb-1">
             Menu
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink
-                      to={item.url}
-                      end={item.url === "/"}
-                      className="hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
-                    >
-                      <div className="relative">
-                        <item.icon className="h-4 w-4" />
-                        {item.url === "/notifications" && unreadCount > 0 && (
-                          <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[8px] font-bold text-primary-foreground">
-                            {unreadCount > 9 ? "9+" : unreadCount}
-                          </span>
-                        )}
-                      </div>
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {navItems.map((item) => {
+                const active = isActive(item.url);
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={active}>
+                      <NavLink
+                        to={item.url}
+                        end={item.url === "/"}
+                        className="rounded-lg transition-all duration-150 hover:bg-sidebar-accent"
+                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      >
+                        <div className="relative">
+                          <item.icon className="h-4 w-4" />
+                          {item.url === "/notifications" && unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-destructive text-[7px] font-bold text-destructive-foreground">
+                              {unreadCount > 9 ? "9+" : unreadCount}
+                            </span>
+                          )}
+                        </div>
+                        {!collapsed && <span className="text-sm">{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -100,23 +103,22 @@ export function AppSidebar() {
         <Separator className="bg-sidebar-border" />
         <div className="flex items-center gap-3 p-3">
           <Avatar className="h-8 w-8 shrink-0">
-            <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
               {initials}
             </AvatarFallback>
           </Avatar>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="truncate text-sm font-medium text-sidebar-foreground">
+              <p className="truncate text-sm font-medium text-foreground">
                 {user?.user_metadata?.full_name || user?.email}
               </p>
-              <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
               <UserXPBadge />
             </div>
           )}
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive transition-colors"
             onClick={signOut}
             title="Sair"
           >

@@ -64,76 +64,75 @@ const Auth = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md border-border">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
-            <CheckSquare className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <CardTitle className="text-2xl font-bold text-foreground">TaskFlow</CardTitle>
-          <CardDescription className="text-muted-foreground">
-            {isForgot
-              ? "Recuperar senha"
-              : isLogin
-              ? "Entre na sua conta"
-              : "Crie sua conta"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleAuth} className="space-y-4">
-            {!isLogin && !isForgot && (
-              <Input
-                placeholder="Nome completo"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
-                className="bg-secondary border-border"
-              />
-            )}
-            <Input
-              type="email"
-              placeholder="E-mail"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="bg-secondary border-border"
-            />
-            {!isForgot && (
-              <Input
-                type="password"
-                placeholder="Senha"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="bg-secondary border-border"
-              />
-            )}
-            <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isForgot ? "Enviar link" : isLogin ? "Entrar" : "Criar conta"}
-            </Button>
-          </form>
-
-          <div className="mt-4 space-y-2 text-center text-sm">
-            {!isForgot && (
-              <button
-                onClick={() => setIsForgot(true)}
-                className="text-primary hover:underline"
-              >
-                Esqueceu a senha?
-              </button>
-            )}
-            <div>
-              <button
-                onClick={() => { setIsLogin(!isLogin); setIsForgot(false); }}
-                className="text-primary hover:underline"
-              >
-                {isLogin ? "Não tem conta? Cadastre-se" : "Já tem conta? Entrar"}
-              </button>
+      <div className="w-full max-w-md animate-scale-in">
+        <Card className="shadow-card border-border/50">
+          <CardHeader className="text-center pb-2">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-md">
+              <CheckSquare className="h-7 w-7 text-primary-foreground" />
             </div>
-          </div>
-        </CardContent>
-      </Card>
+            <CardTitle className="text-2xl font-bold text-foreground tracking-tight">TaskFlow</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              {isForgot
+                ? "Recuperar senha"
+                : isLogin
+                ? "Entre na sua conta"
+                : "Crie sua conta"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleAuth} className="space-y-4">
+              {!isLogin && !isForgot && (
+                <Input
+                  placeholder="Nome completo"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                />
+              )}
+              <Input
+                type="email"
+                placeholder="E-mail"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+              {!isForgot && (
+                <Input
+                  type="password"
+                  placeholder="Senha"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              )}
+              <Button type="submit" className="w-full h-11 font-medium" disabled={submitting}>
+                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isForgot ? "Enviar link" : isLogin ? "Entrar" : "Criar conta"}
+              </Button>
+            </form>
+
+            <div className="mt-5 space-y-2 text-center text-sm">
+              {!isForgot && (
+                <button
+                  onClick={() => setIsForgot(true)}
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Esqueceu a senha?
+                </button>
+              )}
+              <div>
+                <button
+                  onClick={() => { setIsLogin(!isLogin); setIsForgot(false); }}
+                  className="text-primary hover:underline font-medium"
+                >
+                  {isLogin ? "Não tem conta? Cadastre-se" : "Já tem conta? Entrar"}
+                </button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
