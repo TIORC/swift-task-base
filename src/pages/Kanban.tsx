@@ -4,8 +4,9 @@ import { useTasks, useUpdateTask, COLUMNS, TaskStatus, Task } from "@/hooks/useT
 import { TaskCard } from "@/components/TaskCard";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
+import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Columns3 } from "lucide-react";
 
 const Kanban = () => {
   const { data: tasks, isLoading } = useTasks();
@@ -44,32 +45,33 @@ const Kanban = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Kanban</h1>
-          <p className="text-muted-foreground">Arraste as tarefas entre colunas para atualizar o status.</p>
-        </div>
-        <Button onClick={() => handleAddToColumn("backlog")}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Tarefa
-        </Button>
-      </div>
+      <PageHeader
+        title="Kanban"
+        description="Arraste as tarefas entre colunas para atualizar o status."
+        icon={<Columns3 className="h-5 w-5" />}
+        actions={
+          <Button onClick={() => handleAddToColumn("backlog")} className="h-9">
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Tarefa
+          </Button>
+        }
+      />
 
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4">
           {COLUMNS.map((col) => {
             const colTasks = tasksByStatus[col.status] || [];
             return (
-              <div key={col.status} className="min-w-[260px] w-[260px] flex-shrink-0">
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-foreground">{col.title}</h3>
+              <div key={col.status} className="min-w-[272px] w-[272px] flex-shrink-0">
+                <div className="mb-3 flex items-center justify-between px-1">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{col.title}</h3>
                   <div className="flex items-center gap-1.5">
-                    <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
+                    <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                       {colTasks.length}
                     </span>
                     <button
                       onClick={() => handleAddToColumn(col.status)}
-                      className="rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                      className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                     >
                       <Plus className="h-3.5 w-3.5" />
                     </button>
@@ -81,10 +83,10 @@ const Kanban = () => {
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`min-h-[400px] space-y-2 rounded-lg border border-dashed p-2 transition-colors ${
+                      className={`min-h-[400px] space-y-2 rounded-xl border border-dashed p-2.5 transition-all duration-200 ${
                         snapshot.isDraggingOver
-                          ? "border-primary/50 bg-primary/5"
-                          : "border-border bg-secondary/20"
+                          ? "border-primary/40 bg-primary/5"
+                          : "border-border bg-muted/30"
                       }`}
                     >
                       {colTasks.map((task, i) => (
