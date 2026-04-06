@@ -18,6 +18,7 @@ import Automations from "./pages/Automations";
 import Ranking from "./pages/Ranking";
 import FocusMode from "./pages/FocusMode";
 import DependencyMap from "./pages/DependencyMap";
+import ManagerDashboard from "./pages/ManagerDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
