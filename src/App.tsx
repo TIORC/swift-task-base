@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { UserRoleProvider, useUserRole, defaultRouteForProfile } from "@/hooks/useUserRole";
 import { AppLayout } from "@/components/AppLayout";
 import { Loader2 } from "lucide-react";
 
@@ -40,20 +41,60 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <AppLayout>{children}</AppLayout>;
 }
 
+/** Wraps a page and redirects if the user's role cannot access this route */
+function RoleGate({ route, children }: { route: string; children: React.ReactNode }) {
+  const { canAccess, loading, profile } = useUserRole();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!canAccess(route)) {
+    return <Navigate to={defaultRouteForProfile[profile]} replace />;
+  }
+
+  return <>{children}</>;
+}
+
+/** Redirects "/" to the correct home page for the user's profile */
+function HomeRedirect() {
+  const { profile, loading } = useUserRole();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Admin and membro see their respective default pages
+  if (profile === "gestor") {
+    return <Navigate to="/manager" replace />;
+  }
+
+  // Admin and membro see the dashboard
+  return <Dashboard />;
+}
+
 const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<Auth />} />
     <Route path="/reset-password" element={<ResetPassword />} />
-    <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-    <Route path="/kanban" element={<ProtectedRoute><Kanban /></ProtectedRoute>} />
-    <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
-    <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-    <Route path="/automations" element={<ProtectedRoute><Automations /></ProtectedRoute>} />
-    <Route path="/ranking" element={<ProtectedRoute><Ranking /></ProtectedRoute>} />
-    <Route path="/focus" element={<ProtectedRoute><FocusMode /></ProtectedRoute>} />
-    <Route path="/dependencies" element={<ProtectedRoute><DependencyMap /></ProtectedRoute>} />
-    <Route path="/manager" element={<ProtectedRoute><ManagerDashboard /></ProtectedRoute>} />
-    <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
+    <Route path="/" element={<ProtectedRoute><RoleGate route="/"><HomeRedirect /></RoleGate></ProtectedRoute>} />
+    <Route path="/kanban" element={<ProtectedRoute><RoleGate route="/kanban"><Kanban /></RoleGate></ProtectedRoute>} />
+    <Route path="/tasks" element={<ProtectedRoute><RoleGate route="/tasks"><Tasks /></RoleGate></ProtectedRoute>} />
+    <Route path="/notifications" element={<ProtectedRoute><RoleGate route="/notifications"><Notifications /></RoleGate></ProtectedRoute>} />
+    <Route path="/automations" element={<ProtectedRoute><RoleGate route="/automations"><Automations /></RoleGate></ProtectedRoute>} />
+    <Route path="/ranking" element={<ProtectedRoute><RoleGate route="/ranking"><Ranking /></RoleGate></ProtectedRoute>} />
+    <Route path="/focus" element={<ProtectedRoute><RoleGate route="/focus"><FocusMode /></RoleGate></ProtectedRoute>} />
+    <Route path="/dependencies" element={<ProtectedRoute><RoleGate route="/dependencies"><DependencyMap /></RoleGate></ProtectedRoute>} />
+    <Route path="/manager" element={<ProtectedRoute><RoleGate route="/manager"><ManagerDashboard /></RoleGate></ProtectedRoute>} />
+    <Route path="/admin" element={<ProtectedRoute><RoleGate route="/admin"><AdminPanel /></RoleGate></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
@@ -66,7 +107,9 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <AppRoutes />
+            <UserRoleProvider>
+              <AppRoutes />
+            </UserRoleProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
