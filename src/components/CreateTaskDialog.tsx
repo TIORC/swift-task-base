@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useCreateTask, useProfiles, TaskStatus } from "@/hooks/useTasks";
+import { useUserRole } from "@/hooks/useUserRole";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -42,6 +45,17 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
   const [assignedTo, setAssignedTo] = useState<string>("");
 
   const { data: profiles } = useProfiles();
+  const { data: adminIds } = useQuery({
+    queryKey: ["admin-user-ids"],
+    queryFn: async () => {
+      const { data } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
+      return data?.map((r) => r.user_id) ?? [];
+    },
+  });
+  const assignableProfiles = useMemo(
+    () => profiles?.filter((p) => !adminIds?.includes(p.id)) ?? [],
+    [profiles, adminIds]
+  );
   const createTask = useCreateTask();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -100,7 +114,7 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
               <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Nenhum</SelectItem>
-                {profiles?.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>)}
+                {assignableProfiles.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
