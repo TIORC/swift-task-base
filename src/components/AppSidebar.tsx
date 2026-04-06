@@ -62,7 +62,7 @@ export function AppSidebar() {
   // Filter nav items based on user profile
   const visibleItems = allNavItems.filter((item) => item.profiles.includes(profile));
 
-  const profileLabel = profile === "admin" ? "Administrador" : profile === "gestor" ? "Gestor" : "Membro";
+  const profileLabel = profile === "admin" ? "Administrador" : profile === "gestor" ? "Líder" : "Membro";
 
   return (
     <Sidebar collapsible="icon">
