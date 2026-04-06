@@ -19,6 +19,7 @@ import Ranking from "./pages/Ranking";
 import FocusMode from "./pages/FocusMode";
 import DependencyMap from "./pages/DependencyMap";
 import ManagerDashboard from "./pages/ManagerDashboard";
+import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
