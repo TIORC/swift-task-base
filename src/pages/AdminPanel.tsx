@@ -108,6 +108,11 @@ const AdminPanel = () => {
   const [deleteUserEmail, setDeleteUserEmail] = useState("");
   const [deleting, setDeleting] = useState(false);
 
+  // Permissions dialog
+  const [permsOpen, setPermsOpen] = useState(false);
+  const [permsUserId, setPermsUserId] = useState("");
+  const [permsUserEmail, setPermsUserEmail] = useState("");
+
   const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
