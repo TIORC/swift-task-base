@@ -1,5 +1,7 @@
 import { useMemo, useEffect } from "react";
 import { useTasks, useProfiles, COLUMNS } from "@/hooks/useTasks";
+import { useTaskFilter } from "@/hooks/useTaskFilter";
+import { TaskFilterSelect } from "@/components/TaskFilterSelect";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
