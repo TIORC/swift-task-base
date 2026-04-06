@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { DragDropContext, Droppable, DropResult } from "@hello-pangea/dnd";
 import { useTasks, useUpdateTask, COLUMNS, TaskStatus, Task } from "@/hooks/useTasks";
+import { useTaskFilter } from "@/hooks/useTaskFilter";
 import { TaskCard } from "@/components/TaskCard";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
+import { TaskFilterSelect } from "@/components/TaskFilterSelect";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, Columns3 } from "lucide-react";
 
 const Kanban = () => {
   const { data: tasks, isLoading } = useTasks();
+  const { filteredTasks, selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(tasks);
   const updateTask = useUpdateTask();
   const [createOpen, setCreateOpen] = useState(false);
   const [createStatus, setCreateStatus] = useState<TaskStatus>("backlog");
@@ -17,10 +20,10 @@ const Kanban = () => {
 
   const tasksByStatus = COLUMNS.reduce(
     (acc, col) => {
-      acc[col.status] = (tasks || []).filter((t) => t.status === col.status);
+      acc[col.status] = filteredTasks.filter((t) => t.status === col.status);
       return acc;
     },
-    {} as Record<TaskStatus, typeof tasks extends (infer T)[] ? T[] : never[]>
+    {} as Record<TaskStatus, Task[]>
   );
 
   const onDragEnd = (result: DropResult) => {
@@ -50,10 +53,15 @@ const Kanban = () => {
         description="Arraste as tarefas entre colunas para atualizar o status."
         icon={<Columns3 className="h-5 w-5" />}
         actions={
-          <Button onClick={() => handleAddToColumn("backlog")} className="h-9">
-            <Plus className="mr-2 h-4 w-4" />
-            Nova Tarefa
-          </Button>
+          <div className="flex items-center gap-2">
+            {canFilter && (
+              <TaskFilterSelect value={selectedUserId} onChange={setSelectedUserId} />
+            )}
+            <Button onClick={() => handleAddToColumn("backlog")} className="h-9">
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Tarefa
+            </Button>
+          </div>
         }
       />
 

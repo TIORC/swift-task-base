@@ -1,5 +1,7 @@
 import { useMemo, useEffect } from "react";
 import { useTasks, useProfiles, COLUMNS } from "@/hooks/useTasks";
+import { useTaskFilter } from "@/hooks/useTaskFilter";
+import { TaskFilterSelect } from "@/components/TaskFilterSelect";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +33,7 @@ const PIE_COLORS = [
 
 const Dashboard = () => {
   const { data: tasks } = useTasks();
+  const { filteredTasks, selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(tasks);
   const { data: profiles } = useProfiles();
   const queryClient = useQueryClient();
 
@@ -49,29 +52,29 @@ const Dashboard = () => {
   }, [queryClient]);
 
   const stats = useMemo(() => {
-    if (!tasks) return null;
-    const total = tasks.length;
-    const inProgress = tasks.filter((t) => t.status === "in_progress").length;
-    const done = tasks.filter((t) => t.status === "done").length;
-    const review = tasks.filter((t) => t.status === "review").length;
+    if (!filteredTasks) return null;
+    const total = filteredTasks.length;
+    const inProgress = filteredTasks.filter((t) => t.status === "in_progress").length;
+    const done = filteredTasks.filter((t) => t.status === "done").length;
+    const review = filteredTasks.filter((t) => t.status === "review").length;
     const members = profiles?.length || 0;
     const completionRate = total > 0 ? Math.round((done / total) * 100) : 0;
     return { total, inProgress, done, review, members, completionRate };
-  }, [tasks, profiles]);
+  }, [filteredTasks, profiles]);
 
   const statusData = useMemo(() => {
-    if (!tasks) return [];
+    if (!filteredTasks) return [];
     const statusMap = Object.fromEntries(COLUMNS.map((c) => [c.status, c.title]));
     return COLUMNS.map((col) => ({
       name: statusMap[col.status],
-      value: tasks.filter((t) => t.status === col.status).length,
+      value: filteredTasks.filter((t) => t.status === col.status).length,
     })).filter((d) => d.value > 0);
-  }, [tasks]);
+  }, [filteredTasks]);
 
   const timePerUser = useMemo(() => {
-    if (!tasks || !profiles) return [];
+    if (!filteredTasks || !profiles) return [];
     const userTimeMap: Record<string, number> = {};
-    tasks.forEach((t) => {
+    filteredTasks.forEach((t) => {
       if (t.assigned_to && t.total_minutes) {
         userTimeMap[t.assigned_to] = (userTimeMap[t.assigned_to] || 0) + t.total_minutes;
       }
@@ -83,12 +86,12 @@ const Dashboard = () => {
         hours: Math.round((userTimeMap[p.id] / 60) * 10) / 10,
       }))
       .sort((a, b) => b.hours - a.hours);
-  }, [tasks, profiles]);
+  }, [filteredTasks, profiles]);
 
   const productivityData = useMemo(() => {
-    if (!tasks || !profiles) return [];
+    if (!filteredTasks || !profiles) return [];
     const userDone: Record<string, number> = {};
-    tasks.filter((t) => t.status === "done").forEach((t) => {
+    filteredTasks.filter((t) => t.status === "done").forEach((t) => {
       if (t.assigned_to) userDone[t.assigned_to] = (userDone[t.assigned_to] || 0) + 1;
     });
     return profiles
@@ -100,28 +103,28 @@ const Dashboard = () => {
         avatar: p.full_name?.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() || "?",
       }))
       .sort((a, b) => b.done - a.done);
-  }, [tasks, profiles]);
+  }, [filteredTasks, profiles]);
 
   const bottlenecks = useMemo(() => {
-    if (!tasks) return [];
+    if (!filteredTasks) return [];
     const statusMap = Object.fromEntries(COLUMNS.map((c) => [c.status, c.title]));
     const activeStatuses = ["backlog", "pending", "in_progress", "review"] as const;
     return activeStatuses
       .map((s) => ({
         status: s,
         label: statusMap[s],
-        count: tasks.filter((t) => t.status === s).length,
+        count: filteredTasks.filter((t) => t.status === s).length,
       }))
       .filter((b) => b.count > 0)
       .sort((a, b) => b.count - a.count);
-  }, [tasks]);
+  }, [filteredTasks]);
 
   const recentActivity = useMemo(() => {
-    if (!tasks) return [];
-    return [...tasks]
+    if (!filteredTasks) return [];
+    return [...filteredTasks]
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
       .slice(0, 8);
-  }, [tasks]);
+  }, [filteredTasks]);
 
   if (!stats) return null;
 
@@ -140,6 +143,11 @@ const Dashboard = () => {
         title="Dashboard"
         description="Visão estratégica em tempo real"
         icon={<LayoutDashboard className="h-5 w-5" />}
+        actions={
+          canFilter ? (
+            <TaskFilterSelect value={selectedUserId} onChange={setSelectedUserId} />
+          ) : undefined
+        }
       />
 
       {/* KPI Cards */}
