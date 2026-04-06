@@ -30,14 +30,14 @@ const UserRoleContext = createContext<UserRoleContextType>({
 
 // Map routes to allowed profiles
 const routePermissions: Record<string, RoleProfile[]> = {
-  "/": ["admin", "membro"], // Dashboard for membro as home, admin sees all
-  "/kanban": ["admin", "membro"],
-  "/tasks": ["admin", "membro"],
-  "/focus": ["admin", "membro"],
+  "/": ["admin", "gestor", "membro"],
+  "/kanban": ["admin", "gestor", "membro"],
+  "/tasks": ["admin", "gestor", "membro"],
+  "/focus": ["admin", "gestor", "membro"],
   "/notifications": ["admin", "gestor", "membro"],
-  "/dependencies": ["admin", "membro"],
-  "/automations": ["admin"],
-  "/ranking": ["admin"],
+  "/dependencies": ["admin", "gestor", "membro"],
+  "/automations": ["admin", "gestor"],
+  "/ranking": ["admin", "gestor"],
   "/manager": ["admin", "gestor"],
   "/admin": ["admin"],
 };
