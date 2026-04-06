@@ -20,8 +20,9 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
-  ShieldCheck, UserPlus, KeyRound, Trash2, Users, Loader2, Search, Shield,
+  ShieldCheck, UserPlus, KeyRound, Trash2, Users, Loader2, Search, Shield, Settings2,
 } from "lucide-react";
+import { UserPermissionsDialog } from "@/components/UserPermissionsDialog";
 
 const ALL_ROLES = [
   { value: "admin", label: "Administrador" },
