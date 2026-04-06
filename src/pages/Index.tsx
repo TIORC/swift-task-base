@@ -52,15 +52,15 @@ const Dashboard = () => {
   }, [queryClient]);
 
   const stats = useMemo(() => {
-    if (!tasks) return null;
-    const total = tasks.length;
-    const inProgress = tasks.filter((t) => t.status === "in_progress").length;
-    const done = tasks.filter((t) => t.status === "done").length;
-    const review = tasks.filter((t) => t.status === "review").length;
+    if (!filteredTasks) return null;
+    const total = filteredTasks.length;
+    const inProgress = filteredTasks.filter((t) => t.status === "in_progress").length;
+    const done = filteredTasks.filter((t) => t.status === "done").length;
+    const review = filteredTasks.filter((t) => t.status === "review").length;
     const members = profiles?.length || 0;
     const completionRate = total > 0 ? Math.round((done / total) * 100) : 0;
     return { total, inProgress, done, review, members, completionRate };
-  }, [tasks, profiles]);
+  }, [filteredTasks, profiles]);
 
   const statusData = useMemo(() => {
     if (!tasks) return [];
