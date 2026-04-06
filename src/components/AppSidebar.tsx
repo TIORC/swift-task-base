@@ -40,7 +40,7 @@ const allNavItems = [
 // Labels per profile for the sidebar group
 const groupLabels: Record<string, string> = {
   membro: "Execução",
-  gestor: "Gestão",
+  gestor: "Operação & Gestão",
   admin: "Sistema",
 };
 
