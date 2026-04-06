@@ -45,6 +45,17 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
   const [assignedTo, setAssignedTo] = useState<string>("");
 
   const { data: profiles } = useProfiles();
+  const { data: adminIds } = useQuery({
+    queryKey: ["admin-user-ids"],
+    queryFn: async () => {
+      const { data } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
+      return data?.map((r) => r.user_id) ?? [];
+    },
+  });
+  const assignableProfiles = useMemo(
+    () => profiles?.filter((p) => !adminIds?.includes(p.id)) ?? [],
+    [profiles, adminIds]
+  );
   const createTask = useCreateTask();
 
   const handleSubmit = (e: React.FormEvent) => {
