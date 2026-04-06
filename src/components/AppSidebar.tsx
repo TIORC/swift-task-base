@@ -4,6 +4,7 @@ import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUnreadCount } from "@/hooks/useNotifications";
+import { useMyMenuAccess } from "@/hooks/usePermissions";
 import {
   Sidebar,
   SidebarContent,
