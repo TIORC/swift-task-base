@@ -107,14 +107,7 @@ export function AppSidebar() {
                         className="rounded-lg transition-all duration-150 hover:bg-sidebar-accent"
                         activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                       >
-                        <div className="relative">
-                          <item.icon className="h-4 w-4" />
-                          {item.url === "/notifications" && unreadCount > 0 && (
-                            <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-destructive text-[7px] font-bold text-destructive-foreground">
-                              {unreadCount > 9 ? "9+" : unreadCount}
-                            </span>
-                          )}
-                        </div>
+                        <item.icon className="h-4 w-4" />
                         {!collapsed && <span className="text-sm">{item.title}</span>}
                       </NavLink>
                     </SidebarMenuButton>
