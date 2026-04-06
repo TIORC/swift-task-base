@@ -89,9 +89,9 @@ const Dashboard = () => {
   }, [filteredTasks, profiles]);
 
   const productivityData = useMemo(() => {
-    if (!tasks || !profiles) return [];
+    if (!filteredTasks || !profiles) return [];
     const userDone: Record<string, number> = {};
-    tasks.filter((t) => t.status === "done").forEach((t) => {
+    filteredTasks.filter((t) => t.status === "done").forEach((t) => {
       if (t.assigned_to) userDone[t.assigned_to] = (userDone[t.assigned_to] || 0) + 1;
     });
     return profiles
@@ -103,7 +103,7 @@ const Dashboard = () => {
         avatar: p.full_name?.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() || "?",
       }))
       .sort((a, b) => b.done - a.done);
-  }, [tasks, profiles]);
+  }, [filteredTasks, profiles]);
 
   const bottlenecks = useMemo(() => {
     if (!tasks) return [];
