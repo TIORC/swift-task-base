@@ -1,4 +1,4 @@
-import { LayoutDashboard, Columns3, ListTodo, Bell, LogOut, Zap, Trophy, Target, GitBranch } from "lucide-react";
+import { LayoutDashboard, Columns3, ListTodo, Bell, LogOut, Zap, Trophy, Target, GitBranch, Gauge } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,6 +31,7 @@ const navItems = [
   { title: "Automações", url: "/automations", icon: Zap },
   { title: "Ranking", url: "/ranking", icon: Trophy },
   { title: "Notificações", url: "/notifications", icon: Bell },
+  { title: "Painel Gestor", url: "/manager", icon: Gauge },
 ];
 
 export function AppSidebar() {

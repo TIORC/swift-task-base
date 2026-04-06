@@ -18,6 +18,7 @@ import Automations from "./pages/Automations";
 import Ranking from "./pages/Ranking";
 import FocusMode from "./pages/FocusMode";
 import DependencyMap from "./pages/DependencyMap";
+import ManagerDashboard from "./pages/ManagerDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ const AppRoutes = () => (
     <Route path="/ranking" element={<ProtectedRoute><Ranking /></ProtectedRoute>} />
     <Route path="/focus" element={<ProtectedRoute><FocusMode /></ProtectedRoute>} />
     <Route path="/dependencies" element={<ProtectedRoute><DependencyMap /></ProtectedRoute>} />
+    <Route path="/manager" element={<ProtectedRoute><ManagerDashboard /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
