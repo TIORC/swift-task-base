@@ -72,9 +72,9 @@ const Dashboard = () => {
   }, [filteredTasks]);
 
   const timePerUser = useMemo(() => {
-    if (!tasks || !profiles) return [];
+    if (!filteredTasks || !profiles) return [];
     const userTimeMap: Record<string, number> = {};
-    tasks.forEach((t) => {
+    filteredTasks.forEach((t) => {
       if (t.assigned_to && t.total_minutes) {
         userTimeMap[t.assigned_to] = (userTimeMap[t.assigned_to] || 0) + t.total_minutes;
       }
@@ -86,7 +86,7 @@ const Dashboard = () => {
         hours: Math.round((userTimeMap[p.id] / 60) * 10) / 10,
       }))
       .sort((a, b) => b.hours - a.hours);
-  }, [tasks, profiles]);
+  }, [filteredTasks, profiles]);
 
   const productivityData = useMemo(() => {
     if (!tasks || !profiles) return [];
