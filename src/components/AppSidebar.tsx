@@ -51,6 +51,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { profile } = useUserRole();
+  const { isMenuEnabled } = useMyMenuAccess();
   const unreadCount = useUnreadCount();
 
   const isActive = (path: string) =>
