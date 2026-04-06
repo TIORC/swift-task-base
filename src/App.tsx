@@ -117,7 +117,9 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <UserRoleProvider>
-              <AppRoutes />
+              <GlobalTimerProvider>
+                <AppRoutes />
+              </GlobalTimerProvider>
             </UserRoleProvider>
           </AuthProvider>
         </BrowserRouter>
