@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { UserRoleProvider, useUserRole, defaultRouteForProfile } from "@/hooks/useUserRole";
+import { useMyMenuAccess } from "@/hooks/usePermissions";
 import { AppLayout } from "@/components/AppLayout";
 import { Loader2 } from "lucide-react";
 
