@@ -120,11 +120,11 @@ const Dashboard = () => {
   }, [filteredTasks]);
 
   const recentActivity = useMemo(() => {
-    if (!tasks) return [];
-    return [...tasks]
+    if (!filteredTasks) return [];
+    return [...filteredTasks]
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
       .slice(0, 8);
-  }, [tasks]);
+  }, [filteredTasks]);
 
   if (!stats) return null;
 
