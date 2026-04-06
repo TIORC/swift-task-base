@@ -22,9 +22,9 @@ export function useNotifications() {
   useEffect(() => {
     if (!user) return;
 
-    const channelName = `notifications-realtime-${user.id}-${Date.now()}`;
-    const channel = supabase
-      .channel(channelName)
+    const channel = supabase.channel(`notif-${user.id}-${Math.random().toString(36).slice(2)}`);
+    
+    channel
       .on(
         "postgres_changes",
         {
@@ -42,7 +42,7 @@ export function useNotifications() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, queryClient]);
+  }, [user?.id, queryClient]);
 
   return useQuery({
     queryKey: ["notifications"],
