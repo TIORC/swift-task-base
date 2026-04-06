@@ -63,13 +63,13 @@ const Dashboard = () => {
   }, [filteredTasks, profiles]);
 
   const statusData = useMemo(() => {
-    if (!tasks) return [];
+    if (!filteredTasks) return [];
     const statusMap = Object.fromEntries(COLUMNS.map((c) => [c.status, c.title]));
     return COLUMNS.map((col) => ({
       name: statusMap[col.status],
-      value: tasks.filter((t) => t.status === col.status).length,
+      value: filteredTasks.filter((t) => t.status === col.status).length,
     })).filter((d) => d.value > 0);
-  }, [tasks]);
+  }, [filteredTasks]);
 
   const timePerUser = useMemo(() => {
     if (!tasks || !profiles) return [];
