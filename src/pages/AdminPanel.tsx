@@ -20,8 +20,9 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
-  ShieldCheck, UserPlus, KeyRound, Trash2, Users, Loader2, Search, Shield,
+  ShieldCheck, UserPlus, KeyRound, Trash2, Users, Loader2, Search, Shield, Settings2,
 } from "lucide-react";
+import { UserPermissionsDialog } from "@/components/UserPermissionsDialog";
 
 const ALL_ROLES = [
   { value: "admin", label: "Administrador" },
@@ -106,6 +107,11 @@ const AdminPanel = () => {
   const [deleteUserId, setDeleteUserId] = useState("");
   const [deleteUserEmail, setDeleteUserEmail] = useState("");
   const [deleting, setDeleting] = useState(false);
+
+  // Permissions dialog
+  const [permsOpen, setPermsOpen] = useState(false);
+  const [permsUserId, setPermsUserId] = useState("");
+  const [permsUserEmail, setPermsUserEmail] = useState("");
 
   const loadUsers = useCallback(async () => {
     try {
@@ -277,6 +283,17 @@ const AdminPanel = () => {
                     <div className="flex items-center gap-1 shrink-0">
                       <Button
                         variant="ghost" size="icon" className="h-8 w-8"
+                        title="Permissões"
+                        onClick={() => {
+                          setPermsUserId(u.id);
+                          setPermsUserEmail(u.email);
+                          setPermsOpen(true);
+                        }}
+                      >
+                        <Settings2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost" size="icon" className="h-8 w-8"
                         title="Gerenciar papéis"
                         onClick={() => {
                           setRolesUserId(u.id);
@@ -437,6 +454,14 @@ const AdminPanel = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* PERMISSIONS DIALOG */}
+      <UserPermissionsDialog
+        open={permsOpen}
+        onOpenChange={setPermsOpen}
+        userId={permsUserId}
+        userEmail={permsUserEmail}
+        allUsers={users.map((u) => ({ id: u.id, email: u.email, full_name: u.full_name }))}
+      />
     </div>
   );
 };
