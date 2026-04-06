@@ -25,13 +25,13 @@ import { UserXPBadge } from "@/components/UserXPBadge";
 import type { RoleProfile } from "@/hooks/useUserRole";
 
 const allNavItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, profiles: ["admin", "membro"] as RoleProfile[] },
-  { title: "Kanban", url: "/kanban", icon: Columns3, profiles: ["admin", "membro"] as RoleProfile[] },
-  { title: "Tarefas", url: "/tasks", icon: ListTodo, profiles: ["admin", "membro"] as RoleProfile[] },
-  { title: "Modo Foco", url: "/focus", icon: Target, profiles: ["admin", "membro"] as RoleProfile[] },
-  { title: "Dependências", url: "/dependencies", icon: GitBranch, profiles: ["admin", "membro"] as RoleProfile[] },
-  { title: "Automações", url: "/automations", icon: Zap, profiles: ["admin"] as RoleProfile[] },
-  { title: "Ranking", url: "/ranking", icon: Trophy, profiles: ["admin"] as RoleProfile[] },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
+  { title: "Kanban", url: "/kanban", icon: Columns3, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
+  { title: "Tarefas", url: "/tasks", icon: ListTodo, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
+  { title: "Modo Foco", url: "/focus", icon: Target, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
+  { title: "Dependências", url: "/dependencies", icon: GitBranch, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
+  { title: "Automações", url: "/automations", icon: Zap, profiles: ["admin", "gestor"] as RoleProfile[] },
+  { title: "Ranking", url: "/ranking", icon: Trophy, profiles: ["admin", "gestor"] as RoleProfile[] },
   { title: "Notificações", url: "/notifications", icon: Bell, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
   { title: "Painel Gestor", url: "/manager", icon: Gauge, profiles: ["admin", "gestor"] as RoleProfile[] },
   { title: "Administração", url: "/admin", icon: ShieldCheck, profiles: ["admin"] as RoleProfile[] },
