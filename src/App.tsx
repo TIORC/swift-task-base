@@ -45,8 +45,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 /** Wraps a page and redirects if the user's role cannot access this route */
 function RoleGate({ route, children }: { route: string; children: React.ReactNode }) {
   const { canAccess, loading, profile } = useUserRole();
+  const { isMenuEnabled, loading: menuLoading } = useMyMenuAccess();
 
-  if (loading) {
+  if (loading || menuLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -54,7 +55,13 @@ function RoleGate({ route, children }: { route: string; children: React.ReactNod
     );
   }
 
+  // Check role-based access
   if (!canAccess(route)) {
+    return <Navigate to={defaultRouteForProfile[profile]} replace />;
+  }
+
+  // Check per-user menu override (admin bypasses)
+  if (profile !== "admin" && isMenuEnabled(route) === false) {
     return <Navigate to={defaultRouteForProfile[profile]} replace />;
   }
 
