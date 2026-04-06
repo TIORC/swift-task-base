@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -14,6 +15,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <SidebarTrigger className="text-muted-foreground hover:text-foreground transition-colors" />
             </div>
             <div className="flex items-center gap-2">
+              <NotificationBell />
               <ThemeToggle />
             </div>
           </header>

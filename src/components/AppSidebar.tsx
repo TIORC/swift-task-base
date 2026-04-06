@@ -1,9 +1,9 @@
-import { LayoutDashboard, Columns3, ListTodo, Bell, LogOut, Zap, Trophy, Target, GitBranch, Gauge, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Columns3, ListTodo, LogOut, Zap, Trophy, Target, GitBranch, Gauge, ShieldCheck } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
-import { useUnreadCount } from "@/hooks/useNotifications";
+
 import { useMyMenuAccess } from "@/hooks/usePermissions";
 import {
   Sidebar,
@@ -33,7 +33,7 @@ const allNavItems = [
   { title: "Dependências", url: "/dependencies", icon: GitBranch, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
   { title: "Automações", url: "/automations", icon: Zap, profiles: ["admin", "gestor"] as RoleProfile[] },
   { title: "Ranking", url: "/ranking", icon: Trophy, profiles: ["admin", "gestor"] as RoleProfile[] },
-  { title: "Notificações", url: "/notifications", icon: Bell, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
+  
   { title: "Painel Gestor", url: "/manager", icon: Gauge, profiles: ["admin", "gestor"] as RoleProfile[] },
   { title: "Administração", url: "/admin", icon: ShieldCheck, profiles: ["admin"] as RoleProfile[] },
 ];
@@ -52,7 +52,7 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { profile } = useUserRole();
   const { isMenuEnabled } = useMyMenuAccess();
-  const unreadCount = useUnreadCount();
+  
 
   const isActive = (path: string) =>
     path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
@@ -107,14 +107,7 @@ export function AppSidebar() {
                         className="rounded-lg transition-all duration-150 hover:bg-sidebar-accent"
                         activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                       >
-                        <div className="relative">
-                          <item.icon className="h-4 w-4" />
-                          {item.url === "/notifications" && unreadCount > 0 && (
-                            <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-destructive text-[7px] font-bold text-destructive-foreground">
-                              {unreadCount > 9 ? "9+" : unreadCount}
-                            </span>
-                          )}
-                        </div>
+                        <item.icon className="h-4 w-4" />
                         {!collapsed && <span className="text-sm">{item.title}</span>}
                       </NavLink>
                     </SidebarMenuButton>
