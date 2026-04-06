@@ -454,6 +454,14 @@ const AdminPanel = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* PERMISSIONS DIALOG */}
+      <UserPermissionsDialog
+        open={permsOpen}
+        onOpenChange={setPermsOpen}
+        userId={permsUserId}
+        userEmail={permsUserEmail}
+        allUsers={users.map((u) => ({ id: u.id, email: u.email, full_name: u.full_name }))}
+      />
     </div>
   );
 };
