@@ -283,6 +283,17 @@ const AdminPanel = () => {
                     <div className="flex items-center gap-1 shrink-0">
                       <Button
                         variant="ghost" size="icon" className="h-8 w-8"
+                        title="Permissões"
+                        onClick={() => {
+                          setPermsUserId(u.id);
+                          setPermsUserEmail(u.email);
+                          setPermsOpen(true);
+                        }}
+                      >
+                        <Settings2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost" size="icon" className="h-8 w-8"
                         title="Gerenciar papéis"
                         onClick={() => {
                           setRolesUserId(u.id);
