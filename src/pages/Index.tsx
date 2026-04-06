@@ -33,6 +33,7 @@ const PIE_COLORS = [
 
 const Dashboard = () => {
   const { data: tasks } = useTasks();
+  const { filteredTasks, selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(tasks);
   const { data: profiles } = useProfiles();
   const queryClient = useQueryClient();
 
