@@ -6,7 +6,7 @@ import type { Database } from "@/integrations/supabase/types";
 type AppRole = Database["public"]["Enums"]["app_role"];
 
 // Role hierarchy: admin > gestor/lider > member/dev
-type RoleProfile = "admin" | "gestor" | "membro";
+export type RoleProfile = "admin" | "gestor" | "membro";
 
 interface UserRoleContextType {
   roles: AppRole[];
