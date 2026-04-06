@@ -31,6 +31,7 @@ const navItems = [
   { title: "Automações", url: "/automations", icon: Zap },
   { title: "Ranking", url: "/ranking", icon: Trophy },
   { title: "Notificações", url: "/notifications", icon: Bell },
+  { title: "Painel Gestor", url: "/manager", icon: Gauge },
 ];
 
 export function AppSidebar() {

@@ -51,6 +51,7 @@ const AppRoutes = () => (
     <Route path="/ranking" element={<ProtectedRoute><Ranking /></ProtectedRoute>} />
     <Route path="/focus" element={<ProtectedRoute><FocusMode /></ProtectedRoute>} />
     <Route path="/dependencies" element={<ProtectedRoute><DependencyMap /></ProtectedRoute>} />
+    <Route path="/manager" element={<ProtectedRoute><ManagerDashboard /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
