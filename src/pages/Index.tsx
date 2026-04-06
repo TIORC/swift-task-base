@@ -106,18 +106,18 @@ const Dashboard = () => {
   }, [filteredTasks, profiles]);
 
   const bottlenecks = useMemo(() => {
-    if (!tasks) return [];
+    if (!filteredTasks) return [];
     const statusMap = Object.fromEntries(COLUMNS.map((c) => [c.status, c.title]));
     const activeStatuses = ["backlog", "pending", "in_progress", "review"] as const;
     return activeStatuses
       .map((s) => ({
         status: s,
         label: statusMap[s],
-        count: tasks.filter((t) => t.status === s).length,
+        count: filteredTasks.filter((t) => t.status === s).length,
       }))
       .filter((b) => b.count > 0)
       .sort((a, b) => b.count - a.count);
-  }, [tasks]);
+  }, [filteredTasks]);
 
   const recentActivity = useMemo(() => {
     if (!tasks) return [];
