@@ -130,7 +130,7 @@ export function AppSidebar() {
                 {user?.user_metadata?.full_name || user?.email}
               </p>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{profileLabel}</p>
-              {profile === "membro" && <UserXPBadge />}
+              {(profile === "membro" || profile === "gestor") && <UserXPBadge />}
             </div>
           )}
           <Button
