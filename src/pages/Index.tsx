@@ -143,6 +143,11 @@ const Dashboard = () => {
         title="Dashboard"
         description="Visão estratégica em tempo real"
         icon={<LayoutDashboard className="h-5 w-5" />}
+        actions={
+          canFilter ? (
+            <TaskFilterSelect value={selectedUserId} onChange={setSelectedUserId} />
+          ) : undefined
+        }
       />
 
       {/* KPI Cards */}
