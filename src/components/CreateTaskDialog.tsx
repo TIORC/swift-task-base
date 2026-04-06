@@ -48,8 +48,8 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
   const { data: adminIds } = useQuery({
     queryKey: ["admin-user-ids"],
     queryFn: async () => {
-      const { data } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
-      return data?.map((r) => r.user_id) ?? [];
+      const { data } = await supabase.rpc("get_admin_user_ids");
+      return (data as string[]) ?? [];
     },
   });
   const assignableProfiles = useMemo(
