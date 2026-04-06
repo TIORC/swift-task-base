@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { useTasks, useDeleteTask, COLUMNS, Task } from "@/hooks/useTasks";
+import { useTasks, useDeleteTask, Task } from "@/hooks/useTasks";
+import { useTaskFilter } from "@/hooks/useTaskFilter";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
+import { TaskFilterSelect } from "@/components/TaskFilterSelect";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
@@ -12,6 +14,7 @@ import { Plus, Loader2, Trash2, Clock, ListTodo } from "lucide-react";
 
 const Tasks = () => {
   const { data: tasks, isLoading } = useTasks();
+  const { filteredTasks, selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(tasks);
   const deleteTask = useDeleteTask();
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -31,20 +34,25 @@ const Tasks = () => {
         description="Gerencie todas as tarefas do time."
         icon={<ListTodo className="h-5 w-5" />}
         actions={
-          <Button onClick={() => setCreateOpen(true)} className="h-9">
-            <Plus className="mr-2 h-4 w-4" />
-            Nova Tarefa
-          </Button>
+          <div className="flex items-center gap-2">
+            {canFilter && (
+              <TaskFilterSelect value={selectedUserId} onChange={setSelectedUserId} />
+            )}
+            <Button onClick={() => setCreateOpen(true)} className="h-9">
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Tarefa
+            </Button>
+          </div>
         }
       />
 
-      {!tasks || tasks.length === 0 ? (
+      {filteredTasks.length === 0 ? (
         <Card className="shadow-card">
           <CardContent className="p-0">
             <EmptyState
               icon={ListTodo}
-              title="Nenhuma tarefa criada"
-              description="Comece criando sua primeira tarefa."
+              title="Nenhuma tarefa encontrada"
+              description="Nenhuma tarefa para o filtro selecionado."
               actionLabel="Criar Tarefa"
               onAction={() => setCreateOpen(true)}
             />
@@ -52,7 +60,7 @@ const Tasks = () => {
         </Card>
       ) : (
         <div className="space-y-2">
-          {tasks.map((task) => {
+          {filteredTasks.map((task) => {
             const initials = task.profiles?.full_name
               ? task.profiles.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
               : null;
