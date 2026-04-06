@@ -61,8 +61,16 @@ export function AppSidebar() {
     ? user.user_metadata.full_name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
     : user?.email?.slice(0, 2).toUpperCase() ?? "U";
 
-  // Filter nav items based on user profile
-  const visibleItems = allNavItems.filter((item) => item.profiles.includes(profile));
+  // Filter nav items based on user profile + per-user menu overrides
+  const visibleItems = allNavItems.filter((item) => {
+    // First check role-based access
+    if (!item.profiles.includes(profile)) return false;
+    // Then check per-user menu override (admin always sees everything)
+    if (profile === "admin") return true;
+    const override = isMenuEnabled(item.url);
+    if (override === false) return false; // explicitly blocked
+    return true;
+  });
 
   const profileLabel = profile === "admin" ? "Administrador" : profile === "gestor" ? "Líder" : "Membro";
 
