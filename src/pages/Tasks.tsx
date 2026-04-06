@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useTasks, useDeleteTask, useUpdateTask, Task } from "@/hooks/useTasks";
 import { useTaskFilter } from "@/hooks/useTaskFilter";
-import { useTimeTracker, formatTime, formatMinutes } from "@/hooks/useTimeTracker";
-import { useTaskTimeLogs } from "@/hooks/useTimeTracker";
+import { useGlobalTimer } from "@/hooks/useGlobalTimer";
+import { formatTime, formatMinutes } from "@/hooks/useTimeTracker";
 import { useAuth } from "@/hooks/useAuth";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
@@ -15,49 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Plus, Loader2, Trash2, Clock, ListTodo,
-  Play, Square, CheckCircle, Target,
+  Play, Square, CheckCircle,
 } from "lucide-react";
-
-function FocusTimer({ taskId, taskTitle }: { taskId: string; taskTitle: string }) {
-  const { isRunning, elapsed, start, stop } = useTimeTracker(taskId);
-  const { totalMinutes } = useTaskTimeLogs(taskId);
-  const displayTotal = totalMinutes + Math.floor(elapsed / 60);
-
-  return (
-    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-      {isRunning && (
-        <span className="text-sm font-mono font-bold text-primary animate-pulse">
-          {formatTime(elapsed)}
-        </span>
-      )}
-      {!isRunning && displayTotal > 0 && (
-        <span className="text-xs text-muted-foreground flex items-center gap-1">
-          <Clock className="h-3 w-3" />
-          {formatMinutes(displayTotal)}
-        </span>
-      )}
-      {isRunning ? (
-        <Button
-          variant="destructive"
-          size="icon"
-          className="h-7 w-7 rounded-lg shrink-0"
-          onClick={(e) => { e.stopPropagation(); stop(); }}
-        >
-          <Square className="h-3 w-3" />
-        </Button>
-      ) : (
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-7 w-7 rounded-lg shrink-0 text-primary hover:text-primary hover:bg-primary/10 border-primary/30"
-          onClick={(e) => { e.stopPropagation(); start(); }}
-        >
-          <Play className="h-3 w-3" />
-        </Button>
-      )}
-    </div>
-  );
-}
 
 const Tasks = () => {
   const { data: tasks, isLoading } = useTasks();
@@ -65,10 +24,12 @@ const Tasks = () => {
   const deleteTask = useDeleteTask();
   const updateTask = useUpdateTask();
   const { user } = useAuth();
+  const { activeTaskId, isRunning, elapsed, start, stop } = useGlobalTimer();
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const handleComplete = (task: Task) => {
+    if (activeTaskId === task.id && isRunning) stop();
     updateTask.mutate({ id: task.id, status: "done" as any });
   };
 
@@ -119,13 +80,17 @@ const Tasks = () => {
               : null;
             const isMyTask = task.assigned_to === user?.id;
             const isActive = task.status !== "done" && task.status !== "discarded";
+            const isTimerOnThis = activeTaskId === task.id && isRunning;
+            const hours = Math.floor((task.total_minutes || 0) / 60);
+            const mins = (task.total_minutes || 0) % 60;
 
             return (
               <div
                 key={task.id}
                 onClick={() => setSelectedTask(task)}
-                className="flex items-center gap-4 rounded-xl border border-border bg-card p-3.5 cursor-pointer
-                  shadow-card hover:shadow-card-hover hover:border-primary/20 transition-all duration-150"
+                className={`flex items-center gap-4 rounded-xl border bg-card p-3.5 cursor-pointer
+                  shadow-card hover:shadow-card-hover transition-all duration-150
+                  ${isTimerOnThis ? "border-primary/40 ring-1 ring-primary/20" : "border-border hover:border-primary/20"}`}
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{task.title}</p>
@@ -137,18 +102,47 @@ const Tasks = () => {
                 <StatusBadge type="status" value={task.status} />
                 <StatusBadge type="priority" value={task.priority} />
 
-                {/* Focus Timer - only for own active tasks */}
+                {/* Timer controls for own active tasks */}
                 {isMyTask && isActive && (
-                  <FocusTimer taskId={task.id} taskTitle={task.title} />
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    {isTimerOnThis && (
+                      <span className="text-sm font-mono font-bold text-primary animate-pulse">
+                        {formatTime(elapsed)}
+                      </span>
+                    )}
+                    {!isTimerOnThis && (task.total_minutes || 0) > 0 && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {hours > 0 ? `${hours}h ${mins}m` : `${mins}m`}
+                      </span>
+                    )}
+                    {isTimerOnThis ? (
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="h-7 w-7 rounded-lg shrink-0"
+                        onClick={(e) => { e.stopPropagation(); stop(); }}
+                      >
+                        <Square className="h-3 w-3" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-7 w-7 rounded-lg shrink-0 text-primary hover:text-primary hover:bg-primary/10 border-primary/30"
+                        onClick={(e) => { e.stopPropagation(); start(task.id); }}
+                      >
+                        <Play className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
                 )}
 
                 {/* Time display for non-own or completed tasks */}
                 {(!isMyTask || !isActive) && (task.total_minutes || 0) > 0 && (
                   <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
                     <Clock className="h-3 w-3" />
-                    {Math.floor((task.total_minutes || 0) / 60) > 0
-                      ? `${Math.floor((task.total_minutes || 0) / 60)}h ${(task.total_minutes || 0) % 60}m`
-                      : `${(task.total_minutes || 0) % 60}m`}
+                    {hours > 0 ? `${hours}h ${mins}m` : `${mins}m`}
                   </div>
                 )}
 

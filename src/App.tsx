@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { UserRoleProvider, useUserRole, defaultRouteForProfile } from "@/hooks/useUserRole";
+import { GlobalTimerProvider } from "@/hooks/useGlobalTimer";
 import { useMyMenuAccess } from "@/hooks/usePermissions";
 import { AppLayout } from "@/components/AppLayout";
 import { Loader2 } from "lucide-react";
@@ -116,7 +117,9 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <UserRoleProvider>
-              <AppRoutes />
+              <GlobalTimerProvider>
+                <AppRoutes />
+              </GlobalTimerProvider>
             </UserRoleProvider>
           </AuthProvider>
         </BrowserRouter>
