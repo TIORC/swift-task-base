@@ -2,6 +2,7 @@ import { LayoutDashboard, Columns3, ListTodo, Bell, LogOut, Zap, Trophy, Target,
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useUnreadCount } from "@/hooks/useNotifications";
 import {
   Sidebar,
@@ -21,25 +22,34 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CheckSquare } from "lucide-react";
 import { UserXPBadge } from "@/components/UserXPBadge";
+import type { RoleProfile } from "@/hooks/useUserRole";
 
-const navItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Kanban", url: "/kanban", icon: Columns3 },
-  { title: "Tarefas", url: "/tasks", icon: ListTodo },
-  { title: "Modo Foco", url: "/focus", icon: Target },
-  { title: "Dependências", url: "/dependencies", icon: GitBranch },
-  { title: "Automações", url: "/automations", icon: Zap },
-  { title: "Ranking", url: "/ranking", icon: Trophy },
-  { title: "Notificações", url: "/notifications", icon: Bell },
-  { title: "Painel Gestor", url: "/manager", icon: Gauge },
-  { title: "Administração", url: "/admin", icon: ShieldCheck },
+const allNavItems = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, profiles: ["admin", "membro"] as RoleProfile[] },
+  { title: "Kanban", url: "/kanban", icon: Columns3, profiles: ["admin", "membro"] as RoleProfile[] },
+  { title: "Tarefas", url: "/tasks", icon: ListTodo, profiles: ["admin", "membro"] as RoleProfile[] },
+  { title: "Modo Foco", url: "/focus", icon: Target, profiles: ["admin", "membro"] as RoleProfile[] },
+  { title: "Dependências", url: "/dependencies", icon: GitBranch, profiles: ["admin", "membro"] as RoleProfile[] },
+  { title: "Automações", url: "/automations", icon: Zap, profiles: ["admin"] as RoleProfile[] },
+  { title: "Ranking", url: "/ranking", icon: Trophy, profiles: ["admin"] as RoleProfile[] },
+  { title: "Notificações", url: "/notifications", icon: Bell, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
+  { title: "Painel Gestor", url: "/manager", icon: Gauge, profiles: ["admin", "gestor"] as RoleProfile[] },
+  { title: "Administração", url: "/admin", icon: ShieldCheck, profiles: ["admin"] as RoleProfile[] },
 ];
+
+// Labels per profile for the sidebar group
+const groupLabels: Record<string, string> = {
+  membro: "Execução",
+  gestor: "Gestão",
+  admin: "Sistema",
+};
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { profile } = useUserRole();
   const unreadCount = useUnreadCount();
 
   const isActive = (path: string) =>
@@ -48,6 +58,11 @@ export function AppSidebar() {
   const initials = user?.user_metadata?.full_name
     ? user.user_metadata.full_name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
     : user?.email?.slice(0, 2).toUpperCase() ?? "U";
+
+  // Filter nav items based on user profile
+  const visibleItems = allNavItems.filter((item) => item.profiles.includes(profile));
+
+  const profileLabel = profile === "admin" ? "Administrador" : profile === "gestor" ? "Gestor" : "Membro";
 
   return (
     <Sidebar collapsible="icon">
@@ -67,11 +82,11 @@ export function AppSidebar() {
       <SidebarContent className="px-2">
         <SidebarGroup>
           <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold px-3 mb-1">
-            Menu
+            {groupLabels[profile] || "Menu"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => {
+              {visibleItems.map((item) => {
                 const active = isActive(item.url);
                 return (
                   <SidebarMenuItem key={item.title}>
@@ -114,7 +129,8 @@ export function AppSidebar() {
               <p className="truncate text-sm font-medium text-foreground">
                 {user?.user_metadata?.full_name || user?.email}
               </p>
-              <UserXPBadge />
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{profileLabel}</p>
+              {profile === "membro" && <UserXPBadge />}
             </div>
           )}
           <Button
