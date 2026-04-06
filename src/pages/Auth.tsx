@@ -70,7 +70,7 @@ const Auth = () => {
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-md">
               <CheckSquare className="h-7 w-7 text-primary-foreground" />
             </div>
-            <CardTitle className="text-2xl font-bold text-foreground tracking-tight">TaskFlow</CardTitle>
+            <CardTitle className="text-2xl font-bold text-foreground tracking-tight">Orcoma TI Gestão</CardTitle>
             <CardDescription className="text-muted-foreground">
               {isForgot
                 ? "Recuperar senha"

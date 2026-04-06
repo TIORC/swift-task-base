@@ -55,7 +55,7 @@ export function AppSidebar() {
             <CheckSquare className="h-4 w-4 text-primary-foreground" />
           </div>
           {!collapsed && (
-            <span className="text-lg font-bold text-foreground tracking-tight">TaskFlow</span>
+            <span className="text-lg font-bold text-foreground tracking-tight">Orcoma TI</span>
           )}
         </div>
       </SidebarHeader>
