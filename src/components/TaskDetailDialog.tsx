@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, Square, Clock, Trash2, User, Timer, FileText, History, MessageSquare } from "lucide-react";
+import { Play, Square, Clock, Trash2, User, Timer, FileText, History, MessageSquare, GitBranch } from "lucide-react";
 import { useState, useEffect } from "react";
 import { TaskComments } from "@/components/TaskComments";
 import { TaskAttachments } from "@/components/TaskAttachments";
