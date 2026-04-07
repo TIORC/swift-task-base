@@ -14,13 +14,14 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, Square, Clock, Trash2, User, Timer, FileText, History, MessageSquare } from "lucide-react";
+import { Play, Square, Clock, Trash2, User, Timer, FileText, History, MessageSquare, GitBranch } from "lucide-react";
 import { useState, useEffect } from "react";
 import { TaskComments } from "@/components/TaskComments";
 import { TaskAttachments } from "@/components/TaskAttachments";
 import { ResponsibilityHistorySection } from "@/components/ResponsibilityHistory";
 import { TaskApprovalSection } from "@/components/TaskApprovalSection";
 import { TaskDependencies } from "@/components/TaskDependencies";
+import { TaskTimeline } from "@/components/TaskTimeline";
 
 const priorityOptions = [
   { value: "low", label: "Baixa" },
@@ -190,6 +191,7 @@ export function TaskDetailDialog({ task, open, onOpenChange }: TaskDetailDialogP
             <TabsList className="bg-muted/50 p-1 rounded-xl w-full justify-start">
               <TabsTrigger value="details" className="rounded-lg text-xs"><FileText className="h-3.5 w-3.5 mr-1" />Detalhes</TabsTrigger>
               <TabsTrigger value="comments" className="rounded-lg text-xs"><MessageSquare className="h-3.5 w-3.5 mr-1" />Chat</TabsTrigger>
+              <TabsTrigger value="timeline" className="rounded-lg text-xs"><GitBranch className="h-3.5 w-3.5 mr-1" />Timeline</TabsTrigger>
               <TabsTrigger value="history" className="rounded-lg text-xs"><History className="h-3.5 w-3.5 mr-1" />Histórico</TabsTrigger>
             </TabsList>
 
@@ -232,6 +234,10 @@ export function TaskDetailDialog({ task, open, onOpenChange }: TaskDetailDialogP
 
             <TabsContent value="comments">
               <TaskComments taskId={task.id} />
+            </TabsContent>
+
+            <TabsContent value="timeline">
+              <TaskTimeline taskId={task.id} />
             </TabsContent>
 
             <TabsContent value="history">
