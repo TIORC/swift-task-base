@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { UserXPBadge } from "@/components/UserXPBadge";
 import logoOrcoma from "@/assets/logo-orcoma.jpg";
+import logoOrcomaLight from "@/assets/logo-orcoma-light.png";
 import type { RoleProfile } from "@/hooks/useUserRole";
 
 const allNavItems = [
