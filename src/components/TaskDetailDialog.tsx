@@ -236,6 +236,10 @@ export function TaskDetailDialog({ task, open, onOpenChange }: TaskDetailDialogP
               <TaskComments taskId={task.id} />
             </TabsContent>
 
+            <TabsContent value="timeline">
+              <TaskTimeline taskId={task.id} />
+            </TabsContent>
+
             <TabsContent value="history">
               <ResponsibilityHistorySection taskId={task.id} />
             </TabsContent>
