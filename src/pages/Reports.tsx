@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { useTasks, useProfiles, COLUMNS, Task } from "@/hooks/useTasks";
 import { useTaskFilter } from "@/hooks/useTaskFilter";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import {
   BarChart3, Clock, TrendingUp, CheckCircle2, Timer, Activity,
-  AlertTriangle, Users, FileDown, Loader2,
+  AlertTriangle, Users, FileDown, Loader2, Printer, FileSpreadsheet,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -19,6 +19,7 @@ import {
 } from "recharts";
 import { format, subDays, subMonths, startOfWeek, endOfWeek, eachWeekOfInterval, startOfMonth, endOfMonth, eachMonthOfInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { toast } from "sonner";
 
 const PIE_COLORS = [
   "hsl(230, 80%, 60%)", "hsl(38, 92%, 50%)", "hsl(152, 69%, 40%)",
@@ -35,12 +36,17 @@ const tooltipStyle = {
 
 type PeriodFilter = "week" | "month" | "quarter" | "all";
 
+const periodLabels: Record<PeriodFilter, string> = {
+  week: "Semana", month: "Mês", quarter: "Trimestre", all: "Todo período",
+};
+
 const Reports = () => {
   const { data: tasks, isLoading } = useTasks();
   const { data: profiles } = useProfiles();
   const { filteredTasks, selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(tasks);
   const { isAdmin, isGestor } = useUserRole();
   const [period, setPeriod] = useState<PeriodFilter>("month");
+  const reportRef = useRef<HTMLDivElement>(null);
 
   const periodFiltered = useMemo(() => {
     if (!filteredTasks) return [];
@@ -69,7 +75,6 @@ const Reports = () => {
     const completionRate = total > 0 ? Math.round((done / total) * 100) : 0;
     const discardRate = total > 0 ? Math.round((discarded / total) * 100) : 0;
 
-    // Stalled detection
     const twoDaysAgo = new Date();
     twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
     const stalled = periodFiltered.filter(
@@ -79,7 +84,6 @@ const Reports = () => {
     return { total, done, inProgress, review, totalMinutes, avgExecMinutes, completionRate, discardRate, stalled };
   }, [periodFiltered]);
 
-  // Tasks per user
   const userMetrics = useMemo(() => {
     if (!profiles) return [];
     const map: Record<string, { total: number; done: number; minutes: number }> = {};
@@ -103,7 +107,6 @@ const Reports = () => {
       .sort((a, b) => b.efficiency - a.efficiency);
   }, [periodFiltered, profiles]);
 
-  // Status distribution
   const statusData = useMemo(() => {
     return COLUMNS.map(col => ({
       name: col.title,
@@ -111,7 +114,6 @@ const Reports = () => {
     })).filter(d => d.value > 0);
   }, [periodFiltered]);
 
-  // Weekly evolution
   const weeklyEvolution = useMemo(() => {
     const now = new Date();
     const start = subMonths(now, 2);
@@ -135,7 +137,6 @@ const Reports = () => {
     });
   }, [periodFiltered]);
 
-  // Stalled tasks list
   const stalledTasks = useMemo(() => {
     const twoDaysAgo = new Date();
     twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
@@ -146,6 +147,71 @@ const Reports = () => {
   }, [periodFiltered]);
 
   const fmtMin = (m: number) => m < 60 ? `${m}min` : `${Math.floor(m / 60)}h ${m % 60}min`;
+
+  const handlePrintPDF = useCallback(() => {
+    window.print();
+  }, []);
+
+  const handleExportExcel = useCallback(() => {
+    const statusLabels: Record<string, string> = {
+      backlog: "Backlog", pending: "Pendente", todo: "A Fazer", in_progress: "Em Andamento",
+      review: "Em Validação", done: "Concluído", discarded: "Descartado",
+    };
+    const priorityLabels: Record<string, string> = {
+      low: "Baixa", medium: "Média", high: "Alta", urgent: "Urgente",
+    };
+
+    // Sheet 1: Indicadores
+    const kpiRows = [
+      ["Indicador", "Valor"],
+      ["Total de Tarefas", metrics.total],
+      ["Concluídas", metrics.done],
+      ["Taxa de Conclusão (%)", metrics.completionRate],
+      ["Em Andamento", metrics.inProgress],
+      ["Em Validação", metrics.review],
+      ["Tempo Médio de Execução (min)", metrics.avgExecMinutes],
+      ["Tempo Total (min)", metrics.totalMinutes],
+      ["Taxa de Descarte (%)", metrics.discardRate],
+      ["Tarefas Travadas", metrics.stalled],
+    ];
+
+    // Sheet 2: Por Usuário
+    const userRows = [
+      ["Usuário", "Total", "Concluídas", "Eficiência (%)", "Horas Trabalhadas"],
+      ...userMetrics.map(u => [u.fullName, u.total, u.done, u.efficiency, u.hours]),
+    ];
+
+    // Sheet 3: Tarefas
+    const taskRows = [
+      ["Título", "Status", "Prioridade", "Responsável", "Tempo (min)", "Criada em", "Atualizada em"],
+      ...periodFiltered.map(t => [
+        t.title,
+        statusLabels[t.status] || t.status,
+        priorityLabels[t.priority] || t.priority,
+        t.profiles?.full_name || "Sem responsável",
+        t.total_minutes || 0,
+        format(new Date(t.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
+        format(new Date(t.updated_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
+      ]),
+    ];
+
+    // Build CSV (Excel-compatible with BOM + semicolons for PT-BR)
+    const toCSV = (rows: any[][]) => rows.map(r => r.map(c => `"${c}"`).join(";")).join("\n");
+    const bom = "\uFEFF";
+    const content = bom + 
+      "=== INDICADORES ===\n" + toCSV(kpiRows) + 
+      "\n\n=== PRODUTIVIDADE POR USUÁRIO ===\n" + toCSV(userRows) + 
+      "\n\n=== LISTA DE TAREFAS ===\n" + toCSV(taskRows);
+
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `relatorio-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Relatório exportado com sucesso!");
+  }, [metrics, userMetrics, periodFiltered]);
 
   if (isLoading) {
     return (
@@ -163,7 +229,7 @@ const Reports = () => {
           description="Análise detalhada de produtividade e execução"
           icon={<BarChart3 className="h-5 w-5" />}
         />
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {canFilter && (
             <TaskFilterSelect value={selectedUserId} onChange={setSelectedUserId} />
           )}
@@ -176,166 +242,176 @@ const Reports = () => {
               <SelectItem value="all">Tudo</SelectItem>
             </SelectContent>
           </Select>
+          <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={handlePrintPDF}>
+            <Printer className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">PDF</span>
+          </Button>
+          <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={handleExportExcel}>
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Excel</span>
+          </Button>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
-        {[
-          { label: "Total Tarefas", value: metrics.total, icon: Activity, color: "text-primary" },
-          { label: "Concluídas", value: `${metrics.done} (${metrics.completionRate}%)`, icon: CheckCircle2, color: "text-success" },
-          { label: "Em Andamento", value: metrics.inProgress, icon: TrendingUp, color: "text-primary" },
-          { label: "Tempo Médio", value: fmtMin(metrics.avgExecMinutes), icon: Timer, color: "text-warning" },
-          { label: "Travadas", value: metrics.stalled, icon: AlertTriangle, color: "text-destructive" },
-        ].map(kpi => (
-          <Card key={kpi.label} className="shadow-card">
-            <CardContent className="pt-5 pb-4 px-5">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-muted-foreground">{kpi.label}</span>
-                <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
-              </div>
-              <p className="text-2xl font-bold text-foreground">{kpi.value}</p>
+      <div ref={reportRef}>
+        {/* KPI Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 mb-6">
+          {[
+            { label: "Total Tarefas", value: metrics.total, icon: Activity, color: "text-primary" },
+            { label: "Concluídas", value: `${metrics.done} (${metrics.completionRate}%)`, icon: CheckCircle2, color: "text-success" },
+            { label: "Em Andamento", value: metrics.inProgress, icon: TrendingUp, color: "text-primary" },
+            { label: "Tempo Médio", value: fmtMin(metrics.avgExecMinutes), icon: Timer, color: "text-warning" },
+            { label: "Travadas", value: metrics.stalled, icon: AlertTriangle, color: "text-destructive" },
+          ].map(kpi => (
+            <Card key={kpi.label} className="shadow-card">
+              <CardContent className="pt-5 pb-4 px-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-muted-foreground">{kpi.label}</span>
+                  <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
+                </div>
+                <p className="text-2xl font-bold text-foreground">{kpi.value}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Charts */}
+        <div className="grid gap-4 lg:grid-cols-2 mb-6">
+          {/* Status Distribution */}
+          <Card className="shadow-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-foreground flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                Distribuição por Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {statusData.length > 0 ? (
+                <>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie data={statusData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value" stroke="none">
+                        {statusData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip contentStyle={tooltipStyle} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex flex-wrap gap-3 mt-2">
+                    {statusData.map((d, i) => (
+                      <div key={d.name} className="flex items-center gap-1.5 text-xs">
+                        <div className="h-2 w-2 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                        <span className="text-muted-foreground">{d.name}</span>
+                        <span className="text-foreground font-semibold">{d.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <EmptyState icon={BarChart3} title="Sem dados" description="Nenhuma tarefa no período." />
+              )}
             </CardContent>
           </Card>
-        ))}
-      </div>
 
-      {/* Charts */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* Status Distribution */}
-        <Card className="shadow-card">
+          {/* Weekly evolution */}
+          <Card className="shadow-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-foreground flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Evolução Semanal
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {weeklyEvolution.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={weeklyEvolution}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="week" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Legend />
+                    <Line type="monotone" dataKey="criadas" stroke="hsl(230, 80%, 60%)" strokeWidth={2} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="concluídas" stroke="hsl(152, 69%, 40%)" strokeWidth={2} dot={{ r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyState icon={TrendingUp} title="Sem dados" description="Nenhum dado de evolução." />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Time per user bar chart */}
+        <Card className="shadow-card mb-6">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-foreground flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-primary" />
-              Distribuição por Status
+              <Users className="h-4 w-4 text-primary" />
+              Produtividade por Usuário
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {statusData.length > 0 ? (
-              <>
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie data={statusData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value" stroke="none">
-                      {statusData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                    </Pie>
+            {userMetrics.length > 0 ? (
+              <div className="grid gap-4 lg:grid-cols-2">
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={userMetrics} layout="vertical" margin={{ left: 10 }}>
+                    <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis type="category" dataKey="name" tick={{ fill: "hsl(var(--foreground))", fontSize: 11 }} width={60} />
                     <Tooltip contentStyle={tooltipStyle} />
-                  </PieChart>
+                    <Bar dataKey="hours" name="Horas" fill="hsl(230, 80%, 60%)" radius={[0, 6, 6, 0]} />
+                  </BarChart>
                 </ResponsiveContainer>
-                <div className="flex flex-wrap gap-3 mt-2">
-                  {statusData.map((d, i) => (
-                    <div key={d.name} className="flex items-center gap-1.5 text-xs">
-                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                      <span className="text-muted-foreground">{d.name}</span>
-                      <span className="text-foreground font-semibold">{d.value}</span>
+                <div className="space-y-2">
+                  {userMetrics.map(u => (
+                    <div key={u.name} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/30">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{u.fullName}</p>
+                        <p className="text-xs text-muted-foreground">{u.total} tarefas · {u.done} concluídas</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-foreground">{u.efficiency}%</p>
+                        <p className="text-[10px] text-muted-foreground">{u.hours}h trabalhadas</p>
+                      </div>
                     </div>
                   ))}
                 </div>
-              </>
-            ) : (
-              <EmptyState icon={BarChart3} title="Sem dados" description="Nenhuma tarefa no período." />
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Weekly evolution */}
-        <Card className="shadow-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-primary" />
-              Evolução Semanal
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {weeklyEvolution.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={weeklyEvolution}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="week" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Legend />
-                  <Line type="monotone" dataKey="criadas" stroke="hsl(230, 80%, 60%)" strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="concluídas" stroke="hsl(152, 69%, 40%)" strokeWidth={2} dot={{ r: 3 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <EmptyState icon={TrendingUp} title="Sem dados" description="Nenhum dado de evolução." />
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Time per user bar chart */}
-      <Card className="shadow-card">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-foreground flex items-center gap-2">
-            <Users className="h-4 w-4 text-primary" />
-            Produtividade por Usuário
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {userMetrics.length > 0 ? (
-            <div className="grid gap-4 lg:grid-cols-2">
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={userMetrics} layout="vertical" margin={{ left: 10 }}>
-                  <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" tick={{ fill: "hsl(var(--foreground))", fontSize: 11 }} width={60} />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Bar dataKey="hours" name="Horas" fill="hsl(230, 80%, 60%)" radius={[0, 6, 6, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-              <div className="space-y-2">
-                {userMetrics.map(u => (
-                  <div key={u.name} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/30">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{u.fullName}</p>
-                      <p className="text-xs text-muted-foreground">{u.total} tarefas · {u.done} concluídas</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-foreground">{u.efficiency}%</p>
-                      <p className="text-[10px] text-muted-foreground">{u.hours}h trabalhadas</p>
-                    </div>
-                  </div>
-                ))}
               </div>
-            </div>
-          ) : (
-            <EmptyState icon={Users} title="Sem dados" description="Nenhum dado de usuário." />
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Stalled tasks */}
-      {stalledTasks.length > 0 && (
-        <Card className="shadow-card border-destructive/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-foreground flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-              Tarefas Travadas ({stalledTasks.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {stalledTasks.map(t => {
-                const daysSinceUpdate = Math.floor((Date.now() - new Date(t.updated_at).getTime()) / (1000 * 60 * 60 * 24));
-                return (
-                  <div key={t.id} className="flex items-center justify-between p-2.5 rounded-lg bg-destructive/5">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{t.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {t.profiles?.full_name || "Sem responsável"} · {COLUMNS.find(c => c.status === t.status)?.title}
-                      </p>
-                    </div>
-                    <span className="text-xs text-destructive font-medium shrink-0 ml-2">
-                      {daysSinceUpdate} dia{daysSinceUpdate !== 1 ? "s" : ""} parada
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+            ) : (
+              <EmptyState icon={Users} title="Sem dados" description="Nenhum dado de usuário." />
+            )}
           </CardContent>
         </Card>
-      )}
+
+        {/* Stalled tasks */}
+        {stalledTasks.length > 0 && (
+          <Card className="shadow-card border-destructive/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-foreground flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+                Tarefas Travadas ({stalledTasks.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {stalledTasks.map(t => {
+                  const daysSinceUpdate = Math.floor((Date.now() - new Date(t.updated_at).getTime()) / (1000 * 60 * 60 * 24));
+                  return (
+                    <div key={t.id} className="flex items-center justify-between p-2.5 rounded-lg bg-destructive/5">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{t.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {t.profiles?.full_name || "Sem responsável"} · {COLUMNS.find(c => c.status === t.status)?.title}
+                        </p>
+                      </div>
+                      <span className="text-xs text-destructive font-medium shrink-0 ml-2">
+                        {daysSinceUpdate} dia{daysSinceUpdate !== 1 ? "s" : ""} parada
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 };
