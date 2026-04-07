@@ -36,6 +36,7 @@ const allNavItems = [
   { title: "Automações", url: "/automations", icon: Zap, profiles: ["admin", "gestor"] as RoleProfile[] },
   { title: "Ranking", url: "/ranking", icon: Trophy, profiles: ["admin", "gestor"] as RoleProfile[] },
   
+  { title: "Relatórios", url: "/reports", icon: BarChart3, profiles: ["admin", "gestor"] as RoleProfile[] },
   { title: "Painel Gestor", url: "/manager", icon: Gauge, profiles: ["admin", "gestor"] as RoleProfile[] },
   { title: "Administração", url: "/admin", icon: ShieldCheck, profiles: ["admin"] as RoleProfile[] },
 ];
