@@ -23,8 +23,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { UserXPBadge } from "@/components/UserXPBadge";
-import logoOrcoma from "@/assets/logo-orcoma.jpg";
 import logoOrcomaLight from "@/assets/logo-orcoma-light.png";
+import logoOrcomaDark from "@/assets/logo-orcoma-dark.png";
 import type { RoleProfile } from "@/hooks/useUserRole";
 
 const allNavItems = [
