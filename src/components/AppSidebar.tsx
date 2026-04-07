@@ -33,7 +33,7 @@ const allNavItems = [
   { title: "Tarefas", url: "/tasks", icon: ListTodo, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
   { title: "Modo Foco", url: "/focus", icon: Target, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
   { title: "Dependências", url: "/dependencies", icon: GitBranch, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
-  { title: "Automações", url: "/automations", icon: Zap, profiles: ["admin", "gestor"] as RoleProfile[] },
+  
   { title: "Ranking", url: "/ranking", icon: Trophy, profiles: ["admin", "gestor"] as RoleProfile[] },
   
   { title: "Relatórios", url: "/reports", icon: BarChart3, profiles: ["admin", "gestor"] as RoleProfile[] },
