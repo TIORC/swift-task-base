@@ -24,6 +24,7 @@ import DependencyMap from "./pages/DependencyMap";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
+import Reports from "./pages/Reports";
 
 const queryClient = new QueryClient();
 
