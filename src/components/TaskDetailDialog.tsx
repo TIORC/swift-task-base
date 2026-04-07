@@ -21,6 +21,7 @@ import { TaskAttachments } from "@/components/TaskAttachments";
 import { ResponsibilityHistorySection } from "@/components/ResponsibilityHistory";
 import { TaskApprovalSection } from "@/components/TaskApprovalSection";
 import { TaskDependencies } from "@/components/TaskDependencies";
+import { TaskTimeline } from "@/components/TaskTimeline";
 
 const priorityOptions = [
   { value: "low", label: "Baixa" },
