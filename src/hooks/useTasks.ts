@@ -114,11 +114,45 @@ export function useUpdateTask() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: TablesUpdate<"tasks"> & { id: string }) => {
-      // Get old task to detect assignment changes
-      const { data: oldTask } = await supabase.from("tasks").select("assigned_to, title").eq("id", id).single();
+      // Get old task to detect changes
+      const { data: oldTask } = await supabase.from("tasks").select("assigned_to, title, status, priority").eq("id", id).single();
 
       const { data, error } = await supabase.from("tasks").update(updates).eq("id", id).select().single();
       if (error) throw error;
+
+      // Log status change event
+      if (user && updates.status && updates.status !== oldTask?.status) {
+        const statusLabels: Record<string, string> = {
+          backlog: "Backlog", pending: "Pendente", todo: "A Fazer", in_progress: "Em Andamento",
+          review: "Em Validação", done: "Concluído", discarded: "Descartado",
+        };
+        const eventType = updates.status === "done" ? "completed"
+          : updates.status === "review" ? "sent_review"
+          : updates.status === "in_progress" ? "started"
+          : updates.status === "discarded" ? "discarded"
+          : "status_changed";
+        await supabase.from("task_events").insert({
+          task_id: id, user_id: user.id, event_type: eventType,
+          description: `Status alterado para "${statusLabels[updates.status as string] || updates.status}"`,
+        });
+      }
+
+      // Log priority change event
+      if (user && updates.priority && updates.priority !== oldTask?.priority) {
+        await supabase.from("task_events").insert({
+          task_id: id, user_id: user.id, event_type: "priority_changed",
+          description: `Prioridade alterada para "${updates.priority}"`,
+        });
+      }
+
+      // Log reassignment event
+      if (user && updates.assigned_to && updates.assigned_to !== oldTask?.assigned_to) {
+        await supabase.from("task_events").insert({
+          task_id: id, user_id: user.id, event_type: "reassigned",
+          description: `Responsável alterado`,
+          metadata: { from: oldTask?.assigned_to, to: updates.assigned_to },
+        });
+      }
 
       // Notify on assignment change
       if (
@@ -144,7 +178,7 @@ export function useUpdateTask() {
       }
 
       // Run automation engine for changed fields
-      if (user && updates.status && updates.status !== oldTask?.assigned_to) {
+      if (user && updates.status && updates.status !== oldTask?.status) {
         await runAutomationEngine(id, "status", updates.status as string, user.id);
       }
       if (user && updates.priority) {
