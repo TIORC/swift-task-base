@@ -54,6 +54,8 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { profile } = useUserRole();
   const { isMenuEnabled } = useMyMenuAccess();
+  const { resolvedTheme } = useTheme();
+  const currentLogo = resolvedTheme === "dark" ? logoOrcoma : logoOrcomaLight;
   
 
   const isActive = (path: string) =>
