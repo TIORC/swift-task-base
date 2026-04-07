@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useTasks, useDeleteTask, useUpdateTask, Task } from "@/hooks/useTasks";
+import { useState, useMemo } from "react";
+import { useTasks, useDeleteTask, useUpdateTask, Task, COLUMNS } from "@/hooks/useTasks";
 import { useTaskFilter } from "@/hooks/useTaskFilter";
 import { useGlobalTimer } from "@/hooks/useGlobalTimer";
 import { formatTime, formatMinutes } from "@/hooks/useTimeTracker";
@@ -13,10 +13,34 @@ import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Plus, Loader2, Trash2, Clock, ListTodo,
-  Play, Square, CheckCircle,
+  Play, Square, CheckCircle, CalendarDays, Filter,
 } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+type StatusChip = "all" | "open" | "in_progress" | "pending" | "done" | "discarded";
+
+const STATUS_CHIPS: { key: StatusChip; label: string; statuses: string[] }[] = [
+  { key: "all", label: "Todas", statuses: [] },
+  { key: "open", label: "Abertas", statuses: ["backlog", "todo"] },
+  { key: "in_progress", label: "Em andamento", statuses: ["in_progress"] },
+  { key: "pending", label: "Pendentes", statuses: ["pending", "review"] },
+  { key: "done", label: "Concluídas", statuses: ["done"] },
+  { key: "discarded", label: "Desconsideradas", statuses: ["discarded"] },
+];
+
+const PRIORITY_CHIPS = [
+  { key: "all", label: "Todas" },
+  { key: "urgent", label: "Urgente" },
+  { key: "high", label: "Alta" },
+  { key: "medium", label: "Média" },
+  { key: "low", label: "Baixa" },
+];
 
 const Tasks = () => {
   const { data: tasks, isLoading } = useTasks();
@@ -28,10 +52,58 @@ const Tasks = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
+  // Advanced filters
+  const [statusChip, setStatusChip] = useState<StatusChip>("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
+
+  // Apply advanced filters on top of user filter
+  const advancedFiltered = useMemo(() => {
+    let result = filteredTasks;
+
+    // Status chip filter
+    if (statusChip !== "all") {
+      const chip = STATUS_CHIPS.find(c => c.key === statusChip);
+      if (chip) result = result.filter(t => chip.statuses.includes(t.status));
+    }
+
+    // Priority filter
+    if (priorityFilter !== "all") {
+      result = result.filter(t => t.priority === priorityFilter);
+    }
+
+    // Date range filter
+    if (dateFrom) {
+      result = result.filter(t => new Date(t.created_at) >= dateFrom);
+    }
+    if (dateTo) {
+      const endOfDay = new Date(dateTo);
+      endOfDay.setHours(23, 59, 59, 999);
+      result = result.filter(t => new Date(t.created_at) <= endOfDay);
+    }
+
+    return result;
+  }, [filteredTasks, statusChip, priorityFilter, dateFrom, dateTo]);
+
+  // Count per status chip
+  const chipCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: filteredTasks.length };
+    STATUS_CHIPS.forEach(chip => {
+      if (chip.key !== "all") {
+        counts[chip.key] = filteredTasks.filter(t => chip.statuses.includes(t.status)).length;
+      }
+    });
+    return counts;
+  }, [filteredTasks]);
+
   const handleComplete = (task: Task) => {
     if (activeTaskId === task.id && isRunning) stop();
     updateTask.mutate({ id: task.id, status: "done" as any });
   };
+
+  const clearDateFilters = () => { setDateFrom(undefined); setDateTo(undefined); };
+  const hasDateFilter = dateFrom || dateTo;
 
   if (isLoading) {
     return (
@@ -42,7 +114,7 @@ const Tasks = () => {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-4 max-w-5xl">
       <PageHeader
         title="Tarefas"
         description="Gerencie e acompanhe o tempo das tarefas."
@@ -60,13 +132,93 @@ const Tasks = () => {
         }
       />
 
-      {filteredTasks.length === 0 ? (
+      {/* Status Chips */}
+      <div className="flex flex-wrap items-center gap-2">
+        {STATUS_CHIPS.map(chip => (
+          <button
+            key={chip.key}
+            onClick={() => setStatusChip(chip.key)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150
+              ${statusChip === chip.key
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+              }`}
+          >
+            {chip.label}
+            <span className={`text-[10px] ${statusChip === chip.key ? "text-primary-foreground/70" : "text-muted-foreground/60"}`}>
+              {chipCounts[chip.key] || 0}
+            </span>
+          </button>
+        ))}
+
+        <div className="h-4 w-px bg-border mx-1" />
+
+        {/* Priority filter */}
+        {PRIORITY_CHIPS.map(p => (
+          <button
+            key={p.key}
+            onClick={() => setPriorityFilter(p.key)}
+            className={`inline-flex items-center px-2.5 py-1.5 rounded-full text-[11px] font-medium transition-all duration-150
+              ${priorityFilter === p.key
+                ? "bg-accent text-accent-foreground shadow-sm"
+                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+          >
+            {p.label}
+          </button>
+        ))}
+
+        <div className="h-4 w-px bg-border mx-1" />
+
+        {/* Date filter */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant={hasDateFilter ? "default" : "outline"} size="sm" className="h-7 text-xs rounded-full gap-1.5">
+              <CalendarDays className="h-3 w-3" />
+              {hasDateFilter
+                ? `${dateFrom ? format(dateFrom, "dd/MM", { locale: ptBR }) : "..."} - ${dateTo ? format(dateTo, "dd/MM", { locale: ptBR }) : "..."}`
+                : "Período"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-3" align="start">
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">De:</p>
+                <Calendar
+                  mode="single"
+                  selected={dateFrom}
+                  onSelect={setDateFrom}
+                  locale={ptBR}
+                  className="rounded-lg"
+                />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Até:</p>
+                <Calendar
+                  mode="single"
+                  selected={dateTo}
+                  onSelect={setDateTo}
+                  locale={ptBR}
+                  className="rounded-lg"
+                />
+              </div>
+              {hasDateFilter && (
+                <Button variant="ghost" size="sm" className="w-full text-xs" onClick={clearDateFilters}>
+                  Limpar período
+                </Button>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {advancedFiltered.length === 0 ? (
         <Card className="shadow-card">
           <CardContent className="p-0">
             <EmptyState
               icon={ListTodo}
               title="Nenhuma tarefa encontrada"
-              description="Nenhuma tarefa para o filtro selecionado."
+              description="Nenhuma tarefa para os filtros selecionados."
               actionLabel="Criar Tarefa"
               onAction={() => setCreateOpen(true)}
             />
@@ -74,7 +226,7 @@ const Tasks = () => {
         </Card>
       ) : (
         <div className="space-y-2">
-          {filteredTasks.map((task) => {
+          {advancedFiltered.map((task) => {
             const initials = task.profiles?.full_name
               ? task.profiles.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
               : null;
@@ -102,7 +254,6 @@ const Tasks = () => {
                 <StatusBadge type="status" value={task.status} />
                 <StatusBadge type="priority" value={task.priority} />
 
-                {/* Timer controls for own active tasks */}
                 {isMyTask && isActive && (
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     {isTimerOnThis && (
@@ -138,7 +289,6 @@ const Tasks = () => {
                   </div>
                 )}
 
-                {/* Time display for non-own or completed tasks */}
                 {(!isMyTask || !isActive) && (task.total_minutes || 0) > 0 && (
                   <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
                     <Clock className="h-3 w-3" />
