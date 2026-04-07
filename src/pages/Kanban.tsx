@@ -66,12 +66,12 @@ const Kanban = () => {
       />
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-12rem)]">
           {COLUMNS.map((col) => {
             const colTasks = tasksByStatus[col.status] || [];
             return (
-              <div key={col.status} className="min-w-[272px] w-[272px] flex-shrink-0">
-                <div className="mb-3 flex items-center justify-between px-1">
+              <div key={col.status} className="min-w-[272px] w-[272px] flex-shrink-0 flex flex-col h-full">
+                <div className="mb-3 flex items-center justify-between px-1 flex-shrink-0">
                   <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{col.title}</h3>
                   <div className="flex items-center gap-1.5">
                     <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -91,7 +91,7 @@ const Kanban = () => {
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`min-h-[400px] space-y-2 rounded-xl border border-dashed p-2.5 transition-all duration-200 ${
+                      className={`flex-1 overflow-y-auto space-y-2 rounded-xl border border-dashed p-2.5 transition-all duration-200 ${
                         snapshot.isDraggingOver
                           ? "border-primary/40 bg-primary/5"
                           : "border-border bg-muted/30"
