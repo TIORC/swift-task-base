@@ -21,8 +21,8 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { CheckSquare } from "lucide-react";
 import { UserXPBadge } from "@/components/UserXPBadge";
+import logoOrcoma from "@/assets/logo-orcoma.jpg";
 import type { RoleProfile } from "@/hooks/useUserRole";
 
 const allNavItems = [
