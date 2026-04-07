@@ -89,6 +89,15 @@ export function useCreateTask() {
         .select()
         .single();
       if (error) throw error;
+
+      // Log creation event
+      await supabase.from("task_events").insert({
+        task_id: data.id,
+        user_id: user!.id,
+        event_type: "created",
+        description: `Tarefa "${data.title}" criada`,
+      });
+
       return data;
     },
     onSuccess: () => {
