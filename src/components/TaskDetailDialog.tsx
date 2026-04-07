@@ -191,6 +191,7 @@ export function TaskDetailDialog({ task, open, onOpenChange }: TaskDetailDialogP
             <TabsList className="bg-muted/50 p-1 rounded-xl w-full justify-start">
               <TabsTrigger value="details" className="rounded-lg text-xs"><FileText className="h-3.5 w-3.5 mr-1" />Detalhes</TabsTrigger>
               <TabsTrigger value="comments" className="rounded-lg text-xs"><MessageSquare className="h-3.5 w-3.5 mr-1" />Chat</TabsTrigger>
+              <TabsTrigger value="timeline" className="rounded-lg text-xs"><GitBranch className="h-3.5 w-3.5 mr-1" />Timeline</TabsTrigger>
               <TabsTrigger value="history" className="rounded-lg text-xs"><History className="h-3.5 w-3.5 mr-1" />Histórico</TabsTrigger>
             </TabsList>
 
