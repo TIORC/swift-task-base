@@ -1,34 +1,42 @@
 
-# TaskFlow — IT Team Task Management System
+# Plano de Evolução do Módulo de Tarefas
 
-## Overview
-Build the foundational structure of a SaaS task management system for IT teams, using Lovable Cloud (Supabase) with a dark navy theme.
+## O que JÁ existe no sistema:
+- ✅ Filtros básicos de status/prioridade/responsável (TaskFilterSelect)
+- ✅ Transferência de responsável com histórico (responsibility_history)
+- ✅ Dependências entre tarefas (task_dependencies)
+- ✅ Sistema de aprovação hierárquico (approvals)
+- ✅ Menções com notificações no sistema (comments + notifications)
+- ✅ Timer/time tracking (time_logs)
+- ✅ Dashboard com métricas básicas (Recharts)
 
-## 1. Authentication
-- Login and signup pages using Supabase Auth (email/password)
-- Persistent session with `onAuthStateChange`
-- Protected routes (redirect to login if not authenticated)
-- Password reset flow with `/reset-password` page
+## Fase 1 — Filtros Avançados + Timeline
+- Adicionar filtros rápidos por chips (Abertas, Em andamento, Pendentes, Concluídas, Desconsideradas)
+- Filtro por período (data início/fim)
+- Timeline visual de eventos dentro da tarefa (criação, início, aprovação, menções, mudanças)
+- Criar tabela `task_events` para log de todos os eventos
 
-## 2. Database Schema (Lovable Cloud)
-- **profiles** table: `id (uuid, FK to auth.users)`, `full_name`, `avatar_url`, `created_at` — with auto-create trigger on signup
-- **user_roles** table: `id`, `user_id (FK)`, `role (enum: admin, member)` — separate from profiles for security
-- **tasks** table: `id`, `title`, `description`, `status (enum: backlog, todo, in_progress, review, done)`, `priority (enum: low, medium, high, urgent)`, `assigned_to (FK)`, `created_by (FK)`, `created_at`, `updated_at`
-- **time_logs** table: `id`, `task_id (FK)`, `user_id (FK)`, `duration_minutes`, `description`, `logged_at`
-- RLS policies so users can only access their team's data
+## Fase 2 — Métricas de Tempo (Execução vs Espera)
+- Calcular tempo em execução vs tempo em espera por tarefa
+- Adicionar campos/cálculos baseados nos eventos
+- Destacar tarefas travadas e com alto tempo de espera
 
-## 3. Layout & Navigation
-- **Dark navy SaaS theme** — navy blue sidebar, clean dark tones
-- Fixed sidebar with icon + text, collapsible to icon-only mode
-- Pages with placeholder content:
-  - **Dashboard** (`/`) — welcome message, summary cards
-  - **Kanban** (`/kanban`) — placeholder board layout
-  - **Tasks** (`/tasks`) — placeholder task list
-  - **Notifications** (`/notifications`) — placeholder list
-- Active route highlighting in sidebar
-- User avatar + name in sidebar footer with logout option
+## Fase 3 — Relatório Analítico
+- Dashboard dedicado com gráficos (barras, linhas, cards)
+- Métricas: tempo médio execução, espera, por responsável, por status
+- Filtros por semana/mês/usuário
+- Exportação PDF e Excel
 
-## 4. Design System
-- Dark navy palette: backgrounds `#0f172a` / `#1e293b`, accent `#3b82f6`, text `#f1f5f9`
-- Clean typography, rounded cards, subtle borders
-- Responsive layout (sidebar collapses on mobile)
+## Fase 4 — Notificações por Email
+- Configurar domínio de email
+- Enviar email em menção, atribuição e aprovação pendente
+- Email com nome da tarefa, quem mencionou e link direto
+
+## Fase 5 — Inteligência
+- Detecção automática de tarefas travadas
+- Alertas de tarefas com tempo alto de espera
+- Indicadores de saúde por tarefa
+
+---
+
+**Recomendação:** Implementar em fases para não quebrar funcionalidades existentes. Começar pela Fase 1?
