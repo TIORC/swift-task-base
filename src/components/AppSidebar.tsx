@@ -82,7 +82,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-5">
         <div className="flex items-center gap-2.5">
-          <img src={logoOrcoma} alt="Orcoma" className="h-8 w-8 shrink-0 rounded-lg object-contain" />
+          <img src={currentLogo} alt="Orcoma" className="h-8 w-8 shrink-0 rounded-lg object-contain" />
           {!collapsed && (
             <span className="text-lg font-bold text-foreground tracking-tight">Orcoma TI</span>
           )}
