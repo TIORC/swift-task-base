@@ -1,4 +1,5 @@
 import { LayoutDashboard, Columns3, ListTodo, LogOut, Zap, Trophy, Target, GitBranch, Gauge, ShieldCheck } from "lucide-react";
+import { useTheme } from "next-themes";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { UserXPBadge } from "@/components/UserXPBadge";
 import logoOrcoma from "@/assets/logo-orcoma.jpg";
+import logoOrcomaLight from "@/assets/logo-orcoma-light.png";
 import type { RoleProfile } from "@/hooks/useUserRole";
 
 const allNavItems = [
@@ -52,6 +54,8 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { profile } = useUserRole();
   const { isMenuEnabled } = useMyMenuAccess();
+  const { resolvedTheme } = useTheme();
+  const currentLogo = resolvedTheme === "dark" ? logoOrcoma : logoOrcomaLight;
   
 
   const isActive = (path: string) =>
@@ -78,7 +82,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-5">
         <div className="flex items-center gap-2.5">
-          <img src={logoOrcoma} alt="Orcoma" className="h-8 w-8 shrink-0 rounded-lg object-contain" />
+          <img src={currentLogo} alt="Orcoma" className="h-8 w-8 shrink-0 rounded-lg object-contain" />
           {!collapsed && (
             <span className="text-lg font-bold text-foreground tracking-tight">Orcoma TI</span>
           )}
