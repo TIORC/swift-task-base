@@ -391,7 +391,7 @@ function refreshAndRetry(categoria, descricao) {
     if (xhr.readyState === 4) {
       if (xhr.status === 200) {
         session = JSON.parse(xhr.responseText);
-        localStorage.setItem('orcoma_session', xhr.responseText);
+        saveSession(xhr.responseText);
         createTicket(categoria);
       } else {
         doLogout();
