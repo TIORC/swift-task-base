@@ -301,7 +301,7 @@ function doLogin() {
       btn.innerText = 'Entrar';
       if (xhr.status === 200) {
         session = JSON.parse(xhr.responseText);
-        localStorage.setItem('orcoma_session', xhr.responseText);
+        saveSession(xhr.responseText);
         showMainScreen();
       } else {
         try {
