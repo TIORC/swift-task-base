@@ -197,6 +197,18 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 var session = null;
 var machineInfo = { username: 'Desconhecido', hostname: 'Desconhecido' };
+var fso = null;
+var sessionFilePath = '';
+
+// Init FSO for persistent storage
+try {
+  fso = new ActiveXObject('Scripting.FileSystemObject');
+  var wshShell = new ActiveXObject('WScript.Shell');
+  var appData = wshShell.ExpandEnvironmentStrings('%APPDATA%');
+  var appFolder = appData + '\\ORCOMA-Suporte';
+  if (!fso.FolderExists(appFolder)) fso.CreateFolder(appFolder);
+  sessionFilePath = appFolder + '\\session.json';
+} catch(e) {}
 
 // Get Windows machine info via WScript
 try {
@@ -205,15 +217,43 @@ try {
   machineInfo.hostname = wshNetwork.ComputerName;
 } catch(e) {}
 
+function saveSession(data) {
+  try {
+    if (fso && sessionFilePath) {
+      var f = fso.CreateTextFile(sessionFilePath, true);
+      f.Write(data);
+      f.Close();
+    }
+  } catch(e) {}
+}
+
+function loadSession() {
+  try {
+    if (fso && sessionFilePath && fso.FileExists(sessionFilePath)) {
+      var f = fso.OpenTextFile(sessionFilePath, 1);
+      var content = f.ReadAll();
+      f.Close();
+      return content;
+    }
+  } catch(e) {}
+  return null;
+}
+
+function clearSession() {
+  try {
+    if (fso && sessionFilePath && fso.FileExists(sessionFilePath)) {
+      fso.DeleteFile(sessionFilePath);
+    }
+  } catch(e) {}
+}
+
 function updateUserInfo() {
   var el = document.getElementById('user-info');
   if (el) el.innerText = machineInfo.username + ' \u2022 ' + machineInfo.hostname;
 }
 
 function onLoad() {
-  // Resize window
   window.resizeTo(440, 580);
-  // Center
   var sl = (screen.width - 440) / 2;
   var st = (screen.height - 580) / 2;
   window.moveTo(sl, st);
@@ -222,7 +262,7 @@ function onLoad() {
 
   // Restore session
   try {
-    var saved = localStorage.getItem('orcoma_session');
+    var saved = loadSession();
     if (saved) {
       session = JSON.parse(saved);
       showMainScreen();
