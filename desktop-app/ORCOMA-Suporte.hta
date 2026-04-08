@@ -13,183 +13,393 @@
   SHOWINTASKBAR="yes"
   SINGLEINSTANCE="yes"
   SYSMENU="yes"
-  VERSION="1.0"
+  VERSION="2.0"
   WINDOWSTATE="normal"
 />
 <meta http-equiv="x-ua-compatible" content="ie=edge">
 <style>
+@font-face { font-family: 'Segoe UI'; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
   font-family: 'Segoe UI', Tahoma, sans-serif;
-  background: #0f172a;
+  background: #0b1120;
   color: #e2e8f0;
-  width: 420px;
-  height: 540px;
+  width: 440px;
+  height: 620px;
   overflow: hidden;
-}
-.header {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  padding: 18px 20px;
-  text-align: center;
-  border-bottom: 1px solid #334155;
-}
-.header h1 {
-  font-size: 18px;
-  font-weight: 700;
-  color: #38bdf8;
-  margin-bottom: 4px;
-}
-.header p {
-  font-size: 11px;
-  color: #94a3b8;
-}
-.user-info {
-  font-size: 10px;
-  color: #64748b;
-  margin-top: 6px;
-  background: #1e293b;
-  padding: 4px 10px;
-  border-radius: 4px;
-  display: inline-block;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* LOGIN */
+/* ===== HEADER ===== */
+.header {
+  background: linear-gradient(180deg, #0f1a2e 0%, #0b1120 100%);
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.15);
+  position: relative;
+}
+.header-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -1px;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+.header-text h1 {
+  font-size: 17px;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: -0.3px;
+}
+.header-text p {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 400;
+}
+
+/* User badge */
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 12px;
+}
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+.user-details { flex: 1; min-width: 0; }
+.user-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.user-meta {
+  font-size: 10px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+  flex-shrink: 0;
+}
+.status-dot.offline { background: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68, 0.5); }
+.status-dot.busy { background: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.5); }
+
+/* ===== LOGIN ===== */
 .login-screen {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 30px;
-  height: calc(100% - 80px);
+  padding: 32px 32px;
+  height: calc(100% - 100px);
+}
+.login-logo {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 24px rgba(14, 165, 233, 0.3);
 }
 .login-screen h2 {
-  font-size: 16px;
+  font-size: 18px;
   color: #f1f5f9;
-  margin-bottom: 20px;
+  font-weight: 700;
+  margin-bottom: 4px;
 }
-.login-screen input {
+.login-subtitle {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 24px;
+}
+.input-group {
   width: 100%;
-  padding: 10px 12px;
   margin-bottom: 12px;
-  border: 1px solid #334155;
-  border-radius: 6px;
-  background: #1e293b;
+  position: relative;
+}
+.input-group label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.input-group input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  background: #0f172a;
   color: #e2e8f0;
   font-size: 13px;
   outline: none;
+  transition: border-color 0.2s;
+  font-family: 'Segoe UI', sans-serif;
 }
-.login-screen input:focus {
-  border-color: #38bdf8;
+.input-group input:focus {
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
 }
 .login-btn {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   background: linear-gradient(135deg, #0ea5e9, #38bdf8);
   color: #fff;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  margin-top: 4px;
+  margin-top: 8px;
+  transition: opacity 0.15s, transform 0.1s;
+  font-family: 'Segoe UI', sans-serif;
 }
-.login-btn:hover { opacity: 0.9; }
+.login-btn:hover { opacity: 0.92; }
+.login-btn:active { transform: scale(0.98); }
+.login-btn:disabled { opacity: 0.5; cursor: default; }
 .login-error {
   color: #f87171;
   font-size: 12px;
-  margin-top: 8px;
+  margin-top: 10px;
   text-align: center;
   min-height: 16px;
 }
 
-/* MAIN */
+/* ===== MAIN SCREEN ===== */
 .main-screen {
   display: none;
   flex-direction: column;
-  padding: 16px 20px;
-  height: calc(100% - 80px);
+  padding: 16px 20px 14px;
+  height: calc(100% - 108px);
 }
-.section-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #94a3b8;
-  margin-bottom: 10px;
+.section-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #475569;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
 }
-.buttons-grid {
+
+/* Category buttons */
+.cat-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
-.ticket-btn {
+.cat-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 18px 10px;
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 10px;
-  color: #e2e8f0;
+  padding: 16px 8px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  color: #cbd5e1;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s ease;
   font-size: 12px;
   font-weight: 500;
+  font-family: 'Segoe UI', sans-serif;
+  position: relative;
+  overflow: hidden;
 }
-.ticket-btn:hover {
+.cat-btn:hover {
+  border-color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.08);
+  color: #f1f5f9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(14, 165, 233, 0.15);
+}
+.cat-btn:active {
+  transform: translateY(0);
+  background: rgba(14, 165, 233, 0.15);
   border-color: #38bdf8;
-  background: #1e3a5f;
-  transform: translateY(-1px);
 }
-.ticket-btn .icon {
+.cat-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  transform: none;
+}
+.cat-btn .cat-icon {
   font-size: 28px;
   margin-bottom: 6px;
+  line-height: 1;
 }
-.desc-area {
-  margin-bottom: 12px;
+.cat-btn .cat-label {
+  font-size: 12px;
+  font-weight: 600;
 }
-.desc-area textarea {
+.cat-btn.sending {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+}
+.cat-btn.sent {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.08);
+}
+
+/* Description */
+.desc-section { margin-bottom: 12px; }
+.desc-section textarea {
   width: 100%;
-  height: 60px;
-  padding: 8px 10px;
-  border: 1px solid #334155;
-  border-radius: 6px;
-  background: #1e293b;
+  height: 52px;
+  padding: 10px 12px;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  background: #0f172a;
   color: #e2e8f0;
   font-size: 12px;
   resize: none;
   outline: none;
   font-family: 'Segoe UI', sans-serif;
+  transition: border-color 0.2s;
 }
-.desc-area textarea:focus { border-color: #38bdf8; }
-.status-msg {
-  text-align: center;
-  font-size: 12px;
-  min-height: 20px;
-  margin-bottom: 8px;
-  padding: 4px;
-  border-radius: 4px;
+.desc-section textarea:focus {
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
 }
-.status-msg.success { color: #4ade80; background: #14532d33; }
-.status-msg.error { color: #f87171; background: #7f1d1d33; }
-.status-msg.loading { color: #fbbf24; }
+.desc-section textarea::placeholder { color: #334155; }
+
+/* Result card */
+.result-card {
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  display: none;
+  animation: slideIn 0.3s ease;
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.result-card.success {
+  display: block;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+.result-card.error {
+  display: block;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+.result-card.loading {
+  display: block;
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+.result-card.offline {
+  display: block;
+  background: rgba(100, 116, 139, 0.08);
+  border: 1px solid rgba(100, 116, 139, 0.25);
+}
+.result-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.result-card.success .result-title { color: #4ade80; }
+.result-card.error .result-title { color: #f87171; }
+.result-card.loading .result-title { color: #fbbf24; }
+.result-card.offline .result-title { color: #94a3b8; }
+.result-detail {
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+.result-detail strong { color: #cbd5e1; }
+.result-ticket {
+  font-size: 14px;
+  font-weight: 800;
+  color: #38bdf8;
+  font-family: 'Consolas', 'Courier New', monospace;
+  margin-top: 4px;
+}
+
+/* Footer */
 .footer-bar {
   display: flex;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
   margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid rgba(30, 41, 59, 0.5);
+}
+.support-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #64748b;
+}
+.support-status .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 4px rgba(34, 197, 94, 0.5);
 }
 .logout-btn {
   background: none;
-  border: 1px solid #475569;
-  color: #94a3b8;
-  padding: 6px 20px;
+  border: 1px solid #1e293b;
+  color: #64748b;
+  padding: 5px 14px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 10px;
   cursor: pointer;
+  font-family: 'Segoe UI', sans-serif;
+  transition: all 0.15s;
 }
-.logout-btn:hover { border-color: #f87171; color: #f87171; }
+.logout-btn:hover {
+  border-color: #ef4444;
+  color: #f87171;
+}
 </style>
 <script>
 var SUPABASE_URL = 'https://wisbzvooxrgyltbebuyb.supabase.co';
@@ -199,6 +409,8 @@ var session = null;
 var machineInfo = { username: 'Desconhecido', hostname: 'Desconhecido' };
 var fso = null;
 var sessionFilePath = '';
+var pendingQueue = [];
+var pendingFilePath = '';
 
 // Init FSO for persistent storage
 try {
@@ -208,57 +420,94 @@ try {
   var appFolder = appData + '\\ORCOMA-Suporte';
   if (!fso.FolderExists(appFolder)) fso.CreateFolder(appFolder);
   sessionFilePath = appFolder + '\\session.json';
+  pendingFilePath = appFolder + '\\pending.json';
 } catch(e) {}
 
-// Get Windows machine info via WScript
+// Get Windows machine info
 try {
   var wshNetwork = new ActiveXObject('WScript.Network');
   machineInfo.username = wshNetwork.UserName;
   machineInfo.hostname = wshNetwork.ComputerName;
 } catch(e) {}
 
-function saveSession(data) {
+function saveFile(path, data) {
   try {
-    if (fso && sessionFilePath) {
-      var f = fso.CreateTextFile(sessionFilePath, true);
+    if (fso && path) {
+      var f = fso.CreateTextFile(path, true);
       f.Write(data);
       f.Close();
     }
   } catch(e) {}
 }
 
-function loadSession() {
+function readFile(path) {
   try {
-    if (fso && sessionFilePath && fso.FileExists(sessionFilePath)) {
-      var f = fso.OpenTextFile(sessionFilePath, 1);
-      var content = f.ReadAll();
+    if (fso && path && fso.FileExists(path)) {
+      var f = fso.OpenTextFile(path, 1);
+      var c = f.ReadAll();
       f.Close();
-      return content;
+      return c;
     }
   } catch(e) {}
   return null;
 }
 
-function clearSession() {
+function deleteFile(path) {
   try {
-    if (fso && sessionFilePath && fso.FileExists(sessionFilePath)) {
-      fso.DeleteFile(sessionFilePath);
-    }
+    if (fso && path && fso.FileExists(path)) fso.DeleteFile(path);
   } catch(e) {}
 }
 
-function updateUserInfo() {
-  var el = document.getElementById('user-info');
-  if (el) el.innerText = machineInfo.username + ' \u2022 ' + machineInfo.hostname;
+function saveSession(data) { saveFile(sessionFilePath, data); }
+function loadSession() { return readFile(sessionFilePath); }
+function clearSession() { deleteFile(sessionFilePath); }
+
+function getUserInitials() {
+  if (!session || !session.user) return '?';
+  var name = '';
+  try { name = session.user.user_metadata.full_name || ''; } catch(e) {}
+  if (!name && session.user.email) {
+    name = session.user.email.split('@')[0];
+  }
+  if (!name) return '?';
+  var parts = name.replace(/[._-]/g, ' ').split(' ');
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.substring(0, 2).toUpperCase();
+}
+
+function getUserDisplayName() {
+  if (!session || !session.user) return 'Usuário';
+  try {
+    var fn = session.user.user_metadata.full_name;
+    if (fn) return fn;
+  } catch(e) {}
+  if (session.user.email) {
+    var prefix = session.user.email.split('@')[0];
+    return prefix.replace(/[._-]/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+  }
+  return 'Usuário';
+}
+
+function updateUI() {
+  var nameEl = document.getElementById('user-name');
+  var metaEl = document.getElementById('user-meta');
+  var avatarEl = document.getElementById('user-avatar');
+  if (nameEl) nameEl.innerText = getUserDisplayName();
+  if (metaEl) metaEl.innerText = (session && session.user ? session.user.email : '') + ' \u2022 ' + machineInfo.hostname;
+  if (avatarEl) avatarEl.innerText = getUserInitials();
 }
 
 function onLoad() {
-  window.resizeTo(440, 580);
-  var sl = (screen.width - 440) / 2;
-  var st = (screen.height - 580) / 2;
+  window.resizeTo(460, 650);
+  var sl = (screen.width - 460) / 2;
+  var st = (screen.height - 650) / 2;
   window.moveTo(sl, st);
 
-  updateUserInfo();
+  // Load pending queue
+  try {
+    var pq = readFile(pendingFilePath);
+    if (pq) pendingQueue = JSON.parse(pq);
+  } catch(e) { pendingQueue = []; }
 
   // Restore session
   try {
@@ -266,6 +515,8 @@ function onLoad() {
     if (saved) {
       session = JSON.parse(saved);
       showMainScreen();
+      // Process pending queue
+      if (pendingQueue.length > 0) processPendingQueue();
     }
   } catch(e) {}
 }
@@ -273,7 +524,7 @@ function onLoad() {
 function showMainScreen() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('main-screen').style.display = 'flex';
-  updateUserInfo();
+  updateUI();
 }
 
 function doLogin() {
@@ -283,12 +534,12 @@ function doLogin() {
   var btn = document.getElementById('login-btn');
 
   if (!email || !password) {
-    errorEl.innerText = 'Preencha email e senha';
+    errorEl.innerText = 'Preencha e-mail e senha';
     return;
   }
 
   btn.disabled = true;
-  btn.innerText = 'Entrando...';
+  btn.innerText = 'Conectando...';
   errorEl.innerText = '';
 
   var xhr = new XMLHttpRequest();
@@ -306,12 +557,17 @@ function doLogin() {
       } else {
         try {
           var err = JSON.parse(xhr.responseText);
-          errorEl.innerText = err.error_description || err.msg || 'Credenciais inv\u00e1lidas';
+          errorEl.innerText = err.error_description || err.msg || 'E-mail ou senha incorretos';
         } catch(e) {
-          errorEl.innerText = 'Erro ao conectar';
+          errorEl.innerText = 'Erro de conex\u00e3o. Verifique sua rede.';
         }
       }
     }
+  };
+  xhr.onerror = function() {
+    btn.disabled = false;
+    btn.innerText = 'Entrar';
+    errorEl.innerText = 'Sem conex\u00e3o com o servidor';
   };
   xhr.send(JSON.stringify({ email: email, password: password }));
 }
@@ -323,22 +579,77 @@ function doLogout() {
   document.getElementById('main-screen').style.display = 'none';
   document.getElementById('login-email').value = '';
   document.getElementById('login-password').value = '';
+  document.getElementById('login-error').innerText = '';
+  hideResult();
+}
+
+function showResult(type, title, detail) {
+  var card = document.getElementById('result-card');
+  card.className = 'result-card ' + type;
+  document.getElementById('result-title').innerText = title;
+  document.getElementById('result-detail').innerHTML = detail;
+}
+
+function hideResult() {
+  var card = document.getElementById('result-card');
+  card.className = 'result-card';
+  card.style.display = 'none';
+}
+
+function setButtonState(cat, state) {
+  var btns = document.getElementsByClassName('cat-btn');
+  for (var i = 0; i < btns.length; i++) {
+    var btnCat = btns[i].getAttribute('data-cat');
+    if (state === 'sending') {
+      btns[i].disabled = true;
+      if (btnCat === cat) btns[i].className = 'cat-btn sending';
+    } else if (state === 'sent') {
+      btns[i].disabled = false;
+      if (btnCat === cat) {
+        btns[i].className = 'cat-btn sent';
+        setTimeout(function() {
+          try { btns[i].className = 'cat-btn'; } catch(e) {}
+        }, 2000);
+      }
+    } else {
+      btns[i].disabled = false;
+      btns[i].className = 'cat-btn';
+    }
+  }
+}
+
+function formatTime(isoStr) {
+  try {
+    var d = new Date(isoStr);
+    var h = d.getHours(); var m = d.getMinutes();
+    return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+  } catch(e) { return '--:--'; }
 }
 
 function createTicket(categoria) {
-  var statusEl = document.getElementById('status-msg');
   var descricao = document.getElementById('description').value;
-  var buttons = document.getElementsByClassName('ticket-btn');
 
   if (!session) {
-    statusEl.className = 'status-msg error';
-    statusEl.innerText = 'Sess\u00e3o expirada. Fa\u00e7a login novamente.';
+    showResult('error', '\u274C Sess\u00e3o expirada', 'Fa\u00e7a login novamente.');
     return;
   }
 
-  for (var i = 0; i < buttons.length; i++) buttons[i].disabled = true;
-  statusEl.className = 'status-msg loading';
-  statusEl.innerText = '\u23F3 Criando chamado...';
+  // Check connectivity
+  var testXhr = new XMLHttpRequest();
+  try {
+    testXhr.open('HEAD', SUPABASE_URL + '/rest/v1/', false);
+    testXhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+    testXhr.send();
+  } catch(e) {
+    // Offline: queue the request
+    pendingQueue.push({ categoria: categoria, descricao: descricao, timestamp: new Date().toISOString() });
+    saveFile(pendingFilePath, JSON.stringify(pendingQueue));
+    showResult('offline', '\u26A0 Sem conex\u00e3o', 'Chamado salvo localmente.<br>Ser\u00e1 enviado automaticamente quando a conex\u00e3o voltar.');
+    return;
+  }
+
+  setButtonState(categoria, 'sending');
+  showResult('loading', '\u23F3 Enviando chamado...', 'Aguarde um momento...');
 
   var xhr = new XMLHttpRequest();
   xhr.open('POST', SUPABASE_URL + '/functions/v1/support-ticket', true);
@@ -347,28 +658,43 @@ function createTicket(categoria) {
   xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
   xhr.onreadystatechange = function() {
     if (xhr.readyState === 4) {
-      for (var j = 0; j < buttons.length; j++) buttons[j].disabled = false;
       if (xhr.status === 200 || xhr.status === 201) {
-        statusEl.className = 'status-msg success';
-        statusEl.innerText = '\u2705 Chamado criado com sucesso!';
-        document.getElementById('description').value = '';
-        setTimeout(function() {
-          statusEl.innerText = '';
-          statusEl.className = 'status-msg';
-        }, 3000);
+        try {
+          var res = JSON.parse(xhr.responseText);
+          setButtonState(categoria, 'sent');
+          showResult('success',
+            '\u2705 Chamado criado com sucesso!',
+            '<strong>Protocolo:</strong> <span class="result-ticket">#' + (res.ticket_number || '---') + '</span><br>' +
+            '<strong>Categoria:</strong> ' + (res.category || categoria) + '<br>' +
+            '<strong>Respons\u00e1vel:</strong> ' + (res.assigned_to_name || 'Suporte') + '<br>' +
+            '<strong>Hor\u00e1rio:</strong> ' + formatTime(res.created_at)
+          );
+          document.getElementById('description').value = '';
+          setTimeout(hideResult, 8000);
+        } catch(e) {
+          setButtonState(categoria, 'sent');
+          showResult('success', '\u2705 Chamado criado!', 'Chamado registrado com sucesso.');
+          setTimeout(hideResult, 5000);
+        }
       } else if (xhr.status === 401) {
+        setButtonState(categoria, 'reset');
         refreshAndRetry(categoria, descricao);
       } else {
+        setButtonState(categoria, 'reset');
         try {
           var err = JSON.parse(xhr.responseText);
-          statusEl.className = 'status-msg error';
-          statusEl.innerText = '\u274C ' + (err.error || 'Erro ao criar chamado');
+          showResult('error', '\u274C Erro ao criar chamado', (err.error || 'Tente novamente.') + '<br><a href="#" onclick="createTicket(\'' + categoria + '\'); return false;" style="color:#38bdf8;font-size:11px;">Tentar novamente</a>');
         } catch(e) {
-          statusEl.className = 'status-msg error';
-          statusEl.innerText = '\u274C Erro ao criar chamado';
+          showResult('error', '\u274C Erro inesperado', 'Tente novamente em alguns segundos.');
         }
       }
     }
+  };
+  xhr.onerror = function() {
+    setButtonState(categoria, 'reset');
+    pendingQueue.push({ categoria: categoria, descricao: descricao, timestamp: new Date().toISOString() });
+    saveFile(pendingFilePath, JSON.stringify(pendingQueue));
+    showResult('offline', '\u26A0 Falha na conex\u00e3o', 'Chamado salvo na fila local.');
   };
   xhr.send(JSON.stringify({
     categoria: categoria,
@@ -395,64 +721,149 @@ function refreshAndRetry(categoria, descricao) {
         createTicket(categoria);
       } else {
         doLogout();
-        var statusEl = document.getElementById('status-msg');
-        statusEl.className = 'status-msg error';
-        statusEl.innerText = 'Sess\u00e3o expirada. Fa\u00e7a login novamente.';
+        showResult('error', '\u274C Sess\u00e3o expirada', 'Fa\u00e7a login novamente.');
       }
     }
   };
   xhr.send(JSON.stringify({ refresh_token: session.refresh_token }));
 }
 
+function processPendingQueue() {
+  if (pendingQueue.length === 0) return;
+  var item = pendingQueue.shift();
+  saveFile(pendingFilePath, JSON.stringify(pendingQueue));
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', SUPABASE_URL + '/functions/v1/support-ticket', true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.setRequestHeader('Authorization', 'Bearer ' + session.access_token);
+  xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState === 4) {
+      if (xhr.status === 200 || xhr.status === 201) {
+        if (pendingQueue.length > 0) {
+          setTimeout(processPendingQueue, 1000);
+        }
+      } else {
+        pendingQueue.unshift(item);
+        saveFile(pendingFilePath, JSON.stringify(pendingQueue));
+      }
+    }
+  };
+  xhr.onerror = function() {
+    pendingQueue.unshift(item);
+    saveFile(pendingFilePath, JSON.stringify(pendingQueue));
+  };
+  xhr.send(JSON.stringify({
+    categoria: item.categoria,
+    descricao: item.descricao || null,
+    usuario_windows: machineInfo.username,
+    nome_maquina: machineInfo.hostname
+  }));
+}
+
 function handleKeyPress(e) {
   if (e.keyCode === 13) doLogin();
 }
+
+// Retry pending queue periodically
+setInterval(function() {
+  if (session && pendingQueue.length > 0) processPendingQueue();
+}, 60000);
 </script>
 </head>
 <body onload="onLoad()">
 
+<!-- HEADER -->
 <div class="header">
-  <h1>ORCOMA Suporte</h1>
-  <p>Abertura r&aacute;pida de chamados</p>
-  <div class="user-info" id="user-info"></div>
+  <div class="header-top">
+    <div class="logo-icon">O</div>
+    <div class="header-text">
+      <h1>ORCOMA Suporte</h1>
+      <p>Abertura r&aacute;pida de chamados</p>
+    </div>
+  </div>
+  <div class="user-badge" id="user-badge" style="display:none">
+    <div class="user-avatar" id="user-avatar">?</div>
+    <div class="user-details">
+      <div class="user-name" id="user-name">Usu&aacute;rio</div>
+      <div class="user-meta" id="user-meta"></div>
+    </div>
+    <div class="status-dot" id="status-dot" title="Suporte dispon&iacute;vel"></div>
+  </div>
 </div>
 
+<!-- LOGIN SCREEN -->
 <div id="login-screen" class="login-screen">
-  <h2>Login</h2>
-  <input type="text" id="login-email" placeholder="E-mail" />
-  <input type="password" id="login-password" placeholder="Senha" onkeypress="handleKeyPress(event)" />
+  <div class="login-logo">O</div>
+  <h2>Bem-vindo</h2>
+  <p class="login-subtitle">Entre com seu e-mail corporativo</p>
+  <div class="input-group">
+    <label>E-mail</label>
+    <input type="text" id="login-email" placeholder="seu.nome@orcoma.com.br" />
+  </div>
+  <div class="input-group">
+    <label>Senha</label>
+    <input type="password" id="login-password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" onkeypress="handleKeyPress(event)" />
+  </div>
   <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
   <div class="login-error" id="login-error"></div>
 </div>
 
+<!-- MAIN SCREEN -->
 <div id="main-screen" class="main-screen">
-  <div class="section-title">Tipo do chamado</div>
-  <div class="buttons-grid">
-    <button class="ticket-btn" onclick="createTicket('computador')">
-      <span class="icon">&#128187;</span> Computador
+  <div class="section-label">Tipo do chamado</div>
+  <div class="cat-grid">
+    <button class="cat-btn" data-cat="computador" onclick="createTicket('computador')">
+      <span class="cat-icon">&#128187;</span>
+      <span class="cat-label">Computador</span>
     </button>
-    <button class="ticket-btn" onclick="createTicket('sistema')">
-      <span class="icon">&#129534;</span> Sistema
+    <button class="cat-btn" data-cat="sistema" onclick="createTicket('sistema')">
+      <span class="cat-icon">&#128203;</span>
+      <span class="cat-label">Sistema</span>
     </button>
-    <button class="ticket-btn" onclick="createTicket('impressora')">
-      <span class="icon">&#128424;</span> Impressora
+    <button class="cat-btn" data-cat="impressora" onclick="createTicket('impressora')">
+      <span class="cat-icon">&#128424;</span>
+      <span class="cat-label">Impressora</span>
     </button>
-    <button class="ticket-btn" onclick="createTicket('ramal')">
-      <span class="icon">&#9742;</span> Ramal
+    <button class="cat-btn" data-cat="ramal" onclick="createTicket('ramal')">
+      <span class="cat-icon">&#9742;&#65039;</span>
+      <span class="cat-label">Ramal</span>
     </button>
   </div>
 
-  <div class="desc-area">
-    <div class="section-title">Descri&ccedil;&atilde;o (opcional)</div>
-    <textarea id="description" placeholder="Descreva o problema..."></textarea>
+  <div class="desc-section">
+    <div class="section-label">Descri&ccedil;&atilde;o (opcional)</div>
+    <textarea id="description" placeholder="Descreva o problema rapidamente..."></textarea>
   </div>
 
-  <div class="status-msg" id="status-msg"></div>
+  <!-- Result card -->
+  <div class="result-card" id="result-card">
+    <div class="result-title" id="result-title"></div>
+    <div class="result-detail" id="result-detail"></div>
+  </div>
 
   <div class="footer-bar">
+    <div class="support-status">
+      <span class="dot"></span>
+      Suporte dispon&iacute;vel
+    </div>
     <button class="logout-btn" onclick="doLogout()">Sair</button>
   </div>
 </div>
 
+<script>
+// Show/hide user badge based on screen
+var origShow = showMainScreen;
+showMainScreen = function() {
+  origShow();
+  document.getElementById('user-badge').style.display = 'flex';
+};
+var origLogout = doLogout;
+doLogout = function() {
+  document.getElementById('user-badge').style.display = 'none';
+  origLogout();
+};
+</script>
 </body>
 </html>
