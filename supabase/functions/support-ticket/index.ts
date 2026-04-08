@@ -50,12 +50,41 @@ Deno.serve(async (req) => {
       });
     }
 
-    const title = `[Chamado] ${CATEGORY_LABELS[categoria]} - ${usuario_windows || "Desconhecido"}`;
+    // Get user display name from profile or email
+    let userName = usuario_windows || "Desconhecido";
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.full_name) {
+      userName = profile.full_name;
+    } else if (user.email) {
+      // Auto-generate name from email prefix
+      const prefix = user.email.split("@")[0];
+      const displayName = prefix
+        .replace(/[._-]/g, " ")
+        .replace(/\b\w/g, (c: string) => c.toUpperCase());
+      
+      // Update profile with generated name
+      await supabase
+        .from("profiles")
+        .update({ full_name: displayName })
+        .eq("id", user.id);
+      
+      userName = displayName;
+    }
+
+    const title = `[Chamado] ${CATEGORY_LABELS[categoria]} - ${userName}`;
     const description = [
       `**Categoria:** ${CATEGORY_LABELS[categoria]}`,
+      `**Solicitante:** ${userName}`,
+      `**E-mail:** ${user.email || "N/A"}`,
       `**Usuário Windows:** ${usuario_windows || "N/A"}`,
       `**Máquina:** ${nome_maquina || "N/A"}`,
-      descricao ? `**Descrição:** ${descricao}` : null,
+      `**Origem:** Cliente Windows`,
+      descricao ? `\n**Descrição:** ${descricao}` : null,
     ].filter(Boolean).join("\n");
 
     const { data: task, error: taskError } = await supabase
@@ -78,7 +107,7 @@ Deno.serve(async (req) => {
       task_id: task.id,
       user_id: user.id,
       event_type: "created",
-      description: `Chamado "${title}" criado via app desktop`,
+      description: `Chamado "${CATEGORY_LABELS[categoria]}" criado via cliente Windows por ${userName}`,
     });
 
     // Notify Angel
@@ -86,11 +115,26 @@ Deno.serve(async (req) => {
       user_id: ANGEL_ID,
       type: "assigned",
       task_id: task.id,
-      message: `Novo chamado: ${CATEGORY_LABELS[categoria]} de ${usuario_windows || "Desconhecido"}`,
+      message: `Novo chamado: ${CATEGORY_LABELS[categoria]} de ${userName} (${nome_maquina || "N/A"})`,
       created_by: user.id,
     });
 
-    return new Response(JSON.stringify({ success: true, task_id: task.id }), {
+    // Get Angel's name for response
+    const { data: angelProfile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", ANGEL_ID)
+      .single();
+
+    return new Response(JSON.stringify({
+      success: true,
+      task_id: task.id,
+      ticket_number: task.id.substring(0, 8).toUpperCase(),
+      category: CATEGORY_LABELS[categoria],
+      assigned_to_name: angelProfile?.full_name || "Suporte",
+      created_at: task.created_at,
+      user_name: userName,
+    }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
