@@ -57,6 +57,7 @@ export default function SupportTickets() {
   const [search, setSearch] = useState("");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const updateTask = useUpdateTask();
+  const queryClient = useQueryClient();
 
   const { data: tickets, isLoading } = useQuery({
     queryKey: ["support-tickets"],
