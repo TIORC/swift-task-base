@@ -57,8 +57,12 @@ const Auth = () => {
       <div className="w-full max-w-md animate-scale-in">
         <Card className="shadow-card border-border/50">
           <CardHeader className="text-center pb-2">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-md">
-              <CheckSquare className="h-7 w-7 text-primary-foreground" />
+            <div className="mx-auto mb-4">
+              <img
+                src={document.documentElement.classList.contains('dark') ? logoDark : logoLight}
+                alt="ORCOMA"
+                className="h-12 object-contain mx-auto"
+              />
             </div>
             <CardTitle className="text-2xl font-bold text-foreground tracking-tight">Orcoma TI Gestão</CardTitle>
             <CardDescription className="text-muted-foreground">
