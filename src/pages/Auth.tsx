@@ -67,7 +67,7 @@ const Auth = () => {
           <CardHeader className="text-center pb-2">
             <div className="mx-auto mb-4">
               <img
-                src={document.documentElement.classList.contains('dark') ? logoDark : logoLight}
+                src={isDark ? logoDark : logoLight}
                 alt="ORCOMA"
                 className="h-12 object-contain mx-auto"
               />
