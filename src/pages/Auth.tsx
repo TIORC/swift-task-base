@@ -6,7 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, CheckSquare } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import logoLight from "@/assets/logo-orcoma-light.png";
+import logoDark from "@/assets/logo-orcoma-dark.png";
+import { useEffect, useState as useReactState } from "react";
 
 const Auth = () => {
   const { session, loading } = useAuth();
