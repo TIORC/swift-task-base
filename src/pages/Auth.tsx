@@ -10,11 +10,9 @@ import { Loader2, CheckSquare } from "lucide-react";
 
 const Auth = () => {
   const { session, loading } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
   const [isForgot, setIsForgot] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   if (loading) {
