@@ -116,7 +116,7 @@ export default function SupportTickets() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Chamados de Suporte" subtitle="Chamados abertos pelo cliente Windows" />
+      <PageHeader title="Chamados de Suporte" description="Chamados abertos pelo cliente Windows" />
 
       {/* Stats cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
