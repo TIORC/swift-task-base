@@ -626,87 +626,37 @@ function formatTime(isoStr) {
   } catch(e) { return '--:--'; }
 }
 
-function createTicket(categoria) {
-  var descricao = document.getElementById('description').value;
-
-  if (!session) {
+function ensureValidToken(callback) {
+  if (!session || !session.access_token) {
+    doLogout();
     showResult('error', '\u274C Sess\u00e3o expirada', 'Fa\u00e7a login novamente.');
     return;
   }
-
-  // Check connectivity
-  var testXhr = new XMLHttpRequest();
+  // Check if token is expired by trying to decode
   try {
-    testXhr.open('HEAD', SUPABASE_URL + '/rest/v1/', false);
-    testXhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
-    testXhr.send();
-  } catch(e) {
-    // Offline: queue the request
-    pendingQueue.push({ categoria: categoria, descricao: descricao, timestamp: new Date().toISOString() });
-    saveFile(pendingFilePath, JSON.stringify(pendingQueue));
-    showResult('offline', '\u26A0 Sem conex\u00e3o', 'Chamado salvo localmente.<br>Ser\u00e1 enviado automaticamente quando a conex\u00e3o voltar.');
-    return;
-  }
-
-  setButtonState(categoria, 'sending');
-  showResult('loading', '\u23F3 Enviando chamado...', 'Aguarde um momento...');
-
-  var xhr = new XMLHttpRequest();
-  xhr.open('POST', SUPABASE_URL + '/functions/v1/support-ticket', true);
-  xhr.setRequestHeader('Content-Type', 'application/json');
-  xhr.setRequestHeader('Authorization', 'Bearer ' + session.access_token);
-  xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
-  xhr.onreadystatechange = function() {
-    if (xhr.readyState === 4) {
-      if (xhr.status === 200 || xhr.status === 201) {
-        try {
-          var res = JSON.parse(xhr.responseText);
-          setButtonState(categoria, 'sent');
-          showResult('success',
-            '\u2705 Chamado criado com sucesso!',
-            '<strong>Protocolo:</strong> <span class="result-ticket">#' + (res.ticket_number || '---') + '</span><br>' +
-            '<strong>Categoria:</strong> ' + (res.category || categoria) + '<br>' +
-            '<strong>Respons\u00e1vel:</strong> ' + (res.assigned_to_name || 'Suporte') + '<br>' +
-            '<strong>Hor\u00e1rio:</strong> ' + formatTime(res.created_at)
-          );
-          document.getElementById('description').value = '';
-          setTimeout(hideResult, 8000);
-        } catch(e) {
-          setButtonState(categoria, 'sent');
-          showResult('success', '\u2705 Chamado criado!', 'Chamado registrado com sucesso.');
-          setTimeout(hideResult, 5000);
-        }
-      } else if (xhr.status === 401) {
-        setButtonState(categoria, 'reset');
-        refreshAndRetry(categoria, descricao);
-      } else {
-        setButtonState(categoria, 'reset');
-        try {
-          var err = JSON.parse(xhr.responseText);
-          showResult('error', '\u274C Erro ao criar chamado', (err.error || 'Tente novamente.') + '<br><a href="#" onclick="createTicket(\'' + categoria + '\'); return false;" style="color:#38bdf8;font-size:11px;">Tentar novamente</a>');
-        } catch(e) {
-          showResult('error', '\u274C Erro inesperado', 'Tente novamente em alguns segundos.');
-        }
+    var parts = session.access_token.split('.');
+    if (parts.length === 3) {
+      var payload = JSON.parse(atob(parts[1]));
+      var now = Math.floor(new Date().getTime() / 1000);
+      if (payload.exp && payload.exp < now + 60) {
+        // Token expired or about to expire, refresh first
+        refreshToken(function(ok) {
+          if (ok) { callback(); }
+          else {
+            doLogout();
+            showResult('error', '\u274C Sess\u00e3o expirada', 'Fa\u00e7a login novamente.');
+          }
+        });
+        return;
       }
     }
-  };
-  xhr.onerror = function() {
-    setButtonState(categoria, 'reset');
-    pendingQueue.push({ categoria: categoria, descricao: descricao, timestamp: new Date().toISOString() });
-    saveFile(pendingFilePath, JSON.stringify(pendingQueue));
-    showResult('offline', '\u26A0 Falha na conex\u00e3o', 'Chamado salvo na fila local.');
-  };
-  xhr.send(JSON.stringify({
-    categoria: categoria,
-    descricao: descricao || null,
-    usuario_windows: machineInfo.username,
-    nome_maquina: machineInfo.hostname
-  }));
+  } catch(e) {}
+  callback();
 }
 
-function refreshAndRetry(categoria, descricao) {
+function refreshToken(callback) {
   if (!session || !session.refresh_token) {
-    doLogout();
+    callback(false);
     return;
   }
   var xhr = new XMLHttpRequest();
@@ -718,15 +668,89 @@ function refreshAndRetry(categoria, descricao) {
       if (xhr.status === 200) {
         session = JSON.parse(xhr.responseText);
         saveSession(xhr.responseText);
-        createTicket(categoria);
+        callback(true);
       } else {
-        doLogout();
-        showResult('error', '\u274C Sess\u00e3o expirada', 'Fa\u00e7a login novamente.');
+        callback(false);
       }
     }
   };
+  xhr.onerror = function() { callback(false); };
   xhr.send(JSON.stringify({ refresh_token: session.refresh_token }));
 }
+
+function createTicket(categoria) {
+  var descricao = document.getElementById('description').value;
+
+  if (!session) {
+    showResult('error', '\u274C Sess\u00e3o expirada', 'Fa\u00e7a login novamente.');
+    return;
+  }
+
+  setButtonState(categoria, 'sending');
+  showResult('loading', '\u23F3 Enviando chamado...', 'Aguarde um momento...');
+
+  ensureValidToken(function() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', SUPABASE_URL + '/functions/v1/support-ticket', true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.setRequestHeader('Authorization', 'Bearer ' + session.access_token);
+    xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4) {
+        if (xhr.status === 200 || xhr.status === 201) {
+          try {
+            var res = JSON.parse(xhr.responseText);
+            setButtonState(categoria, 'sent');
+            showResult('success',
+              '\u2705 Chamado criado com sucesso!',
+              '<strong>Protocolo:</strong> <span class="result-ticket">#' + (res.ticket_number || '---') + '</span><br>' +
+              '<strong>Categoria:</strong> ' + (res.category || categoria) + '<br>' +
+              '<strong>Respons\u00e1vel:</strong> ' + (res.assigned_to_name || 'Suporte') + '<br>' +
+              '<strong>Hor\u00e1rio:</strong> ' + formatTime(res.created_at)
+            );
+            document.getElementById('description').value = '';
+            setTimeout(hideResult, 8000);
+          } catch(e) {
+            setButtonState(categoria, 'sent');
+            showResult('success', '\u2705 Chamado criado!', 'Chamado registrado com sucesso.');
+            setTimeout(hideResult, 5000);
+          }
+        } else if (xhr.status === 401) {
+          // Token rejected, try refresh once
+          refreshToken(function(ok) {
+            if (ok) { createTicket(categoria); }
+            else {
+              setButtonState(categoria, 'reset');
+              doLogout();
+              showResult('error', '\u274C Sess\u00e3o expirada', 'Fa\u00e7a login novamente.');
+            }
+          });
+        } else {
+          setButtonState(categoria, 'reset');
+          try {
+            var err = JSON.parse(xhr.responseText);
+            showResult('error', '\u274C Erro ao criar chamado', (err.error || 'Tente novamente.') + '<br><a href="#" onclick="createTicket(\'' + categoria + '\'); return false;" style="color:#38bdf8;font-size:11px;">Tentar novamente</a>');
+          } catch(e) {
+            showResult('error', '\u274C Erro inesperado', 'Tente novamente em alguns segundos.');
+          }
+        }
+      }
+    };
+    xhr.onerror = function() {
+      setButtonState(categoria, 'reset');
+      pendingQueue.push({ categoria: categoria, descricao: descricao, timestamp: new Date().toISOString() });
+      saveFile(pendingFilePath, JSON.stringify(pendingQueue));
+      showResult('offline', '\u26A0 Falha na conex\u00e3o', 'Chamado salvo na fila local.');
+    };
+    xhr.send(JSON.stringify({
+      categoria: categoria,
+      descricao: descricao || null,
+      usuario_windows: machineInfo.username,
+      nome_maquina: machineInfo.hostname
+    }));
+  });
+}
+
 
 function processPendingQueue() {
   if (pendingQueue.length === 0) return;
