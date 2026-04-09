@@ -91,6 +91,28 @@ export default function SupportTickets() {
     },
   });
 
+  // Realtime: auto-refresh when tasks change
+  useEffect(() => {
+    const channelName = `support-tickets-${Date.now()}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks" },
+        (payload) => {
+          const title = (payload.new as any)?.title || (payload.old as any)?.title || "";
+          if (title.startsWith("[Chamado]")) {
+            queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   const filtered = tickets?.filter((t) => {
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
     const cat = extractCategory(t.title);
