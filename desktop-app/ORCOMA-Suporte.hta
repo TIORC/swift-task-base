@@ -751,29 +751,6 @@ function createTicket(categoria) {
   });
 }
 
-function refreshAndRetry(categoria, descricao) {
-  if (!session || !session.refresh_token) {
-    doLogout();
-    return;
-  }
-  var xhr = new XMLHttpRequest();
-  xhr.open('POST', SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', true);
-  xhr.setRequestHeader('Content-Type', 'application/json');
-  xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
-  xhr.onreadystatechange = function() {
-    if (xhr.readyState === 4) {
-      if (xhr.status === 200) {
-        session = JSON.parse(xhr.responseText);
-        saveSession(xhr.responseText);
-        createTicket(categoria);
-      } else {
-        doLogout();
-        showResult('error', '\u274C Sess\u00e3o expirada', 'Fa\u00e7a login novamente.');
-      }
-    }
-  };
-  xhr.send(JSON.stringify({ refresh_token: session.refresh_token }));
-}
 
 function processPendingQueue() {
   if (pendingQueue.length === 0) return;
