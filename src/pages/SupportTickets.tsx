@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +57,7 @@ export default function SupportTickets() {
   const [search, setSearch] = useState("");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const updateTask = useUpdateTask();
+  const queryClient = useQueryClient();
 
   const { data: tickets, isLoading } = useQuery({
     queryKey: ["support-tickets"],
@@ -89,6 +90,28 @@ export default function SupportTickets() {
       })) as Task[];
     },
   });
+
+  // Realtime: auto-refresh when tasks change
+  useEffect(() => {
+    const channelName = `support-tickets-${Date.now()}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks" },
+        (payload) => {
+          const title = (payload.new as any)?.title || (payload.old as any)?.title || "";
+          if (title.startsWith("[Chamado]")) {
+            queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const filtered = tickets?.filter((t) => {
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
