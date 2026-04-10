@@ -89,7 +89,8 @@ export function useAdminPermissions() {
 
   const saveMenuAccess = async (userId: string, items: { menu_key: string; enabled: boolean }[]) => {
     // Delete existing
-    await supabase.from("user_menu_access").delete().eq("user_id", userId);
+    const { error: delError } = await supabase.from("user_menu_access").delete().eq("user_id", userId);
+    if (delError) throw delError;
     // Insert new
     if (items.length > 0) {
       const { error } = await supabase.from("user_menu_access").insert(
