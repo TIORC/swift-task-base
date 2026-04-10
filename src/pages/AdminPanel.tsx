@@ -460,7 +460,6 @@ const AdminPanel = () => {
         onOpenChange={setPermsOpen}
         userId={permsUserId}
         userEmail={permsUserEmail}
-        userRoles={users.find((u) => u.id === permsUserId)?.roles ?? []}
         allUsers={users.map((u) => ({ id: u.id, email: u.email, full_name: u.full_name }))}
       />
     </div>

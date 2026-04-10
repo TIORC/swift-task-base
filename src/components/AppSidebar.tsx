@@ -68,13 +68,14 @@ export function AppSidebar() {
 
   // Filter nav items based on user profile + per-user menu overrides
   const visibleItems = allNavItems.filter((item) => {
-    // First check role-based access
-    if (!item.profiles.includes(profile)) return false;
-    // Then check per-user menu override (admin always sees everything)
+    // Admin always sees everything
     if (profile === "admin") return true;
+    // Check per-user menu override first — admin can grant access beyond role
     const override = isMenuEnabled(item.url);
     if (override === false) return false; // explicitly blocked
-    return true;
+    if (override === true) return true; // explicitly granted (even if role doesn't include it)
+    // No override — fall back to role-based access
+    return item.profiles.includes(profile);
   });
 
   const profileLabel = profile === "admin" ? "Administrador" : profile === "gestor" ? "Líder" : "Membro";
