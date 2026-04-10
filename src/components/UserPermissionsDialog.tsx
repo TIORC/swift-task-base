@@ -24,34 +24,11 @@ const MENU_ITEMS = [
   { key: "/notifications", label: "Notificações" },
 ];
 
-// Which profiles can access each route by default (mirrors useUserRole routePermissions)
-const routeDefaultProfiles: Record<string, RoleProfile[]> = {
-  "/": ["admin", "gestor", "membro"],
-  "/kanban": ["admin", "gestor", "membro"],
-  "/tasks": ["admin", "gestor", "membro"],
-  "/focus": ["admin", "gestor", "membro"],
-  "/notifications": ["admin", "gestor", "membro"],
-  "/dependencies": ["admin", "gestor", "membro"],
-  "/automacoes": ["admin", "gestor", "membro"],
-  "/ranking": ["admin", "gestor"],
-  "/manager": ["admin", "gestor"],
-  "/reports": ["admin", "gestor", "membro"],
-  "/support": ["admin", "gestor"],
-  "/admin": ["admin"],
-};
-
-function resolveProfile(roles: string[]): RoleProfile {
-  if (roles.includes("admin")) return "admin";
-  if (roles.includes("gestor") || roles.includes("lider")) return "gestor";
-  return "membro";
-}
-
 interface UserPermissionsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userId: string;
   userEmail: string;
-  userRoles?: string[];
   allUsers: { id: string; email: string; full_name: string }[];
 }
 
@@ -60,7 +37,6 @@ export function UserPermissionsDialog({
   onOpenChange,
   userId,
   userEmail,
-  userRoles = [],
   allUsers,
 }: UserPermissionsDialogProps) {
   const { loadUserMenuAccess, loadUserTaskVisibility, saveMenuAccess, saveTaskVisibility } = useAdminPermissions();
@@ -69,8 +45,6 @@ export function UserPermissionsDialog({
   const [visibleUserIds, setVisibleUserIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  const userProfile = resolveProfile(userRoles);
 
   useEffect(() => {
     if (!open || !userId) return;
