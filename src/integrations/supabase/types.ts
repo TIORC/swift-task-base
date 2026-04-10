@@ -52,6 +52,91 @@ export type Database = {
           },
         ]
       }
+      automation_blockers: {
+        Row: {
+          automation_id: string
+          blocker_type: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          impact_on_deadline: string | null
+          pending_since: string | null
+          resolved_at: string | null
+          responsible_id: string | null
+        }
+        Insert: {
+          automation_id: string
+          blocker_type: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          impact_on_deadline?: string | null
+          pending_since?: string | null
+          resolved_at?: string | null
+          responsible_id?: string | null
+        }
+        Update: {
+          automation_id?: string
+          blocker_type?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          impact_on_deadline?: string | null
+          pending_since?: string | null
+          resolved_at?: string | null
+          responsible_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_blockers_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_events: {
+        Row: {
+          automation_id: string
+          created_at: string
+          description: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          automation_id: string
+          created_at?: string
+          description?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          automation_id?: string
+          created_at?: string
+          description?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_events_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       automation_rules: {
         Row: {
           action_type: string
@@ -85,6 +170,193 @@ export type Database = {
           name?: string
           trigger_field?: string
           trigger_value?: string
+        }
+        Relationships: []
+      }
+      automation_subtasks: {
+        Row: {
+          assigned_to: string | null
+          automation_id: string
+          completed: boolean | null
+          created_at: string
+          deadline: string | null
+          id: string
+          notes: string | null
+          sort_order: number | null
+          title: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          automation_id: string
+          completed?: boolean | null
+          created_at?: string
+          deadline?: string | null
+          id?: string
+          notes?: string | null
+          sort_order?: number | null
+          title: string
+        }
+        Update: {
+          assigned_to?: string | null
+          automation_id?: string
+          completed?: boolean | null
+          created_at?: string
+          deadline?: string | null
+          id?: string
+          notes?: string | null
+          sort_order?: number | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_subtasks_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_time_logs: {
+        Row: {
+          automation_id: string
+          created_at: string
+          description: string | null
+          duration_minutes: number | null
+          ended_at: string | null
+          id: string
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          automation_id: string
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          automation_id?: string
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_time_logs_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automations: {
+        Row: {
+          assigned_to: string | null
+          automation_type: string | null
+          completed_at: string | null
+          complexity: string | null
+          created_at: string
+          created_by: string
+          deploy_status: string | null
+          deployed_at: string | null
+          description: string | null
+          documentation_done: boolean | null
+          environment: string | null
+          estimated_deadline: string | null
+          estimated_hours: number | null
+          final_deadline: string | null
+          id: string
+          language_tool: string | null
+          needs_credentials: boolean | null
+          needs_external_integration: boolean | null
+          objective: string | null
+          priority: string
+          process_impact: string | null
+          progress_percent: number | null
+          requester: string | null
+          requester_department: string | null
+          risk_level: string | null
+          spent_hours: number | null
+          started_at: string | null
+          status: string
+          system_process: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          automation_type?: string | null
+          completed_at?: string | null
+          complexity?: string | null
+          created_at?: string
+          created_by: string
+          deploy_status?: string | null
+          deployed_at?: string | null
+          description?: string | null
+          documentation_done?: boolean | null
+          environment?: string | null
+          estimated_deadline?: string | null
+          estimated_hours?: number | null
+          final_deadline?: string | null
+          id?: string
+          language_tool?: string | null
+          needs_credentials?: boolean | null
+          needs_external_integration?: boolean | null
+          objective?: string | null
+          priority?: string
+          process_impact?: string | null
+          progress_percent?: number | null
+          requester?: string | null
+          requester_department?: string | null
+          risk_level?: string | null
+          spent_hours?: number | null
+          started_at?: string | null
+          status?: string
+          system_process?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          automation_type?: string | null
+          completed_at?: string | null
+          complexity?: string | null
+          created_at?: string
+          created_by?: string
+          deploy_status?: string | null
+          deployed_at?: string | null
+          description?: string | null
+          documentation_done?: boolean | null
+          environment?: string | null
+          estimated_deadline?: string | null
+          estimated_hours?: number | null
+          final_deadline?: string | null
+          id?: string
+          language_tool?: string | null
+          needs_credentials?: boolean | null
+          needs_external_integration?: boolean | null
+          objective?: string | null
+          priority?: string
+          process_impact?: string | null
+          progress_percent?: number | null
+          requester?: string | null
+          requester_department?: string | null
+          risk_level?: string | null
+          spent_hours?: number | null
+          started_at?: string | null
+          status?: string
+          system_process?: string | null
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
