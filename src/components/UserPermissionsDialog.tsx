@@ -3,10 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Eye, Menu } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Eye, Menu, Lock, ShieldCheck, ShieldOff } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useAdminPermissions } from "@/hooks/usePermissions";
+import type { RoleProfile } from "@/hooks/useUserRole";
 
 const MENU_ITEMS = [
   { key: "/", label: "Dashboard" },
@@ -22,11 +24,34 @@ const MENU_ITEMS = [
   { key: "/notifications", label: "Notificações" },
 ];
 
+// Which profiles can access each route by default (mirrors useUserRole routePermissions)
+const routeDefaultProfiles: Record<string, RoleProfile[]> = {
+  "/": ["admin", "gestor", "membro"],
+  "/kanban": ["admin", "gestor", "membro"],
+  "/tasks": ["admin", "gestor", "membro"],
+  "/focus": ["admin", "gestor", "membro"],
+  "/notifications": ["admin", "gestor", "membro"],
+  "/dependencies": ["admin", "gestor", "membro"],
+  "/automacoes": ["admin", "gestor", "membro"],
+  "/ranking": ["admin", "gestor"],
+  "/manager": ["admin", "gestor"],
+  "/reports": ["admin", "gestor", "membro"],
+  "/support": ["admin", "gestor"],
+  "/admin": ["admin"],
+};
+
+function resolveProfile(roles: string[]): RoleProfile {
+  if (roles.includes("admin")) return "admin";
+  if (roles.includes("gestor") || roles.includes("lider")) return "gestor";
+  return "membro";
+}
+
 interface UserPermissionsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userId: string;
   userEmail: string;
+  userRoles?: string[];
   allUsers: { id: string; email: string; full_name: string }[];
 }
 
@@ -35,6 +60,7 @@ export function UserPermissionsDialog({
   onOpenChange,
   userId,
   userEmail,
+  userRoles = [],
   allUsers,
 }: UserPermissionsDialogProps) {
   const { loadUserMenuAccess, loadUserTaskVisibility, saveMenuAccess, saveTaskVisibility } = useAdminPermissions();
@@ -43,6 +69,8 @@ export function UserPermissionsDialog({
   const [visibleUserIds, setVisibleUserIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const userProfile = resolveProfile(userRoles);
 
   useEffect(() => {
     if (!open || !userId) return;
@@ -63,7 +91,6 @@ export function UserPermissionsDialog({
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Save all menu items that have been explicitly set (both enabled and disabled)
       const menuItems = Object.entries(menuState).map(([menu_key, enabled]) => ({
         menu_key,
         enabled,
@@ -94,6 +121,8 @@ export function UserPermissionsDialog({
 
   const otherUsers = allUsers.filter((u) => u.id !== userId);
 
+  const profileLabel = userProfile === "admin" ? "Administrador" : userProfile === "gestor" ? "Líder" : "Membro";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
@@ -107,17 +136,96 @@ export function UserPermissionsDialog({
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <Tabs defaultValue="visibility">
+          <Tabs defaultValue="menu">
             <TabsList className="w-full">
-              <TabsTrigger value="visibility" className="flex-1 gap-1.5">
-                <Eye className="h-3.5 w-3.5" />
-                Visibilidade
-              </TabsTrigger>
               <TabsTrigger value="menu" className="flex-1 gap-1.5">
                 <Menu className="h-3.5 w-3.5" />
                 Menu
               </TabsTrigger>
+              <TabsTrigger value="visibility" className="flex-1 gap-1.5">
+                <Eye className="h-3.5 w-3.5" />
+                Visibilidade
+              </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="menu" className="space-y-3 mt-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Controle quais itens do menu este usuário pode acessar.
+                </p>
+                <Badge variant="outline" className="text-[10px] shrink-0">
+                  Perfil: {profileLabel}
+                </Badge>
+              </div>
+
+              {/* Legend */}
+              <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <ShieldCheck className="h-3 w-3 text-emerald-500" /> Permitido pelo perfil
+                </span>
+                <span className="flex items-center gap-1">
+                  <Lock className="h-3 w-3 text-muted-foreground" /> Não disponível no perfil
+                </span>
+                <span className="flex items-center gap-1">
+                  <ShieldOff className="h-3 w-3 text-destructive" /> Bloqueado manualmente
+                </span>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-1">
+                {MENU_ITEMS.map((item) => {
+                  const allowedProfiles = routeDefaultProfiles[item.key] || [];
+                  const allowedByRole = allowedProfiles.includes(userProfile);
+                  const isEnabled = menuState[item.key] !== undefined ? menuState[item.key] : true;
+                  const isExplicitlyBlocked = menuState[item.key] === false;
+
+                  return (
+                    <div
+                      key={item.key}
+                      className={`flex items-center gap-3 rounded-lg p-2 transition-colors ${
+                        !allowedByRole
+                          ? "opacity-50 bg-muted/20"
+                          : isExplicitlyBlocked
+                          ? "bg-destructive/5"
+                          : "hover:bg-muted/50"
+                      }`}
+                    >
+                      <Checkbox
+                        id={`menu-${item.key}`}
+                        checked={isEnabled}
+                        onCheckedChange={(checked) => toggleMenu(item.key, !!checked)}
+                        disabled={!allowedByRole}
+                      />
+                      <label
+                        htmlFor={`menu-${item.key}`}
+                        className={`text-sm cursor-pointer flex-1 ${!allowedByRole ? "line-through" : ""}`}
+                      >
+                        {item.label}
+                      </label>
+
+                      {/* Status indicators */}
+                      {!allowedByRole ? (
+                        <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Lock className="h-3 w-3" />
+                          Sem acesso
+                        </span>
+                      ) : isExplicitlyBlocked ? (
+                        <span className="flex items-center gap-1 text-[10px] text-destructive">
+                          <ShieldOff className="h-3 w-3" />
+                          Bloqueado
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-[10px] text-emerald-500">
+                          <ShieldCheck className="h-3 w-3" />
+                          Liberado
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </TabsContent>
 
             <TabsContent value="visibility" className="space-y-3 mt-4">
               <p className="text-xs text-muted-foreground">
@@ -145,31 +253,6 @@ export function UserPermissionsDialog({
                   ))}
                 </div>
               )}
-            </TabsContent>
-
-            <TabsContent value="menu" className="space-y-3 mt-4">
-              <p className="text-xs text-muted-foreground">
-                Desmarque para bloquear o acesso a itens do menu. Itens marcados ficam visíveis para o usuário.
-              </p>
-              <Separator />
-              <div className="space-y-2">
-                {MENU_ITEMS.map((item) => {
-                  // If there's an explicit override, use it. Otherwise default to enabled.
-                  const isEnabled = menuState[item.key] !== undefined ? menuState[item.key] : true;
-                  return (
-                    <div key={item.key} className="flex items-center gap-3 rounded-lg p-2 hover:bg-muted/50">
-                      <Checkbox
-                        id={`menu-${item.key}`}
-                        checked={isEnabled}
-                        onCheckedChange={(checked) => toggleMenu(item.key, !!checked)}
-                      />
-                      <label htmlFor={`menu-${item.key}`} className="text-sm cursor-pointer">
-                        {item.label}
-                      </label>
-                    </div>
-                  );
-                })}
-              </div>
             </TabsContent>
           </Tabs>
         )}
