@@ -1,0 +1,245 @@
+export const AUTOMATION_STATUSES = [
+  "backlog",
+  "analysis",
+  "development",
+  "internal_testing",
+  "homologation",
+  "waiting_user",
+  "completed",
+  "blocked",
+  "cancelled",
+] as const;
+
+export type AutomationStatus = (typeof AUTOMATION_STATUSES)[number];
+
+export const STATUS_LABELS: Record<AutomationStatus, string> = {
+  backlog: "Backlog",
+  analysis: "Análise",
+  development: "Desenvolvimento",
+  internal_testing: "Testes Internos",
+  homologation: "Homologação",
+  waiting_user: "Aguardando Usuário",
+  completed: "Concluído",
+  blocked: "Bloqueado",
+  cancelled: "Cancelado",
+};
+
+export const STATUS_COLORS: Record<AutomationStatus, string> = {
+  backlog: "bg-muted text-muted-foreground",
+  analysis: "bg-blue-500/10 text-blue-500",
+  development: "bg-indigo-500/10 text-indigo-500",
+  internal_testing: "bg-amber-500/10 text-amber-500",
+  homologation: "bg-purple-500/10 text-purple-500",
+  waiting_user: "bg-orange-500/10 text-orange-500",
+  completed: "bg-emerald-500/10 text-emerald-500",
+  blocked: "bg-red-500/10 text-red-500",
+  cancelled: "bg-muted text-muted-foreground line-through",
+};
+
+export const BOARD_COLUMNS: AutomationStatus[] = [
+  "backlog",
+  "analysis",
+  "development",
+  "internal_testing",
+  "homologation",
+  "waiting_user",
+  "completed",
+  "blocked",
+];
+
+export const PRIORITY_OPTIONS = ["low", "medium", "high", "urgent"] as const;
+export const PRIORITY_LABELS: Record<string, string> = {
+  low: "Baixa",
+  medium: "Média",
+  high: "Alta",
+  urgent: "Urgente",
+};
+export const PRIORITY_COLORS: Record<string, string> = {
+  low: "text-muted-foreground",
+  medium: "text-blue-500",
+  high: "text-amber-500",
+  urgent: "text-red-500",
+};
+
+export const RISK_LABELS: Record<string, string> = {
+  low: "Baixo",
+  medium: "Médio",
+  high: "Alto",
+  critical: "Crítico",
+};
+
+export const COMPLEXITY_OPTIONS = ["low", "medium", "high"] as const;
+export const COMPLEXITY_LABELS: Record<string, string> = {
+  low: "Baixa",
+  medium: "Média",
+  high: "Alta",
+};
+
+export const BLOCKER_TYPES = [
+  "approval",
+  "user_response",
+  "access",
+  "credential",
+  "environment",
+  "third_party",
+  "validation",
+  "other",
+] as const;
+
+export const BLOCKER_TYPE_LABELS: Record<string, string> = {
+  approval: "Aprovação do Gestor",
+  user_response: "Retorno do Usuário",
+  access: "Acesso",
+  credential: "Credencial",
+  environment: "Ambiente",
+  third_party: "Sistema Terceiro",
+  validation: "Validação Final",
+  other: "Outro",
+};
+
+export const DEFAULT_SUBTASKS = [
+  "Levantamento do processo",
+  "Definição da regra",
+  "Desenvolvimento",
+  "Tratamento de exceções",
+  "Testes",
+  "Homologação",
+  "Deploy",
+  "Documentação",
+  "Treinamento do usuário",
+];
+
+export interface Automation {
+  id: string;
+  title: string;
+  description: string | null;
+  objective: string | null;
+  system_process: string | null;
+  requester: string | null;
+  requester_department: string | null;
+  assigned_to: string | null;
+  created_by: string;
+  priority: string;
+  status: AutomationStatus;
+  complexity: string | null;
+  automation_type: string | null;
+  language_tool: string | null;
+  environment: string | null;
+  needs_credentials: boolean;
+  needs_external_integration: boolean;
+  process_impact: string | null;
+  progress_percent: number;
+  estimated_hours: number;
+  spent_hours: number;
+  estimated_deadline: string | null;
+  final_deadline: string | null;
+  started_at: string | null;
+  deployed_at: string | null;
+  completed_at: string | null;
+  risk_level: string;
+  deploy_status: string;
+  documentation_done: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AutomationSubtask {
+  id: string;
+  automation_id: string;
+  title: string;
+  completed: boolean;
+  assigned_to: string | null;
+  deadline: string | null;
+  notes: string | null;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface AutomationBlocker {
+  id: string;
+  automation_id: string;
+  blocker_type: string;
+  description: string | null;
+  responsible_id: string | null;
+  pending_since: string;
+  resolved_at: string | null;
+  impact_on_deadline: string | null;
+  created_by: string;
+  created_at: string;
+}
+
+export interface AutomationEvent {
+  id: string;
+  automation_id: string;
+  event_type: string;
+  description: string | null;
+  user_id: string;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface AutomationTimeLog {
+  id: string;
+  automation_id: string;
+  user_id: string;
+  started_at: string;
+  ended_at: string | null;
+  duration_minutes: number;
+  description: string | null;
+  created_at: string;
+}
+
+// Health score helpers
+export function computeHealthScore(a: Automation): { score: number; label: string; color: string } {
+  let score = 100;
+
+  // Deadline proximity
+  if (a.final_deadline) {
+    const daysLeft = (new Date(a.final_deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+    if (daysLeft < 0) score -= 40;
+    else if (daysLeft < 3) score -= 25;
+    else if (daysLeft < 7) score -= 10;
+  }
+
+  // Risk
+  if (a.risk_level === "critical") score -= 30;
+  else if (a.risk_level === "high") score -= 20;
+  else if (a.risk_level === "medium") score -= 10;
+
+  // Blocked
+  if (a.status === "blocked") score -= 25;
+
+  // Low progress with approaching deadline
+  if (a.progress_percent < 30 && a.final_deadline) {
+    const daysLeft = (new Date(a.final_deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+    if (daysLeft < 14) score -= 15;
+  }
+
+  // Stale (no update in 5+ days)
+  const daysSinceUpdate = (Date.now() - new Date(a.updated_at).getTime()) / (1000 * 60 * 60 * 24);
+  if (daysSinceUpdate > 5) score -= 15;
+
+  score = Math.max(0, Math.min(100, score));
+
+  if (score >= 70) return { score, label: "Saudável", color: "text-emerald-500" };
+  if (score >= 40) return { score, label: "Atenção", color: "text-amber-500" };
+  return { score, label: "Crítico", color: "text-red-500" };
+}
+
+export function computePrediction(a: Automation): { label: string; color: string } {
+  if (a.status === "completed" || a.status === "cancelled") return { label: "Finalizado", color: "text-muted-foreground" };
+
+  if (!a.final_deadline) return { label: "Sem prazo", color: "text-muted-foreground" };
+
+  const daysLeft = (new Date(a.final_deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+
+  if (daysLeft < 0) return { label: "Atrasado", color: "text-red-500" };
+
+  if (a.status === "blocked" || a.risk_level === "critical" || a.risk_level === "high") {
+    return { label: "Em risco", color: "text-amber-500" };
+  }
+
+  if (daysLeft < 3 && a.progress_percent < 80) return { label: "Tende a atrasar", color: "text-amber-500" };
+
+  return { label: "Dentro do prazo", color: "text-emerald-500" };
+}

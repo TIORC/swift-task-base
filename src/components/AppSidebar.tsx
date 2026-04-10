@@ -1,4 +1,4 @@
-import { LayoutDashboard, Columns3, ListTodo, LogOut, Zap, Trophy, Target, GitBranch, Gauge, ShieldCheck, BarChart3, Headset } from "lucide-react";
+import { LayoutDashboard, Columns3, ListTodo, LogOut, Zap, Trophy, Target, GitBranch, Gauge, ShieldCheck, BarChart3, Headset, Bot } from "lucide-react";
 import { useTheme } from "next-themes";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -33,6 +33,7 @@ const allNavItems = [
   { title: "Kanban", url: "/kanban", icon: Columns3, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
   { title: "Tarefas", url: "/tasks", icon: ListTodo, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
   { title: "Chamados", url: "/support", icon: Headset, profiles: ["admin", "gestor"] as RoleProfile[] },
+  { title: "Automações", url: "/automacoes", icon: Bot, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
   { title: "Modo Foco", url: "/focus", icon: Target, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
   { title: "Dependências", url: "/dependencies", icon: GitBranch, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
   { title: "Relatórios", url: "/reports", icon: BarChart3, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
