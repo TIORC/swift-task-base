@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Loader2, Zap, AlertTriangle } from "lucide-react";
-import { useAutomations, useAllProfiles, useAllBlockers } from "@/hooks/useAutomationsData";
+import { useAutomations, useAllProfiles, useAllBlockers, useUpdateAutomation } from "@/hooks/useAutomationsData";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAuth } from "@/hooks/useAuth";
 import { Automation, AutomationStatus } from "@/types/automation";
@@ -11,6 +11,8 @@ import { AutomationBoard } from "@/components/automations/AutomationBoard";
 import { AutomationDetailPanel } from "@/components/automations/AutomationDetailPanel";
 import { AutomationMetrics } from "@/components/automations/AutomationMetrics";
 import { CreateAutomationDialog } from "@/components/automations/CreateAutomationDialog";
+import { AutomationExport } from "@/components/automations/AutomationExport";
+import { WipControl } from "@/components/automations/WipControl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
