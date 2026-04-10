@@ -1,24 +1,34 @@
-import { Automation, BOARD_COLUMNS, STATUS_LABELS, AutomationStatus } from "@/types/automation";
+import { Automation, BOARD_COLUMNS, STATUS_LABELS, AutomationStatus, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, computeHealthScore } from "@/types/automation";
 import { AutomationCard } from "./AutomationCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { List, Columns3 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, computeHealthScore } from "@/types/automation";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 
 interface Props {
   automations: Automation[];
   onSelect: (a: Automation) => void;
   profileMap: Record<string, string>;
+  onStatusChange?: (id: string, newStatus: AutomationStatus) => void;
 }
 
-export function AutomationBoard({ automations, onSelect, profileMap }: Props) {
+export function AutomationBoard({ automations, onSelect, profileMap, onStatusChange }: Props) {
   const [viewMode, setViewMode] = useState<"board" | "list">("board");
+
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination || !onStatusChange) return;
+    const newStatus = result.destination.droppableId as AutomationStatus;
+    const automationId = result.draggableId;
+    const automation = automations.find(a => a.id === automationId);
+    if (automation && automation.status !== newStatus) {
+      onStatusChange(automationId, newStatus);
+    }
+  };
 
   return (
     <div>
@@ -38,36 +48,57 @@ export function AutomationBoard({ automations, onSelect, profileMap }: Props) {
       </div>
 
       {viewMode === "board" ? (
-        <div className="flex gap-3 overflow-x-auto pb-4">
-          {BOARD_COLUMNS.map(col => {
-            const items = automations.filter(a => a.status === col);
-            return (
-              <div key={col} className="flex-shrink-0 w-[260px]">
-                <div className="flex items-center justify-between mb-2 px-1">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    {STATUS_LABELS[col]}
-                  </span>
-                  <Badge variant="secondary" className="text-[10px] h-5">{items.length}</Badge>
-                </div>
-                <ScrollArea className="h-[calc(100vh-420px)] min-h-[300px]">
-                  <div className="space-y-2 pr-2">
-                    {items.map(a => (
-                      <AutomationCard
-                        key={a.id}
-                        automation={a}
-                        onClick={() => onSelect(a)}
-                        profileName={a.assigned_to ? profileMap[a.assigned_to] : undefined}
-                      />
-                    ))}
-                    {items.length === 0 && (
-                      <div className="text-center py-8 text-xs text-muted-foreground">Nenhuma</div>
-                    )}
-                  </div>
-                </ScrollArea>
-              </div>
-            );
-          })}
-        </div>
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <div className="flex gap-3 overflow-x-auto pb-4">
+            {BOARD_COLUMNS.map(col => {
+              const items = automations.filter(a => a.status === col);
+              return (
+                <Droppable key={col} droppableId={col}>
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className={`flex-shrink-0 w-[260px] rounded-lg transition-colors ${snapshot.isDraggingOver ? "bg-primary/5" : ""}`}
+                    >
+                      <div className="flex items-center justify-between mb-2 px-1">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          {STATUS_LABELS[col]}
+                        </span>
+                        <Badge variant="secondary" className="text-[10px] h-5">{items.length}</Badge>
+                      </div>
+                      <ScrollArea className="h-[calc(100vh-420px)] min-h-[300px]">
+                        <div className="space-y-2 pr-2">
+                          {items.map((a, index) => (
+                            <Draggable key={a.id} draggableId={a.id} index={index}>
+                              {(dragProvided, dragSnapshot) => (
+                                <div
+                                  ref={dragProvided.innerRef}
+                                  {...dragProvided.draggableProps}
+                                  {...dragProvided.dragHandleProps}
+                                  className={dragSnapshot.isDragging ? "opacity-80" : ""}
+                                >
+                                  <AutomationCard
+                                    automation={a}
+                                    onClick={() => onSelect(a)}
+                                    profileName={a.assigned_to ? profileMap[a.assigned_to] : undefined}
+                                  />
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                          {items.length === 0 && (
+                            <div className="text-center py-8 text-xs text-muted-foreground">Nenhuma</div>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  )}
+                </Droppable>
+              );
+            })}
+          </div>
+        </DragDropContext>
       ) : (
         <div className="border rounded-lg overflow-hidden">
           <Table>

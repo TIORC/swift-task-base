@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Loader2, Zap, AlertTriangle } from "lucide-react";
-import { useAutomations, useAllProfiles, useAllBlockers } from "@/hooks/useAutomationsData";
+import { useAutomations, useAllProfiles, useAllBlockers, useUpdateAutomation } from "@/hooks/useAutomationsData";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAuth } from "@/hooks/useAuth";
 import { Automation, AutomationStatus } from "@/types/automation";
@@ -11,6 +11,8 @@ import { AutomationBoard } from "@/components/automations/AutomationBoard";
 import { AutomationDetailPanel } from "@/components/automations/AutomationDetailPanel";
 import { AutomationMetrics } from "@/components/automations/AutomationMetrics";
 import { CreateAutomationDialog } from "@/components/automations/CreateAutomationDialog";
+import { AutomationExport } from "@/components/automations/AutomationExport";
+import { WipControl } from "@/components/automations/WipControl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,6 +22,7 @@ export default function AutomacoesPage() {
   const { data: automations = [], isLoading } = useAutomations();
   const { data: profiles = [] } = useAllProfiles();
   const { data: activeBlockers = [] } = useAllBlockers();
+  const updateAutomation = useUpdateAutomation();
   const { profile } = useUserRole();
   const { user } = useAuth();
 
@@ -61,6 +64,18 @@ export default function AutomacoesPage() {
     return items.slice(0, 5);
   }, [automations]);
 
+  const blockerCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    activeBlockers.forEach(b => {
+      map[b.automation_id] = (map[b.automation_id] || 0) + 1;
+    });
+    return map;
+  }, [activeBlockers]);
+
+  const handleStatusChange = (id: string, newStatus: AutomationStatus) => {
+    updateAutomation.mutate({ id, status: newStatus } as any);
+  };
+
   const isReadOnly = profile === "gestor";
 
   if (isLoading) {
@@ -78,7 +93,12 @@ export default function AutomacoesPage() {
         title="Gestão de Automações"
         description="Controle técnico e acompanhamento gerencial"
         icon={<Zap className="h-6 w-6" />}
-        actions={<CreateAutomationDialog profiles={profiles} />}
+        actions={
+          <div className="flex items-center gap-2">
+            <AutomationExport automations={filtered} profileMap={profileMap} blockerCounts={blockerCounts} />
+            <CreateAutomationDialog profiles={profiles} />
+          </div>
+        }
       />
 
       {/* Alerts */}
@@ -95,6 +115,9 @@ export default function AutomacoesPage() {
 
       {/* Summary Cards */}
       <AutomationSummaryCards automations={automations} />
+
+      {/* WIP Control */}
+      <WipControl automations={automations} profileMap={profileMap} wipLimit={3} />
 
       {/* Main Content with Tabs */}
       <Tabs defaultValue="board" className="space-y-4">
@@ -123,6 +146,7 @@ export default function AutomacoesPage() {
             automations={filtered}
             onSelect={setSelectedAutomation}
             profileMap={profileMap}
+            onStatusChange={handleStatusChange}
           />
         </TabsContent>
 
