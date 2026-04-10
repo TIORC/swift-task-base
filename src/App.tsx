@@ -59,14 +59,16 @@ function RoleGate({ route, children }: { route: string; children: React.ReactNod
     );
   }
 
-  // Check role-based access
-  if (!canAccess(route)) {
-    return <Navigate to={defaultRouteForProfile[profile]} replace />;
-  }
-
-  // Check per-user menu override (admin bypasses)
-  if (profile !== "admin" && isMenuEnabled(route) === false) {
-    return <Navigate to={defaultRouteForProfile[profile]} replace />;
+  // Check per-user menu override first (admin bypasses all)
+  if (profile !== "admin") {
+    const menuOverride = isMenuEnabled(route);
+    if (menuOverride === false) {
+      return <Navigate to={defaultRouteForProfile[profile]} replace />;
+    }
+    // If no explicit grant and role doesn't allow, block
+    if (menuOverride !== true && !canAccess(route)) {
+      return <Navigate to={defaultRouteForProfile[profile]} replace />;
+    }
   }
 
   return <>{children}</>;
