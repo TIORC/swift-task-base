@@ -64,6 +64,18 @@ export default function AutomacoesPage() {
     return items.slice(0, 5);
   }, [automations]);
 
+  const blockerCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    activeBlockers.forEach(b => {
+      map[b.automation_id] = (map[b.automation_id] || 0) + 1;
+    });
+    return map;
+  }, [activeBlockers]);
+
+  const handleStatusChange = (id: string, newStatus: AutomationStatus) => {
+    updateAutomation.mutate({ id, status: newStatus } as any);
+  };
+
   const isReadOnly = profile === "gestor";
 
   if (isLoading) {
