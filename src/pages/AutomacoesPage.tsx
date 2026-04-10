@@ -22,6 +22,7 @@ export default function AutomacoesPage() {
   const { data: automations = [], isLoading } = useAutomations();
   const { data: profiles = [] } = useAllProfiles();
   const { data: activeBlockers = [] } = useAllBlockers();
+  const updateAutomation = useUpdateAutomation();
   const { profile } = useUserRole();
   const { user } = useAuth();
 
