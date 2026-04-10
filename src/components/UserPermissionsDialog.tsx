@@ -10,14 +10,16 @@ import { useAdminPermissions } from "@/hooks/usePermissions";
 
 const MENU_ITEMS = [
   { key: "/", label: "Dashboard" },
+  { key: "/manager", label: "Painel Gestor" },
   { key: "/kanban", label: "Kanban" },
   { key: "/tasks", label: "Tarefas" },
+  { key: "/support", label: "Chamados" },
+  { key: "/automacoes", label: "Automações" },
   { key: "/focus", label: "Modo Foco" },
   { key: "/dependencies", label: "Dependências" },
-  { key: "/automations", label: "Automações" },
+  { key: "/reports", label: "Relatórios" },
   { key: "/ranking", label: "Ranking" },
   { key: "/notifications", label: "Notificações" },
-  { key: "/manager", label: "Painel Gestor" },
 ];
 
 interface UserPermissionsDialogProps {
@@ -61,6 +63,7 @@ export function UserPermissionsDialog({
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Save all menu items that have been explicitly set (both enabled and disabled)
       const menuItems = Object.entries(menuState).map(([menu_key, enabled]) => ({
         menu_key,
         enabled,
@@ -79,17 +82,8 @@ export function UserPermissionsDialog({
     }
   };
 
-  const toggleMenu = (key: string) => {
-    setMenuState((prev) => {
-      const current = prev[key];
-      if (current === undefined) return { ...prev, [key]: false }; // first click = disable
-      if (current === false) {
-        const next = { ...prev };
-        delete next[key]; // remove override = default behavior
-        return next;
-      }
-      return { ...prev, [key]: false };
-    });
+  const toggleMenu = (key: string, checked: boolean) => {
+    setMenuState((prev) => ({ ...prev, [key]: checked }));
   };
 
   const toggleVisibility = (targetId: string) => {
@@ -155,18 +149,19 @@ export function UserPermissionsDialog({
 
             <TabsContent value="menu" className="space-y-3 mt-4">
               <p className="text-xs text-muted-foreground">
-                Desmarque para bloquear o acesso a itens do menu. Itens sem marcação usam o padrão do papel.
+                Desmarque para bloquear o acesso a itens do menu. Itens marcados ficam visíveis para o usuário.
               </p>
               <Separator />
               <div className="space-y-2">
                 {MENU_ITEMS.map((item) => {
-                  const isBlocked = menuState[item.key] === false;
+                  // If there's an explicit override, use it. Otherwise default to enabled.
+                  const isEnabled = menuState[item.key] !== undefined ? menuState[item.key] : true;
                   return (
                     <div key={item.key} className="flex items-center gap-3 rounded-lg p-2 hover:bg-muted/50">
                       <Checkbox
                         id={`menu-${item.key}`}
-                        checked={!isBlocked}
-                        onCheckedChange={() => toggleMenu(item.key)}
+                        checked={isEnabled}
+                        onCheckedChange={(checked) => toggleMenu(item.key, !!checked)}
                       />
                       <label htmlFor={`menu-${item.key}`} className="text-sm cursor-pointer">
                         {item.label}
