@@ -80,7 +80,9 @@ export function UserPermissionsDialog({
       loadUserMenuAccess(userId),
       loadUserTaskVisibility(userId),
     ]).then(([menuData, visData]) => {
+      // Initialize ALL menu items as enabled by default, then overlay DB records
       const menuMap: Record<string, boolean> = {};
+      MENU_ITEMS.forEach((item) => { menuMap[item.key] = true; });
       menuData.forEach((m: any) => { menuMap[m.menu_key] = m.enabled; });
       setMenuState(menuMap);
       setVisibleUserIds(visData.map((v: any) => v.target_user_id));
