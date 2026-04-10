@@ -93,7 +93,12 @@ export default function AutomacoesPage() {
         title="Gestão de Automações"
         description="Controle técnico e acompanhamento gerencial"
         icon={<Zap className="h-6 w-6" />}
-        actions={<CreateAutomationDialog profiles={profiles} />}
+        actions={
+          <div className="flex items-center gap-2">
+            <AutomationExport automations={filtered} profileMap={profileMap} blockerCounts={blockerCounts} />
+            <CreateAutomationDialog profiles={profiles} />
+          </div>
+        }
       />
 
       {/* Alerts */}
