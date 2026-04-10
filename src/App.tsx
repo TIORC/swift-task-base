@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { UserRoleProvider, useUserRole, defaultRouteForProfile } from "@/hooks/useUserRole";
 import { GlobalTimerProvider } from "@/hooks/useGlobalTimer";
 import { useMyMenuAccess } from "@/hooks/usePermissions";
+import { canAccessMenuRoute, getAccessibleFallbackRoute } from "@/lib/menu-access";
 import { AppLayout } from "@/components/AppLayout";
 import { Loader2 } from "lucide-react";
 
@@ -30,6 +31,19 @@ import AutomacoesPage from "./pages/AutomacoesPage";
 
 const queryClient = new QueryClient();
 
+function NoAccessibleMenuState() {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center p-6">
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 text-center shadow-sm">
+        <h1 className="text-lg font-semibold text-foreground">Nenhum menu liberado</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Peça para um administrador liberar ao menos um item do menu para a sua conta.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
 
@@ -46,7 +60,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <AppLayout>{children}</AppLayout>;
 }
 
-/** Wraps a page and redirects if the user's role cannot access this route */
 function RoleGate({ route, children }: { route: string; children: React.ReactNode }) {
   const { canAccess, loading, profile } = useUserRole();
   const { isMenuEnabled, loading: menuLoading } = useMyMenuAccess();
@@ -59,26 +72,27 @@ function RoleGate({ route, children }: { route: string; children: React.ReactNod
     );
   }
 
-  // Check per-user menu override first (admin bypasses all)
-  if (profile !== "admin") {
-    const menuOverride = isMenuEnabled(route);
-    if (menuOverride === false) {
-      return <Navigate to={defaultRouteForProfile[profile]} replace />;
-    }
-    // If no explicit grant and role doesn't allow, block
-    if (menuOverride !== true && !canAccess(route)) {
-      return <Navigate to={defaultRouteForProfile[profile]} replace />;
-    }
+  const hasAccess = canAccessMenuRoute({ route, profile, canAccess, isMenuEnabled });
+
+  if (!hasAccess) {
+    const fallbackRoute = getAccessibleFallbackRoute({
+      profile,
+      canAccess,
+      isMenuEnabled,
+      defaultRoute: defaultRouteForProfile[profile],
+    });
+
+    return fallbackRoute ? <Navigate to={fallbackRoute} replace /> : <NoAccessibleMenuState />;
   }
 
   return <>{children}</>;
 }
 
-/** Redirects "/" to the correct home page for the user's profile */
 function HomeRedirect() {
-  const { profile, loading } = useUserRole();
+  const { profile, loading, canAccess } = useUserRole();
+  const { isMenuEnabled, loading: menuLoading } = useMyMenuAccess();
 
-  if (loading) {
+  if (loading || menuLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -86,12 +100,16 @@ function HomeRedirect() {
     );
   }
 
-  // Admin and membro see their respective default pages
-  if (profile === "gestor") {
-    return <Navigate to="/manager" replace />;
-  }
+  const homeRoute = getAccessibleFallbackRoute({
+    profile,
+    canAccess,
+    isMenuEnabled,
+    defaultRoute: defaultRouteForProfile[profile],
+  });
 
-  // Admin and membro see the dashboard
+  if (!homeRoute) return <NoAccessibleMenuState />;
+  if (homeRoute !== "/") return <Navigate to={homeRoute} replace />;
+
   return <Dashboard />;
 }
 

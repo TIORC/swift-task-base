@@ -5,7 +5,6 @@ import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
-// Role hierarchy: admin > gestor/lider > member/dev
 export type RoleProfile = "admin" | "gestor" | "membro";
 
 interface UserRoleContextType {
@@ -28,7 +27,6 @@ const UserRoleContext = createContext<UserRoleContextType>({
   canAccess: () => false,
 });
 
-// Map routes to allowed profiles
 const routePermissions: Record<string, RoleProfile[]> = {
   "/": ["admin", "gestor", "membro"],
   "/kanban": ["admin", "gestor", "membro"],
@@ -45,7 +43,6 @@ const routePermissions: Record<string, RoleProfile[]> = {
   "/admin": ["admin"],
 };
 
-// Default route per profile
 export const defaultRouteForProfile: Record<RoleProfile, string> = {
   membro: "/kanban",
   gestor: "/manager",
@@ -64,35 +61,57 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!user) {
       setRoles([]);
       setLoading(false);
       return;
     }
 
-    const fetchRoles = async () => {
-      const { data } = await supabase
+    const fetchRoles = async (withLoading = false) => {
+      if (withLoading) setLoading(true);
+
+      const { data, error } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id);
 
-      setRoles(data?.map((r) => r.role) ?? []);
+      if (cancelled) return;
+
+      if (error) {
+        console.error("Erro ao carregar papéis do usuário", error);
+        setRoles([]);
+      } else {
+        setRoles(data?.map((item) => item.role) ?? []);
+      }
+
       setLoading(false);
     };
 
-    fetchRoles();
+    setRoles([]);
+    void fetchRoles(true);
 
-    // Listen for realtime role changes
+    const handleWindowFocus = () => {
+      void fetchRoles(false);
+    };
+
+    window.addEventListener("focus", handleWindowFocus);
+
     const channel = supabase
-      .channel("user-role-changes")
+      .channel(`user-role-changes-${user.id}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "user_roles", filter: `user_id=eq.${user.id}` },
-        () => fetchRoles()
+        () => {
+          void fetchRoles(false);
+        },
       )
       .subscribe();
 
     return () => {
+      cancelled = true;
+      window.removeEventListener("focus", handleWindowFocus);
       supabase.removeChannel(channel);
     };
   }, [user?.id]);
@@ -105,7 +124,7 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
   const canAccess = (route: string) => {
     if (isAdmin) return true;
     const allowed = routePermissions[route];
-    if (!allowed) return true; // unknown routes are accessible
+    if (!allowed) return true;
     return allowed.includes(profile);
   };
 
