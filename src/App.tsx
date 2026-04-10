@@ -26,6 +26,7 @@ import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
 import Reports from "./pages/Reports";
 import SupportTickets from "./pages/SupportTickets";
+import AutomacoesPage from "./pages/AutomacoesPage";
 
 const queryClient = new QueryClient();
 
@@ -108,6 +109,7 @@ const AppRoutes = () => (
     <Route path="/admin" element={<ProtectedRoute><RoleGate route="/admin"><AdminPanel /></RoleGate></ProtectedRoute>} />
     <Route path="/reports" element={<ProtectedRoute><RoleGate route="/reports"><Reports /></RoleGate></ProtectedRoute>} />
     <Route path="/support" element={<ProtectedRoute><RoleGate route="/support"><SupportTickets /></RoleGate></ProtectedRoute>} />
+    <Route path="/automacoes" element={<ProtectedRoute><RoleGate route="/automacoes"><AutomacoesPage /></RoleGate></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
