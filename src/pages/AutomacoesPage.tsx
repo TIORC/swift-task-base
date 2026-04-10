@@ -116,6 +116,9 @@ export default function AutomacoesPage() {
       {/* Summary Cards */}
       <AutomationSummaryCards automations={automations} />
 
+      {/* WIP Control */}
+      <WipControl automations={automations} profileMap={profileMap} wipLimit={3} />
+
       {/* Main Content with Tabs */}
       <Tabs defaultValue="board" className="space-y-4">
         <TabsList>
@@ -143,6 +146,7 @@ export default function AutomacoesPage() {
             automations={filtered}
             onSelect={setSelectedAutomation}
             profileMap={profileMap}
+            onStatusChange={handleStatusChange}
           />
         </TabsContent>
 
