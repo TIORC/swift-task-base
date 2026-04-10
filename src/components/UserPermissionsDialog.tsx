@@ -63,6 +63,7 @@ export function UserPermissionsDialog({
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Save all menu items that have been explicitly set (both enabled and disabled)
       const menuItems = Object.entries(menuState).map(([menu_key, enabled]) => ({
         menu_key,
         enabled,
