@@ -3,12 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, Eye, Menu, Lock, ShieldCheck, ShieldOff } from "lucide-react";
+import { Loader2, Eye, Menu, ShieldCheck, ShieldOff } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useAdminPermissions } from "@/hooks/usePermissions";
-import type { RoleProfile } from "@/hooks/useUserRole";
 
 const MENU_ITEMS = [
   { key: "/", label: "Dashboard" },
@@ -97,8 +95,6 @@ export function UserPermissionsDialog({
 
   const otherUsers = allUsers.filter((u) => u.id !== userId);
 
-  const profileLabel = userProfile === "admin" ? "Administrador" : userProfile === "gestor" ? "Líder" : "Membro";
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
@@ -125,68 +121,36 @@ export function UserPermissionsDialog({
             </TabsList>
 
             <TabsContent value="menu" className="space-y-3 mt-4">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">
-                  Controle quais itens do menu este usuário pode acessar.
-                </p>
-                <Badge variant="outline" className="text-[10px] shrink-0">
-                  Perfil: {profileLabel}
-                </Badge>
-              </div>
-
-              {/* Legend */}
-              <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <ShieldCheck className="h-3 w-3 text-emerald-500" /> Permitido pelo perfil
-                </span>
-                <span className="flex items-center gap-1">
-                  <Lock className="h-3 w-3 text-muted-foreground" /> Não disponível no perfil
-                </span>
-                <span className="flex items-center gap-1">
-                  <ShieldOff className="h-3 w-3 text-destructive" /> Bloqueado manualmente
-                </span>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Controle quais itens do menu este usuário pode acessar.
+              </p>
 
               <Separator />
 
               <div className="space-y-1">
                 {MENU_ITEMS.map((item) => {
-                  const allowedProfiles = routeDefaultProfiles[item.key] || [];
-                  const allowedByRole = allowedProfiles.includes(userProfile);
-                  const isEnabled = menuState[item.key] !== undefined ? menuState[item.key] : true;
-                  const isExplicitlyBlocked = menuState[item.key] === false;
+                  const isEnabled = menuState[item.key] !== false;
 
                   return (
                     <div
                       key={item.key}
                       className={`flex items-center gap-3 rounded-lg p-2 transition-colors ${
-                        !allowedByRole
-                          ? "opacity-50 bg-muted/20"
-                          : isExplicitlyBlocked
-                          ? "bg-destructive/5"
-                          : "hover:bg-muted/50"
+                        !isEnabled ? "bg-destructive/5" : "hover:bg-muted/50"
                       }`}
                     >
                       <Checkbox
                         id={`menu-${item.key}`}
                         checked={isEnabled}
                         onCheckedChange={(checked) => toggleMenu(item.key, !!checked)}
-                        disabled={!allowedByRole}
                       />
                       <label
                         htmlFor={`menu-${item.key}`}
-                        className={`text-sm cursor-pointer flex-1 ${!allowedByRole ? "line-through" : ""}`}
+                        className="text-sm cursor-pointer flex-1"
                       >
                         {item.label}
                       </label>
 
-                      {/* Status indicators */}
-                      {!allowedByRole ? (
-                        <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                          <Lock className="h-3 w-3" />
-                          Sem acesso
-                        </span>
-                      ) : isExplicitlyBlocked ? (
+                      {!isEnabled ? (
                         <span className="flex items-center gap-1 text-[10px] text-destructive">
                           <ShieldOff className="h-3 w-3" />
                           Bloqueado
