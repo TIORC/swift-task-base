@@ -14,7 +14,7 @@ export const MENU_ACCESS_ITEMS = [
   { key: "/notifications", label: "Notificações" },
 ] as const;
 
-const MENU_ACCESS_KEYS = new Set(MENU_ACCESS_ITEMS.map((item) => item.key));
+const MENU_ACCESS_KEYS = new Set<string>(MENU_ACCESS_ITEMS.map((item) => item.key));
 
 const FALLBACK_ROUTES_BY_PROFILE: Record<RoleProfile, string[]> = {
   admin: ["/", "/manager", "/kanban", "/tasks", "/support", "/automacoes", "/focus", "/dependencies", "/reports", "/ranking", "/notifications", "/admin"],
