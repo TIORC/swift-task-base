@@ -17,22 +17,52 @@ export function useMyMenuAccess() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) { setMenuAccess([]); setLoading(false); return; }
+    let cancelled = false;
 
-    const fetch = async () => {
-      const { data } = await supabase
+    if (!user) {
+      setMenuAccess([]);
+      setLoading(false);
+      return;
+    }
+
+    const fetchMenuAccess = async (withLoading = false) => {
+      if (withLoading) setLoading(true);
+
+      const { data, error } = await supabase
         .from("user_menu_access")
         .select("menu_key, enabled")
         .eq("user_id", user.id);
-      setMenuAccess((data as MenuAccessEntry[]) ?? []);
+
+      if (cancelled) return;
+
+      if (error) {
+        console.error("Erro ao carregar permissões de menu", error);
+        setMenuAccess([]);
+      } else {
+        setMenuAccess((data as MenuAccessEntry[]) ?? []);
+      }
+
       setLoading(false);
     };
-    fetch();
+
+    setMenuAccess([]);
+    void fetchMenuAccess(true);
+
+    const handleWindowFocus = () => {
+      void fetchMenuAccess(false);
+    };
+
+    window.addEventListener("focus", handleWindowFocus);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", handleWindowFocus);
+    };
   }, [user?.id]);
 
   const isMenuEnabled = (key: string): boolean | null => {
     const entry = menuAccess.find((m) => m.menu_key === key);
-    if (!entry) return null; // no override
+    if (!entry) return null;
     return entry.enabled;
   };
 
@@ -45,7 +75,11 @@ export function useMyTaskVisibility() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) { setVisibleUsers([]); setLoading(false); return; }
+    if (!user) {
+      setVisibleUsers([]);
+      setLoading(false);
+      return;
+    }
 
     const fetch = async () => {
       const { data } = await supabase
@@ -55,58 +89,59 @@ export function useMyTaskVisibility() {
       setVisibleUsers((data as TaskVisibilityEntry[])?.map((d) => d.target_user_id) ?? []);
       setLoading(false);
     };
-    fetch();
+
+    void fetch();
   }, [user?.id]);
 
-  // Check if current user can see a specific user's tasks
-  // Returns true if: no restrictions set (empty = see own only), or target is in list, or target is self
   const canViewUserTasks = (targetUserId: string): boolean => {
     if (!user) return false;
-    if (targetUserId === user.id) return true; // always see own tasks
+    if (targetUserId === user.id) return true;
     return visibleUsers.includes(targetUserId);
   };
 
   return { visibleUsers, loading, canViewUserTasks };
 }
 
-// Admin hook to manage all permissions
 export function useAdminPermissions() {
   const loadUserMenuAccess = async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("user_menu_access")
       .select("*")
       .eq("user_id", userId);
+
+    if (error) throw error;
     return data ?? [];
   };
 
   const loadUserTaskVisibility = async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("user_task_visibility")
       .select("*")
       .eq("user_id", userId);
+
+    if (error) throw error;
     return data ?? [];
   };
 
   const saveMenuAccess = async (userId: string, items: { menu_key: string; enabled: boolean }[]) => {
-    // Delete existing
     const { error: delError } = await supabase.from("user_menu_access").delete().eq("user_id", userId);
     if (delError) throw delError;
-    // Insert new
+
     if (items.length > 0) {
       const { error } = await supabase.from("user_menu_access").insert(
-        items.map((i) => ({ user_id: userId, menu_key: i.menu_key, enabled: i.enabled }))
+        items.map((item) => ({ user_id: userId, menu_key: item.menu_key, enabled: item.enabled })),
       );
       if (error) throw error;
     }
   };
 
   const saveTaskVisibility = async (userId: string, targetUserIds: string[]) => {
-    // Delete existing
-    await supabase.from("user_task_visibility").delete().eq("user_id", userId);
-    // Insert new
+    const { error: delError } = await supabase.from("user_task_visibility").delete().eq("user_id", userId);
+    if (delError) throw delError;
+
     if (targetUserIds.length > 0) {
       const { error } = await supabase.from("user_task_visibility").insert(
-        targetUserIds.map((tid) => ({ user_id: userId, target_user_id: tid }))
+        targetUserIds.map((targetUserId) => ({ user_id: userId, target_user_id: targetUserId })),
       );
       if (error) throw error;
     }

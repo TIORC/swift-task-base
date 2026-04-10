@@ -1,11 +1,11 @@
-import { LayoutDashboard, Columns3, ListTodo, LogOut, Zap, Trophy, Target, GitBranch, Gauge, ShieldCheck, BarChart3, Headset, Bot } from "lucide-react";
+import { LayoutDashboard, Columns3, ListTodo, LogOut, Zap, Trophy, Target, GitBranch, Gauge, ShieldCheck, BarChart3, Headset, Bot, Loader2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
-
 import { useMyMenuAccess } from "@/hooks/usePermissions";
+import { canAccessMenuRoute } from "@/lib/menu-access";
 import {
   Sidebar,
   SidebarContent,
@@ -41,7 +41,6 @@ const allNavItems = [
   { title: "Administração", url: "/admin", icon: ShieldCheck, profiles: ["admin"] as RoleProfile[] },
 ];
 
-// Labels per profile for the sidebar group
 const groupLabels: Record<string, string> = {
   membro: "Execução",
   gestor: "Operação & Gestão",
@@ -53,11 +52,10 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { user, signOut } = useAuth();
-  const { profile } = useUserRole();
-  const { isMenuEnabled } = useMyMenuAccess();
+  const { profile, canAccess, loading: roleLoading } = useUserRole();
+  const { isMenuEnabled, loading: menuLoading } = useMyMenuAccess();
   const { resolvedTheme } = useTheme();
   const currentLogo = resolvedTheme === "dark" ? logoOrcomaDark : logoOrcomaLight;
-  
 
   const isActive = (path: string) =>
     path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
@@ -66,19 +64,19 @@ export function AppSidebar() {
     ? user.user_metadata.full_name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
     : user?.email?.slice(0, 2).toUpperCase() ?? "U";
 
-  // Filter nav items based on user profile + per-user menu overrides
-  const visibleItems = allNavItems.filter((item) => {
-    // Admin always sees everything
-    if (profile === "admin") return true;
-    // Check per-user menu override first — admin can grant access beyond role
-    const override = isMenuEnabled(item.url);
-    if (override === false) return false; // explicitly blocked
-    if (override === true) return true; // explicitly granted (even if role doesn't include it)
-    // No override — fall back to role-based access
-    return item.profiles.includes(profile);
-  });
+  const visibleItems = roleLoading || menuLoading
+    ? []
+    : allNavItems.filter((item) =>
+        canAccessMenuRoute({
+          route: item.url,
+          profile,
+          canAccess,
+          isMenuEnabled,
+        }),
+      );
 
-  const profileLabel = profile === "admin" ? "Administrador" : profile === "gestor" ? "Líder" : "Membro";
+  const groupLabel = roleLoading ? "Carregando" : groupLabels[profile] || "Menu";
+  const profileLabel = roleLoading ? "Carregando" : profile === "admin" ? "Administrador" : profile === "gestor" ? "Líder" : "Membro";
 
   return (
     <Sidebar collapsible="icon">
@@ -96,29 +94,35 @@ export function AppSidebar() {
       <SidebarContent className="px-2">
         <SidebarGroup>
           <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold px-3 mb-1">
-            {groupLabels[profile] || "Menu"}
+            {groupLabel}
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {visibleItems.map((item) => {
-                const active = isActive(item.url);
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={active}>
-                      <NavLink
-                        to={item.url}
-                        end={item.url === "/"}
-                        className="rounded-lg transition-all duration-150 hover:bg-sidebar-accent"
-                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        {!collapsed && <span className="text-sm">{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
+            {roleLoading || menuLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <SidebarMenu>
+                {visibleItems.map((item) => {
+                  const active = isActive(item.url);
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild isActive={active}>
+                        <NavLink
+                          to={item.url}
+                          end={item.url === "/"}
+                          className="rounded-lg transition-all duration-150 hover:bg-sidebar-accent"
+                          activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                        >
+                          <item.icon className="h-4 w-4" />
+                          {!collapsed && <span className="text-sm">{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            )}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

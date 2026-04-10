@@ -7,20 +7,7 @@ import { Loader2, Eye, Menu, ShieldCheck, ShieldOff } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useAdminPermissions } from "@/hooks/usePermissions";
-
-const MENU_ITEMS = [
-  { key: "/", label: "Dashboard" },
-  { key: "/manager", label: "Painel Gestor" },
-  { key: "/kanban", label: "Kanban" },
-  { key: "/tasks", label: "Tarefas" },
-  { key: "/support", label: "Chamados" },
-  { key: "/automacoes", label: "Automações" },
-  { key: "/focus", label: "Modo Foco" },
-  { key: "/dependencies", label: "Dependências" },
-  { key: "/reports", label: "Relatórios" },
-  { key: "/ranking", label: "Ranking" },
-  { key: "/notifications", label: "Notificações" },
-];
+import { MENU_ACCESS_ITEMS } from "@/lib/menu-access";
 
 interface UserPermissionsDialogProps {
   open: boolean;
@@ -45,21 +32,36 @@ export function UserPermissionsDialog({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!open || !userId) return;
     setLoading(true);
 
-    Promise.all([
-      loadUserMenuAccess(userId),
-      loadUserTaskVisibility(userId),
-    ]).then(([menuData, visData]) => {
-      // Initialize ALL menu items as enabled by default, then overlay DB records
-      const menuMap: Record<string, boolean> = {};
-      MENU_ITEMS.forEach((item) => { menuMap[item.key] = true; });
-      menuData.forEach((m: any) => { menuMap[m.menu_key] = m.enabled; });
-      setMenuState(menuMap);
-      setVisibleUserIds(visData.map((v: any) => v.target_user_id));
-      setLoading(false);
-    });
+    Promise.all([loadUserMenuAccess(userId), loadUserTaskVisibility(userId)])
+      .then(([menuData, visData]) => {
+        if (cancelled) return;
+
+        const menuMap: Record<string, boolean> = {};
+        MENU_ACCESS_ITEMS.forEach((item) => {
+          menuMap[item.key] = true;
+        });
+        menuData.forEach((item: any) => {
+          menuMap[item.menu_key] = item.enabled;
+        });
+
+        setMenuState(menuMap);
+        setVisibleUserIds(visData.map((item: any) => item.target_user_id));
+        setLoading(false);
+      })
+      .catch((error: any) => {
+        if (cancelled) return;
+        toast.error(error.message ?? "Erro ao carregar permissões");
+        setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [open, userId]);
 
   const handleSave = async () => {
@@ -70,14 +72,11 @@ export function UserPermissionsDialog({
         enabled,
       }));
 
-      await Promise.all([
-        saveMenuAccess(userId, menuItems),
-        saveTaskVisibility(userId, visibleUserIds),
-      ]);
+      await Promise.all([saveMenuAccess(userId, menuItems), saveTaskVisibility(userId, visibleUserIds)]);
       toast.success(`Permissões de ${userEmail} salvas!`);
       onOpenChange(false);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (error: any) {
+      toast.error(error.message);
     } finally {
       setSaving(false);
     }
@@ -89,11 +88,11 @@ export function UserPermissionsDialog({
 
   const toggleVisibility = (targetId: string) => {
     setVisibleUserIds((prev) =>
-      prev.includes(targetId) ? prev.filter((id) => id !== targetId) : [...prev, targetId]
+      prev.includes(targetId) ? prev.filter((id) => id !== targetId) : [...prev, targetId],
     );
   };
 
-  const otherUsers = allUsers.filter((u) => u.id !== userId);
+  const otherUsers = allUsers.filter((user) => user.id !== userId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -128,7 +127,7 @@ export function UserPermissionsDialog({
               <Separator />
 
               <div className="space-y-1">
-                {MENU_ITEMS.map((item) => {
+                {MENU_ACCESS_ITEMS.map((item) => {
                   const isEnabled = menuState[item.key] !== false;
 
                   return (
@@ -143,10 +142,7 @@ export function UserPermissionsDialog({
                         checked={isEnabled}
                         onCheckedChange={(checked) => toggleMenu(item.key, !!checked)}
                       />
-                      <label
-                        htmlFor={`menu-${item.key}`}
-                        className="text-sm cursor-pointer flex-1"
-                      >
+                      <label htmlFor={`menu-${item.key}`} className="text-sm cursor-pointer flex-1">
                         {item.label}
                       </label>
 
@@ -156,7 +152,7 @@ export function UserPermissionsDialog({
                           Bloqueado
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1 text-[10px] text-emerald-500">
+                        <span className="flex items-center gap-1 text-[10px] text-primary">
                           <ShieldCheck className="h-3 w-3" />
                           Liberado
                         </span>
@@ -176,18 +172,16 @@ export function UserPermissionsDialog({
                 <p className="text-sm text-muted-foreground py-4 text-center">Nenhum outro usuário</p>
               ) : (
                 <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {otherUsers.map((u) => (
-                    <div key={u.id} className="flex items-center gap-3 rounded-lg p-2 hover:bg-muted/50">
+                  {otherUsers.map((user) => (
+                    <div key={user.id} className="flex items-center gap-3 rounded-lg p-2 hover:bg-muted/50">
                       <Checkbox
-                        id={`vis-${u.id}`}
-                        checked={visibleUserIds.includes(u.id)}
-                        onCheckedChange={() => toggleVisibility(u.id)}
+                        id={`vis-${user.id}`}
+                        checked={visibleUserIds.includes(user.id)}
+                        onCheckedChange={() => toggleVisibility(user.id)}
                       />
-                      <label htmlFor={`vis-${u.id}`} className="text-sm cursor-pointer flex-1">
-                        <span className="font-medium">{u.full_name || u.email}</span>
-                        {u.full_name && (
-                          <span className="text-muted-foreground text-xs ml-2">{u.email}</span>
-                        )}
+                      <label htmlFor={`vis-${user.id}`} className="text-sm cursor-pointer flex-1">
+                        <span className="font-medium">{user.full_name || user.email}</span>
+                        {user.full_name && <span className="text-muted-foreground text-xs ml-2">{user.email}</span>}
                       </label>
                     </div>
                   ))}
