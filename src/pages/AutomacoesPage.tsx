@@ -96,7 +96,7 @@ export default function AutomacoesPage() {
         actions={
           <div className="flex items-center gap-2">
             <AutomationExport automations={filtered} profileMap={profileMap} blockerCounts={blockerCounts} />
-            <CreateAutomationDialog profiles={profiles} />
+            {!isReadOnly && <CreateAutomationDialog profiles={profiles} />}
           </div>
         }
       />
@@ -146,7 +146,8 @@ export default function AutomacoesPage() {
             automations={filtered}
             onSelect={setSelectedAutomation}
             profileMap={profileMap}
-            onStatusChange={handleStatusChange}
+            onStatusChange={isReadOnly ? undefined : handleStatusChange}
+            isReadOnly={isReadOnly}
           />
         </TabsContent>
 

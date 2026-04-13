@@ -2,6 +2,7 @@ import { useState } from "react";
 import { DragDropContext, Droppable, DropResult } from "@hello-pangea/dnd";
 import { useTasks, useUpdateTask, COLUMNS, TaskStatus, Task } from "@/hooks/useTasks";
 import { useTaskFilter } from "@/hooks/useTaskFilter";
+import { useUserRole } from "@/hooks/useUserRole";
 import { TaskCard } from "@/components/TaskCard";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
@@ -14,6 +15,7 @@ const Kanban = () => {
   const { data: tasks, isLoading } = useTasks();
   const { filteredTasks, selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(tasks);
   const updateTask = useUpdateTask();
+  const { isGestor } = useUserRole();
   const [createOpen, setCreateOpen] = useState(false);
   const [createStatus, setCreateStatus] = useState<TaskStatus>("backlog");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -27,6 +29,7 @@ const Kanban = () => {
   );
 
   const onDragEnd = (result: DropResult) => {
+    if (isGestor) return; // read-only
     if (!result.destination) return;
     const { draggableId, destination } = result;
     const newStatus = destination.droppableId as TaskStatus;
@@ -50,17 +53,19 @@ const Kanban = () => {
     <div className="space-y-6">
       <PageHeader
         title="Kanban"
-        description="Arraste as tarefas entre colunas para atualizar o status."
+        description={isGestor ? "Visualização do quadro de tarefas (somente leitura)." : "Arraste as tarefas entre colunas para atualizar o status."}
         icon={<Columns3 className="h-5 w-5" />}
         actions={
           <div className="flex items-center gap-2">
             {canFilter && (
               <TaskFilterSelect value={selectedUserId} onChange={setSelectedUserId} />
             )}
-            <Button onClick={() => handleAddToColumn("backlog")} className="h-9">
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Tarefa
-            </Button>
+            {!isGestor && (
+              <Button onClick={() => handleAddToColumn("backlog")} className="h-9">
+                <Plus className="mr-2 h-4 w-4" />
+                Nova Tarefa
+              </Button>
+            )}
           </div>
         }
       />
@@ -77,16 +82,18 @@ const Kanban = () => {
                     <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                       {colTasks.length}
                     </span>
-                    <button
-                      onClick={() => handleAddToColumn(col.status)}
-                      className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </button>
+                    {!isGestor && (
+                      <button
+                        onClick={() => handleAddToColumn(col.status)}
+                        className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                <Droppable droppableId={col.status}>
+                <Droppable droppableId={col.status} isDropDisabled={isGestor}>
                   {(provided, snapshot) => (
                     <div
                       ref={provided.innerRef}
@@ -98,7 +105,7 @@ const Kanban = () => {
                       }`}
                     >
                       {colTasks.map((task, i) => (
-                        <TaskCard key={task.id} task={task} index={i} onClick={setSelectedTask} />
+                        <TaskCard key={task.id} task={task} index={i} onClick={setSelectedTask} isDragDisabled={isGestor} />
                       ))}
                       {provided.placeholder}
                       {colTasks.length === 0 && !snapshot.isDraggingOver && (
@@ -113,8 +120,8 @@ const Kanban = () => {
         </div>
       </DragDropContext>
 
-      <CreateTaskDialog open={createOpen} onOpenChange={setCreateOpen} defaultStatus={createStatus} />
-      <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} />
+      {!isGestor && <CreateTaskDialog open={createOpen} onOpenChange={setCreateOpen} defaultStatus={createStatus} />}
+      <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} isReadOnly={isGestor} />
     </div>
   );
 };

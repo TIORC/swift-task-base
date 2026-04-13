@@ -1,4 +1,4 @@
-type RoleProfile = "admin" | "gestor" | "membro";
+import type { RoleProfile } from "@/hooks/useUserRole";
 
 export const MENU_ACCESS_ITEMS = [
   { key: "/", label: "Dashboard" },
@@ -18,7 +18,8 @@ const MENU_ACCESS_KEYS = new Set<string>(MENU_ACCESS_ITEMS.map((item) => item.ke
 
 const FALLBACK_ROUTES_BY_PROFILE: Record<RoleProfile, string[]> = {
   admin: ["/", "/manager", "/kanban", "/tasks", "/support", "/automacoes", "/focus", "/dependencies", "/reports", "/ranking", "/notifications", "/admin"],
-  gestor: ["/manager", "/", "/kanban", "/tasks", "/automacoes", "/support", "/reports", "/ranking", "/focus", "/dependencies", "/notifications"],
+  gestor: ["/manager", "/", "/kanban", "/tasks", "/automacoes", "/reports", "/ranking", "/notifications"],
+  lider: ["/manager", "/", "/kanban", "/tasks", "/automacoes", "/support", "/reports", "/ranking", "/focus", "/dependencies", "/notifications"],
   membro: ["/kanban", "/tasks", "/automacoes", "/focus", "/dependencies", "/reports", "/notifications", "/"],
 };
 

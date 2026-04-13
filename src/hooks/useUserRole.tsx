@@ -5,7 +5,7 @@ import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
-export type RoleProfile = "admin" | "gestor" | "membro";
+export type RoleProfile = "admin" | "gestor" | "lider" | "membro";
 
 interface UserRoleContextType {
   roles: AppRole[];
@@ -13,6 +13,7 @@ interface UserRoleContextType {
   loading: boolean;
   isAdmin: boolean;
   isGestor: boolean;
+  isLider: boolean;
   isMembro: boolean;
   canAccess: (route: string) => boolean;
 }
@@ -23,35 +24,37 @@ const UserRoleContext = createContext<UserRoleContextType>({
   loading: true,
   isAdmin: false,
   isGestor: false,
+  isLider: false,
   isMembro: true,
   canAccess: () => false,
 });
 
 const routePermissions: Record<string, RoleProfile[]> = {
-  "/": ["admin", "gestor", "membro"],
-  "/kanban": ["admin", "gestor", "membro"],
-  "/tasks": ["admin", "gestor", "membro"],
-  "/focus": ["admin", "gestor", "membro"],
-  "/notifications": ["admin", "gestor", "membro"],
-  "/dependencies": ["admin", "gestor", "membro"],
-  "/automations": ["admin", "gestor"],
-  "/automacoes": ["admin", "gestor", "membro"],
-  "/ranking": ["admin", "gestor"],
-  "/manager": ["admin", "gestor"],
-  "/reports": ["admin", "gestor", "membro"],
-  "/support": ["admin", "gestor"],
+  "/": ["admin", "gestor", "lider", "membro"],
+  "/kanban": ["admin", "gestor", "lider", "membro"],
+  "/tasks": ["admin", "gestor", "lider", "membro"],
+  "/focus": ["admin", "lider", "membro"],
+  "/notifications": ["admin", "gestor", "lider", "membro"],
+  "/dependencies": ["admin", "lider", "membro"],
+  "/automacoes": ["admin", "gestor", "lider", "membro"],
+  "/ranking": ["admin", "gestor", "lider"],
+  "/manager": ["admin", "gestor", "lider"],
+  "/reports": ["admin", "gestor", "lider", "membro"],
+  "/support": ["admin", "gestor", "lider"],
   "/admin": ["admin"],
 };
 
 export const defaultRouteForProfile: Record<RoleProfile, string> = {
   membro: "/kanban",
+  lider: "/manager",
   gestor: "/manager",
   admin: "/",
 };
 
 function resolveProfile(roles: AppRole[]): RoleProfile {
   if (roles.includes("admin")) return "admin";
-  if (roles.includes("gestor") || roles.includes("lider")) return "gestor";
+  if (roles.includes("gestor")) return "gestor";
+  if (roles.includes("lider")) return "lider";
   return "membro";
 }
 
@@ -119,6 +122,7 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
   const profile = resolveProfile(roles);
   const isAdmin = profile === "admin";
   const isGestor = profile === "gestor";
+  const isLider = profile === "lider";
   const isMembro = profile === "membro";
 
   const canAccess = (route: string) => {
@@ -129,7 +133,7 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <UserRoleContext.Provider value={{ roles, profile, loading, isAdmin, isGestor, isMembro, canAccess }}>
+    <UserRoleContext.Provider value={{ roles, profile, loading, isAdmin, isGestor, isLider, isMembro, canAccess }}>
       {children}
     </UserRoleContext.Provider>
   );

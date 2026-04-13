@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useTasks, useDeleteTask, useUpdateTask, Task, COLUMNS } from "@/hooks/useTasks";
 import { useTaskFilter } from "@/hooks/useTaskFilter";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useGlobalTimer } from "@/hooks/useGlobalTimer";
 import { formatTime, formatMinutes } from "@/hooks/useTimeTracker";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,6 +46,7 @@ const PRIORITY_CHIPS = [
 const Tasks = () => {
   const { data: tasks, isLoading } = useTasks();
   const { filteredTasks, selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(tasks);
+  const { isGestor } = useUserRole();
   const deleteTask = useDeleteTask();
   const updateTask = useUpdateTask();
   const { user } = useAuth();
@@ -124,10 +126,12 @@ const Tasks = () => {
             {canFilter && (
               <TaskFilterSelect value={selectedUserId} onChange={setSelectedUserId} />
             )}
-            <Button onClick={() => setCreateOpen(true)} className="h-9">
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Tarefa
-            </Button>
+            {!isGestor && (
+              <Button onClick={() => setCreateOpen(true)} className="h-9">
+                <Plus className="mr-2 h-4 w-4" />
+                Nova Tarefa
+              </Button>
+            )}
           </div>
         }
       />
@@ -254,7 +258,7 @@ const Tasks = () => {
                 <StatusBadge type="status" value={task.status} />
                 <StatusBadge type="priority" value={task.priority} />
 
-                {isMyTask && isActive && (
+                {!isGestor && isMyTask && isActive && (
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     {isTimerOnThis && (
                       <span className="text-sm font-mono font-bold text-primary animate-pulse">
@@ -289,7 +293,7 @@ const Tasks = () => {
                   </div>
                 )}
 
-                {(!isMyTask || !isActive) && (task.total_minutes || 0) > 0 && (
+                {(isGestor || !isMyTask || !isActive) && (task.total_minutes || 0) > 0 && (
                   <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
                     <Clock className="h-3 w-3" />
                     {hours > 0 ? `${hours}h ${mins}m` : `${mins}m`}
@@ -304,7 +308,7 @@ const Tasks = () => {
                   </Avatar>
                 )}
 
-                {isMyTask && isActive && (
+                {!isGestor && isMyTask && isActive && (
                   <Button
                     variant="ghost"
                     size="icon"
@@ -316,22 +320,24 @@ const Tasks = () => {
                   </Button>
                 )}
 
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive transition-colors"
-                  onClick={(e) => { e.stopPropagation(); deleteTask.mutate(task.id); }}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                {!isGestor && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                    onClick={(e) => { e.stopPropagation(); deleteTask.mutate(task.id); }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
-      <CreateTaskDialog open={createOpen} onOpenChange={setCreateOpen} />
-      <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} />
+      {!isGestor && <CreateTaskDialog open={createOpen} onOpenChange={setCreateOpen} />}
+      <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} isReadOnly={isGestor} />
     </div>
   );
 };
