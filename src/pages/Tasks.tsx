@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useTasks, useDeleteTask, useUpdateTask, Task, COLUMNS } from "@/hooks/useTasks";
 import { useTaskFilter } from "@/hooks/useTaskFilter";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useGlobalTimer } from "@/hooks/useGlobalTimer";
 import { formatTime, formatMinutes } from "@/hooks/useTimeTracker";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,6 +46,7 @@ const PRIORITY_CHIPS = [
 const Tasks = () => {
   const { data: tasks, isLoading } = useTasks();
   const { filteredTasks, selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(tasks);
+  const { isGestor } = useUserRole();
   const deleteTask = useDeleteTask();
   const updateTask = useUpdateTask();
   const { user } = useAuth();
