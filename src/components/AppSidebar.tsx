@@ -28,22 +28,23 @@ import logoOrcomaDark from "@/assets/logo-orcoma-dark.png";
 import type { RoleProfile } from "@/hooks/useUserRole";
 
 const allNavItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
-  { title: "Painel Gestor", url: "/manager", icon: Gauge, profiles: ["admin", "gestor"] as RoleProfile[] },
-  { title: "Kanban", url: "/kanban", icon: Columns3, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
-  { title: "Tarefas", url: "/tasks", icon: ListTodo, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
-  { title: "Chamados", url: "/support", icon: Headset, profiles: ["admin", "gestor"] as RoleProfile[] },
-  { title: "Automações", url: "/automacoes", icon: Bot, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
-  { title: "Modo Foco", url: "/focus", icon: Target, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
-  { title: "Dependências", url: "/dependencies", icon: GitBranch, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
-  { title: "Relatórios", url: "/reports", icon: BarChart3, profiles: ["admin", "gestor", "membro"] as RoleProfile[] },
-  { title: "Ranking", url: "/ranking", icon: Trophy, profiles: ["admin", "gestor"] as RoleProfile[] },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, profiles: ["admin", "gestor", "lider", "membro"] as RoleProfile[] },
+  { title: "Painel Gestor", url: "/manager", icon: Gauge, profiles: ["admin", "gestor", "lider"] as RoleProfile[] },
+  { title: "Kanban", url: "/kanban", icon: Columns3, profiles: ["admin", "gestor", "lider", "membro"] as RoleProfile[] },
+  { title: "Tarefas", url: "/tasks", icon: ListTodo, profiles: ["admin", "gestor", "lider", "membro"] as RoleProfile[] },
+  { title: "Chamados", url: "/support", icon: Headset, profiles: ["admin", "gestor", "lider"] as RoleProfile[] },
+  { title: "Automações", url: "/automacoes", icon: Bot, profiles: ["admin", "gestor", "lider", "membro"] as RoleProfile[] },
+  { title: "Modo Foco", url: "/focus", icon: Target, profiles: ["admin", "lider", "membro"] as RoleProfile[] },
+  { title: "Dependências", url: "/dependencies", icon: GitBranch, profiles: ["admin", "lider", "membro"] as RoleProfile[] },
+  { title: "Relatórios", url: "/reports", icon: BarChart3, profiles: ["admin", "gestor", "lider", "membro"] as RoleProfile[] },
+  { title: "Ranking", url: "/ranking", icon: Trophy, profiles: ["admin", "gestor", "lider"] as RoleProfile[] },
   { title: "Administração", url: "/admin", icon: ShieldCheck, profiles: ["admin"] as RoleProfile[] },
 ];
 
 const groupLabels: Record<string, string> = {
   membro: "Execução",
-  gestor: "Operação & Gestão",
+  lider: "Operação & Gestão",
+  gestor: "Acompanhamento",
   admin: "Sistema",
 };
 
@@ -141,7 +142,7 @@ export function AppSidebar() {
                 {user?.user_metadata?.full_name || user?.email}
               </p>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{profileLabel}</p>
-              {(profile === "membro" || profile === "gestor") && <UserXPBadge />}
+              {(profile === "membro" || profile === "lider") && <UserXPBadge />}
             </div>
           )}
           <Button
