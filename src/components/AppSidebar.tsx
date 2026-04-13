@@ -76,7 +76,7 @@ export function AppSidebar() {
       );
 
   const groupLabel = roleLoading ? "Carregando" : groupLabels[profile] || "Menu";
-  const profileLabel = roleLoading ? "Carregando" : profile === "admin" ? "Administrador" : profile === "gestor" ? "Líder" : "Membro";
+  const profileLabel = roleLoading ? "Carregando" : profile === "admin" ? "Administrador" : profile === "gestor" ? "Gestor" : profile === "lider" ? "Líder" : "Membro";
 
   return (
     <Sidebar collapsible="icon">
