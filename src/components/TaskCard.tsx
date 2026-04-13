@@ -10,9 +10,10 @@ interface TaskCardProps {
   task: Task;
   index: number;
   onClick?: (task: Task) => void;
+  isDragDisabled?: boolean;
 }
 
-export function TaskCard({ task, index, onClick }: TaskCardProps) {
+export function TaskCard({ task, index, onClick, isDragDisabled }: TaskCardProps) {
   const initials = task.profiles?.full_name
     ? task.profiles.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
     : null;
@@ -24,7 +25,7 @@ export function TaskCard({ task, index, onClick }: TaskCardProps) {
   const createdDate = format(new Date(task.created_at), "dd MMM", { locale: ptBR });
 
   return (
-    <Draggable draggableId={task.id} index={index}>
+    <Draggable draggableId={task.id} index={index} isDragDisabled={isDragDisabled}>
       {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
