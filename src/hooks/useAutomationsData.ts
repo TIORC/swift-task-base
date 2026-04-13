@@ -248,6 +248,11 @@ export function useCreateBlocker() {
         created_by: user!.id,
       } as any);
       if (error) throw error;
+
+      if (values.automation_id) {
+        const { data: auto } = await supabase.from("automations").select("title").eq("id", values.automation_id).single();
+        await notifyGestors(auto?.title || "Automação", "bloqueada", user!.id, values.automation_id);
+      }
     },
     onSuccess: (_, v) => {
       qc.invalidateQueries({ queryKey: ["automation_blockers", v.automation_id] });
