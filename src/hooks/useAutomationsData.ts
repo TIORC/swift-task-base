@@ -71,13 +71,14 @@ export function useCreateAutomation() {
         .single();
       if (error) throw error;
 
-      // Create timeline event
       await supabase.from("automation_events").insert({
         automation_id: data.id,
         event_type: "created",
         description: "Automação criada",
         user_id: user!.id,
       } as any);
+
+      await notifyGestors(data.title, "criada", user!.id, data.id);
 
       return data;
     },
@@ -95,10 +96,15 @@ export function useUpdateAutomation() {
 
   return useMutation({
     mutationFn: async ({ id, ...values }: Partial<Automation> & { id: string }) => {
+      // Fetch current automation for notification context
+      const { data: current } = await supabase.from("automations").select("title, status, assigned_to").eq("id", id).single();
+
       const { error } = await supabase.from("automations").update(values as any).eq("id", id);
       if (error) throw error;
 
-      if (values.status) {
+      const changes: string[] = [];
+
+      if (values.status && values.status !== current?.status) {
         await supabase.from("automation_events").insert({
           automation_id: id,
           event_type: "status_changed",
@@ -106,7 +112,16 @@ export function useUpdateAutomation() {
           user_id: user!.id,
           metadata: { new_status: values.status },
         } as any);
+        changes.push(`movida para ${values.status}`);
       }
+
+      if (values.assigned_to !== undefined && values.assigned_to !== current?.assigned_to) {
+        changes.push("teve o responsável alterado");
+      }
+
+      const title = current?.title || "Automação";
+      const action = changes.length > 0 ? changes.join(" e ") : "atualizada";
+      await notifyGestors(title, action, user!.id, id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automations"] });
