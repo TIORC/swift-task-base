@@ -95,6 +95,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
         </DialogHeader>
 
         {/* Timer - Prominent */}
+        {!isReadOnly && (
         <div className="mx-6 rounded-xl border border-border bg-muted/30 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -120,6 +121,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
             </div>
           </div>
         </div>
+        )}
 
         <div className="px-6 pb-6 space-y-4">
           {/* Task Info */}
@@ -178,12 +180,14 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
                   <span className="text-sm text-muted-foreground">{task.profiles.full_name}</span>
                 </div>
               )}
+              {!isReadOnly && (
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={() => setEditing(true)} className="rounded-lg">Editar</Button>
                 <Button size="sm" variant="destructive" onClick={handleDelete} className="rounded-lg">
                   <Trash2 className="h-3.5 w-3.5 mr-1" />Excluir
                 </Button>
               </div>
+              )}
             </div>
           )}
 
