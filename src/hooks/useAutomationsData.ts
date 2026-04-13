@@ -10,6 +10,38 @@ import type {
   AutomationTimeLog,
 } from "@/types/automation";
 
+// Helper to notify all gestors about automation changes
+async function notifyGestors(automationTitle: string, action: string, actorId: string, automationId: string) {
+  try {
+    const { data: gestorIds } = await supabase.rpc("get_gestor_user_ids");
+    if (!gestorIds || gestorIds.length === 0) return;
+
+    const { data: actorProfile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", actorId)
+      .single();
+
+    const actorName = actorProfile?.full_name || "Usuário";
+    const message = `A automação "${automationTitle}" foi ${action} por ${actorName}`;
+
+    const notifications = (gestorIds as string[])
+      .filter((id: string) => id !== actorId)
+      .map((gestorId: string) => ({
+        user_id: gestorId,
+        message,
+        type: "automation_update",
+        created_by: actorId,
+      }));
+
+    if (notifications.length > 0) {
+      await supabase.from("notifications").insert(notifications);
+    }
+  } catch (err) {
+    console.error("Erro ao notificar gestores:", err);
+  }
+}
+
 // ─── Automations CRUD ───
 
 export function useAutomations() {
