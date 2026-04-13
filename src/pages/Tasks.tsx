@@ -126,10 +126,12 @@ const Tasks = () => {
             {canFilter && (
               <TaskFilterSelect value={selectedUserId} onChange={setSelectedUserId} />
             )}
-            <Button onClick={() => setCreateOpen(true)} className="h-9">
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Tarefa
-            </Button>
+            {!isGestor && (
+              <Button onClick={() => setCreateOpen(true)} className="h-9">
+                <Plus className="mr-2 h-4 w-4" />
+                Nova Tarefa
+              </Button>
+            )}
           </div>
         }
       />
