@@ -34,9 +34,10 @@ interface TaskDetailDialogProps {
   task: Task | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  isReadOnly?: boolean;
 }
 
-export function TaskDetailDialog({ task, open, onOpenChange }: TaskDetailDialogProps) {
+export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskDetailDialogProps) {
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
   const { data: profiles } = useProfiles();
