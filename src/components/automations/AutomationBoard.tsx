@@ -15,13 +15,14 @@ interface Props {
   onSelect: (a: Automation) => void;
   profileMap: Record<string, string>;
   onStatusChange?: (id: string, newStatus: AutomationStatus) => void;
+  isReadOnly?: boolean;
 }
 
-export function AutomationBoard({ automations, onSelect, profileMap, onStatusChange }: Props) {
+export function AutomationBoard({ automations, onSelect, profileMap, onStatusChange, isReadOnly }: Props) {
   const [viewMode, setViewMode] = useState<"board" | "list">("board");
 
   const handleDragEnd = (result: DropResult) => {
-    if (!result.destination || !onStatusChange) return;
+    if (isReadOnly || !result.destination || !onStatusChange) return;
     const newStatus = result.destination.droppableId as AutomationStatus;
     const automationId = result.draggableId;
     const automation = automations.find(a => a.id === automationId);
@@ -53,7 +54,7 @@ export function AutomationBoard({ automations, onSelect, profileMap, onStatusCha
             {BOARD_COLUMNS.map(col => {
               const items = automations.filter(a => a.status === col);
               return (
-                <Droppable key={col} droppableId={col}>
+                <Droppable key={col} droppableId={col} isDropDisabled={isReadOnly}>
                   {(provided, snapshot) => (
                     <div
                       ref={provided.innerRef}
@@ -69,7 +70,7 @@ export function AutomationBoard({ automations, onSelect, profileMap, onStatusCha
                       <ScrollArea className="h-[calc(100vh-420px)] min-h-[300px]">
                         <div className="space-y-2 pr-2">
                           {items.map((a, index) => (
-                            <Draggable key={a.id} draggableId={a.id} index={index}>
+                            <Draggable key={a.id} draggableId={a.id} index={index} isDragDisabled={isReadOnly}>
                               {(dragProvided, dragSnapshot) => (
                                 <div
                                   ref={dragProvided.innerRef}
