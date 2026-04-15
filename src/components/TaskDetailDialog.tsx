@@ -14,8 +14,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, Square, Clock, Trash2, User, Timer, FileText, History, MessageSquare, GitBranch } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Play, Square, Clock, Trash2, User, Timer, FileText, History, MessageSquare, GitBranch, CalendarIcon } from "lucide-react";
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { TaskComments } from "@/components/TaskComments";
 import { TaskAttachments } from "@/components/TaskAttachments";
 import { ResponsibilityHistorySection } from "@/components/ResponsibilityHistory";
@@ -51,6 +55,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
   const [priority, setPriority] = useState("medium");
   const [assignedTo, setAssignedTo] = useState("");
   const [status, setStatus] = useState("");
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     if (task) {
@@ -59,6 +64,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
       setPriority(task.priority);
       setAssignedTo(task.assigned_to || "");
       setStatus(task.status);
+      setDueDate(task.due_date ? new Date(task.due_date) : undefined);
       setEditing(false);
     }
   }, [task]);
@@ -73,6 +79,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
     updateTask.mutate({
       id: task.id, title, description: description || null,
       priority: priority as any, assigned_to: newAssigned, status: status as any,
+      due_date: dueDate ? dueDate.toISOString() : null,
     });
     setEditing(false);
   };
@@ -145,15 +152,31 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
                   </Select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Responsável</Label>
-                <Select value={assignedTo || "none"} onValueChange={setAssignedTo}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {profiles?.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Responsável</Label>
+                  <Select value={assignedTo || "none"} onValueChange={setAssignedTo}>
+                    <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {profiles?.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Prazo</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-10", !dueDate && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dueDate ? format(dueDate, "dd/MM/yyyy") : "Sem prazo"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus className="p-3 pointer-events-auto" />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleSave} disabled={updateTask.isPending} className="rounded-lg">Salvar</Button>
@@ -178,6 +201,12 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-sm text-muted-foreground">{task.profiles.full_name}</span>
+                </div>
+              )}
+              {task.due_date && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <CalendarIcon className="h-4 w-4" />
+                  Prazo: <span className={cn("font-medium", new Date(task.due_date) < new Date() && task.status !== "done" ? "text-destructive" : "text-foreground")}>{format(new Date(task.due_date), "dd/MM/yyyy")}</span>
                 </div>
               )}
               {!isReadOnly && (
