@@ -209,6 +209,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
                   Prazo: <span className={cn("font-medium", new Date(task.due_date) < new Date() && task.status !== "done" ? "text-destructive" : "text-foreground")}>{format(new Date(task.due_date), "dd/MM/yyyy")}</span>
                 </div>
               )}
+              {!isReadOnly && (
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={() => setEditing(true)} className="rounded-lg">Editar</Button>
                 <Button size="sm" variant="destructive" onClick={handleDelete} className="rounded-lg">
