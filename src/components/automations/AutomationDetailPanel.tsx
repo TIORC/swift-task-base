@@ -22,11 +22,13 @@ import { useAutomationSubtasks, useCreateSubtask, useUpdateSubtask, useDeleteSub
 import { useAutomationBlockers, useCreateBlocker, useResolveBlocker } from "@/hooks/useAutomationsData";
 import { useAutomationEvents } from "@/hooks/useAutomationsData";
 import { useAutomationTimeLogs, useCreateTimeLog } from "@/hooks/useAutomationsData";
+import { useGlobalTimer } from "@/hooks/useGlobalTimer";
+import { formatTime, formatMinutes } from "@/hooks/useTimeTracker";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   AlertTriangle, CheckCircle2, Clock, Code2, FileText, History,
-  ListChecks, Lock, Plus, Save, Timer, Trash2, X
+  ListChecks, Lock, Play, Plus, Save, Square, Timer, Trash2, X
 } from "lucide-react";
 
 interface Props {
@@ -362,6 +364,9 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
 
             {/* ─── Time Tab ─── */}
             <TabsContent value="time" className="mt-3 space-y-3">
+              {/* Live Timer */}
+              {!isReadOnly && <AutomationLiveTimer automationId={a.id} />}
+
               <div className="flex items-center gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground text-xs">Total</span>
