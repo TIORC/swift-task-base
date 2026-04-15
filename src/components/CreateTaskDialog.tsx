@@ -3,6 +3,9 @@ import { useCreateTask, useProfiles, TaskStatus } from "@/hooks/useTasks";
 import { useUserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { CalendarIcon, Loader2, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -13,7 +16,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const PRIORITY_OPTIONS = [
   { value: "low", label: "Baixa" },
@@ -43,6 +47,7 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
   const [priority, setPriority] = useState<string>("medium");
   const [status, setStatus] = useState<TaskStatus>(defaultStatus);
   const [assignedTo, setAssignedTo] = useState<string>("");
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
 
   const { data: profiles } = useProfiles();
   const { data: adminIds } = useQuery({
@@ -61,11 +66,18 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createTask.mutate(
-      { title, description: description || null, priority: priority as any, status: status as any, assigned_to: assignedTo || null },
+      {
+        title,
+        description: description || null,
+        priority: priority as any,
+        status: status as any,
+        assigned_to: assignedTo || null,
+        due_date: dueDate ? dueDate.toISOString() : null,
+      },
       {
         onSuccess: () => {
           onOpenChange(false);
-          setTitle(""); setDescription(""); setPriority("medium"); setStatus(defaultStatus); setAssignedTo("");
+          setTitle(""); setDescription(""); setPriority("medium"); setStatus(defaultStatus); setAssignedTo(""); setDueDate(undefined);
         },
       }
     );
@@ -108,15 +120,31 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Responsável</Label>
-            <Select value={assignedTo} onValueChange={setAssignedTo}>
-              <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Nenhum</SelectItem>
-                {assignableProfiles.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Responsável</Label>
+              <Select value={assignedTo} onValueChange={setAssignedTo}>
+                <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {assignableProfiles.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Prazo</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-10", !dueDate && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dueDate ? format(dueDate, "dd/MM/yyyy") : "Selecionar..."}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
