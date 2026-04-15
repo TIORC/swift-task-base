@@ -406,3 +406,36 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
     </Sheet>
   );
 }
+
+function AutomationLiveTimer({ automationId }: { automationId: string }) {
+  const { activeAutomationId, isRunning, elapsed, startAutomation, stop } = useGlobalTimer();
+  const isActive = isRunning && activeAutomationId === automationId;
+
+  return (
+    <div className="rounded-xl border border-border bg-muted/30 p-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium">Cronômetro</span>
+        </div>
+        <div className="flex items-center gap-3">
+          {isActive ? (
+            <>
+              <span className="font-mono text-lg text-primary font-bold tabular-nums">{formatTime(elapsed)}</span>
+              <Button size="sm" variant="destructive" onClick={stop} className="h-7 rounded-lg">
+                <Square className="h-3 w-3 mr-1" />Parar
+              </Button>
+            </>
+          ) : (
+            <Button size="sm" onClick={() => startAutomation(automationId)} className="h-7 rounded-lg">
+              <Play className="h-3 w-3 mr-1" />Iniciar
+            </Button>
+          )}
+        </div>
+      </div>
+      {isRunning && !isActive && activeAutomationId && (
+        <p className="text-[10px] text-amber-500 mt-1">⚠️ Timer ativo em outra automação. Iniciar aqui irá parar a anterior.</p>
+      )}
+    </div>
+  );
+}
