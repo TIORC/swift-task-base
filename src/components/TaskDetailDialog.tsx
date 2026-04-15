@@ -14,8 +14,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, Square, Clock, Trash2, User, Timer, FileText, History, MessageSquare, GitBranch } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Play, Square, Clock, Trash2, User, Timer, FileText, History, MessageSquare, GitBranch, CalendarIcon } from "lucide-react";
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { TaskComments } from "@/components/TaskComments";
 import { TaskAttachments } from "@/components/TaskAttachments";
 import { ResponsibilityHistorySection } from "@/components/ResponsibilityHistory";
@@ -51,6 +55,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
   const [priority, setPriority] = useState("medium");
   const [assignedTo, setAssignedTo] = useState("");
   const [status, setStatus] = useState("");
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     if (task) {
@@ -59,6 +64,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
       setPriority(task.priority);
       setAssignedTo(task.assigned_to || "");
       setStatus(task.status);
+      setDueDate(task.due_date ? new Date(task.due_date) : undefined);
       setEditing(false);
     }
   }, [task]);
@@ -73,6 +79,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
     updateTask.mutate({
       id: task.id, title, description: description || null,
       priority: priority as any, assigned_to: newAssigned, status: status as any,
+      due_date: dueDate ? dueDate.toISOString() : null,
     });
     setEditing(false);
   };
