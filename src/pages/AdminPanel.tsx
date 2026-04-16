@@ -52,7 +52,8 @@ const ALL_ROLES = [
   { value: "gestor", label: "Gestor" },
   { value: "lider", label: "Líder" },
   { value: "dev", label: "Desenvolvedor" },
-  { value: "member", label: "Membro" },
+  { value: "member", label: "Membro (Gestão)" },
+  { value: "suporte", label: "Suporte TI (apenas chamados)" },
 ] as const;
 
 const ROLE_COLORS: Record<string, string> = {
@@ -61,6 +62,7 @@ const ROLE_COLORS: Record<string, string> = {
   lider: "bg-warning/10 text-warning border-warning/20",
   dev: "bg-success/10 text-success border-success/20",
   member: "bg-muted text-muted-foreground border-border",
+  suporte: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
 };
 
 interface AdminUser {

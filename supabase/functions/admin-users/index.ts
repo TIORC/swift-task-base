@@ -205,11 +205,11 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          // Assign default member role
+          // Assign default suporte role (acesso apenas ao app desktop de chamados)
           if (created.user) {
             await adminClient.from("user_roles").insert({
               user_id: created.user.id,
-              role: "member",
+              role: "suporte",
             });
           }
 
