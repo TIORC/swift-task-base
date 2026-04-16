@@ -153,7 +153,27 @@ const AdminPanel = () => {
     }
   }, []);
 
+  // Bulk create support users
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ created: number; skipped: number; errors: { email: string; error: string }[] } | null>(null);
+
   useEffect(() => { loadUsers(); }, [loadUsers]);
+
+  const handleBulkCreateSupport = async () => {
+    setBulkLoading(true);
+    setBulkResult(null);
+    try {
+      const res = await callAdmin("bulk_create_support", { users: SUPPORT_USERS_EMAILS });
+      setBulkResult({ created: res.created, skipped: res.skipped, errors: res.errors || [] });
+      toast.success(`${res.created} criados, ${res.skipped} já existiam`);
+      loadUsers();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
 
   const handleCreate = async () => {
     if (!newEmail || !newPassword) { toast.error("Preencha email e senha"); return; }
