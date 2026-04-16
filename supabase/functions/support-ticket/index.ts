@@ -1,7 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.2";
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 
-const ANGEL_ID = "242acd59-00fb-478f-8d78-b25219798aa6";
+const SUPPORT_STAFF: Record<string, string> = {
+  angel: "242acd59-00fb-478f-8d78-b25219798aa6",
+  welder: "f7c4a624-0f8f-432d-b7c0-047b36817670",
+};
 
 const CATEGORY_LABELS: Record<string, string> = {
   computador: "💻 Computador",
@@ -28,7 +31,6 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify the user's token
     const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
     const { data: { user }, error: authError } = await anonClient.auth.getUser(
       authHeader.replace("Bearer ", "")
@@ -41,7 +43,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { categoria, descricao, usuario_windows, nome_maquina } = body;
+    const { categoria, descricao, usuario_windows, nome_maquina, atribuir_para } = body;
 
     if (!categoria || !CATEGORY_LABELS[categoria]) {
       return new Response(JSON.stringify({ error: "Categoria inválida" }), {
@@ -50,7 +52,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get user display name from profile or email
+    // Resolve assignee — default to Angel if not specified or invalid
+    const assigneeKey = (atribuir_para || "angel").toLowerCase();
+    const assigneeId = SUPPORT_STAFF[assigneeKey] || SUPPORT_STAFF["angel"];
+
+    // Get user display name
     let userName = usuario_windows || "Desconhecido";
     const { data: profile } = await supabase
       .from("profiles")
@@ -61,18 +67,14 @@ Deno.serve(async (req) => {
     if (profile?.full_name) {
       userName = profile.full_name;
     } else if (user.email) {
-      // Auto-generate name from email prefix
       const prefix = user.email.split("@")[0];
       const displayName = prefix
         .replace(/[._-]/g, " ")
         .replace(/\b\w/g, (c: string) => c.toUpperCase());
-      
-      // Update profile with generated name
       await supabase
         .from("profiles")
         .update({ full_name: displayName })
         .eq("id", user.id);
-      
       userName = displayName;
     }
 
@@ -95,14 +97,13 @@ Deno.serve(async (req) => {
         priority: "high",
         status: "pending",
         created_by: user.id,
-        assigned_to: ANGEL_ID,
+        assigned_to: assigneeId,
       })
       .select()
       .single();
 
     if (taskError) throw taskError;
 
-    // Log creation event
     await supabase.from("task_events").insert({
       task_id: task.id,
       user_id: user.id,
@@ -110,20 +111,20 @@ Deno.serve(async (req) => {
       description: `Chamado "${CATEGORY_LABELS[categoria]}" criado via cliente Windows por ${userName}`,
     });
 
-    // Notify Angel
+    // Notify the assigned person
     await supabase.from("notifications").insert({
-      user_id: ANGEL_ID,
+      user_id: assigneeId,
       type: "assigned",
       task_id: task.id,
       message: `Novo chamado: ${CATEGORY_LABELS[categoria]} de ${userName} (${nome_maquina || "N/A"})`,
       created_by: user.id,
     });
 
-    // Get Angel's name for response
-    const { data: angelProfile } = await supabase
+    // Get assignee name for response
+    const { data: assigneeProfile } = await supabase
       .from("profiles")
       .select("full_name")
-      .eq("id", ANGEL_ID)
+      .eq("id", assigneeId)
       .single();
 
     return new Response(JSON.stringify({
@@ -131,7 +132,7 @@ Deno.serve(async (req) => {
       task_id: task.id,
       ticket_number: task.id.substring(0, 8).toUpperCase(),
       category: CATEGORY_LABELS[categoria],
-      assigned_to_name: angelProfile?.full_name || "Suporte",
+      assigned_to_name: assigneeProfile?.full_name || "Suporte",
       created_at: task.created_at,
       user_name: userName,
     }), {
