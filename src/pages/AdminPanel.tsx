@@ -103,6 +103,7 @@ const AdminPanel = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [accessFilter, setAccessFilter] = useState<"all" | "gestao" | "suporte">("all");
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   // Create user dialog
@@ -235,10 +236,22 @@ const AdminPanel = () => {
     }
   };
 
-  const filtered = users.filter(u =>
-    u.email?.toLowerCase().includes(search.toLowerCase()) ||
-    u.full_name?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = users.filter(u => {
+    const matchesSearch =
+      u.email?.toLowerCase().includes(search.toLowerCase()) ||
+      u.full_name?.toLowerCase().includes(search.toLowerCase());
+    if (!matchesSearch) return false;
+
+    const isSuporteOnly = u.roles.length > 0 && u.roles.every((r) => r === "suporte");
+    if (accessFilter === "suporte") return isSuporteOnly;
+    if (accessFilter === "gestao") return !isSuporteOnly;
+    return true;
+  });
+
+  const counts = {
+    suporte: users.filter((u) => u.roles.length > 0 && u.roles.every((r) => r === "suporte")).length,
+    gestao: users.filter((u) => !(u.roles.length > 0 && u.roles.every((r) => r === "suporte"))).length,
+  };
 
   if (isAdmin === false) {
     return (
@@ -272,15 +285,45 @@ const AdminPanel = () => {
         }
       />
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por nome ou email..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      {/* Search + filter */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome ou email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex gap-1 rounded-lg bg-muted/40 p-1">
+          <Button
+            size="sm"
+            variant={accessFilter === "all" ? "default" : "ghost"}
+            onClick={() => setAccessFilter("all")}
+            className="h-8"
+          >
+            Todos ({users.length})
+          </Button>
+          <Button
+            size="sm"
+            variant={accessFilter === "gestao" ? "default" : "ghost"}
+            onClick={() => setAccessFilter("gestao")}
+            className="h-8 gap-1.5"
+          >
+            <Shield className="h-3.5 w-3.5" />
+            Gestão ({counts.gestao})
+          </Button>
+          <Button
+            size="sm"
+            variant={accessFilter === "suporte" ? "default" : "ghost"}
+            onClick={() => setAccessFilter("suporte")}
+            className="h-8 gap-1.5"
+          >
+            <Headset className="h-3.5 w-3.5" />
+            Suporte TI ({counts.suporte})
+          </Button>
+        </div>
       </div>
 
       {/* User List */}
@@ -514,7 +557,7 @@ const AdminPanel = () => {
               Criar Usuários para Suporte TI
             </DialogTitle>
             <DialogDescription>
-              Cria {SUPPORT_USERS_EMAILS.length} usuários da equipe Orcoma. A senha de cada um será o primeiro nome (ex: <code className="text-xs bg-muted px-1 rounded">angel.kauan@…</code> → senha <code className="text-xs bg-muted px-1 rounded">angel</code>). Usuários existentes serão ignorados.
+              Cria {SUPPORT_USERS_EMAILS.length} usuários da equipe Orcoma com papel <strong>Suporte TI</strong> (acesso apenas ao app desktop de chamados, sem acesso ao painel web). A senha de cada um será o primeiro nome (ex: <code className="text-xs bg-muted px-1 rounded">angel.kauan@…</code> → senha <code className="text-xs bg-muted px-1 rounded">angel</code>). Usuários existentes serão ignorados.
             </DialogDescription>
           </DialogHeader>
 
