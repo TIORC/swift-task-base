@@ -20,9 +20,32 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
-  ShieldCheck, UserPlus, KeyRound, Trash2, Users, Loader2, Search, Shield, Settings2,
+  ShieldCheck, UserPlus, KeyRound, Trash2, Users, Loader2, Search, Shield, Settings2, Headset,
 } from "lucide-react";
 import { UserPermissionsDialog } from "@/components/UserPermissionsDialog";
+
+const SUPPORT_USERS_EMAILS = [
+  "adalgiza.argolo@orcoma.com.br","adeir@orcoma.com.br","aelica.sampaio@orcoma.com.br","anderson.rocha@orcoma.com.br",
+  "angel.kauan@orcoma.com.br","anna.gabriella@orcoma.com.br","antonio.carlos@orcoma.com.br","bianca.souza@orcoma.com.br",
+  "carolane.brito@orcoma.com.br","cauan.argolo@orcoma.com.br","celso.alcantara@orcoma.com.br","claudia.girolamo@orcoma.com.br",
+  "cleo@orcoma.com.br","daiane.torres@orcoma.com.br","danicarla@orcoma.com.br","daniel.silva@orcoma.com.br",
+  "daniela.ferreira@orcoma.com.br","danusa.moura@orcoma.com.br","dinara.santos@orcoma.com.br","edimeia.ramos@orcoma.com.br",
+  "eduarda.vitoria@orcoma.com.br","emily.karoline@orcoma.com.br","evelyn.matos@orcoma.com.br","evillin.reis@orcoma.com.br",
+  "felipe.costa@orcoma.com.br","geane.lopes@orcoma.com.br","gilton.novaes@orcoma.com.br","gustavo.pires@orcoma.com.br",
+  "helio@orcoma.com.br","heloisa.dutra@orcoma.com.br","isadora.nascimento@orcoma.com.br","ivani.oliveira@orcoma.com.br",
+  "jacson@orcoma.com.br","jaqueline.miranda@orcoma.com.br","joao.pedro@orcoma.com.br","jonatas.braga@orcoma.com.br",
+  "josiane.souza@orcoma.com.br","joyce.narde@orcoma.com.br","joyce.nascimento@orcoma.com.br","jusirlene.cunha@orcoma.com.br",
+  "kaylane.oliveira@orcoma.com.br","lara.anacleto@orcoma.com.br","luana.machado@orcoma.com.br","lucas.duarte@orcoma.com.br",
+  "lucas.novaes@orcoma.com.br","macleide@orcoma.com.br","olandson@orcoma.com.br","patrick.leite@orcoma.com.br",
+  "pedro.henrique@orcoma.com.br","pedro.vitor@orcoma.com.br","r.claudio@orcoma.com.br","ramon.sapocaia@orcoma.com.br",
+  "raydan.santana@orcoma.com.br","ronaldy.souza@orcoma.com.br","rosalia.almeida@orcoma.com.br","rosangela.souza@orcoma.com.br",
+  "samuel.rizzuto@orcoma.com.br","sara.nascimento@orcoma.com.br","sara.santos@orcoma.com.br","saulo.assis@orcoma.com.br",
+  "silvia.vieira@orcoma.com.br","sirleide@orcoma.com.br","stefani@orcoma.com.br","sucessodocliente@orcoma.com.br",
+  "suzane.souza@orcoma.com.br","taina@orcoma.com.br","talita.silva@orcoma.com.br","thaylla.vitoria@orcoma.com.br",
+  "thais.carvalho@orcoma.com.br","thays@orcoma.com.br","thiago.jesus@orcoma.com.br","thiala.cabral@orcoma.com.br",
+  "vanessa.bastos@orcoma.com.br","vanessa.santos@orcoma.com.br","victor.alves@orcoma.com.br","vitor.teles@orcoma.com.br",
+  "vitoria.dias@orcoma.com.br","wesley.vieira@orcoma.com.br","yasmin.pires@orcoma.com.br",
+];
 
 const ALL_ROLES = [
   { value: "admin", label: "Administrador" },
