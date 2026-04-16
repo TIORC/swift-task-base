@@ -257,10 +257,16 @@ const AdminPanel = () => {
         description="Gerenciar usuários, papéis e acessos"
         icon={<ShieldCheck className="h-5 w-5" />}
         actions={
-          <Button onClick={() => setCreateOpen(true)} className="gap-2">
-            <UserPlus className="h-4 w-4" />
-            Novo Usuário
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-2">
+              <Headset className="h-4 w-4" />
+              Criar Usuários Suporte TI
+            </Button>
+            <Button onClick={() => setCreateOpen(true)} className="gap-2">
+              <UserPlus className="h-4 w-4" />
+              Novo Usuário
+            </Button>
+          </div>
         }
       />
 
