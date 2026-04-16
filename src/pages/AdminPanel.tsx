@@ -20,9 +20,32 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
-  ShieldCheck, UserPlus, KeyRound, Trash2, Users, Loader2, Search, Shield, Settings2,
+  ShieldCheck, UserPlus, KeyRound, Trash2, Users, Loader2, Search, Shield, Settings2, Headset,
 } from "lucide-react";
 import { UserPermissionsDialog } from "@/components/UserPermissionsDialog";
+
+const SUPPORT_USERS_EMAILS = [
+  "adalgiza.argolo@orcoma.com.br","adeir@orcoma.com.br","aelica.sampaio@orcoma.com.br","anderson.rocha@orcoma.com.br",
+  "angel.kauan@orcoma.com.br","anna.gabriella@orcoma.com.br","antonio.carlos@orcoma.com.br","bianca.souza@orcoma.com.br",
+  "carolane.brito@orcoma.com.br","cauan.argolo@orcoma.com.br","celso.alcantara@orcoma.com.br","claudia.girolamo@orcoma.com.br",
+  "cleo@orcoma.com.br","daiane.torres@orcoma.com.br","danicarla@orcoma.com.br","daniel.silva@orcoma.com.br",
+  "daniela.ferreira@orcoma.com.br","danusa.moura@orcoma.com.br","dinara.santos@orcoma.com.br","edimeia.ramos@orcoma.com.br",
+  "eduarda.vitoria@orcoma.com.br","emily.karoline@orcoma.com.br","evelyn.matos@orcoma.com.br","evillin.reis@orcoma.com.br",
+  "felipe.costa@orcoma.com.br","geane.lopes@orcoma.com.br","gilton.novaes@orcoma.com.br","gustavo.pires@orcoma.com.br",
+  "helio@orcoma.com.br","heloisa.dutra@orcoma.com.br","isadora.nascimento@orcoma.com.br","ivani.oliveira@orcoma.com.br",
+  "jacson@orcoma.com.br","jaqueline.miranda@orcoma.com.br","joao.pedro@orcoma.com.br","jonatas.braga@orcoma.com.br",
+  "josiane.souza@orcoma.com.br","joyce.narde@orcoma.com.br","joyce.nascimento@orcoma.com.br","jusirlene.cunha@orcoma.com.br",
+  "kaylane.oliveira@orcoma.com.br","lara.anacleto@orcoma.com.br","luana.machado@orcoma.com.br","lucas.duarte@orcoma.com.br",
+  "lucas.novaes@orcoma.com.br","macleide@orcoma.com.br","olandson@orcoma.com.br","patrick.leite@orcoma.com.br",
+  "pedro.henrique@orcoma.com.br","pedro.vitor@orcoma.com.br","r.claudio@orcoma.com.br","ramon.sapocaia@orcoma.com.br",
+  "raydan.santana@orcoma.com.br","ronaldy.souza@orcoma.com.br","rosalia.almeida@orcoma.com.br","rosangela.souza@orcoma.com.br",
+  "samuel.rizzuto@orcoma.com.br","sara.nascimento@orcoma.com.br","sara.santos@orcoma.com.br","saulo.assis@orcoma.com.br",
+  "silvia.vieira@orcoma.com.br","sirleide@orcoma.com.br","stefani@orcoma.com.br","sucessodocliente@orcoma.com.br",
+  "suzane.souza@orcoma.com.br","taina@orcoma.com.br","talita.silva@orcoma.com.br","thaylla.vitoria@orcoma.com.br",
+  "thais.carvalho@orcoma.com.br","thays@orcoma.com.br","thiago.jesus@orcoma.com.br","thiala.cabral@orcoma.com.br",
+  "vanessa.bastos@orcoma.com.br","vanessa.santos@orcoma.com.br","victor.alves@orcoma.com.br","vitor.teles@orcoma.com.br",
+  "vitoria.dias@orcoma.com.br","wesley.vieira@orcoma.com.br","yasmin.pires@orcoma.com.br",
+];
 
 const ALL_ROLES = [
   { value: "admin", label: "Administrador" },
@@ -130,7 +153,27 @@ const AdminPanel = () => {
     }
   }, []);
 
+  // Bulk create support users
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ created: number; skipped: number; errors: { email: string; error: string }[] } | null>(null);
+
   useEffect(() => { loadUsers(); }, [loadUsers]);
+
+  const handleBulkCreateSupport = async () => {
+    setBulkLoading(true);
+    setBulkResult(null);
+    try {
+      const res = await callAdmin("bulk_create_support", { users: SUPPORT_USERS_EMAILS });
+      setBulkResult({ created: res.created, skipped: res.skipped, errors: res.errors || [] });
+      toast.success(`${res.created} criados, ${res.skipped} já existiam`);
+      loadUsers();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
 
   const handleCreate = async () => {
     if (!newEmail || !newPassword) { toast.error("Preencha email e senha"); return; }
@@ -214,10 +257,16 @@ const AdminPanel = () => {
         description="Gerenciar usuários, papéis e acessos"
         icon={<ShieldCheck className="h-5 w-5" />}
         actions={
-          <Button onClick={() => setCreateOpen(true)} className="gap-2">
-            <UserPlus className="h-4 w-4" />
-            Novo Usuário
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-2">
+              <Headset className="h-4 w-4" />
+              Criar Usuários Suporte TI
+            </Button>
+            <Button onClick={() => setCreateOpen(true)} className="gap-2">
+              <UserPlus className="h-4 w-4" />
+              Novo Usuário
+            </Button>
+          </div>
         }
       />
 
@@ -454,6 +503,60 @@ const AdminPanel = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* BULK CREATE SUPPORT USERS DIALOG */}
+      <Dialog open={bulkOpen} onOpenChange={(o) => { setBulkOpen(o); if (!o) setBulkResult(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Headset className="h-5 w-5 text-primary" />
+              Criar Usuários para Suporte TI
+            </DialogTitle>
+            <DialogDescription>
+              Cria {SUPPORT_USERS_EMAILS.length} usuários da equipe Orcoma. A senha de cada um será o primeiro nome (ex: <code className="text-xs bg-muted px-1 rounded">angel.kauan@…</code> → senha <code className="text-xs bg-muted px-1 rounded">angel</code>). Usuários existentes serão ignorados.
+            </DialogDescription>
+          </DialogHeader>
+
+          {bulkResult ? (
+            <div className="space-y-3 text-sm">
+              <div className="rounded-lg bg-success/10 text-success p-3 border border-success/20">
+                ✅ <strong>{bulkResult.created}</strong> usuários criados
+              </div>
+              {bulkResult.skipped > 0 && (
+                <div className="rounded-lg bg-muted p-3 text-muted-foreground">
+                  ⏭️ <strong>{bulkResult.skipped}</strong> já existiam (ignorados)
+                </div>
+              )}
+              {bulkResult.errors.length > 0 && (
+                <div className="rounded-lg bg-destructive/10 text-destructive p-3 border border-destructive/20 max-h-40 overflow-y-auto">
+                  <strong>{bulkResult.errors.length} erros:</strong>
+                  <ul className="mt-2 space-y-1 text-xs">
+                    {bulkResult.errors.map((e, i) => (
+                      <li key={i}>• {e.email}: {e.error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-lg bg-muted/50 p-3 max-h-60 overflow-y-auto text-xs text-muted-foreground space-y-0.5">
+              {SUPPORT_USERS_EMAILS.map((e) => <div key={e}>{e}</div>)}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={bulkLoading}>
+              {bulkResult ? "Fechar" : "Cancelar"}
+            </Button>
+            {!bulkResult && (
+              <Button onClick={handleBulkCreateSupport} disabled={bulkLoading}>
+                {bulkLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Criar {SUPPORT_USERS_EMAILS.length} Usuários
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* PERMISSIONS DIALOG */}
       <UserPermissionsDialog
         open={permsOpen}
