@@ -97,7 +97,16 @@ Deno.serve(async (req) => {
         email_confirm: true,
         user_metadata: { full_name: full_name || "" },
       });
-      if (error) throw error;
+      if (error) {
+        const msg = error.message?.toLowerCase() || "";
+        if (msg.includes("already") || msg.includes("registered") || msg.includes("exists")) {
+          return new Response(JSON.stringify({ error: "Este e-mail já está cadastrado no sistema." }), {
+            status: 409,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        throw error;
+      }
 
       // Assign role if provided
       if (role && newUser.user) {
