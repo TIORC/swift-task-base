@@ -49,8 +49,30 @@ const Auth = () => {
         toast.success("E-mail de recuperação enviado!");
         setIsForgot(false);
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+
+        // Bloqueia acesso web para usuários que só têm papel "suporte"
+        if (data.user) {
+          const { data: roles } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", data.user.id);
+
+          const roleList = (roles ?? []).map((r) => r.role);
+          const isSuporteOnly = roleList.length > 0 && roleList.every((r) => r === "suporte");
+
+          if (isSuporteOnly) {
+            await supabase.auth.signOut();
+            toast.error(
+              "Sua conta é exclusiva para abertura de chamados pelo app ORCOMA Suporte (Windows). O acesso ao painel web não está disponível.",
+              { duration: 6000 },
+            );
+            setSubmitting(false);
+            return;
+          }
+        }
+
         toast.success("Login realizado com sucesso!");
       }
     } catch (error: any) {
