@@ -5,8 +5,8 @@ const os = require('os');
 let mainWindow = null;
 let tray = null;
 
-const WINDOW_WIDTH = 420;
-const WINDOW_HEIGHT = 580;
+const WINDOW_WIDTH = 440;
+const WINDOW_HEIGHT = 720;
 
 function createWindow() {
   mainWindow = new BrowserWindow({

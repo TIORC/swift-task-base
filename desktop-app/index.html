@@ -29,35 +29,72 @@
   <div id="main-screen" class="screen" style="display:none;">
     <div class="header">
       <h1>🔧 Abrir Chamado</h1>
-      <p class="subtitle">Selecione o tipo do problema</p>
+      <p class="subtitle">Siga as etapas abaixo</p>
       <p id="user-info" class="user-info"></p>
     </div>
 
-    <div class="buttons-grid">
-      <button class="ticket-btn" onclick="createTicket('computador')">
-        <span class="icon">💻</span>
-        <span class="label">Computador</span>
-      </button>
-      <button class="ticket-btn" onclick="createTicket('sistema')">
-        <span class="icon">🧾</span>
-        <span class="label">Sistema</span>
-      </button>
-      <button class="ticket-btn" onclick="createTicket('impressora')">
-        <span class="icon">🖨️</span>
-        <span class="label">Impressora</span>
-      </button>
-      <button class="ticket-btn" onclick="createTicket('ramal')">
-        <span class="icon">☎️</span>
-        <span class="label">Ramal</span>
-      </button>
+    <!-- STEP 1: CATEGORIA -->
+    <div class="step-block">
+      <div class="step-label"><span class="step-num">1</span> Categoria</div>
+      <div class="buttons-grid">
+        <button type="button" class="ticket-btn" data-category="computador" onclick="selectCategory('computador')">
+          <span class="icon">💻</span>
+          <span class="label">Computador</span>
+          <span class="check">✓</span>
+        </button>
+        <button type="button" class="ticket-btn" data-category="sistema" onclick="selectCategory('sistema')">
+          <span class="icon">🧾</span>
+          <span class="label">Sistema</span>
+          <span class="check">✓</span>
+        </button>
+        <button type="button" class="ticket-btn" data-category="impressora" onclick="selectCategory('impressora')">
+          <span class="icon">🖨️</span>
+          <span class="label">Impressora</span>
+          <span class="check">✓</span>
+        </button>
+        <button type="button" class="ticket-btn" data-category="ramal" onclick="selectCategory('ramal')">
+          <span class="icon">☎️</span>
+          <span class="label">Ramal</span>
+          <span class="check">✓</span>
+        </button>
+      </div>
     </div>
 
-    <div class="form-group">
-      <label>Descrição (opcional)</label>
-      <textarea id="description" placeholder="Descreva o problema brevemente..." rows="3"></textarea>
+    <!-- STEP 2: DESCRIÇÃO -->
+    <div class="step-block">
+      <div class="step-label"><span class="step-num">2</span> Descrição <span class="optional">(opcional)</span></div>
+      <div class="form-group">
+        <textarea id="description" placeholder="Descreva o problema brevemente..." rows="3"></textarea>
+      </div>
+    </div>
+
+    <!-- STEP 3: PRAZO -->
+    <div class="step-block">
+      <div class="step-label"><span class="step-num">3</span> Prazo desejado <span class="optional">(opcional)</span></div>
+      <div class="chips-grid" id="deadline-chips">
+        <button type="button" class="chip" data-deadline="urgente">⚡ Urgente</button>
+        <button type="button" class="chip" data-deadline="hoje">Hoje</button>
+        <button type="button" class="chip" data-deadline="24h">24 horas</button>
+        <button type="button" class="chip" data-deadline="2d">2 dias</button>
+        <button type="button" class="chip" data-deadline="3d">3 dias</button>
+        <button type="button" class="chip" data-deadline="5d">5 dias</button>
+      </div>
     </div>
 
     <div id="status-msg" class="status-msg"></div>
+
+    <!-- ACTION -->
+    <button id="submit-btn" class="btn-primary" onclick="submitTicket()" disabled>
+      Enviar chamado
+    </button>
+
+    <!-- SUCCESS PANEL -->
+    <div id="success-panel" class="success-panel" style="display:none;">
+      <div class="success-icon">✅</div>
+      <div class="success-title">Chamado enviado com sucesso</div>
+      <div class="success-details" id="success-details"></div>
+      <button class="btn-secondary" onclick="resetForm()">Abrir novo chamado</button>
+    </div>
 
     <div class="footer">
       <button class="btn-logout" onclick="doLogout()">Sair</button>
