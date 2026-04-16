@@ -503,6 +503,60 @@ const AdminPanel = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* BULK CREATE SUPPORT USERS DIALOG */}
+      <Dialog open={bulkOpen} onOpenChange={(o) => { setBulkOpen(o); if (!o) setBulkResult(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Headset className="h-5 w-5 text-primary" />
+              Criar Usuários para Suporte TI
+            </DialogTitle>
+            <DialogDescription>
+              Cria {SUPPORT_USERS_EMAILS.length} usuários da equipe Orcoma. A senha de cada um será o primeiro nome (ex: <code className="text-xs bg-muted px-1 rounded">angel.kauan@…</code> → senha <code className="text-xs bg-muted px-1 rounded">angel</code>). Usuários existentes serão ignorados.
+            </DialogDescription>
+          </DialogHeader>
+
+          {bulkResult ? (
+            <div className="space-y-3 text-sm">
+              <div className="rounded-lg bg-success/10 text-success p-3 border border-success/20">
+                ✅ <strong>{bulkResult.created}</strong> usuários criados
+              </div>
+              {bulkResult.skipped > 0 && (
+                <div className="rounded-lg bg-muted p-3 text-muted-foreground">
+                  ⏭️ <strong>{bulkResult.skipped}</strong> já existiam (ignorados)
+                </div>
+              )}
+              {bulkResult.errors.length > 0 && (
+                <div className="rounded-lg bg-destructive/10 text-destructive p-3 border border-destructive/20 max-h-40 overflow-y-auto">
+                  <strong>{bulkResult.errors.length} erros:</strong>
+                  <ul className="mt-2 space-y-1 text-xs">
+                    {bulkResult.errors.map((e, i) => (
+                      <li key={i}>• {e.email}: {e.error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-lg bg-muted/50 p-3 max-h-60 overflow-y-auto text-xs text-muted-foreground space-y-0.5">
+              {SUPPORT_USERS_EMAILS.map((e) => <div key={e}>{e}</div>)}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={bulkLoading}>
+              {bulkResult ? "Fechar" : "Cancelar"}
+            </Button>
+            {!bulkResult && (
+              <Button onClick={handleBulkCreateSupport} disabled={bulkLoading}>
+                {bulkLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Criar {SUPPORT_USERS_EMAILS.length} Usuários
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* PERMISSIONS DIALOG */}
       <UserPermissionsDialog
         open={permsOpen}
