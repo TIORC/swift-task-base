@@ -4,6 +4,25 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 let session = null;
 let machineInfo = { username: 'Desconhecido', hostname: 'Desconhecido' };
+let selectedCategory = null;
+let selectedDeadline = null;
+let isSubmitting = false;
+
+const CATEGORY_LABELS = {
+  computador: 'Computador',
+  sistema: 'Sistema',
+  impressora: 'Impressora',
+  ramal: 'Ramal',
+};
+
+const DEADLINE_LABELS = {
+  urgente: 'Urgente',
+  hoje: 'Hoje',
+  '24h': '24 horas',
+  '2d': '2 dias',
+  '3d': '3 dias',
+  '5d': '5 dias',
+};
 
 // Receive machine info from main process
 if (window.electronAPI) {
@@ -78,6 +97,7 @@ function doLogout() {
   document.getElementById('main-screen').style.display = 'none';
   document.getElementById('login-email').value = '';
   document.getElementById('login-password').value = '';
+  resetForm();
 }
 
 function showMainScreen() {
@@ -86,10 +106,72 @@ function showMainScreen() {
   updateUserInfo();
 }
 
-async function createTicket(categoria) {
+// ===== STEP 1: select category (does NOT submit) =====
+function selectCategory(category) {
+  selectedCategory = category;
+  document.querySelectorAll('.ticket-btn').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.category === category);
+  });
+  updateSubmitState();
+
+  // Move focus to description with subtle pulse
+  const desc = document.getElementById('description');
+  if (desc) {
+    desc.focus();
+    desc.classList.remove('textarea-pulse');
+    // re-trigger animation
+    void desc.offsetWidth;
+    desc.classList.add('textarea-pulse');
+  }
+}
+
+// ===== STEP 3: select deadline =====
+function selectDeadline(deadline) {
+  selectedDeadline = selectedDeadline === deadline ? null : deadline;
+  document.querySelectorAll('#deadline-chips .chip').forEach(chip => {
+    chip.classList.toggle('selected', chip.dataset.deadline === selectedDeadline);
+  });
+}
+
+// Wire up chips
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('#deadline-chips .chip').forEach(chip => {
+    chip.addEventListener('click', () => selectDeadline(chip.dataset.deadline));
+  });
+});
+
+function updateSubmitState() {
+  const btn = document.getElementById('submit-btn');
+  if (btn) btn.disabled = !selectedCategory || isSubmitting;
+}
+
+function resetForm() {
+  selectedCategory = null;
+  selectedDeadline = null;
+  document.querySelectorAll('.ticket-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('#deadline-chips .chip').forEach(c => c.classList.remove('selected'));
+  const desc = document.getElementById('description');
+  if (desc) desc.value = '';
+  const status = document.getElementById('status-msg');
+  if (status) { status.textContent = ''; status.className = 'status-msg'; }
+  const success = document.getElementById('success-panel');
+  if (success) success.style.display = 'none';
+  const submitBtn = document.getElementById('submit-btn');
+  if (submitBtn) {
+    submitBtn.style.display = 'block';
+    submitBtn.textContent = 'Enviar chamado';
+  }
+  updateSubmitState();
+}
+
+// ===== STEP 4: submit (only here the ticket is created) =====
+async function submitTicket() {
+  if (isSubmitting) return;
+  if (!selectedCategory) return;
+
   const statusEl = document.getElementById('status-msg');
+  const submitBtn = document.getElementById('submit-btn');
   const descricao = document.getElementById('description').value.trim();
-  const buttons = document.querySelectorAll('.ticket-btn');
 
   if (!session) {
     statusEl.className = 'status-msg error';
@@ -97,9 +179,18 @@ async function createTicket(categoria) {
     return;
   }
 
-  buttons.forEach(b => b.disabled = true);
+  isSubmitting = true;
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Enviando...';
   statusEl.className = 'status-msg loading';
   statusEl.textContent = '⏳ Criando chamado...';
+
+  // Append deadline to description so backend stays compatible
+  const deadlineLabel = selectedDeadline ? DEADLINE_LABELS[selectedDeadline] : null;
+  const finalDescription = [
+    descricao || null,
+    deadlineLabel ? `\n\n[Prazo solicitado: ${deadlineLabel}]` : null,
+  ].filter(Boolean).join('') || null;
 
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/support-ticket`, {
@@ -110,8 +201,10 @@ async function createTicket(categoria) {
         'apikey': SUPABASE_ANON_KEY,
       },
       body: JSON.stringify({
-        categoria,
-        descricao: descricao || null,
+        categoria: selectedCategory,
+        descricao: finalDescription,
+        prazo: selectedDeadline,
+        prazo_label: deadlineLabel,
         usuario_windows: machineInfo.username,
         nome_maquina: machineInfo.hostname,
       }),
@@ -120,12 +213,11 @@ async function createTicket(categoria) {
     const data = await res.json();
 
     if (!res.ok) {
-      // Token might be expired
       if (res.status === 401) {
         const refreshed = await refreshToken();
         if (refreshed) {
-          buttons.forEach(b => b.disabled = false);
-          return createTicket(categoria);
+          isSubmitting = false;
+          return submitTicket();
         }
         doLogout();
         throw new Error('Sessão expirada. Faça login novamente.');
@@ -133,20 +225,43 @@ async function createTicket(categoria) {
       throw new Error(data.error || 'Erro ao criar chamado');
     }
 
-    statusEl.className = 'status-msg success';
-    statusEl.textContent = '✅ Chamado criado com sucesso!';
-    document.getElementById('description').value = '';
-
-    setTimeout(() => {
-      statusEl.textContent = '';
-      statusEl.className = 'status-msg';
-    }, 3000);
+    // Success — show confirmation panel
+    statusEl.textContent = '';
+    statusEl.className = 'status-msg';
+    showSuccess({
+      protocol: data.protocol || data.task_id || data.id,
+      categoria: CATEGORY_LABELS[selectedCategory] || selectedCategory,
+      prazoLabel: deadlineLabel,
+      responsavel: data.assignee_name || 'Suporte TI',
+    });
   } catch (err) {
     statusEl.className = 'status-msg error';
     statusEl.textContent = `❌ ${err.message}`;
+    submitBtn.textContent = 'Enviar chamado';
   } finally {
-    buttons.forEach(b => b.disabled = false);
+    isSubmitting = false;
+    updateSubmitState();
   }
+}
+
+function showSuccess({ protocol, categoria, prazoLabel, responsavel }) {
+  const submitBtn = document.getElementById('submit-btn');
+  const panel = document.getElementById('success-panel');
+  const details = document.getElementById('success-details');
+  if (submitBtn) submitBtn.style.display = 'none';
+
+  const now = new Date();
+  const horario = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const protocolStr = protocol ? `#${String(protocol).slice(0, 8).toUpperCase()}` : '—';
+
+  details.innerHTML = `
+    <div class="row"><span class="k">Protocolo</span><span class="v">${protocolStr}</span></div>
+    <div class="row"><span class="k">Categoria</span><span class="v">${categoria}</span></div>
+    ${prazoLabel ? `<div class="row"><span class="k">Prazo solicitado</span><span class="v">${prazoLabel}</span></div>` : ''}
+    <div class="row"><span class="k">Responsável</span><span class="v">${responsavel}</span></div>
+    <div class="row"><span class="k">Horário</span><span class="v">${horario}</span></div>
+  `;
+  panel.style.display = 'block';
 }
 
 async function refreshToken() {
