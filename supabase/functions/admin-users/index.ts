@@ -155,6 +155,75 @@ Deno.serve(async (req) => {
       });
     }
 
+    // BULK CREATE SUPPORT USERS
+    if (action === "bulk_create_support") {
+      const { users } = body;
+      if (!Array.isArray(users) || users.length === 0) {
+        return new Response(JSON.stringify({ error: "users array é obrigatório" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const results = { created: 0, skipped: 0, errors: [] as { email: string; error: string }[] };
+
+      // Helper: extract first name from email "first.last@..." -> "first"
+      const extractName = (email: string) => {
+        const local = email.split("@")[0];
+        const first = local.split(".")[0] || local;
+        return first.toLowerCase();
+      };
+
+      // Helper: friendly full name from local part
+      const buildFullName = (email: string) => {
+        const local = email.split("@")[0];
+        return local
+          .split(".")
+          .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+          .join(" ");
+      };
+
+      for (const email of users as string[]) {
+        try {
+          const password = extractName(email);
+          const full_name = buildFullName(email);
+
+          const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+            user_metadata: { full_name },
+          });
+
+          if (createErr) {
+            // If already exists, skip silently
+            if (createErr.message?.toLowerCase().includes("already") || createErr.message?.toLowerCase().includes("registered")) {
+              results.skipped++;
+              continue;
+            }
+            results.errors.push({ email, error: createErr.message });
+            continue;
+          }
+
+          // Assign default member role
+          if (created.user) {
+            await adminClient.from("user_roles").insert({
+              user_id: created.user.id,
+              role: "member",
+            });
+          }
+
+          results.created++;
+        } catch (e: any) {
+          results.errors.push({ email, error: e.message || "Erro desconhecido" });
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true, ...results }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // DELETE USER
     if (action === "delete") {
       const { user_id } = body;
