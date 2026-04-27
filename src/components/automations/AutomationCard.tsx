@@ -1,9 +1,12 @@
 import { Automation, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, computeHealthScore, computePrediction, AutomationStatus } from "@/types/automation";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, Clock, Lock, User } from "lucide-react";
+import { AlertTriangle, Clock, Lock, User, Timer } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useAutomationTotalMinutes } from "@/hooks/useAutomationsData";
+import { useGlobalTimer } from "@/hooks/useGlobalTimer";
+import { formatMinutes, formatTime } from "@/hooks/useTimeTracker";
 
 interface Props {
   automation: Automation;
@@ -14,6 +17,12 @@ interface Props {
 export function AutomationCard({ automation: a, onClick, profileName }: Props) {
   const health = computeHealthScore(a);
   const prediction = computePrediction(a);
+  const { data: totals } = useAutomationTotalMinutes();
+  const { activeAutomationId, isRunning, elapsed } = useGlobalTimer();
+  const isTimerOnThis = isRunning && activeAutomationId === a.id;
+  const baseMinutes = totals?.[a.id] || 0;
+  const liveMinutes = isTimerOnThis ? Math.floor(elapsed / 60) : 0;
+  const totalWorked = baseMinutes + liveMinutes;
   const isLate = !!a.final_deadline && new Date(a.final_deadline) < new Date() && a.status !== "completed" && a.status !== "cancelled";
   const isBlocked = a.status === "blocked";
 
