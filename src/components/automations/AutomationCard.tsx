@@ -56,17 +56,27 @@ export function AutomationCard({ automation: a, onClick, profileName }: Props) {
         {isLate && <AlertTriangle className="h-3 w-3 text-amber-500" />}
       </div>
 
-      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-        <div className="flex items-center gap-1">
-          <User className="h-3 w-3" />
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground gap-2">
+        <div className="flex items-center gap-1 min-w-0">
+          <User className="h-3 w-3 shrink-0" />
           <span className="truncate max-w-[80px]">{profileName || "Não atribuído"}</span>
         </div>
-        {a.final_deadline && (
-          <div className="flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            <span>{format(new Date(a.final_deadline), "dd/MM", { locale: ptBR })}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {(totalWorked > 0 || isTimerOnThis) && (
+            <div className={`flex items-center gap-1 ${isTimerOnThis ? "text-primary font-semibold" : ""}`}>
+              <Timer className="h-3 w-3" />
+              <span className="tabular-nums">
+                {isTimerOnThis ? formatTime(elapsed) : formatMinutes(totalWorked)}
+              </span>
+            </div>
+          )}
+          {a.final_deadline && (
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              <span>{format(new Date(a.final_deadline), "dd/MM", { locale: ptBR })}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className={`text-[9px] mt-1.5 font-medium ${prediction.color}`}>
