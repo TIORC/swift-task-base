@@ -100,6 +100,18 @@ function HomeRedirect() {
     );
   }
 
+  // If "/" (Dashboard) is explicitly accessible to this user, render it directly.
+  // This prevents redirecting non-admin users away from the Dashboard when an
+  // admin has explicitly enabled it via menu access.
+  const dashboardAccessible = canAccessMenuRoute({
+    route: "/",
+    profile,
+    canAccess,
+    isMenuEnabled,
+  });
+
+  if (dashboardAccessible) return <Dashboard />;
+
   const homeRoute = getAccessibleFallbackRoute({
     profile,
     canAccess,

@@ -5,6 +5,8 @@ import { Clock, Calendar, AlignLeft } from "lucide-react";
 import { Draggable } from "@hello-pangea/dnd";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useGlobalTimer } from "@/hooks/useGlobalTimer";
+import { formatTime, formatMinutes } from "@/hooks/useTimeTracker";
 
 interface TaskCardProps {
   task: Task;
@@ -18,9 +20,12 @@ export function TaskCard({ task, index, onClick, isDragDisabled }: TaskCardProps
     ? task.profiles.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
     : null;
 
-  const hours = Math.floor((task.total_minutes || 0) / 60);
-  const mins = (task.total_minutes || 0) % 60;
-  const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  const { activeTaskId, isRunning, elapsed } = useGlobalTimer();
+  const isTimerOnThis = isRunning && activeTaskId === task.id;
+  const baseMinutes = task.total_minutes || 0;
+  const liveMinutes = isTimerOnThis ? Math.floor(elapsed / 60) : 0;
+  const totalWorked = baseMinutes + liveMinutes;
+  const timeStr = isTimerOnThis ? formatTime(elapsed) : formatMinutes(totalWorked);
 
   const createdDate = format(new Date(task.created_at), "dd MMM", { locale: ptBR });
 
@@ -54,8 +59,8 @@ export function TaskCard({ task, index, onClick, isDragDisabled }: TaskCardProps
             <StatusBadge type="priority" value={task.priority} />
 
             <div className="flex items-center gap-2">
-              {(task.total_minutes || 0) > 0 && (
-                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              {(totalWorked > 0 || isTimerOnThis) && (
+                <div className={`flex items-center gap-1 text-[11px] tabular-nums ${isTimerOnThis ? "text-primary font-semibold" : "text-muted-foreground"}`}>
                   <Clock className="h-3 w-3" />
                   <span>{timeStr}</span>
                 </div>

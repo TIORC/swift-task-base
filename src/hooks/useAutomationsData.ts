@@ -355,6 +355,25 @@ export function useCreateTimeLog() {
   });
 }
 
+// Aggregated minutes per automation (for cards / lists)
+export function useAutomationTotalMinutes() {
+  return useQuery({
+    queryKey: ["automation_time_logs", "all-totals"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("automation_time_logs")
+        .select("automation_id, duration_minutes");
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      (data || []).forEach((l: any) => {
+        map[l.automation_id] = (map[l.automation_id] || 0) + (l.duration_minutes || 0);
+      });
+      return map;
+    },
+    staleTime: 30_000,
+  });
+}
+
 // ─── Profiles for display ───
 
 export function useAllProfiles() {
