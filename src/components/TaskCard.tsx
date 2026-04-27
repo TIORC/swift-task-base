@@ -59,8 +59,8 @@ export function TaskCard({ task, index, onClick, isDragDisabled }: TaskCardProps
             <StatusBadge type="priority" value={task.priority} />
 
             <div className="flex items-center gap-2">
-              {(task.total_minutes || 0) > 0 && (
-                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              {(totalWorked > 0 || isTimerOnThis) && (
+                <div className={`flex items-center gap-1 text-[11px] tabular-nums ${isTimerOnThis ? "text-primary font-semibold" : "text-muted-foreground"}`}>
                   <Clock className="h-3 w-3" />
                   <span>{timeStr}</span>
                 </div>
