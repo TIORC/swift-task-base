@@ -92,8 +92,10 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
     setElapsed(0);
     startTimeRef.current = null;
     queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    queryClient.invalidateQueries({ queryKey: ["automations"] });
+    queryClient.invalidateQueries({ queryKey: ["automation_time_logs"] });
     if (prev?.type === "task") queryClient.invalidateQueries({ queryKey: ["time-logs", prev.id] });
-    if (prev?.type === "automation") queryClient.invalidateQueries({ queryKey: ["automation-time-logs", prev.id] });
+    if (prev?.type === "automation") queryClient.invalidateQueries({ queryKey: ["automation_time_logs", prev.id] });
   }, [queryClient, stopCurrent]);
 
   // Tick
