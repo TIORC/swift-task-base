@@ -1,12 +1,14 @@
 import { Task } from "@/hooks/useTasks";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Clock, Calendar, AlignLeft } from "lucide-react";
+import { Clock, Calendar, AlignLeft, Repeat } from "lucide-react";
 import { Draggable } from "@hello-pangea/dnd";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useGlobalTimer } from "@/hooks/useGlobalTimer";
 import { formatTime, formatMinutes } from "@/hooks/useTimeTracker";
+import { isOverdue } from "@/lib/dates";
 
 interface TaskCardProps {
   task: Task;
