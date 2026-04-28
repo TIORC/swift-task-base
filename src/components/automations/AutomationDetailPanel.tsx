@@ -28,8 +28,9 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   AlertTriangle, CheckCircle2, Clock, Code2, FileText, History,
-  ListChecks, Lock, Play, Plus, Save, Square, Timer, Trash2, X
+  ListChecks, Lock, MessageSquare, Play, Plus, Save, Square, Timer, Trash2, X
 } from "lucide-react";
+import { AutomationComments } from "@/components/automations/AutomationComments";
 
 interface Props {
   automation: Automation | null;
@@ -131,9 +132,10 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
         <Separator />
 
         <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="mx-4 mt-2 grid grid-cols-5 h-8">
+          <TabsList className="mx-4 mt-2 grid grid-cols-6 h-8">
             <TabsTrigger value="details" className="text-xs"><FileText className="h-3 w-3 mr-1" />Dados</TabsTrigger>
             <TabsTrigger value="checklist" className="text-xs"><ListChecks className="h-3 w-3 mr-1" />Check</TabsTrigger>
+            <TabsTrigger value="comments" className="text-xs"><MessageSquare className="h-3 w-3 mr-1" />Chat</TabsTrigger>
             <TabsTrigger value="blockers" className="text-xs"><Lock className="h-3 w-3 mr-1" />Bloq.</TabsTrigger>
             <TabsTrigger value="timeline" className="text-xs"><History className="h-3 w-3 mr-1" />Timeline</TabsTrigger>
             <TabsTrigger value="time" className="text-xs"><Timer className="h-3 w-3 mr-1" />Tempo</TabsTrigger>
