@@ -1,12 +1,14 @@
 import { Automation, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, computeHealthScore, computePrediction, AutomationStatus } from "@/types/automation";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, Clock, Lock, User, Timer } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, Clock, Lock, User, Timer, Play, Square } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAutomationTotalMinutes } from "@/hooks/useAutomationsData";
 import { useGlobalTimer } from "@/hooks/useGlobalTimer";
 import { formatMinutes, formatTime } from "@/hooks/useTimeTracker";
+import { isOverdue } from "@/lib/dates";
 
 interface Props {
   automation: Automation;
@@ -18,20 +20,21 @@ export function AutomationCard({ automation: a, onClick, profileName }: Props) {
   const health = computeHealthScore(a);
   const prediction = computePrediction(a);
   const { data: totals } = useAutomationTotalMinutes();
-  const { activeAutomationId, isRunning, elapsed } = useGlobalTimer();
+  const { activeAutomationId, isRunning, elapsed, startAutomation, stop } = useGlobalTimer();
   const isTimerOnThis = isRunning && activeAutomationId === a.id;
   const baseMinutes = totals?.[a.id] || 0;
   const liveMinutes = isTimerOnThis ? Math.floor(elapsed / 60) : 0;
   const totalWorked = baseMinutes + liveMinutes;
-  const isLate = !!a.final_deadline && new Date(a.final_deadline) < new Date() && a.status !== "completed" && a.status !== "cancelled";
+  const isLate = isOverdue(a.final_deadline) && a.status !== "completed" && a.status !== "cancelled";
   const isBlocked = a.status === "blocked";
+  const isFinished = a.status === "completed" || a.status === "cancelled";
 
   return (
     <div
       onClick={onClick}
       className={`
         group p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md
-        ${isBlocked ? "border-red-500/40 bg-red-500/5" : isLate ? "border-amber-500/40 bg-amber-500/5" : "border-border hover:border-primary/30 bg-card"}
+        ${isBlocked ? "border-red-500/40 bg-red-500/5" : isLate ? "border-amber-500/40 bg-amber-500/5" : isTimerOnThis ? "border-primary/40 bg-primary/5" : "border-border hover:border-primary/30 bg-card"}
       `}
     >
       <div className="flex items-start justify-between gap-2 mb-2">
@@ -79,8 +82,18 @@ export function AutomationCard({ automation: a, onClick, profileName }: Props) {
         </div>
       </div>
 
-      <div className={`text-[9px] mt-1.5 font-medium ${prediction.color}`}>
-        {prediction.label}
+      <div className="flex items-center justify-between mt-1.5 gap-2">
+        <span className={`text-[9px] font-medium ${prediction.color}`}>{prediction.label}</span>
+        {!isFinished && (
+          <Button
+            size="sm"
+            variant={isTimerOnThis ? "destructive" : "outline"}
+            className="h-6 px-2 text-[10px] rounded-md gap-1"
+            onClick={(e) => { e.stopPropagation(); isTimerOnThis ? stop() : startAutomation(a.id); }}
+          >
+            {isTimerOnThis ? <><Square className="h-2.5 w-2.5" />Parar</> : <><Play className="h-2.5 w-2.5" />Iniciar</>}
+          </Button>
+        )}
       </div>
     </div>
   );
