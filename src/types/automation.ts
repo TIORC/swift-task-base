@@ -190,32 +190,33 @@ export interface AutomationTimeLog {
 }
 
 // Health score helpers
+function endOfDay(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).getTime();
+}
+
 export function computeHealthScore(a: Automation): { score: number; label: string; color: string } {
   let score = 100;
 
-  // Deadline proximity
+  // Deadline proximity (only "late" if past END of due day)
   if (a.final_deadline) {
-    const daysLeft = (new Date(a.final_deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-    if (daysLeft < 0) score -= 40;
+    const msLeft = endOfDay(new Date(a.final_deadline)) - Date.now();
+    const daysLeft = msLeft / (1000 * 60 * 60 * 24);
+    if (msLeft < 0) score -= 40;
     else if (daysLeft < 3) score -= 25;
     else if (daysLeft < 7) score -= 10;
   }
 
-  // Risk
   if (a.risk_level === "critical") score -= 30;
   else if (a.risk_level === "high") score -= 20;
   else if (a.risk_level === "medium") score -= 10;
 
-  // Blocked
   if (a.status === "blocked") score -= 25;
 
-  // Low progress with approaching deadline
   if (a.progress_percent < 30 && a.final_deadline) {
-    const daysLeft = (new Date(a.final_deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+    const daysLeft = (endOfDay(new Date(a.final_deadline)) - Date.now()) / (1000 * 60 * 60 * 24);
     if (daysLeft < 14) score -= 15;
   }
 
-  // Stale (no update in 5+ days)
   const daysSinceUpdate = (Date.now() - new Date(a.updated_at).getTime()) / (1000 * 60 * 60 * 24);
   if (daysSinceUpdate > 5) score -= 15;
 
@@ -228,18 +229,15 @@ export function computeHealthScore(a: Automation): { score: number; label: strin
 
 export function computePrediction(a: Automation): { label: string; color: string } {
   if (a.status === "completed" || a.status === "cancelled") return { label: "Finalizado", color: "text-muted-foreground" };
-
   if (!a.final_deadline) return { label: "Sem prazo", color: "text-muted-foreground" };
 
-  const daysLeft = (new Date(a.final_deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+  const msLeft = endOfDay(new Date(a.final_deadline)) - Date.now();
+  const daysLeft = msLeft / (1000 * 60 * 60 * 24);
 
-  if (daysLeft < 0) return { label: "Atrasado", color: "text-red-500" };
-
+  if (msLeft < 0) return { label: "Atrasado", color: "text-red-500" };
   if (a.status === "blocked" || a.risk_level === "critical" || a.risk_level === "high") {
     return { label: "Em risco", color: "text-amber-500" };
   }
-
   if (daysLeft < 3 && a.progress_percent < 80) return { label: "Tende a atrasar", color: "text-amber-500" };
-
   return { label: "Dentro do prazo", color: "text-emerald-500" };
 }
