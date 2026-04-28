@@ -304,6 +304,11 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
               )}
             </TabsContent>
 
+            {/* ─── Comments Tab ─── */}
+            <TabsContent value="comments" className="mt-3">
+              <AutomationComments automationId={a.id} />
+            </TabsContent>
+
             {/* ─── Blockers Tab ─── */}
             <TabsContent value="blockers" className="mt-3 space-y-3">
               {blockers.map(b => (
