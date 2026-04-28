@@ -99,6 +99,33 @@ export type Database = {
           },
         ]
       }
+      automation_comments: {
+        Row: {
+          automation_id: string
+          content: string
+          created_at: string
+          id: string
+          mentions: string[] | null
+          user_id: string
+        }
+        Insert: {
+          automation_id: string
+          content: string
+          created_at?: string
+          id?: string
+          mentions?: string[] | null
+          user_id: string
+        }
+        Update: {
+          automation_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          mentions?: string[] | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       automation_events: {
         Row: {
           automation_id: string
@@ -618,7 +645,13 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          is_recurring_template: boolean
+          last_spawned_at: string | null
+          parent_recurring_task_id: string | null
           priority: Database["public"]["Enums"]["task_priority"]
+          recurrence_interval: number | null
+          recurrence_type: string | null
+          recurrence_until: string | null
           status: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at: string
@@ -630,7 +663,13 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_recurring_template?: boolean
+          last_spawned_at?: string | null
+          parent_recurring_task_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
+          recurrence_interval?: number | null
+          recurrence_type?: string | null
+          recurrence_until?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at?: string
@@ -642,7 +681,13 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_recurring_template?: boolean
+          last_spawned_at?: string | null
+          parent_recurring_task_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
+          recurrence_interval?: number | null
+          recurrence_type?: string | null
+          recurrence_until?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
           updated_at?: string
