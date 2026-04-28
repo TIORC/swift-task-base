@@ -4,7 +4,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { CalendarIcon, Loader2, Plus } from "lucide-react";
+import { CalendarIcon, Loader2, Plus, Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -16,6 +16,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -35,6 +36,14 @@ const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: "discarded", label: "Descartado" },
 ];
 
+const RECURRENCE_OPTIONS = [
+  { value: "none", label: "Não repetir" },
+  { value: "daily", label: "Todos os dias" },
+  { value: "weekly", label: "Toda semana" },
+  { value: "monthly", label: "Todo mês" },
+  { value: "custom", label: "Personalizado (a cada N dias)" },
+] as const;
+
 interface CreateTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -48,6 +57,9 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
   const [status, setStatus] = useState<TaskStatus>(defaultStatus);
   const [assignedTo, setAssignedTo] = useState<string>("");
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+  const [recurrenceType, setRecurrenceType] = useState<string>("none");
+  const [recurrenceInterval, setRecurrenceInterval] = useState<number>(1);
+  const [recurrenceUntil, setRecurrenceUntil] = useState<Date | undefined>(undefined);
 
   const { data: profiles } = useProfiles();
   const { data: adminIds } = useQuery({
@@ -63,6 +75,8 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
   );
   const createTask = useCreateTask();
 
+  const isRecurring = recurrenceType !== "none";
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createTask.mutate(
@@ -71,13 +85,19 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
         description: description || null,
         priority: priority as any,
         status: status as any,
-        assigned_to: assignedTo || null,
+        assigned_to: assignedTo && assignedTo !== "none" ? assignedTo : null,
         due_date: dueDate ? dueDate.toISOString() : null,
-      },
+        recurrence_type: isRecurring ? recurrenceType : null,
+        recurrence_interval: isRecurring ? recurrenceInterval : null,
+        recurrence_until: isRecurring && recurrenceUntil ? recurrenceUntil.toISOString() : null,
+        is_recurring_template: isRecurring,
+      } as any,
       {
         onSuccess: () => {
           onOpenChange(false);
-          setTitle(""); setDescription(""); setPriority("medium"); setStatus(defaultStatus); setAssignedTo(""); setDueDate(undefined);
+          setTitle(""); setDescription(""); setPriority("medium"); setStatus(defaultStatus);
+          setAssignedTo(""); setDueDate(undefined);
+          setRecurrenceType("none"); setRecurrenceInterval(1); setRecurrenceUntil(undefined);
         },
       }
     );
