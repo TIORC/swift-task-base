@@ -1,12 +1,14 @@
 import { Task } from "@/hooks/useTasks";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Clock, Calendar, AlignLeft } from "lucide-react";
+import { Clock, Calendar, AlignLeft, Repeat } from "lucide-react";
 import { Draggable } from "@hello-pangea/dnd";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useGlobalTimer } from "@/hooks/useGlobalTimer";
 import { formatTime, formatMinutes } from "@/hooks/useTimeTracker";
+import { isOverdue } from "@/lib/dates";
 
 interface TaskCardProps {
   task: Task;
@@ -42,7 +44,23 @@ export function TaskCard({ task, index, onClick, isDragDisabled }: TaskCardProps
             ${snapshot.isDragging ? "shadow-card-hover ring-2 ring-primary/20 rotate-1" : "shadow-card"}`}
         >
           {/* Title */}
-          <p className="text-sm font-medium text-foreground leading-snug line-clamp-2">{task.title}</p>
+          <div className="flex items-start gap-1.5">
+            {(task as any).recurrence_type && (
+              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 gap-0.5 border-primary/30 text-primary shrink-0" title="Tarefa recorrente">
+                <Repeat className="h-2.5 w-2.5" />
+              </Badge>
+            )}
+            <p className="text-sm font-medium text-foreground leading-snug line-clamp-2 flex-1">{task.title}</p>
+          </div>
+
+          {/* Due date / overdue */}
+          {task.due_date && task.status !== "done" && task.status !== "discarded" && (
+            <div className={`flex items-center gap-1 text-[11px] ${isOverdue(task.due_date) ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+              <Calendar className="h-3 w-3" />
+              <span>Prazo {format(new Date(task.due_date), "dd/MM", { locale: ptBR })}</span>
+              {isOverdue(task.due_date) && <span>· atrasada</span>}
+            </div>
+          )}
 
           {/* Description preview */}
           {task.description && (

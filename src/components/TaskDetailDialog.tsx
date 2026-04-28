@@ -20,6 +20,7 @@ import { Play, Square, Clock, Trash2, User, Timer, FileText, History, MessageSqu
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { isOverdue } from "@/lib/dates";
 import { TaskComments } from "@/components/TaskComments";
 import { TaskAttachments } from "@/components/TaskAttachments";
 import { ResponsibilityHistorySection } from "@/components/ResponsibilityHistory";
@@ -206,7 +207,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
               {task.due_date && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <CalendarIcon className="h-4 w-4" />
-                  Prazo: <span className={cn("font-medium", new Date(task.due_date) < new Date() && task.status !== "done" ? "text-destructive" : "text-foreground")}>{format(new Date(task.due_date), "dd/MM/yyyy")}</span>
+                  Prazo: <span className={cn("font-medium", isOverdue(task.due_date) && task.status !== "done" ? "text-destructive" : "text-foreground")}>{format(new Date(task.due_date), "dd/MM/yyyy")}</span>
                 </div>
               )}
               {!isReadOnly && (
