@@ -110,6 +110,15 @@ function ProtectedSocial({ children }: { children: React.ReactNode }) {
   );
 }
 
+function ProtectedSocialPortal({ children }: { children: React.ReactNode }) {
+  return (
+    <RequireAuth>
+      <SystemGate system="social">
+        <SocialClientPortalLayout>{children}</SocialClientPortalLayout>
+      </SystemGate>
+    </RequireAuth>
+  );
+
 function RoleGate({ route, children }: { route: string; children: React.ReactNode }) {
   const { canAccess, loading, profile } = useUserRole();
   const { isMenuEnabled, loading: menuLoading } = useMyMenuAccess();
