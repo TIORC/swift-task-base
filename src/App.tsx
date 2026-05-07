@@ -12,6 +12,7 @@ import { useMyMenuAccess } from "@/hooks/usePermissions";
 import { canAccessMenuRoute, getAccessibleFallbackRoute } from "@/lib/menu-access";
 import { AppLayout } from "@/components/AppLayout";
 import { SocialLayout } from "@/components/social/SocialLayout";
+import { SocialClientPortalLayout } from "@/components/social/SocialClientPortalLayout";
 import { Loader2 } from "lucide-react";
 
 import Auth from "./pages/Auth";
@@ -49,6 +50,8 @@ import SocialFocusMode from "./pages/social/SocialFocusMode";
 import SocialReports from "./pages/social/SocialReports";
 import SocialRanking from "./pages/social/SocialRanking";
 import SocialManagerDashboard from "./pages/social/SocialManagerDashboard";
+import SocialClientApprovals from "./pages/social/SocialClientApprovals";
+import SocialClientCalendar from "./pages/social/SocialClientCalendar";
 
 const queryClient = new QueryClient();
 
@@ -102,6 +105,16 @@ function ProtectedSocial({ children }: { children: React.ReactNode }) {
     <RequireAuth>
       <SystemGate system="social">
         <SocialLayout>{children}</SocialLayout>
+      </SystemGate>
+    </RequireAuth>
+  );
+}
+
+function ProtectedSocialPortal({ children }: { children: React.ReactNode }) {
+  return (
+    <RequireAuth>
+      <SystemGate system="social">
+        <SocialClientPortalLayout>{children}</SocialClientPortalLayout>
       </SystemGate>
     </RequireAuth>
   );
@@ -186,6 +199,11 @@ const AppRoutes = () => (
     <Route path="/social/relatorios" element={<ProtectedSocial><SocialReports /></ProtectedSocial>} />
     <Route path="/social/ranking" element={<ProtectedSocial><SocialRanking /></ProtectedSocial>} />
     <Route path="/social/admin" element={<ProtectedSocial><SocialAdmin /></ProtectedSocial>} />
+
+    {/* Portal do Cliente */}
+    <Route path="/social/portal" element={<Navigate to="/social/portal/aprovacoes" replace />} />
+    <Route path="/social/portal/aprovacoes" element={<ProtectedSocialPortal><SocialClientApprovals /></ProtectedSocialPortal>} />
+    <Route path="/social/portal/calendario" element={<ProtectedSocialPortal><SocialClientCalendar /></ProtectedSocialPortal>} />
 
     <Route path="*" element={<NotFound />} />
   </Routes>

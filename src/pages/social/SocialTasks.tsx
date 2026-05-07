@@ -23,7 +23,14 @@ export default function SocialTasks() {
   const { data: clients } = useSmClients();
   const m = useSocialMutations();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ title: "", description: "", client_id: "", priority: "medium" as SmPriority, due_date: "", status: "backlog" });
+  const [form, setForm] = useState({
+    title: "", description: "", client_id: "", priority: "medium" as SmPriority,
+    due_date: "", status: "backlog",
+    is_recurring_template: false,
+    recurrence_type: "" as "" | "daily" | "weekly" | "monthly" | "custom",
+    recurrence_interval: 1,
+    recurrence_until: "",
+  });
 
   const save = async () => {
     if (!form.title.trim()) return toast.error("Título obrigatório");
@@ -32,11 +39,16 @@ export default function SocialTasks() {
       client_id: form.client_id || null, priority: form.priority,
       due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
       status: form.status,
+      is_recurring_template: form.is_recurring_template,
+      recurrence_type: form.is_recurring_template && form.recurrence_type ? form.recurrence_type : null,
+      recurrence_interval: form.is_recurring_template ? form.recurrence_interval || 1 : null,
+      recurrence_until: form.is_recurring_template && form.recurrence_until ? new Date(form.recurrence_until).toISOString() : null,
     };
     const { error } = await m.createTask(payload);
     if (error) return toast.error(error.message);
     toast.success("Tarefa criada");
-    setOpen(false); setForm({ title: "", description: "", client_id: "", priority: "medium", due_date: "", status: "backlog" });
+    setOpen(false);
+    setForm({ title: "", description: "", client_id: "", priority: "medium", due_date: "", status: "backlog", is_recurring_template: false, recurrence_type: "", recurrence_interval: 1, recurrence_until: "" });
     refresh();
   };
 
@@ -65,7 +77,11 @@ export default function SocialTasks() {
             <Card key={t.id}>
               <CardContent className="p-3 flex items-center gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium truncate">{t.title}</p>
+                  <p className="font-medium truncate flex items-center gap-2">
+                    {t.title}
+                    {(t as any).is_recurring_template && <Badge variant="secondary" className="text-[10px]">Recorrente</Badge>}
+                    {(t as any).parent_recurring_task_id && <Badge variant="outline" className="text-[10px]">↻</Badge>}
+                  </p>
                   <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                     <Badge variant="outline" className="text-[10px]">{SM_PRIORITY_LABEL[t.priority]}</Badge>
                     <span>{clientName(t.client_id)}</span>
@@ -108,6 +124,28 @@ export default function SocialTasks() {
                 </Select>
               </div>
               <div><Label>Prazo</Label><Input type="date" value={form.due_date} onChange={e => setForm({...form, due_date: e.target.value})}/></div>
+            </div>
+
+            <div className="rounded-lg border border-border p-3 space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" checked={form.is_recurring_template} onChange={(e) => setForm({ ...form, is_recurring_template: e.target.checked })} />
+                Tarefa recorrente
+              </label>
+              {form.is_recurring_template && (
+                <div className="grid grid-cols-3 gap-2">
+                  <Select value={form.recurrence_type || "daily"} onValueChange={(v) => setForm({ ...form, recurrence_type: v as any })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Diária</SelectItem>
+                      <SelectItem value="weekly">Semanal</SelectItem>
+                      <SelectItem value="monthly">Mensal</SelectItem>
+                      <SelectItem value="custom">A cada N dias</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input type="number" min={1} value={form.recurrence_interval} onChange={(e) => setForm({ ...form, recurrence_interval: Number(e.target.value) || 1 })} />
+                  <Input type="date" value={form.recurrence_until} onChange={(e) => setForm({ ...form, recurrence_until: e.target.value })} placeholder="Até" />
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
