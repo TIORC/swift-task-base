@@ -10,9 +10,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSmPosts, useSmClients } from "@/hooks/useSocial";
 
 const sb = supabase as any;
+const BUCKET = "task-attachments";
 
 interface Att {
-  id: string; post_id: string; file_name: string; file_path: string; mime_type: string; file_size: number; created_at: string;
+  id: string; post_id: string; file_name: string; file_path: string;
+  mime_type: string; file_size: number; created_at: string;
 }
 
 function iconFor(mime: string) {
@@ -21,12 +23,18 @@ function iconFor(mime: string) {
   return FileIcon;
 }
 
+function publicUrl(path: string) {
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
 export default function SocialContentLibrary() {
   const { data: posts } = useSmPosts();
   const { data: clients } = useSmClients();
   const [items, setItems] = useState<Att[]>([]);
   const [loading, setLoading] = useState(true);
   const [client, setClient] = useState("all");
+  const [type, setType] = useState<"all" | "image" | "video" | "file">("all");
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -41,12 +49,15 @@ export default function SocialContentLibrary() {
   const filtered = useMemo(() => items.filter(i => {
     const post = posts.find(p => p.id === i.post_id);
     if (client !== "all" && post?.client_id !== client) return false;
+    if (type === "image" && !i.mime_type.startsWith("image/")) return false;
+    if (type === "video" && !i.mime_type.startsWith("video/")) return false;
+    if (type === "file" && (i.mime_type.startsWith("image/") || i.mime_type.startsWith("video/"))) return false;
     if (search && !i.file_name.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
-  }), [items, client, search, posts]);
+  }), [items, client, type, search, posts]);
 
   const download = async (a: Att) => {
-    const { data } = await sb.storage.from("task-attachments").createSignedUrl(a.file_path, 300);
+    const { data } = await sb.storage.from(BUCKET).createSignedUrl(a.file_path, 300);
     if (data?.signedUrl) window.open(data.signedUrl, "_blank");
   };
 
@@ -54,7 +65,7 @@ export default function SocialContentLibrary() {
     <div className="space-y-6">
       <PageHeader title="Biblioteca de Conteúdo" description="Criativos e materiais anexados aos posts" icon={<Library className="h-5 w-5" />} />
 
-      <Card><CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+      <Card><CardContent className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
           <Label className="text-xs">Cliente</Label>
           <Select value={client} onValueChange={setClient}>
@@ -66,10 +77,24 @@ export default function SocialContentLibrary() {
           </Select>
         </div>
         <div>
+          <Label className="text-xs">Tipo</Label>
+          <Select value={type} onValueChange={(v) => setType(v as any)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="image">Imagens</SelectItem>
+              <SelectItem value="video">Vídeos</SelectItem>
+              <SelectItem value="file">Documentos</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
           <Label className="text-xs">Buscar</Label>
           <Input placeholder="Nome do arquivo..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </CardContent></Card>
+
+      <p className="text-xs text-muted-foreground">{filtered.length} arquivo(s)</p>
 
       {loading ? <Card className="p-6 text-sm text-muted-foreground">Carregando...</Card>
       : filtered.length === 0 ? <EmptyState icon={Library} title="Biblioteca vazia" description="Anexe arquivos aos posts para vê-los aqui." />
@@ -79,15 +104,27 @@ export default function SocialContentLibrary() {
             const Icon = iconFor(a.mime_type);
             const post = posts.find(p => p.id === a.post_id);
             const c = clients.find(x => x.id === post?.client_id);
+            const url = publicUrl(a.file_path);
+            const isImage = a.mime_type.startsWith("image/");
+            const isVideo = a.mime_type.startsWith("video/");
             return (
-              <Card key={a.id} className="cursor-pointer hover:shadow-md transition" onClick={() => download(a)}>
-                <CardContent className="p-4 space-y-2">
-                  <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                    <Icon className="h-10 w-10 text-muted-foreground" />
+              <Card key={a.id} className="cursor-pointer hover:shadow-md transition group" onClick={() => download(a)}>
+                <CardContent className="p-3 space-y-2">
+                  <div className="aspect-video bg-muted rounded-lg flex items-center justify-center overflow-hidden relative">
+                    {isImage ? (
+                      <img src={url} alt={a.file_name} className="w-full h-full object-cover" loading="lazy" />
+                    ) : isVideo ? (
+                      <video src={url} className="w-full h-full object-cover" muted preload="metadata" />
+                    ) : (
+                      <Icon className="h-10 w-10 text-muted-foreground" />
+                    )}
+                    <span className="absolute top-1.5 right-1.5 text-[9px] uppercase font-semibold bg-background/80 px-1.5 py-0.5 rounded">
+                      {a.mime_type.split("/")[1]?.slice(0, 4) ?? "file"}
+                    </span>
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate" title={a.file_name}>{a.file_name}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{c?.name} • {(a.file_size / 1024).toFixed(0)} KB</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{c?.name ?? "—"} • {(a.file_size / 1024).toFixed(0)} KB</p>
                   </div>
                   <button className="text-xs text-primary inline-flex items-center gap-1"><Download className="h-3 w-3" />Baixar</button>
                 </CardContent>
