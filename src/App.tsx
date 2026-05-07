@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -126,17 +126,6 @@ function HomeRedirect() {
   if (!home) return <NoAccessibleMenuState />;
   if (home !== "/") return <Navigate to={home} replace />;
   return <Dashboard />;
-}
-
-/** After login, redirect to /select-system if user has 2 systems, or directly to the only one. */
-function PostLoginRedirect() {
-  const { systems, loading } = useUserSystems();
-  if (loading) return <FullScreenLoader />;
-  if (systems.length === 0) return <Navigate to="/select-system" replace />;
-  if (systems.length === 1) {
-    return <Navigate to={systems[0] === "social" ? "/social" : "/home-ti"} replace />;
-  }
-  return <Navigate to="/select-system" replace />;
 }
 
 const AppRoutes = () => (
