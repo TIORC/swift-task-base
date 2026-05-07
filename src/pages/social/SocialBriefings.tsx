@@ -34,6 +34,8 @@ export default function SocialBriefings() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Briefing | null>(null);
   const [form, setForm] = useState({ client_id: "", campaign_id: "", title: "", content: "" });
+  const [filterClient, setFilterClient] = useState("all");
+  const [search, setSearch] = useState("");
 
   const refresh = async () => {
     setLoading(true);
@@ -82,11 +84,37 @@ export default function SocialBriefings() {
         icon={<FileText className="h-5 w-5" />}
         actions={<Button onClick={openNew}><Plus className="h-4 w-4 mr-1" />Novo briefing</Button>}
       />
-      {loading ? <Card className="p-6 text-sm text-muted-foreground">Carregando...</Card>
-      : items.length === 0 ? <EmptyState icon={FileText} title="Nenhum briefing" description="Crie o primeiro briefing." />
-      : (
+      <Card><CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <Label className="text-xs">Cliente</Label>
+          <Select value={filterClient} onValueChange={setFilterClient}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Buscar</Label>
+          <Input placeholder="Título ou conteúdo..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+      </CardContent></Card>
+
+      {(() => {
+        const visible = items.filter(b => {
+          if (filterClient !== "all" && b.client_id !== filterClient) return false;
+          if (search) {
+            const s = search.toLowerCase();
+            if (!b.title.toLowerCase().includes(s) && !(b.content ?? "").toLowerCase().includes(s)) return false;
+          }
+          return true;
+        });
+        if (loading) return <Card className="p-6 text-sm text-muted-foreground">Carregando...</Card>;
+        if (visible.length === 0) return <EmptyState icon={FileText} title="Nenhum briefing" description="Ajuste os filtros ou crie o primeiro." />;
+        return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {items.map(b => {
+          {visible.map(b => {
             const client = clients.find(c => c.id === b.client_id);
             const camp = campaigns.find(c => c.id === b.campaign_id);
             return (
