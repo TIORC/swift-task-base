@@ -12,6 +12,7 @@ import { useMyMenuAccess } from "@/hooks/usePermissions";
 import { canAccessMenuRoute, getAccessibleFallbackRoute } from "@/lib/menu-access";
 import { AppLayout } from "@/components/AppLayout";
 import { SocialLayout } from "@/components/social/SocialLayout";
+import { SocialClientPortalLayout } from "@/components/social/SocialClientPortalLayout";
 import { Loader2 } from "lucide-react";
 
 import Auth from "./pages/Auth";
@@ -49,6 +50,8 @@ import SocialFocusMode from "./pages/social/SocialFocusMode";
 import SocialReports from "./pages/social/SocialReports";
 import SocialRanking from "./pages/social/SocialRanking";
 import SocialManagerDashboard from "./pages/social/SocialManagerDashboard";
+import SocialClientApprovals from "./pages/social/SocialClientApprovals";
+import SocialClientCalendar from "./pages/social/SocialClientCalendar";
 
 const queryClient = new QueryClient();
 
