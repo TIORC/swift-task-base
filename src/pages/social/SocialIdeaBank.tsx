@@ -38,6 +38,9 @@ export default function SocialIdeaBank() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ client_id: "", title: "", description: "", tags: "", status: "new" });
+  const [filterClient, setFilterClient] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [search, setSearch] = useState("");
 
   const refresh = async () => {
     setLoading(true);
@@ -98,11 +101,51 @@ export default function SocialIdeaBank() {
         icon={<Lightbulb className="h-5 w-5" />}
         actions={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />Nova ideia</Button>}
       />
-      {loading ? <Card className="p-6 text-sm text-muted-foreground">Carregando...</Card>
-      : items.length === 0 ? <EmptyState icon={Lightbulb} title="Nenhuma ideia ainda" description="Capture insights e oportunidades aqui." />
-      : (
+      <Card><CardContent className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <Label className="text-xs">Cliente</Label>
+          <Select value={filterClient} onValueChange={setFilterClient}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Status</Label>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {Object.entries(STATUS_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Buscar</Label>
+          <Input placeholder="Título, descrição ou tag..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+      </CardContent></Card>
+
+      {(() => {
+        const visible = items.filter(i => {
+          if (filterClient !== "all" && i.client_id !== filterClient) return false;
+          if (filterStatus !== "all" && i.status !== filterStatus) return false;
+          if (search) {
+            const s = search.toLowerCase();
+            const hit = i.title.toLowerCase().includes(s)
+              || (i.description ?? "").toLowerCase().includes(s)
+              || (i.tags ?? []).some(t => t.toLowerCase().includes(s));
+            if (!hit) return false;
+          }
+          return true;
+        });
+        if (loading) return <Card className="p-6 text-sm text-muted-foreground">Carregando...</Card>;
+        if (visible.length === 0) return <EmptyState icon={Lightbulb} title="Nenhuma ideia encontrada" description="Ajuste os filtros ou crie uma nova ideia." />;
+        return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {items.map(i => {
+          {visible.map(i => {
             const client = clients.find(c => c.id === i.client_id);
             return (
               <Card key={i.id}>
