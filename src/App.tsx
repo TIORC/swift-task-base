@@ -45,6 +45,10 @@ import SocialIdeaBank from "./pages/social/SocialIdeaBank";
 import SocialContentLibrary from "./pages/social/SocialContentLibrary";
 import SocialPublishingSchedule from "./pages/social/SocialPublishingSchedule";
 import SocialMetrics from "./pages/social/SocialMetrics";
+import SocialFocusMode from "./pages/social/SocialFocusMode";
+import SocialReports from "./pages/social/SocialReports";
+import SocialRanking from "./pages/social/SocialRanking";
+import SocialManagerDashboard from "./pages/social/SocialManagerDashboard";
 
 const queryClient = new QueryClient();
 
@@ -166,7 +170,7 @@ const AppRoutes = () => (
 
     {/* Sistema Social Media */}
     <Route path="/social" element={<ProtectedSocial><SocialDashboard /></ProtectedSocial>} />
-    <Route path="/social/painel-gestor" element={<ProtectedSocial><SocialPlaceholder title="Painel do Gestor" description="KPIs e métricas predictivas"/></ProtectedSocial>} />
+    <Route path="/social/painel-gestor" element={<ProtectedSocial><SocialManagerDashboard /></ProtectedSocial>} />
     <Route path="/social/kanban" element={<ProtectedSocial><SocialKanban /></ProtectedSocial>} />
     <Route path="/social/tarefas" element={<ProtectedSocial><SocialTasks /></ProtectedSocial>} />
     <Route path="/social/calendario-editorial" element={<ProtectedSocial><SocialEditorialCalendar /></ProtectedSocial>} />
@@ -178,9 +182,9 @@ const AppRoutes = () => (
     <Route path="/social/biblioteca" element={<ProtectedSocial><SocialContentLibrary /></ProtectedSocial>} />
     <Route path="/social/agenda-publicacoes" element={<ProtectedSocial><SocialPublishingSchedule /></ProtectedSocial>} />
     <Route path="/social/metricas" element={<ProtectedSocial><SocialMetrics /></ProtectedSocial>} />
-    <Route path="/social/foco" element={<ProtectedSocial><SocialPlaceholder title="Modo Foco"/></ProtectedSocial>} />
-    <Route path="/social/relatorios" element={<ProtectedSocial><SocialPlaceholder title="Relatórios"/></ProtectedSocial>} />
-    <Route path="/social/ranking" element={<ProtectedSocial><SocialPlaceholder title="Ranking"/></ProtectedSocial>} />
+    <Route path="/social/foco" element={<ProtectedSocial><SocialFocusMode /></ProtectedSocial>} />
+    <Route path="/social/relatorios" element={<ProtectedSocial><SocialReports /></ProtectedSocial>} />
+    <Route path="/social/ranking" element={<ProtectedSocial><SocialRanking /></ProtectedSocial>} />
     <Route path="/social/admin" element={<ProtectedSocial><SocialAdmin /></ProtectedSocial>} />
 
     <Route path="*" element={<NotFound />} />
