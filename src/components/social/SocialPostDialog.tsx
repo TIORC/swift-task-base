@@ -28,6 +28,10 @@ export function SocialPostDialog({ open, onOpenChange, post, onSaved }: Props) {
     client_id: "", campaign_id: "", network_id: "", content_type_id: "",
     title: "", caption: "", hashtags: "", scheduled_at: "",
     status: "ideia" as SmPostStatus, priority: "medium" as SmPriority, notes: "",
+    is_recurring_template: false,
+    recurrence_type: "" as "" | "daily" | "weekly" | "monthly" | "custom",
+    recurrence_interval: 1,
+    recurrence_until: "",
   });
 
   useEffect(() => {
@@ -38,9 +42,13 @@ export function SocialPostDialog({ open, onOpenChange, post, onSaved }: Props) {
         title: post.title, caption: post.caption ?? "", hashtags: post.hashtags ?? "",
         scheduled_at: post.scheduled_at ? post.scheduled_at.slice(0, 16) : "",
         status: post.status, priority: post.priority, notes: post.notes ?? "",
+        is_recurring_template: (post as any).is_recurring_template ?? false,
+        recurrence_type: ((post as any).recurrence_type ?? "") as any,
+        recurrence_interval: (post as any).recurrence_interval ?? 1,
+        recurrence_until: (post as any).recurrence_until ? String((post as any).recurrence_until).slice(0, 10) : "",
       });
     } else {
-      setForm({ client_id: "", campaign_id: "", network_id: "", content_type_id: "", title: "", caption: "", hashtags: "", scheduled_at: "", status: "ideia", priority: "medium", notes: "" });
+      setForm({ client_id: "", campaign_id: "", network_id: "", content_type_id: "", title: "", caption: "", hashtags: "", scheduled_at: "", status: "ideia", priority: "medium", notes: "", is_recurring_template: false, recurrence_type: "", recurrence_interval: 1, recurrence_until: "" });
     }
   }, [post, open]);
 
@@ -55,6 +63,10 @@ export function SocialPostDialog({ open, onOpenChange, post, onSaved }: Props) {
       title: form.title, caption: form.caption || null, hashtags: form.hashtags || null,
       scheduled_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null,
       status: form.status, priority: form.priority, notes: form.notes || null,
+      is_recurring_template: form.is_recurring_template,
+      recurrence_type: form.is_recurring_template && form.recurrence_type ? form.recurrence_type : null,
+      recurrence_interval: form.is_recurring_template ? form.recurrence_interval || 1 : null,
+      recurrence_until: form.is_recurring_template && form.recurrence_until ? new Date(form.recurrence_until).toISOString() : null,
     };
     const { error } = post ? await m.updatePost(post.id, payload) : await m.createPost(payload);
     setSaving(false);
@@ -136,6 +148,41 @@ export function SocialPostDialog({ open, onOpenChange, post, onSaved }: Props) {
           <div><Label>Legenda</Label><Textarea rows={4} value={form.caption} onChange={e => setForm({...form, caption: e.target.value})} /></div>
           <div><Label>Hashtags</Label><Input value={form.hashtags} onChange={e => setForm({...form, hashtags: e.target.value})} /></div>
           <div><Label>Notas internas</Label><Textarea rows={2} value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} /></div>
+
+          <div className="rounded-lg border border-border p-3 space-y-3">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={form.is_recurring_template}
+                onChange={(e) => setForm({ ...form, is_recurring_template: e.target.checked })}
+              />
+              Tornar este post recorrente (template)
+            </label>
+            {form.is_recurring_template && (
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label>Frequência</Label>
+                  <Select value={form.recurrence_type || "daily"} onValueChange={(v) => setForm({ ...form, recurrence_type: v as any })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Diária</SelectItem>
+                      <SelectItem value="weekly">Semanal</SelectItem>
+                      <SelectItem value="monthly">Mensal</SelectItem>
+                      <SelectItem value="custom">A cada N dias</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>A cada</Label>
+                  <Input type="number" min={1} value={form.recurrence_interval} onChange={(e) => setForm({ ...form, recurrence_interval: Number(e.target.value) || 1 })} />
+                </div>
+                <div>
+                  <Label>Até (opcional)</Label>
+                  <Input type="date" value={form.recurrence_until} onChange={(e) => setForm({ ...form, recurrence_until: e.target.value })} />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
