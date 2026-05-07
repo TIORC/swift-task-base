@@ -199,6 +199,11 @@ const AppRoutes = () => (
     <Route path="/social/ranking" element={<ProtectedSocial><SocialRanking /></ProtectedSocial>} />
     <Route path="/social/admin" element={<ProtectedSocial><SocialAdmin /></ProtectedSocial>} />
 
+    {/* Portal do Cliente */}
+    <Route path="/social/portal" element={<Navigate to="/social/portal/aprovacoes" replace />} />
+    <Route path="/social/portal/aprovacoes" element={<ProtectedSocialPortal><SocialClientApprovals /></ProtectedSocialPortal>} />
+    <Route path="/social/portal/calendario" element={<ProtectedSocialPortal><SocialClientCalendar /></ProtectedSocialPortal>} />
+
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
