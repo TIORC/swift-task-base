@@ -53,6 +53,8 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const navigate = useNavigate();
+  const { systems } = useUserSystems();
   const { user, signOut } = useAuth();
   const { profile, canAccess, loading: roleLoading } = useUserRole();
   const { isMenuEnabled, loading: menuLoading } = useMyMenuAccess();
@@ -131,6 +133,19 @@ export function AppSidebar() {
 
       <SidebarFooter>
         <Separator className="bg-sidebar-border" />
+        {systems.length > 1 && (
+          <div className="px-2 pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
+              onClick={() => navigate("/select-system")}
+            >
+              <ArrowLeftRight className="h-4 w-4" />
+              {!collapsed && <span className="text-xs">Trocar ambiente</span>}
+            </Button>
+          </div>
+        )}
         <div className="flex items-center gap-3 p-3">
           <Avatar className="h-8 w-8 shrink-0">
             <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
