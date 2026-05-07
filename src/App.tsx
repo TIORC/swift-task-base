@@ -31,7 +31,15 @@ import NotFound from "./pages/NotFound";
 import Reports from "./pages/Reports";
 import SupportTickets from "./pages/SupportTickets";
 import AutomacoesPage from "./pages/AutomacoesPage";
-import SocialHome from "./pages/social/SocialHome";
+import SocialDashboard from "./pages/social/SocialDashboard";
+import SocialClients from "./pages/social/SocialClients";
+import SocialCampaigns from "./pages/social/SocialCampaigns";
+import SocialKanban from "./pages/social/SocialKanban";
+import SocialEditorialCalendar from "./pages/social/SocialEditorialCalendar";
+import SocialApprovals from "./pages/social/SocialApprovals";
+import SocialTasks from "./pages/social/SocialTasks";
+import SocialAdmin from "./pages/social/SocialAdmin";
+import SocialPlaceholder from "./pages/social/SocialPlaceholder";
 
 const queryClient = new QueryClient();
 
