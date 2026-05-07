@@ -50,7 +50,7 @@ export default function SocialFocusMode() {
       <PageHeader
         title="Modo Foco — Social Media"
         description="Suas pendências organizadas por prioridade"
-        icon={Target}
+        icon={<Target className="h-6 w-6" />}
       />
 
       {total === 0 ? (
