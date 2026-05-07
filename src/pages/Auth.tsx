@@ -34,7 +34,7 @@ const Auth = () => {
     );
   }
 
-  if (session) return <Navigate to="/" replace />;
+  if (session) return <Navigate to="/select-system" replace />;
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();

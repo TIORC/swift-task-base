@@ -6,14 +6,17 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { UserRoleProvider, useUserRole, defaultRouteForProfile } from "@/hooks/useUserRole";
+import { UserSystemsProvider, useUserSystems, type SystemKey } from "@/hooks/useUserSystems";
 import { GlobalTimerProvider } from "@/hooks/useGlobalTimer";
 import { useMyMenuAccess } from "@/hooks/usePermissions";
 import { canAccessMenuRoute, getAccessibleFallbackRoute } from "@/lib/menu-access";
 import { AppLayout } from "@/components/AppLayout";
+import { SocialLayout } from "@/components/social/SocialLayout";
 import { Loader2 } from "lucide-react";
 
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
+import SelectSystem from "./pages/SelectSystem";
 import Dashboard from "./pages/Index";
 import Kanban from "./pages/Kanban";
 import Tasks from "./pages/Tasks";
@@ -28,8 +31,17 @@ import NotFound from "./pages/NotFound";
 import Reports from "./pages/Reports";
 import SupportTickets from "./pages/SupportTickets";
 import AutomacoesPage from "./pages/AutomacoesPage";
+import SocialHome from "./pages/social/SocialHome";
 
 const queryClient = new QueryClient();
+
+function FullScreenLoader() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+}
 
 function NoAccessibleMenuState() {
   return (
@@ -44,84 +56,75 @@ function NoAccessibleMenuState() {
   );
 }
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function RequireAuth({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
+  if (loading) return <FullScreenLoader />;
   if (!session) return <Navigate to="/auth" replace />;
+  return <>{children}</>;
+}
 
-  return <AppLayout>{children}</AppLayout>;
+function SystemGate({ system, children }: { system: SystemKey; children: React.ReactNode }) {
+  const { systems, loading } = useUserSystems();
+  if (loading) return <FullScreenLoader />;
+  if (!systems.includes(system)) return <Navigate to="/select-system" replace />;
+  return <>{children}</>;
+}
+
+function ProtectedTI({ children }: { children: React.ReactNode }) {
+  return (
+    <RequireAuth>
+      <SystemGate system="ti">
+        <AppLayout>{children}</AppLayout>
+      </SystemGate>
+    </RequireAuth>
+  );
+}
+
+function ProtectedSocial({ children }: { children: React.ReactNode }) {
+  return (
+    <RequireAuth>
+      <SystemGate system="social">
+        <SocialLayout>{children}</SocialLayout>
+      </SystemGate>
+    </RequireAuth>
+  );
 }
 
 function RoleGate({ route, children }: { route: string; children: React.ReactNode }) {
   const { canAccess, loading, profile } = useUserRole();
   const { isMenuEnabled, loading: menuLoading } = useMyMenuAccess();
 
-  if (loading || menuLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (loading || menuLoading) return <FullScreenLoader />;
 
   const hasAccess = canAccessMenuRoute({ route, profile, canAccess, isMenuEnabled });
-
   if (!hasAccess) {
-    const fallbackRoute = getAccessibleFallbackRoute({
+    const fallback = getAccessibleFallbackRoute({
       profile,
       canAccess,
       isMenuEnabled,
       defaultRoute: defaultRouteForProfile[profile],
     });
-
-    return fallbackRoute ? <Navigate to={fallbackRoute} replace /> : <NoAccessibleMenuState />;
+    return fallback ? <Navigate to={fallback} replace /> : <NoAccessibleMenuState />;
   }
-
   return <>{children}</>;
 }
 
 function HomeRedirect() {
   const { profile, loading, canAccess } = useUserRole();
   const { isMenuEnabled, loading: menuLoading } = useMyMenuAccess();
+  if (loading || menuLoading) return <FullScreenLoader />;
 
-  if (loading || menuLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // If "/" (Dashboard) is explicitly accessible to this user, render it directly.
-  // This prevents redirecting non-admin users away from the Dashboard when an
-  // admin has explicitly enabled it via menu access.
-  const dashboardAccessible = canAccessMenuRoute({
-    route: "/",
-    profile,
-    canAccess,
-    isMenuEnabled,
-  });
-
+  const dashboardAccessible = canAccessMenuRoute({ route: "/", profile, canAccess, isMenuEnabled });
   if (dashboardAccessible) return <Dashboard />;
 
-  const homeRoute = getAccessibleFallbackRoute({
+  const home = getAccessibleFallbackRoute({
     profile,
     canAccess,
     isMenuEnabled,
     defaultRoute: defaultRouteForProfile[profile],
   });
-
-  if (!homeRoute) return <NoAccessibleMenuState />;
-  if (homeRoute !== "/") return <Navigate to={homeRoute} replace />;
-
+  if (!home) return <NoAccessibleMenuState />;
+  if (home !== "/") return <Navigate to={home} replace />;
   return <Dashboard />;
 }
 
@@ -129,19 +132,28 @@ const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<Auth />} />
     <Route path="/reset-password" element={<ResetPassword />} />
-    <Route path="/" element={<ProtectedRoute><RoleGate route="/"><HomeRedirect /></RoleGate></ProtectedRoute>} />
-    <Route path="/kanban" element={<ProtectedRoute><RoleGate route="/kanban"><Kanban /></RoleGate></ProtectedRoute>} />
-    <Route path="/tasks" element={<ProtectedRoute><RoleGate route="/tasks"><Tasks /></RoleGate></ProtectedRoute>} />
-    <Route path="/notifications" element={<ProtectedRoute><RoleGate route="/notifications"><Notifications /></RoleGate></ProtectedRoute>} />
-    <Route path="/automations" element={<ProtectedRoute><RoleGate route="/automations"><Automations /></RoleGate></ProtectedRoute>} />
-    <Route path="/ranking" element={<ProtectedRoute><RoleGate route="/ranking"><Ranking /></RoleGate></ProtectedRoute>} />
-    <Route path="/focus" element={<ProtectedRoute><RoleGate route="/focus"><FocusMode /></RoleGate></ProtectedRoute>} />
-    <Route path="/dependencies" element={<ProtectedRoute><RoleGate route="/dependencies"><DependencyMap /></RoleGate></ProtectedRoute>} />
-    <Route path="/manager" element={<ProtectedRoute><RoleGate route="/manager"><ManagerDashboard /></RoleGate></ProtectedRoute>} />
-    <Route path="/admin" element={<ProtectedRoute><RoleGate route="/admin"><AdminPanel /></RoleGate></ProtectedRoute>} />
-    <Route path="/reports" element={<ProtectedRoute><RoleGate route="/reports"><Reports /></RoleGate></ProtectedRoute>} />
-    <Route path="/support" element={<ProtectedRoute><RoleGate route="/support"><SupportTickets /></RoleGate></ProtectedRoute>} />
-    <Route path="/automacoes" element={<ProtectedRoute><RoleGate route="/automacoes"><AutomacoesPage /></RoleGate></ProtectedRoute>} />
+    <Route path="/select-system" element={<RequireAuth><SelectSystem /></RequireAuth>} />
+
+    {/* Sistema TI — mantém rotas originais */}
+    <Route path="/" element={<ProtectedTI><RoleGate route="/"><HomeRedirect /></RoleGate></ProtectedTI>} />
+    <Route path="/home-ti" element={<Navigate to="/" replace />} />
+    <Route path="/kanban" element={<ProtectedTI><RoleGate route="/kanban"><Kanban /></RoleGate></ProtectedTI>} />
+    <Route path="/tasks" element={<ProtectedTI><RoleGate route="/tasks"><Tasks /></RoleGate></ProtectedTI>} />
+    <Route path="/notifications" element={<ProtectedTI><RoleGate route="/notifications"><Notifications /></RoleGate></ProtectedTI>} />
+    <Route path="/automations" element={<ProtectedTI><RoleGate route="/automations"><Automations /></RoleGate></ProtectedTI>} />
+    <Route path="/ranking" element={<ProtectedTI><RoleGate route="/ranking"><Ranking /></RoleGate></ProtectedTI>} />
+    <Route path="/focus" element={<ProtectedTI><RoleGate route="/focus"><FocusMode /></RoleGate></ProtectedTI>} />
+    <Route path="/dependencies" element={<ProtectedTI><RoleGate route="/dependencies"><DependencyMap /></RoleGate></ProtectedTI>} />
+    <Route path="/manager" element={<ProtectedTI><RoleGate route="/manager"><ManagerDashboard /></RoleGate></ProtectedTI>} />
+    <Route path="/admin" element={<ProtectedTI><RoleGate route="/admin"><AdminPanel /></RoleGate></ProtectedTI>} />
+    <Route path="/reports" element={<ProtectedTI><RoleGate route="/reports"><Reports /></RoleGate></ProtectedTI>} />
+    <Route path="/support" element={<ProtectedTI><RoleGate route="/support"><SupportTickets /></RoleGate></ProtectedTI>} />
+    <Route path="/automacoes" element={<ProtectedTI><RoleGate route="/automacoes"><AutomacoesPage /></RoleGate></ProtectedTI>} />
+
+    {/* Sistema Social Media */}
+    <Route path="/social" element={<ProtectedSocial><SocialHome /></ProtectedSocial>} />
+    <Route path="/social/*" element={<ProtectedSocial><SocialHome /></ProtectedSocial>} />
+
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
@@ -155,9 +167,11 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <UserRoleProvider>
-              <GlobalTimerProvider>
-                <AppRoutes />
-              </GlobalTimerProvider>
+              <UserSystemsProvider>
+                <GlobalTimerProvider>
+                  <AppRoutes />
+                </GlobalTimerProvider>
+              </UserSystemsProvider>
             </UserRoleProvider>
           </AuthProvider>
         </BrowserRouter>
