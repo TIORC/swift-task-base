@@ -118,6 +118,7 @@ function ProtectedSocialPortal({ children }: { children: React.ReactNode }) {
       </SystemGate>
     </RequireAuth>
   );
+}
 
 function RoleGate({ route, children }: { route: string; children: React.ReactNode }) {
   const { canAccess, loading, profile } = useUserRole();
