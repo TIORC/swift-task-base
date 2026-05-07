@@ -176,7 +176,8 @@ export default function SocialIdeaBank() {
             );
           })}
         </div>
-      )}
+        );
+      })()}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
