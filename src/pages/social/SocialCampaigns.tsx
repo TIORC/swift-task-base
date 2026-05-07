@@ -74,7 +74,7 @@ export default function SocialCampaigns() {
 
       {loading ? <Card className="p-6 text-sm text-muted-foreground">Carregando...</Card>
       : data.length === 0 ? (
-        <EmptyState icon={<Megaphone className="h-10 w-10"/>} title="Nenhuma campanha" description="Cadastre clientes e crie campanhas para organizar entregas." />
+        <EmptyState icon={Megaphone} title="Nenhuma campanha" description="Cadastre clientes e crie campanhas para organizar entregas." />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {data.map(c => (

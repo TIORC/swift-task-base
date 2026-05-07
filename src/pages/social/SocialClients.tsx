@@ -54,7 +54,7 @@ export default function SocialClients() {
 
       {loading ? <Card className="p-6 text-sm text-muted-foreground">Carregando...</Card>
       : data.length === 0 ? (
-        <EmptyState icon={<Users className="h-10 w-10"/>} title="Nenhum cliente cadastrado" description="Crie o primeiro cliente para começar a planejar conteúdos." />
+        <EmptyState icon={Users} title="Nenhum cliente cadastrado" description="Crie o primeiro cliente para começar a planejar conteúdos." />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {data.map(c => (
