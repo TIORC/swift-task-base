@@ -519,6 +519,641 @@ export type Database = {
           },
         ]
       }
+      sm_briefings: {
+        Row: {
+          attachments: Json | null
+          campaign_id: string | null
+          client_id: string
+          content: string | null
+          created_at: string
+          created_by: string
+          id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          attachments?: Json | null
+          campaign_id?: string | null
+          client_id: string
+          content?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          attachments?: Json | null
+          campaign_id?: string | null
+          client_id?: string
+          content?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sm_briefings_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "sm_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sm_briefings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "sm_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sm_campaigns: {
+        Row: {
+          budget: number | null
+          client_id: string
+          created_at: string
+          created_by: string
+          end_date: string | null
+          id: string
+          name: string
+          objective: string | null
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          budget?: number | null
+          client_id: string
+          created_at?: string
+          created_by: string
+          end_date?: string | null
+          id?: string
+          name: string
+          objective?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          budget?: number | null
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          end_date?: string | null
+          id?: string
+          name?: string
+          objective?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sm_campaigns_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "sm_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sm_client_users: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          is_approver: boolean
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          is_approver?: boolean
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_approver?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sm_client_users_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "sm_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sm_clients: {
+        Row: {
+          active: boolean
+          brand_identity: string | null
+          created_at: string
+          created_by: string
+          general_briefing: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          primary_color: string | null
+          updated_at: string
+          useful_links: Json | null
+        }
+        Insert: {
+          active?: boolean
+          brand_identity?: string | null
+          created_at?: string
+          created_by: string
+          general_briefing?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          primary_color?: string | null
+          updated_at?: string
+          useful_links?: Json | null
+        }
+        Update: {
+          active?: boolean
+          brand_identity?: string | null
+          created_at?: string
+          created_by?: string
+          general_briefing?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          primary_color?: string | null
+          updated_at?: string
+          useful_links?: Json | null
+        }
+        Relationships: []
+      }
+      sm_content_types: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      sm_ideas: {
+        Row: {
+          client_id: string | null
+          converted_to_post_id: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          status: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          converted_to_post_id?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          status?: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          converted_to_post_id?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          status?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sm_ideas_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "sm_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sm_ideas_converted_to_post_id_fkey"
+            columns: ["converted_to_post_id"]
+            isOneToOne: false
+            referencedRelation: "sm_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sm_metrics: {
+        Row: {
+          clicks: number | null
+          comments_count: number | null
+          conversions: number | null
+          created_at: string
+          created_by: string
+          id: string
+          impressions: number | null
+          likes: number | null
+          measured_at: string
+          post_id: string
+          reach: number | null
+          saves: number | null
+          shares: number | null
+          updated_at: string
+        }
+        Insert: {
+          clicks?: number | null
+          comments_count?: number | null
+          conversions?: number | null
+          created_at?: string
+          created_by: string
+          id?: string
+          impressions?: number | null
+          likes?: number | null
+          measured_at?: string
+          post_id: string
+          reach?: number | null
+          saves?: number | null
+          shares?: number | null
+          updated_at?: string
+        }
+        Update: {
+          clicks?: number | null
+          comments_count?: number | null
+          conversions?: number | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          impressions?: number | null
+          likes?: number | null
+          measured_at?: string
+          post_id?: string
+          reach?: number | null
+          saves?: number | null
+          shares?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sm_metrics_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "sm_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sm_post_approvals: {
+        Row: {
+          approver_id: string
+          comments: string | null
+          created_at: string
+          id: string
+          level: string
+          post_id: string
+          status: string
+        }
+        Insert: {
+          approver_id: string
+          comments?: string | null
+          created_at?: string
+          id?: string
+          level: string
+          post_id: string
+          status?: string
+        }
+        Update: {
+          approver_id?: string
+          comments?: string | null
+          created_at?: string
+          id?: string
+          level?: string
+          post_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sm_post_approvals_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "sm_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sm_post_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          mime_type: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number
+          id?: string
+          mime_type: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          mime_type?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sm_post_attachments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "sm_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sm_post_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          mentions: string[] | null
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          mentions?: string[] | null
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          mentions?: string[] | null
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sm_post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "sm_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sm_posts: {
+        Row: {
+          assigned_to: string | null
+          campaign_id: string | null
+          caption: string | null
+          client_id: string
+          content_type_id: string | null
+          created_at: string
+          created_by: string
+          hashtags: string | null
+          id: string
+          is_recurring_template: boolean
+          last_spawned_at: string | null
+          network_id: string | null
+          notes: string | null
+          parent_recurring_post_id: string | null
+          priority: Database["public"]["Enums"]["sm_priority"]
+          published_at: string | null
+          recurrence_interval: number | null
+          recurrence_type: string | null
+          recurrence_until: string | null
+          scheduled_at: string | null
+          status: Database["public"]["Enums"]["sm_post_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          campaign_id?: string | null
+          caption?: string | null
+          client_id: string
+          content_type_id?: string | null
+          created_at?: string
+          created_by: string
+          hashtags?: string | null
+          id?: string
+          is_recurring_template?: boolean
+          last_spawned_at?: string | null
+          network_id?: string | null
+          notes?: string | null
+          parent_recurring_post_id?: string | null
+          priority?: Database["public"]["Enums"]["sm_priority"]
+          published_at?: string | null
+          recurrence_interval?: number | null
+          recurrence_type?: string | null
+          recurrence_until?: string | null
+          scheduled_at?: string | null
+          status?: Database["public"]["Enums"]["sm_post_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          campaign_id?: string | null
+          caption?: string | null
+          client_id?: string
+          content_type_id?: string | null
+          created_at?: string
+          created_by?: string
+          hashtags?: string | null
+          id?: string
+          is_recurring_template?: boolean
+          last_spawned_at?: string | null
+          network_id?: string | null
+          notes?: string | null
+          parent_recurring_post_id?: string | null
+          priority?: Database["public"]["Enums"]["sm_priority"]
+          published_at?: string | null
+          recurrence_interval?: number | null
+          recurrence_type?: string | null
+          recurrence_until?: string | null
+          scheduled_at?: string | null
+          status?: Database["public"]["Enums"]["sm_post_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sm_posts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "sm_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sm_posts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "sm_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sm_posts_content_type_id_fkey"
+            columns: ["content_type_id"]
+            isOneToOne: false
+            referencedRelation: "sm_content_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sm_posts_network_id_fkey"
+            columns: ["network_id"]
+            isOneToOne: false
+            referencedRelation: "sm_social_networks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sm_social_networks: {
+        Row: {
+          active: boolean
+          created_at: string
+          icon: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      sm_tasks: {
+        Row: {
+          assigned_to: string | null
+          campaign_id: string | null
+          client_id: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          due_date: string | null
+          id: string
+          is_recurring_template: boolean
+          last_spawned_at: string | null
+          parent_recurring_task_id: string | null
+          priority: Database["public"]["Enums"]["sm_priority"]
+          recurrence_interval: number | null
+          recurrence_type: string | null
+          recurrence_until: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          campaign_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_recurring_template?: boolean
+          last_spawned_at?: string | null
+          parent_recurring_task_id?: string | null
+          priority?: Database["public"]["Enums"]["sm_priority"]
+          recurrence_interval?: number | null
+          recurrence_type?: string | null
+          recurrence_until?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          campaign_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_recurring_template?: boolean
+          last_spawned_at?: string | null
+          parent_recurring_task_id?: string | null
+          priority?: Database["public"]["Enums"]["sm_priority"]
+          recurrence_interval?: number | null
+          recurrence_type?: string | null
+          recurrence_until?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sm_tasks_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "sm_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sm_tasks_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "sm_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_attachments: {
         Row: {
           created_at: string
@@ -798,6 +1433,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_social_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["social_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["social_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["social_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_systems: {
         Row: {
           created_at: string
@@ -892,9 +1548,35 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_social_access: { Args: { _user_id: string }; Returns: boolean }
+      has_social_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["social_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      user_client_ids: { Args: { _user_id: string }; Returns: string[] }
     }
     Enums: {
       app_role: "admin" | "member" | "dev" | "lider" | "gestor" | "suporte"
+      sm_post_status:
+        | "ideia"
+        | "roteiro"
+        | "design"
+        | "revisao_interna"
+        | "aprovacao_cliente"
+        | "agendado"
+        | "publicado"
+        | "reprovado"
+      sm_priority: "low" | "medium" | "high" | "urgent"
+      social_role:
+        | "admin"
+        | "gestor"
+        | "social_media"
+        | "designer"
+        | "redator"
+        | "cliente"
       task_priority: "low" | "medium" | "high" | "urgent"
       task_status:
         | "backlog"
@@ -1032,6 +1714,25 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "member", "dev", "lider", "gestor", "suporte"],
+      sm_post_status: [
+        "ideia",
+        "roteiro",
+        "design",
+        "revisao_interna",
+        "aprovacao_cliente",
+        "agendado",
+        "publicado",
+        "reprovado",
+      ],
+      sm_priority: ["low", "medium", "high", "urgent"],
+      social_role: [
+        "admin",
+        "gestor",
+        "social_media",
+        "designer",
+        "redator",
+        "cliente",
+      ],
       task_priority: ["low", "medium", "high", "urgent"],
       task_status: [
         "backlog",
