@@ -34,7 +34,12 @@ const Auth = () => {
     );
   }
 
-  if (session) return <Navigate to="/select-system" replace />;
+  if (session) {
+    const picked = sessionStorage.getItem("orcoma:selected-system");
+    if (picked === "social") return <Navigate to="/social" replace />;
+    if (picked === "ti") return <Navigate to="/" replace />;
+    return <Navigate to="/select-system" replace />;
+  }
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
