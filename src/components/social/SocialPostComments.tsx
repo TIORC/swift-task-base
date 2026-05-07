@@ -27,8 +27,8 @@ export function SocialPostComments({ postId }: { postId: string }) {
     const ids = Array.from(new Set(list.map(c => c.user_id)));
     if (ids.length) {
       const { data: profs } = await sb.from("profiles").select("id, full_name, avatar_url").in("id", ids);
-      const map = new Map((profs ?? []).map((p: any) => [p.id, p]));
-      list.forEach(c => { c.profiles = map.get(c.user_id) ?? null; });
+      const map = new Map<string, any>((profs ?? []).map((p: any) => [p.id, p]));
+      list.forEach(c => { c.profiles = (map.get(c.user_id) as any) ?? null; });
     }
     setItems(list);
   };
