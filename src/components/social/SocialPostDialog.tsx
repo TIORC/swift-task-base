@@ -9,6 +9,8 @@ import { useSmClients, useSmCampaigns, useSmRefData, useSocialMutations } from "
 import type { SmPost, SmPostStatus, SmPriority } from "@/types/social";
 import { SM_POST_STATUS_LABEL, SM_POST_STATUS_ORDER, SM_PRIORITY_LABEL } from "@/types/social";
 import { toast } from "sonner";
+import { SocialPostAttachments } from "./SocialPostAttachments";
+import { SocialPostComments } from "./SocialPostComments";
 
 interface Props {
   open: boolean;
@@ -183,6 +185,13 @@ export function SocialPostDialog({ open, onOpenChange, post, onSaved }: Props) {
               </div>
             )}
           </div>
+
+          {post && (
+            <>
+              <SocialPostAttachments postId={post.id} clientId={post.client_id} />
+              <SocialPostComments postId={post.id} />
+            </>
+          )}
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
