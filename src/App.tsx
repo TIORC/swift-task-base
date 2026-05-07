@@ -132,7 +132,8 @@ const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<Auth />} />
     <Route path="/reset-password" element={<ResetPassword />} />
-    <Route path="/select-system" element={<RequireAuth><SelectSystem /></RequireAuth>} />
+    <Route path="/select-system" element={<SelectSystem />} />
+    <Route path="/start" element={<Navigate to="/select-system" replace />} />
 
     {/* Sistema TI — mantém rotas originais */}
     <Route path="/" element={<ProtectedTI><RoleGate route="/"><HomeRedirect /></RoleGate></ProtectedTI>} />
