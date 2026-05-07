@@ -136,7 +136,8 @@ export default function SocialBriefings() {
             );
           })}
         </div>
-      )}
+        );
+      })()}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
