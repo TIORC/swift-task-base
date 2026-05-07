@@ -798,6 +798,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_systems: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          system: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          system: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          system?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_task_visibility: {
         Row: {
           created_at: string
