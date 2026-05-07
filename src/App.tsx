@@ -160,8 +160,23 @@ const AppRoutes = () => (
     <Route path="/automacoes" element={<ProtectedTI><RoleGate route="/automacoes"><AutomacoesPage /></RoleGate></ProtectedTI>} />
 
     {/* Sistema Social Media */}
-    <Route path="/social" element={<ProtectedSocial><SocialHome /></ProtectedSocial>} />
-    <Route path="/social/*" element={<ProtectedSocial><SocialHome /></ProtectedSocial>} />
+    <Route path="/social" element={<ProtectedSocial><SocialDashboard /></ProtectedSocial>} />
+    <Route path="/social/painel-gestor" element={<ProtectedSocial><SocialPlaceholder title="Painel do Gestor" description="KPIs e métricas predictivas"/></ProtectedSocial>} />
+    <Route path="/social/kanban" element={<ProtectedSocial><SocialKanban /></ProtectedSocial>} />
+    <Route path="/social/tarefas" element={<ProtectedSocial><SocialTasks /></ProtectedSocial>} />
+    <Route path="/social/calendario-editorial" element={<ProtectedSocial><SocialEditorialCalendar /></ProtectedSocial>} />
+    <Route path="/social/aprovacoes" element={<ProtectedSocial><SocialApprovals /></ProtectedSocial>} />
+    <Route path="/social/clientes" element={<ProtectedSocial><SocialClients /></ProtectedSocial>} />
+    <Route path="/social/campanhas" element={<ProtectedSocial><SocialCampaigns /></ProtectedSocial>} />
+    <Route path="/social/banco-de-ideias" element={<ProtectedSocial><SocialPlaceholder title="Banco de Ideias"/></ProtectedSocial>} />
+    <Route path="/social/briefings" element={<ProtectedSocial><SocialPlaceholder title="Briefings"/></ProtectedSocial>} />
+    <Route path="/social/biblioteca" element={<ProtectedSocial><SocialPlaceholder title="Biblioteca de Conteúdo"/></ProtectedSocial>} />
+    <Route path="/social/agenda-publicacoes" element={<ProtectedSocial><SocialPlaceholder title="Agenda de Publicações"/></ProtectedSocial>} />
+    <Route path="/social/metricas" element={<ProtectedSocial><SocialPlaceholder title="Métricas"/></ProtectedSocial>} />
+    <Route path="/social/foco" element={<ProtectedSocial><SocialPlaceholder title="Modo Foco"/></ProtectedSocial>} />
+    <Route path="/social/relatorios" element={<ProtectedSocial><SocialPlaceholder title="Relatórios"/></ProtectedSocial>} />
+    <Route path="/social/ranking" element={<ProtectedSocial><SocialPlaceholder title="Ranking"/></ProtectedSocial>} />
+    <Route path="/social/admin" element={<ProtectedSocial><SocialAdmin /></ProtectedSocial>} />
 
     <Route path="*" element={<NotFound />} />
   </Routes>
