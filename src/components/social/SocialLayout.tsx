@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Columns3, ListTodo, Calendar, Users, Megaphone, CheckCircle2, Lightbulb, FileText, BarChart3, Trophy, Target, ShieldCheck, LogOut, ArrowLeftRight, Sparkles, Library, ImageIcon, LineChart } from "lucide-react";
+import { LayoutDashboard, Columns3, ListTodo, Calendar, Users, Megaphone, CheckCircle2, Lightbulb, FileText, BarChart3, Trophy, Target, ShieldCheck, LogOut, ArrowLeftRight, Sparkles, Library, ImageIcon, LineChart, KeyRound } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocialRole } from "@/hooks/useSocialRole";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -110,6 +110,15 @@ function SocialSidebar() {
       <SidebarFooter>
         <Separator className="bg-sidebar-border" />
         <div className="p-2 space-y-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
+            onClick={() => navigate("/social/conta")}
+          >
+            <KeyRound className="h-4 w-4" />
+            {!collapsed && <span className="text-xs">Alterar senha</span>}
+          </Button>
           <Button
             variant="ghost"
             size="sm"
