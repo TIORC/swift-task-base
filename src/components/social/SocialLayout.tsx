@@ -51,6 +51,12 @@ function SocialSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { isAdmin, isLeader } = useSocialRole();
+  const visibleItems = navItems.filter((it) => {
+    if (it.visibility === "admin") return isAdmin;
+    if (it.visibility === "leader") return isLeader;
+    return true;
+  });
 
   const isActive = (path: string, end?: boolean) =>
     end ? location.pathname === path : location.pathname === path || location.pathname.startsWith(path + "/");
