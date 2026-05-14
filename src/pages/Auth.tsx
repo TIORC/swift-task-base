@@ -76,6 +76,21 @@ const Auth = () => {
             setSubmitting(false);
             return;
           }
+
+          // Auto-seleciona sistema quando o usuário só tem acesso a um
+          const { data: systems } = await supabase
+            .from("user_systems")
+            .select("system, enabled")
+            .eq("user_id", data.user.id)
+            .eq("enabled", true);
+          const sysList = (systems ?? []).map((s: any) => s.system);
+          const hasTi = sysList.includes("ti");
+          const hasSocial = sysList.includes("social");
+          if (hasSocial && !hasTi) {
+            sessionStorage.setItem("orcoma:selected-system", "social");
+          } else if (hasTi && !hasSocial) {
+            sessionStorage.setItem("orcoma:selected-system", "ti");
+          }
         }
 
         toast.success("Login realizado com sucesso!");
