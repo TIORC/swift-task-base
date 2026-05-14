@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Monitor, Sparkles, LogOut } from "lucide-react";
 import logoLight from "@/assets/logo-orcoma-light.png";
 import logoDark from "@/assets/logo-orcoma-dark.png";
-import logoM7 from "@/assets/logo-m7.png";
+import logoM7 from "@/assets/logo-m7-mono.png";
 
 export const SELECTED_SYSTEM_KEY = "orcoma:selected-system";
 
@@ -99,8 +99,8 @@ export default function SelectSystem() {
             className="text-left disabled:opacity-40 disabled:cursor-not-allowed group"
           >
             <Card className="theme-social p-7 h-full border-2 transition-all group-hover:border-primary group-hover:shadow-lg group-hover:-translate-y-0.5">
-              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 overflow-hidden">
-                <img src={logoM7} alt="M7" className="h-9 w-9 object-contain" />
+              <div className="h-20 w-20 flex items-center justify-center mb-4">
+                <img src={logoM7} alt="M7" className="h-20 w-20 object-contain" />
               </div>
               <h2 className="text-xl font-semibold mb-1">M7</h2>
               <p className="text-sm text-muted-foreground">
