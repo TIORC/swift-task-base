@@ -41,9 +41,7 @@ import SocialApprovals from "./pages/social/SocialApprovals";
 import SocialTasks from "./pages/social/SocialTasks";
 import SocialAdmin from "./pages/social/SocialAdmin";
 import SocialPlaceholder from "./pages/social/SocialPlaceholder";
-import SocialBriefings from "./pages/social/SocialBriefings";
 import SocialIdeaBank from "./pages/social/SocialIdeaBank";
-import SocialContentLibrary from "./pages/social/SocialContentLibrary";
 import SocialPublishingSchedule from "./pages/social/SocialPublishingSchedule";
 import SocialMetrics from "./pages/social/SocialMetrics";
 import SocialFocusMode from "./pages/social/SocialFocusMode";
@@ -191,8 +189,6 @@ const AppRoutes = () => (
     <Route path="/social/clientes" element={<ProtectedSocial><SocialClients /></ProtectedSocial>} />
     <Route path="/social/campanhas" element={<ProtectedSocial><SocialCampaigns /></ProtectedSocial>} />
     <Route path="/social/banco-de-ideias" element={<ProtectedSocial><SocialIdeaBank /></ProtectedSocial>} />
-    <Route path="/social/briefings" element={<ProtectedSocial><SocialBriefings /></ProtectedSocial>} />
-    <Route path="/social/biblioteca" element={<ProtectedSocial><SocialContentLibrary /></ProtectedSocial>} />
     <Route path="/social/agenda-publicacoes" element={<ProtectedSocial><SocialPublishingSchedule /></ProtectedSocial>} />
     <Route path="/social/metricas" element={<ProtectedSocial><SocialMetrics /></ProtectedSocial>} />
     <Route path="/social/foco" element={<ProtectedSocial><SocialFocusMode /></ProtectedSocial>} />

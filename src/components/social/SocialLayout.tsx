@@ -33,8 +33,6 @@ const navItems = [
   { title: "Clientes/Marcas", url: "/social/clientes", icon: Users },
   { title: "Campanhas", url: "/social/campanhas", icon: Megaphone },
   { title: "Banco de Ideias", url: "/social/banco-de-ideias", icon: Lightbulb },
-  { title: "Briefings", url: "/social/briefings", icon: FileText },
-  { title: "Biblioteca", url: "/social/biblioteca", icon: Library },
   { title: "Agenda de Publicações", url: "/social/agenda-publicacoes", icon: ImageIcon },
   { title: "Métricas", url: "/social/metricas", icon: LineChart },
   { title: "Modo Foco", url: "/social/foco", icon: Target },

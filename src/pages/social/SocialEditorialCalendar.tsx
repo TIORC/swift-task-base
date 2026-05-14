@@ -1,12 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, Users, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSmPosts, useSmClients } from "@/hooks/useSocial";
 import { SM_POST_STATUS_LABEL } from "@/types/social";
 import { SocialPostDialog } from "@/components/social/SocialPostDialog";
+import { SocialEventDialog, type SmEvent } from "@/components/social/SocialEventDialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { supabase } from "@/integrations/supabase/client";
 import type { SmPost } from "@/types/social";
+
+const sb = supabase as any;
 
 const STATUS_COLOR: Record<string, string> = {
   ideia: "bg-muted text-muted-foreground",
@@ -21,10 +28,30 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function SocialEditorialCalendar() {
   const [ref, setRef] = useState(new Date());
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<SmPost | null>(null);
-  const { data: posts, refresh } = useSmPosts();
+  const [postOpen, setPostOpen] = useState(false);
+  const [editingPost, setEditingPost] = useState<SmPost | null>(null);
+  const [eventOpen, setEventOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<SmEvent | null>(null);
+  const [defaultDate, setDefaultDate] = useState<Date | null>(null);
+
+  const { data: posts, refresh: refreshPosts } = useSmPosts();
   const { data: clients } = useSmClients();
+  const [events, setEvents] = useState<SmEvent[]>([]);
+
+  const refreshEvents = useCallback(async () => {
+    const { data } = await sb.from("sm_calendar_events").select("*").order("starts_at");
+    setEvents((data as SmEvent[]) ?? []);
+  }, []);
+
+  useEffect(() => { refreshEvents(); }, [refreshEvents]);
+
+  useEffect(() => {
+    const ch = supabase
+      .channel(`sm-events-${Math.random()}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "sm_calendar_events" }, () => refreshEvents())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [refreshEvents]);
 
   const { days, monthLabel } = useMemo(() => {
     const first = new Date(ref.getFullYear(), ref.getMonth(), 1);
@@ -47,19 +74,51 @@ export default function SocialEditorialCalendar() {
     return map;
   }, [posts]);
 
-  const clientName = (id: string) => clients.find(c => c.id === id)?.name ?? "";
+  const eventsByDay = useMemo(() => {
+    const map = new Map<string, SmEvent[]>();
+    events.forEach(e => {
+      const k = new Date(e.starts_at).toDateString();
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(e);
+    });
+    return map;
+  }, [events]);
+
+  const clientName = (id?: string | null) => id ? (clients.find(c => c.id === id)?.name ?? "") : "";
+
+  const openNewAt = (d: Date, kind: "post" | "event") => {
+    const date = new Date(d);
+    date.setHours(9, 0, 0, 0);
+    setDefaultDate(date);
+    if (kind === "post") { setEditingPost(null); setPostOpen(true); }
+    else { setEditingEvent(null); setEventOpen(true); }
+  };
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="Calendário Editorial"
-        description="Visão mensal de publicações agendadas"
+        description="Posts, reuniões e eventos no mesmo lugar"
         icon={<CalendarIcon className="h-5 w-5"/>}
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={() => setRef(new Date(ref.getFullYear(), ref.getMonth() - 1, 1))}><ChevronLeft className="h-4 w-4"/></Button>
             <span className="text-sm font-medium capitalize min-w-[140px] text-center">{monthLabel}</span>
             <Button variant="outline" size="icon" onClick={() => setRef(new Date(ref.getFullYear(), ref.getMonth() + 1, 1))}><ChevronRight className="h-4 w-4"/></Button>
+            <Button variant="outline" size="sm" onClick={() => setRef(new Date())}>Hoje</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm"><Plus className="h-4 w-4 mr-1"/>Adicionar</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => openNewAt(new Date(), "post")}>
+                  <FileText className="h-4 w-4 mr-2"/>Post
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openNewAt(new Date(), "event")}>
+                  <Users className="h-4 w-4 mr-2"/>Reunião / Evento
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         }
       />
@@ -75,22 +134,56 @@ export default function SocialEditorialCalendar() {
             {days.map((d, i) => {
               const inMonth = d.getMonth() === ref.getMonth();
               const dayPosts = postsByDay.get(d.toDateString()) ?? [];
+              const dayEvents = eventsByDay.get(d.toDateString()) ?? [];
               const isToday = d.toDateString() === new Date().toDateString();
               return (
-                <div key={i} className={`min-h-[90px] rounded-md border p-1.5 ${inMonth ? "bg-card" : "bg-muted/20"} ${isToday ? "border-primary" : "border-border"}`}>
-                  <div className={`text-[11px] font-medium ${inMonth ? "text-foreground" : "text-muted-foreground"}`}>{d.getDate()}</div>
+                <div
+                  key={i}
+                  className={`min-h-[110px] rounded-md border p-1.5 group relative ${inMonth ? "bg-card" : "bg-muted/20"} ${isToday ? "border-primary" : "border-border"}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[11px] font-medium ${inMonth ? "text-foreground" : "text-muted-foreground"}`}>{d.getDate()}</span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-foreground">
+                          <Plus className="h-3.5 w-3.5"/>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openNewAt(d, "post")}>
+                          <FileText className="h-4 w-4 mr-2"/>Post
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openNewAt(d, "event")}>
+                          <Users className="h-4 w-4 mr-2"/>Reunião / Evento
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                   <div className="space-y-1 mt-1">
+                    {dayEvents.slice(0, 2).map(e => (
+                      <button
+                        key={e.id}
+                        onClick={() => { setEditingEvent(e); setEventOpen(true); }}
+                        className="w-full text-left text-[10px] px-1.5 py-0.5 rounded truncate text-white"
+                        style={{ backgroundColor: e.color ?? "hsl(var(--primary))" }}
+                        title={`${e.kind === "reuniao" ? "🤝" : "📅"} ${e.title} ${clientName(e.client_id) ? "— " + clientName(e.client_id) : ""}`}
+                      >
+                        {e.kind === "reuniao" ? "🤝 " : "📅 "}{e.title}
+                      </button>
+                    ))}
                     {dayPosts.slice(0, 3).map(p => (
                       <button
                         key={p.id}
-                        onClick={() => { setEditing(p); setOpen(true); }}
+                        onClick={() => { setEditingPost(p); setPostOpen(true); }}
                         className={`w-full text-left text-[10px] px-1.5 py-0.5 rounded truncate ${STATUS_COLOR[p.status]}`}
                         title={`${p.title} — ${clientName(p.client_id)} — ${SM_POST_STATUS_LABEL[p.status]}`}
                       >
                         {p.title}
                       </button>
                     ))}
-                    {dayPosts.length > 3 && <p className="text-[9px] text-muted-foreground px-1">+{dayPosts.length - 3} mais</p>}
+                    {(dayPosts.length + dayEvents.length) > 5 && (
+                      <p className="text-[9px] text-muted-foreground px-1">+{dayPosts.length + dayEvents.length - 5} mais</p>
+                    )}
                   </div>
                 </div>
               );
@@ -99,7 +192,8 @@ export default function SocialEditorialCalendar() {
         </CardContent>
       </Card>
 
-      <SocialPostDialog open={open} onOpenChange={setOpen} post={editing} onSaved={refresh} />
+      <SocialPostDialog open={postOpen} onOpenChange={setPostOpen} post={editingPost} onSaved={refreshPosts} />
+      <SocialEventDialog open={eventOpen} onOpenChange={setEventOpen} event={editingEvent} defaultDate={defaultDate} onSaved={refreshEvents} />
     </div>
   );
 }
