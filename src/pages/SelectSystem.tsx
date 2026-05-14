@@ -98,11 +98,11 @@ export default function SelectSystem() {
             onClick={() => handlePick("social")}
             className="text-left disabled:opacity-40 disabled:cursor-not-allowed group"
           >
-            <Card className="p-7 h-full border-2 transition-all group-hover:border-primary group-hover:shadow-lg group-hover:-translate-y-0.5">
-              <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-4">
-                <Sparkles className="h-6 w-6" />
+            <Card className="theme-social p-7 h-full border-2 transition-all group-hover:border-primary group-hover:shadow-lg group-hover:-translate-y-0.5">
+              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 overflow-hidden">
+                <img src={logoM7} alt="M7" className="h-9 w-9 object-contain" />
               </div>
-              <h2 className="text-xl font-semibold mb-1">Social Media</h2>
+              <h2 className="text-xl font-semibold mb-1">M7</h2>
               <p className="text-sm text-muted-foreground">
                 Calendário editorial, aprovações, clientes, campanhas e conteúdo das redes sociais.
               </p>
