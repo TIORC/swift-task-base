@@ -56,14 +56,16 @@ function SocialSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className={collapsed ? "px-2 py-3" : "px-4 py-5"}>
-        <div className="flex items-center justify-center w-full">
-          <img
-            src={logoM7}
-            alt="M7"
-            className={collapsed ? "h-9 w-9 object-contain" : "h-20 w-auto object-contain"}
-          />
-        </div>
+      <SidebarHeader className={collapsed ? "p-2" : "px-3 py-4"}>
+        <img
+          src={logoM7}
+          alt="M7"
+          className={
+            collapsed
+              ? "h-10 w-10 object-contain mx-auto"
+              : "w-full h-auto max-h-28 object-contain"
+          }
+        />
       </SidebarHeader>
       <Separator className="bg-sidebar-border" />
       <SidebarContent className="px-2">
