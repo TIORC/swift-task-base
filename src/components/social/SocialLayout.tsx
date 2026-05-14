@@ -114,6 +114,15 @@ function SocialSidebar() {
             variant="ghost"
             size="sm"
             className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
+            onClick={() => navigate("/social/conta")}
+          >
+            <KeyRound className="h-4 w-4" />
+            {!collapsed && <span className="text-xs">Alterar senha</span>}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
             onClick={() => navigate("/select-system")}
           >
             <ArrowLeftRight className="h-4 w-4" />
