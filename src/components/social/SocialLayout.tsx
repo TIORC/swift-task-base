@@ -59,12 +59,21 @@ function SocialSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className={collapsed ? "p-2" : "px-3 py-4"}>
         <img
-          src={logoM7}
+          src={logoM7Light}
           alt="M7"
           className={
-            collapsed
+            (collapsed
               ? "h-10 w-10 object-contain mx-auto"
-              : "w-full h-auto max-h-28 object-contain"
+              : "w-full h-auto max-h-28 object-contain") + " block dark:hidden"
+          }
+        />
+        <img
+          src={logoM7Dark}
+          alt="M7"
+          className={
+            (collapsed
+              ? "h-10 w-10 object-contain mx-auto"
+              : "w-full h-auto max-h-28 object-contain") + " hidden dark:block"
           }
         />
       </SidebarHeader>
