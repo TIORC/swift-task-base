@@ -22,6 +22,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import logoM7 from "@/assets/logo-m7.png";
 
 const navItems = [
   { title: "Dashboard", url: "/social", icon: LayoutDashboard, end: true },
