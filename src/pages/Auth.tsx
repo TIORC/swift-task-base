@@ -108,14 +108,20 @@ const Auth = () => {
       <div className="w-full max-w-md animate-scale-in">
         <Card className="shadow-card border-border/50">
           <CardHeader className="text-center pb-2">
-            <div className="mx-auto mb-4">
+            <div className="mx-auto mb-4 flex items-center justify-center gap-4">
               <img
                 src={isDark ? logoDark : logoLight}
                 alt="ORCOMA"
-                className="h-12 object-contain mx-auto"
+                className="h-12 object-contain"
+              />
+              <div className="h-10 w-px bg-border" />
+              <img
+                src={logoM7}
+                alt="M7"
+                className="h-12 object-contain"
               />
             </div>
-            <CardTitle className="text-2xl font-bold text-foreground tracking-tight">Orcoma TI Gestão</CardTitle>
+            <CardTitle className="text-2xl font-bold text-foreground tracking-tight">Gestão TI : M7</CardTitle>
             <CardDescription className="text-muted-foreground">
               {isForgot ? "Recuperar senha" : "Entre na sua conta"}
             </CardDescription>
