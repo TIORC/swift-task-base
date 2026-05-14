@@ -26,9 +26,10 @@ import { Separator } from "@/components/ui/separator";
 import logoM7Dark from "@/assets/logo-m7.png";
 import logoM7Light from "@/assets/logo-m7-light.png";
 
-const navItems = [
+type Visibility = "all" | "leader" | "admin";
+const navItems: { title: string; url: string; icon: any; end?: boolean; visibility?: Visibility }[] = [
   { title: "Dashboard", url: "/social", icon: LayoutDashboard, end: true },
-  { title: "Painel Gestor", url: "/social/painel-gestor", icon: BarChart3 },
+  { title: "Painel Gestor", url: "/social/painel-gestor", icon: BarChart3, visibility: "leader" },
   { title: "Kanban", url: "/social/kanban", icon: Columns3 },
   { title: "Tarefas", url: "/social/tarefas", icon: ListTodo },
   { title: "Calendário Editorial", url: "/social/calendario-editorial", icon: Calendar },
@@ -39,9 +40,9 @@ const navItems = [
   { title: "Agenda de Publicações", url: "/social/agenda-publicacoes", icon: ImageIcon },
   { title: "Métricas", url: "/social/metricas", icon: LineChart },
   { title: "Modo Foco", url: "/social/foco", icon: Target },
-  { title: "Relatórios", url: "/social/relatorios", icon: BarChart3 },
+  { title: "Relatórios", url: "/social/relatorios", icon: BarChart3, visibility: "leader" },
   { title: "Ranking", url: "/social/ranking", icon: Trophy },
-  { title: "Administração", url: "/social/admin", icon: ShieldCheck },
+  { title: "Administração", url: "/social/admin", icon: ShieldCheck, visibility: "admin" },
 ];
 
 function SocialSidebar() {
