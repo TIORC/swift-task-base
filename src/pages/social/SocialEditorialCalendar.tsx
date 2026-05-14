@@ -124,13 +124,13 @@ export default function SocialEditorialCalendar() {
       />
 
       <Card>
-        <CardContent className="p-3">
-          <div className="grid grid-cols-7 gap-1 mb-1">
-            {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map(d => (
-              <div key={d} className="text-[10px] uppercase text-center text-muted-foreground font-semibold py-1">{d}</div>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-7 gap-1.5 mb-2">
+            {["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"].map(d => (
+              <div key={d} className="text-xs uppercase text-center text-muted-foreground font-bold tracking-wider py-2">{d}</div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-1.5">
             {days.map((d, i) => {
               const inMonth = d.getMonth() === ref.getMonth();
               const dayPosts = postsByDay.get(d.toDateString()) ?? [];
@@ -139,14 +139,16 @@ export default function SocialEditorialCalendar() {
               return (
                 <div
                   key={i}
-                  className={`min-h-[110px] rounded-md border p-1.5 group relative ${inMonth ? "bg-card" : "bg-muted/20"} ${isToday ? "border-primary" : "border-border"}`}
+                  className={`min-h-[140px] rounded-lg border-2 p-2 group relative transition ${inMonth ? "bg-card" : "bg-muted/30"} ${isToday ? "border-primary ring-2 ring-primary/20" : "border-border"}`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className={`text-[11px] font-medium ${inMonth ? "text-foreground" : "text-muted-foreground"}`}>{d.getDate()}</span>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className={`text-base font-bold ${isToday ? "text-primary" : inMonth ? "text-foreground" : "text-muted-foreground/60"}`}>
+                      {d.getDate()}
+                    </span>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-foreground">
-                          <Plus className="h-3.5 w-3.5"/>
+                        <button className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-foreground p-1 rounded hover:bg-accent">
+                          <Plus className="h-4 w-4"/>
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -159,12 +161,12 @@ export default function SocialEditorialCalendar() {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <div className="space-y-1 mt-1">
+                  <div className="space-y-1">
                     {dayEvents.slice(0, 2).map(e => (
                       <button
                         key={e.id}
                         onClick={() => { setEditingEvent(e); setEventOpen(true); }}
-                        className="w-full text-left text-[10px] px-1.5 py-0.5 rounded truncate text-white"
+                        className="w-full text-left text-xs font-semibold px-2 py-1 rounded-md truncate text-white shadow-sm hover:shadow-md hover:brightness-110 transition"
                         style={{ backgroundColor: e.color ?? "hsl(var(--primary))" }}
                         title={`${e.kind === "reuniao" ? "🤝" : "📅"} ${e.title} ${clientName(e.client_id) ? "— " + clientName(e.client_id) : ""}`}
                       >
@@ -175,14 +177,14 @@ export default function SocialEditorialCalendar() {
                       <button
                         key={p.id}
                         onClick={() => { setEditingPost(p); setPostOpen(true); }}
-                        className={`w-full text-left text-[10px] px-1.5 py-0.5 rounded truncate ${STATUS_COLOR[p.status]}`}
+                        className={`w-full text-left text-xs font-medium px-2 py-1 rounded-md truncate hover:brightness-110 transition ${STATUS_COLOR[p.status]}`}
                         title={`${p.title} — ${clientName(p.client_id)} — ${SM_POST_STATUS_LABEL[p.status]}`}
                       >
                         {p.title}
                       </button>
                     ))}
                     {(dayPosts.length + dayEvents.length) > 5 && (
-                      <p className="text-[9px] text-muted-foreground px-1">+{dayPosts.length + dayEvents.length - 5} mais</p>
+                      <p className="text-[11px] text-muted-foreground font-medium px-1">+{dayPosts.length + dayEvents.length - 5} mais</p>
                     )}
                   </div>
                 </div>
