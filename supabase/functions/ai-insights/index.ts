@@ -121,19 +121,15 @@ Responda com insights classificados por tipo.`;
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em breve." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const text = await response.text();
+      const text = await response.text().catch(() => "");
       console.error("AI error:", response.status, text);
-      throw new Error("AI gateway error");
+      const empty = { delayed_tasks: [], priority_suggestions: [], general_insights: [] };
+      let warning = "Insights de IA indisponíveis no momento.";
+      if (response.status === 429) warning = "Limite de requisições da IA excedido. Tente novamente em breve.";
+      if (response.status === 402) warning = "Créditos de IA insuficientes. Adicione créditos em Settings → Workspace → Usage.";
+      return new Response(JSON.stringify({ ...empty, warning }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const aiResult = await response.json();
