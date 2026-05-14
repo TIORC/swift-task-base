@@ -93,7 +93,7 @@ function SocialSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {visibleItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild isActive={isActive(item.url, item.end)}>
                     <Link to={item.url} className="rounded-lg hover:bg-sidebar-accent">
