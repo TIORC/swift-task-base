@@ -108,17 +108,17 @@ const Auth = () => {
       <div className="w-full max-w-md animate-scale-in">
         <Card className="shadow-card border-border/50">
           <CardHeader className="text-center pb-2">
-            <div className="mx-auto mb-4 flex items-center justify-center gap-4">
+            <div className="mx-auto mb-4 flex items-center justify-center gap-5">
               <img
                 src={isDark ? logoDark : logoLight}
                 alt="ORCOMA"
-                className="h-12 object-contain"
+                className="h-14 object-contain"
               />
-              <div className="h-10 w-px bg-border" />
+              <div className="h-12 w-px bg-border" />
               <img
                 src={logoM7}
                 alt="M7"
-                className="h-12 object-contain"
+                className="h-20 object-contain"
               />
             </div>
             <CardTitle className="text-2xl font-bold text-foreground tracking-tight">Gestão TI : M7</CardTitle>
