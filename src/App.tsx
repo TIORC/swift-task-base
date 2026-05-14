@@ -196,6 +196,7 @@ const AppRoutes = () => (
     <Route path="/social/relatorios" element={<ProtectedSocial><SocialReports /></ProtectedSocial>} />
     <Route path="/social/ranking" element={<ProtectedSocial><SocialRanking /></ProtectedSocial>} />
     <Route path="/social/admin" element={<ProtectedSocial><SocialAdmin /></ProtectedSocial>} />
+    <Route path="/social/conta" element={<ProtectedSocial><SocialAccount /></ProtectedSocial>} />
 
     {/* Portal do Cliente */}
     <Route path="/social/portal" element={<Navigate to="/social/portal/aprovacoes" replace />} />
