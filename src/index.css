@@ -116,14 +116,31 @@
   --sidebar-ring: 95 30% 32%;
 }
 .dark .theme-social {
-  --primary: 95 28% 42%;
-  --primary-foreground: 0 0% 100%;
-  --ring: 95 28% 42%;
-  --sidebar-primary: 95 28% 42%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 95 20% 16%;
-  --sidebar-accent-foreground: 95 30% 85%;
-  --sidebar-ring: 95 28% 42%;
+  --background: 120 20% 7%;
+  --foreground: 95 20% 92%;
+  --card: 120 18% 11%;
+  --card-foreground: 95 20% 92%;
+  --popover: 120 18% 11%;
+  --popover-foreground: 95 20% 92%;
+  --secondary: 120 15% 15%;
+  --secondary-foreground: 95 20% 92%;
+  --muted: 120 15% 15%;
+  --muted-foreground: 95 10% 60%;
+  --accent: 120 15% 15%;
+  --accent-foreground: 95 20% 92%;
+  --border: 120 15% 17%;
+  --input: 120 15% 17%;
+  --primary: 95 38% 48%;
+  --primary-foreground: 120 25% 8%;
+  --ring: 95 38% 48%;
+  --sidebar-background: 120 22% 6%;
+  --sidebar-foreground: 95 15% 80%;
+  --sidebar-primary: 95 38% 48%;
+  --sidebar-primary-foreground: 120 25% 8%;
+  --sidebar-accent: 120 18% 13%;
+  --sidebar-accent-foreground: 95 30% 90%;
+  --sidebar-border: 120 18% 13%;
+  --sidebar-ring: 95 38% 48%;
 }
 
 @layer base {

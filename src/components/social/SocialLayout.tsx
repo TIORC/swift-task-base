@@ -132,7 +132,7 @@ function SocialSidebar() {
 export function SocialLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
-      <div className="theme-social min-h-screen flex w-full">
+      <div className="theme-social min-h-screen flex w-full bg-background text-foreground">
         <SocialSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-14 flex items-center justify-between border-b border-border px-4 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
