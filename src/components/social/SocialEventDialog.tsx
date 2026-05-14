@@ -104,8 +104,15 @@ export function SocialEventDialog({ open, onOpenChange, event, defaultDate, onSa
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>{event ? "Editar evento" : "Novo evento"}</DialogTitle></DialogHeader>
-        <div className="space-y-3">
+        <DialogHeader>
+          <DialogTitle>{event ? (canModify ? "Editar evento" : "Detalhes do evento") : "Novo evento"}</DialogTitle>
+        </DialogHeader>
+        {isEditing && !canModify && (
+          <p className="text-xs text-muted-foreground -mt-2">
+            Apenas o líder do setor (gestor/admin) pode editar ou excluir este item.
+          </p>
+        )}
+        <fieldset disabled={!canModify} className="space-y-3 disabled:opacity-90">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Tipo</Label>
@@ -150,12 +157,12 @@ export function SocialEventDialog({ open, onOpenChange, event, defaultDate, onSa
           </div>
           <div><Label>Local / Link</Label><Input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="Sala, Google Meet, Zoom..." /></div>
           <div><Label>Descrição</Label><Textarea rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
-        </div>
+        </fieldset>
         <DialogFooter className="flex justify-between sm:justify-between">
-          <div>{event && <Button variant="destructive" onClick={remove}>Excluir</Button>}</div>
+          <div>{event && canModify && <Button variant="destructive" onClick={remove}>Excluir</Button>}</div>
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button onClick={save} disabled={saving}>{saving ? "Salvando..." : (event ? "Salvar" : "Criar")}</Button>
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>Fechar</Button>
+            {canModify && <Button onClick={save} disabled={saving}>{saving ? "Salvando..." : (event ? "Salvar" : "Criar")}</Button>}
           </div>
         </DialogFooter>
       </DialogContent>
