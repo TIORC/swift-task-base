@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Columns3, ListTodo, Calendar, Users, Megaphone, CheckCircle2, Lightbulb, FileText, BarChart3, Trophy, Target, ShieldCheck, LogOut, ArrowLeftRight, Sparkles, Library, ImageIcon, LineChart } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useSocialRole } from "@/hooks/useSocialRole";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { Button } from "@/components/ui/button";
@@ -25,9 +26,10 @@ import { Separator } from "@/components/ui/separator";
 import logoM7Dark from "@/assets/logo-m7.png";
 import logoM7Light from "@/assets/logo-m7-light.png";
 
-const navItems = [
+type Visibility = "all" | "leader" | "admin";
+const navItems: { title: string; url: string; icon: any; end?: boolean; visibility?: Visibility }[] = [
   { title: "Dashboard", url: "/social", icon: LayoutDashboard, end: true },
-  { title: "Painel Gestor", url: "/social/painel-gestor", icon: BarChart3 },
+  { title: "Painel Gestor", url: "/social/painel-gestor", icon: BarChart3, visibility: "leader" },
   { title: "Kanban", url: "/social/kanban", icon: Columns3 },
   { title: "Tarefas", url: "/social/tarefas", icon: ListTodo },
   { title: "Calendário Editorial", url: "/social/calendario-editorial", icon: Calendar },
@@ -38,9 +40,9 @@ const navItems = [
   { title: "Agenda de Publicações", url: "/social/agenda-publicacoes", icon: ImageIcon },
   { title: "Métricas", url: "/social/metricas", icon: LineChart },
   { title: "Modo Foco", url: "/social/foco", icon: Target },
-  { title: "Relatórios", url: "/social/relatorios", icon: BarChart3 },
+  { title: "Relatórios", url: "/social/relatorios", icon: BarChart3, visibility: "leader" },
   { title: "Ranking", url: "/social/ranking", icon: Trophy },
-  { title: "Administração", url: "/social/admin", icon: ShieldCheck },
+  { title: "Administração", url: "/social/admin", icon: ShieldCheck, visibility: "admin" },
 ];
 
 function SocialSidebar() {
@@ -49,6 +51,12 @@ function SocialSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { isAdmin, isLeader } = useSocialRole();
+  const visibleItems = navItems.filter((it) => {
+    if (it.visibility === "admin") return isAdmin;
+    if (it.visibility === "leader") return isLeader;
+    return true;
+  });
 
   const isActive = (path: string, end?: boolean) =>
     end ? location.pathname === path : location.pathname === path || location.pathname.startsWith(path + "/");
@@ -85,7 +93,7 @@ function SocialSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {visibleItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild isActive={isActive(item.url, item.end)}>
                     <Link to={item.url} className="rounded-lg hover:bg-sidebar-accent">
