@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Columns3, ListTodo, Calendar, Users, Megaphone, CheckCircle2, Lightbulb, FileText, BarChart3, Trophy, Target, ShieldCheck, LogOut, ArrowLeftRight, Sparkles, Library, ImageIcon, LineChart } from "lucide-react";
+import { LayoutDashboard, Columns3, ListTodo, Calendar, Users, Megaphone, CheckCircle2, Lightbulb, FileText, BarChart3, Trophy, Target, ShieldCheck, LogOut, ArrowLeftRight, Sparkles, Library, ImageIcon, LineChart, KeyRound } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocialRole } from "@/hooks/useSocialRole";
 import { ThemeToggle } from "@/components/ThemeToggle";
