@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useSmClients, useSmCampaigns } from "@/hooks/useSocial";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useSocialRole } from "@/hooks/useSocialRole";
 import { toast } from "sonner";
 
 const sb = supabase as any;
@@ -40,7 +41,10 @@ export function SocialEventDialog({ open, onOpenChange, event, defaultDate, onSa
   const { user } = useAuth();
   const { data: clients } = useSmClients();
   const { data: campaigns } = useSmCampaigns();
+  const { isLeader } = useSocialRole();
   const [saving, setSaving] = useState(false);
+  const isEditing = !!event;
+  const canModify = !isEditing || isLeader;
 
   const [form, setForm] = useState({
     client_id: "", campaign_id: "", kind: "reuniao", title: "",
