@@ -93,6 +93,9 @@ export default function SocialTasks() {
                   <SelectTrigger className="w-[160px] h-8"><SelectValue/></SelectTrigger>
                   <SelectContent>{STATUS.map(s => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}</SelectContent>
                 </Select>
+                <Button asChild variant="outline" size="sm" title="Focar nesta tarefa">
+                  <Link to={`/social/foco?taskId=${t.id}`}><Target className="h-4 w-4 mr-1"/>Focar</Link>
+                </Button>
                 <Button variant="ghost" size="icon" className="text-destructive" onClick={() => del(t.id)}><Trash2 className="h-4 w-4"/></Button>
               </CardContent>
             </Card>
