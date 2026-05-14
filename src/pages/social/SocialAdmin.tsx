@@ -63,11 +63,14 @@ export default function SocialAdmin() {
       rolesByUser[r.user_id] = [...(rolesByUser[r.user_id] ?? []), r.role];
     });
 
-    setRows((profiles ?? []).map((p: any) => ({
-      id: p.id, full_name: p.full_name ?? "", email: emails[p.id] ?? "",
-      has_social: accessSet.has(p.id),
-      social_roles: rolesByUser[p.id] ?? [],
-    })).sort((a, b) => (a.email || a.full_name).localeCompare(b.email || b.full_name)));
+    setRows((profiles ?? [])
+      .map((p: any) => ({
+        id: p.id, full_name: p.full_name ?? "", email: emails[p.id] ?? "",
+        has_social: accessSet.has(p.id),
+        social_roles: rolesByUser[p.id] ?? [],
+      }))
+      .filter((r) => r.has_social || r.social_roles.length > 0)
+      .sort((a, b) => (a.email || a.full_name).localeCompare(b.email || b.full_name)));
     setLoading(false);
   };
 
