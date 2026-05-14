@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ListTodo, Trash2 } from "lucide-react";
+import { Plus, ListTodo, Trash2, Target } from "lucide-react";
 import { useSmTasks, useSmClients, useSocialMutations } from "@/hooks/useSocial";
 import { SM_PRIORITY_LABEL } from "@/types/social";
 import type { SmPriority } from "@/types/social";
