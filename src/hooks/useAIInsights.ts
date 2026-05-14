@@ -35,8 +35,7 @@ export function useAIInsights(enabled = true) {
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("ai-insights");
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data;
+      return (data ?? { delayed_tasks: [], priority_suggestions: [], general_insights: [] }) as AIInsights;
     },
   });
 }
