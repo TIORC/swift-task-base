@@ -1,0 +1,3 @@
+UPDATE auth.users SET email = 'patrick@m7agencia.com.br', raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('email', 'patrick@m7agencia.com.br') WHERE id = '54b65f0c-4974-463a-8d21-b3d888e85dea';
+UPDATE auth.users SET email = 'silvia.vieira@m7agencia.com.br', raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('email', 'silvia.vieira@m7agencia.com.br') WHERE id = '78416a99-ce1a-422c-abda-f060e822659e';
+UPDATE auth.users SET email = 'daniel@m7agencia.com.br', raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('email', 'daniel@m7agencia.com.br') WHERE id = '18977760-105a-48d7-9ad6-9141247e112b';
