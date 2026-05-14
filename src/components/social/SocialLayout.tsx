@@ -58,10 +58,8 @@ function SocialSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-5">
         <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-            <Sparkles className="h-4 w-4" />
-          </div>
-          {!collapsed && <span className="text-lg font-bold tracking-tight">Social Media</span>}
+          <img src={logoM7} alt="M7" className="h-8 w-8 object-contain shrink-0" />
+          {!collapsed && <span className="text-lg font-bold tracking-tight">M7</span>}
         </div>
       </SidebarHeader>
       <Separator className="bg-sidebar-border" />
