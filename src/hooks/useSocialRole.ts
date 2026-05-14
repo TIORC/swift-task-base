@@ -21,8 +21,9 @@ export function useSocialRole() {
     })();
   }, [user?.id]);
 
-  const isLeader = roles.includes("admin") || roles.includes("gestor");
+  const isAdmin = roles.includes("admin");
+  const isLeader = isAdmin || roles.includes("gestor");
   const isClient = roles.includes("cliente");
 
-  return { roles, isLeader, isClient, loading };
+  return { roles, isAdmin, isLeader, isClient, loading };
 }
