@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Monitor, Sparkles, LogOut } from "lucide-react";
 import logoLight from "@/assets/logo-orcoma-light.png";
 import logoDark from "@/assets/logo-orcoma-dark.png";
-import logoM7 from "@/assets/logo-m7.png";
+import logoM7 from "@/assets/logo-m7-mono.png";
 
 export const SELECTED_SYSTEM_KEY = "orcoma:selected-system";
 
