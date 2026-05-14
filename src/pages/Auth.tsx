@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 import logoLight from "@/assets/logo-orcoma-light.png";
 import logoDark from "@/assets/logo-orcoma-dark.png";
+import logoM7 from "@/assets/logo-m7-light.png";
 
 const Auth = () => {
   const { session, loading } = useAuth();
