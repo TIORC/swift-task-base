@@ -40,6 +40,7 @@ import SocialEditorialCalendar from "./pages/social/SocialEditorialCalendar";
 import SocialApprovals from "./pages/social/SocialApprovals";
 import SocialTasks from "./pages/social/SocialTasks";
 import SocialAdmin from "./pages/social/SocialAdmin";
+import SocialAccount from "./pages/social/SocialAccount";
 import SocialPlaceholder from "./pages/social/SocialPlaceholder";
 import SocialIdeaBank from "./pages/social/SocialIdeaBank";
 import SocialPublishingSchedule from "./pages/social/SocialPublishingSchedule";
