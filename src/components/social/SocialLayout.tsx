@@ -22,6 +22,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import logoM7 from "@/assets/logo-m7.png";
 
 const navItems = [
   { title: "Dashboard", url: "/social", icon: LayoutDashboard, end: true },
@@ -57,10 +58,8 @@ function SocialSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-5">
         <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-            <Sparkles className="h-4 w-4" />
-          </div>
-          {!collapsed && <span className="text-lg font-bold tracking-tight">Social Media</span>}
+          <img src={logoM7} alt="M7" className="h-8 w-8 object-contain shrink-0" />
+          {!collapsed && <span className="text-lg font-bold tracking-tight">M7</span>}
         </div>
       </SidebarHeader>
       <Separator className="bg-sidebar-border" />
@@ -128,7 +127,7 @@ function SocialSidebar() {
 export function SocialLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="theme-social min-h-screen flex w-full">
         <SocialSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-14 flex items-center justify-between border-b border-border px-4 bg-card/50 backdrop-blur-sm sticky top-0 z-10">

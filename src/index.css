@@ -104,6 +104,28 @@
   }
 }
 
+/* Social Media theme: musgo green */
+.theme-social {
+  --primary: 95 30% 32%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 95 30% 32%;
+  --sidebar-primary: 95 30% 32%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 95 30% 95%;
+  --sidebar-accent-foreground: 95 30% 22%;
+  --sidebar-ring: 95 30% 32%;
+}
+.dark .theme-social {
+  --primary: 95 28% 42%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 95 28% 42%;
+  --sidebar-primary: 95 28% 42%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 95 20% 16%;
+  --sidebar-accent-foreground: 95 30% 85%;
+  --sidebar-ring: 95 28% 42%;
+}
+
 @layer base {
   * {
     @apply border-border;
