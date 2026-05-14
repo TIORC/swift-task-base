@@ -201,17 +201,6 @@ export default function SocialFocusMode() {
   }
 
   // ============= LIST VIEW =============
-  const grouped = useMemo(() => {
-    const map: Record<SmPriority, { posts: typeof myPosts; tasks: typeof myTasks }> = {
-      urgent: { posts: [], tasks: [] },
-      high: { posts: [], tasks: [] },
-      medium: { posts: [], tasks: [] },
-      low: { posts: [], tasks: [] },
-    };
-    myPosts.forEach((p) => map[p.priority].posts.push(p));
-    myTasks.forEach((t) => map[t.priority].tasks.push(t));
-    return map;
-  }, [myPosts, myTasks]);
 
   const total = myPosts.length + myTasks.length;
 
