@@ -98,9 +98,13 @@ export default function SelectSystem() {
             onClick={() => handlePick("social")}
             className="text-left disabled:opacity-40 disabled:cursor-not-allowed group"
           >
-            <Card className="theme-social p-7 h-full border-2 transition-all group-hover:border-primary group-hover:shadow-lg group-hover:-translate-y-0.5">
-              <div className="h-20 w-20 flex items-center justify-center mb-4">
-                <img src={logoM7} alt="M7" className="h-20 w-20 object-contain" />
+            <Card className="theme-social p-7 h-full border-2 transition-all group-hover:border-primary group-hover:shadow-lg group-hover:-translate-y-0.5 flex flex-col items-center text-center">
+              <div className="w-full flex items-center justify-center mb-4">
+                <img
+                  src={logoM7}
+                  alt="M7"
+                  className="w-auto h-20 sm:h-24 max-w-[60%] object-contain"
+                />
               </div>
               <h2 className="text-xl font-semibold mb-1">M7</h2>
               <p className="text-sm text-muted-foreground">
