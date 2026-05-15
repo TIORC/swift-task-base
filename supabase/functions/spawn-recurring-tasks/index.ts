@@ -21,6 +21,22 @@ function nextDue(type: string, interval: number, from: Date): Date {
   return d;
 }
 
+// Ajusta para o próximo dia útil (pula sábado/domingo)
+function toNextBusinessDay(d: Date): Date {
+  const out = new Date(d);
+  while (out.getDay() === 0 || out.getDay() === 6) {
+    out.setDate(out.getDate() + 1);
+  }
+  return out;
+}
+
+function nextDate(type: string, interval: number, base: string | null, businessDay: boolean): string | null {
+  if (!base) return null;
+  let d = nextDue(type, interval, new Date(base));
+  if (businessDay) d = toNextBusinessDay(d);
+  return d.toISOString();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -61,6 +77,10 @@ Deno.serve(async (req) => {
       assigned_to: t.assigned_to,
       created_by: t.created_by,
       due_date: t.due_date ? nextDue(t.recurrence_type, interval, new Date(t.due_date)).toISOString() : null,
+      legal_date: nextDate(t.recurrence_type, interval, t.legal_date, !!t.legal_is_business_day),
+      legal_is_business_day: !!t.legal_is_business_day,
+      meta_date: nextDate(t.recurrence_type, interval, t.meta_date, !!t.meta_is_business_day),
+      meta_is_business_day: !!t.meta_is_business_day,
       recurrence_type: t.recurrence_type,
       recurrence_interval: t.recurrence_interval,
       parent_recurring_task_id: t.id,
