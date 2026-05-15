@@ -11,7 +11,12 @@ function nextDue(type: string, interval: number, from: Date): Date {
   const step = Math.max(1, interval || 1);
   if (type === "daily") d.setDate(d.getDate() + step);
   else if (type === "weekly") d.setDate(d.getDate() + 7 * step);
+  else if (type === "decendial") d.setDate(d.getDate() + 10 * step);
   else if (type === "monthly") d.setMonth(d.getMonth() + step);
+  else if (type === "bimonthly") d.setMonth(d.getMonth() + 2 * step);
+  else if (type === "quarterly") d.setMonth(d.getMonth() + 3 * step);
+  else if (type === "semiannual") d.setMonth(d.getMonth() + 6 * step);
+  else if (type === "annual") d.setFullYear(d.getFullYear() + step);
   else if (type === "custom") d.setDate(d.getDate() + step);
   return d;
 }
