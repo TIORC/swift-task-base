@@ -85,10 +85,7 @@ export default function SelectSystem() {
               <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-4">
                 <Monitor className="h-6 w-6" />
               </div>
-              <h2 className="text-xl font-semibold mb-1">Gestão de TI</h2>
-              <p className="text-sm text-muted-foreground">
-                Tarefas, chamados, automações, kanban e gestão da equipe de tecnologia.
-              </p>
+              <h2 className="text-xl font-semibold">Gestão de TI</h2>
               {loggedIn && !hasTI && <p className="text-xs text-destructive mt-3">Sem permissão</p>}
             </Card>
           </button>
