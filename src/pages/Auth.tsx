@@ -121,7 +121,6 @@ const Auth = () => {
                 className="h-20 object-contain"
               />
             </div>
-            <CardTitle className="text-2xl font-bold text-foreground tracking-tight">Gestão TI : M7</CardTitle>
             <CardDescription className="text-muted-foreground">
               {isForgot ? "Recuperar senha" : "Entre na sua conta"}
             </CardDescription>
