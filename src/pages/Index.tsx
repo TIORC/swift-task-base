@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useTasks, useProfiles, COLUMNS } from "@/hooks/useTasks";
 import { useTaskFilter } from "@/hooks/useTaskFilter";
 import { TaskFilterSelect } from "@/components/TaskFilterSelect";
@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ListTodo, Clock, CheckCircle2, Users, AlertTriangle,
   TrendingUp, Timer, BarChart3, Activity, LayoutDashboard,
@@ -21,15 +22,19 @@ import {
   PieChart, Pie, Cell,
 } from "recharts";
 
-const PIE_COLORS = [
-  "hsl(230, 80%, 60%)",
-  "hsl(38, 92%, 50%)",
-  "hsl(152, 69%, 40%)",
-  "hsl(0, 72%, 51%)",
-  "hsl(262, 83%, 58%)",
-  "hsl(199, 89%, 48%)",
-  "hsl(220, 9%, 46%)",
-];
+// Cores fixas por status
+const STATUS_COLORS: Record<string, string> = {
+  backlog: "hsl(220, 9%, 55%)",         // cinza
+  pending: "hsl(45, 95%, 55%)",         // amarelo
+  in_progress: "hsl(215, 90%, 55%)",    // azul
+  review: "hsl(280, 70%, 60%)",         // roxo (em validação)
+  done: "hsl(142, 70%, 42%)",           // verde
+  discarded: "hsl(25, 50%, 38%)",       // marrom
+  overdue: "hsl(0, 80%, 55%)",          // vermelho (atrasadas)
+};
+
+type RangeMode = "all" | "day" | "month" | "year";
+
 
 const Dashboard = () => {
   const { data: tasks } = useTasks();
