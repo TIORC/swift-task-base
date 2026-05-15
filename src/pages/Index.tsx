@@ -38,9 +38,27 @@ type RangeMode = "all" | "day" | "month" | "year";
 
 const Dashboard = () => {
   const { data: tasks } = useTasks();
-  const { filteredTasks, selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(tasks);
+  const { filteredTasks: userFilteredTasks, selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(tasks);
   const { data: profiles } = useProfiles();
   const queryClient = useQueryClient();
+
+  const [rangeMode, setRangeMode] = useState<RangeMode>("all");
+  const now = new Date();
+  const [selectedDay, setSelectedDay] = useState(() => now.toISOString().slice(0, 10));
+  const [selectedMonth, setSelectedMonth] = useState(() => now.toISOString().slice(0, 7));
+  const [selectedYear, setSelectedYear] = useState(() => String(now.getFullYear()));
+
+  const filteredTasks = useMemo(() => {
+    if (!userFilteredTasks) return userFilteredTasks;
+    if (rangeMode === "all") return userFilteredTasks;
+    return userFilteredTasks.filter((t) => {
+      const d = new Date(t.created_at);
+      if (rangeMode === "day") return d.toISOString().slice(0, 10) === selectedDay;
+      if (rangeMode === "month") return d.toISOString().slice(0, 7) === selectedMonth;
+      if (rangeMode === "year") return String(d.getFullYear()) === selectedYear;
+      return true;
+    });
+  }, [userFilteredTasks, rangeMode, selectedDay, selectedMonth, selectedYear]);
 
   useEffect(() => {
     const channel = supabase
