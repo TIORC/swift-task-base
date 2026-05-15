@@ -19,15 +19,17 @@ import {
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend,
 } from "recharts";
 
-const PIE_COLORS = [
-  "hsl(230, 80%, 60%)",
-  "hsl(38, 92%, 50%)",
-  "hsl(152, 69%, 40%)",
-  "hsl(0, 72%, 51%)",
-  "hsl(262, 83%, 58%)",
-  "hsl(199, 89%, 48%)",
-  "hsl(220, 9%, 46%)",
-];
+const STATUS_COLORS: Record<string, string> = {
+  backlog: "hsl(220, 9%, 46%)",
+  pending: "hsl(45, 93%, 50%)",
+  todo: "hsl(45, 93%, 50%)",
+  in_progress: "hsl(217, 91%, 55%)",
+  review: "hsl(262, 83%, 58%)",
+  done: "hsl(152, 69%, 40%)",
+  discarded: "hsl(25, 50%, 35%)",
+  overdue: "hsl(0, 72%, 51%)",
+};
+const FALLBACK_COLOR = "hsl(220, 9%, 46%)";
 
 const tooltipStyle = {
   backgroundColor: "hsl(var(--card))",
