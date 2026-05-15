@@ -157,8 +157,8 @@ const ManagerDashboard = () => {
 
   const statusData = useMemo(() => {
     const statusMap = Object.fromEntries(COLUMNS.map(c => [c.status, c.title]));
-    const base = COLUMNS.map(col => ({
-      key: col.status,
+    const base: { key: string; name: string; value: number }[] = COLUMNS.map(col => ({
+      key: col.status as string,
       name: statusMap[col.status],
       value: filteredTasks.filter(t => t.status === col.status).length,
     }));
