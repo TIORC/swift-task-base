@@ -366,7 +366,7 @@ const ManagerDashboard = () => {
                 <div className="flex flex-wrap gap-3 mt-2">
                   {statusData.map((d, i) => (
                     <div key={d.name} className="flex items-center gap-1.5 text-xs">
-                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: STATUS_COLORS[d.key] || FALLBACK_COLOR }} />
                       <span className="text-muted-foreground">{d.name}</span>
                       <span className="text-foreground font-semibold">{d.value}</span>
                     </div>
