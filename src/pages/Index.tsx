@@ -172,9 +172,31 @@ const Dashboard = () => {
         description="Visão estratégica em tempo real"
         icon={<LayoutDashboard className="h-5 w-5" />}
         actions={
-          canFilter ? (
-            <TaskFilterSelect value={selectedUserId} onChange={setSelectedUserId} />
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={rangeMode} onValueChange={(v) => setRangeMode(v as RangeMode)}>
+              <SelectTrigger className="h-9 w-[130px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todo período</SelectItem>
+                <SelectItem value="day">Por dia</SelectItem>
+                <SelectItem value="month">Por mês</SelectItem>
+                <SelectItem value="year">Por ano</SelectItem>
+              </SelectContent>
+            </Select>
+            {rangeMode === "day" && (
+              <input type="date" value={selectedDay} onChange={(e) => setSelectedDay(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm" />
+            )}
+            {rangeMode === "month" && (
+              <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm" />
+            )}
+            {rangeMode === "year" && (
+              <input type="number" min="2000" max="2100" value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="h-9 w-24 rounded-md border border-input bg-background px-2 text-sm" />
+            )}
+            {canFilter && <TaskFilterSelect value={selectedUserId} onChange={setSelectedUserId} />}
+          </div>
         }
       />
 
