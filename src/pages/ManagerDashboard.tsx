@@ -19,15 +19,17 @@ import {
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend,
 } from "recharts";
 
-const PIE_COLORS = [
-  "hsl(230, 80%, 60%)",
-  "hsl(38, 92%, 50%)",
-  "hsl(152, 69%, 40%)",
-  "hsl(0, 72%, 51%)",
-  "hsl(262, 83%, 58%)",
-  "hsl(199, 89%, 48%)",
-  "hsl(220, 9%, 46%)",
-];
+const STATUS_COLORS: Record<string, string> = {
+  backlog: "hsl(220, 9%, 46%)",
+  pending: "hsl(45, 93%, 50%)",
+  todo: "hsl(45, 93%, 50%)",
+  in_progress: "hsl(217, 91%, 55%)",
+  review: "hsl(262, 83%, 58%)",
+  done: "hsl(152, 69%, 40%)",
+  discarded: "hsl(25, 50%, 35%)",
+  overdue: "hsl(0, 72%, 51%)",
+};
+const FALLBACK_COLOR = "hsl(220, 9%, 46%)";
 
 const tooltipStyle = {
   backgroundColor: "hsl(var(--card))",
@@ -155,12 +157,19 @@ const ManagerDashboard = () => {
 
   const statusData = useMemo(() => {
     const statusMap = Object.fromEntries(COLUMNS.map(c => [c.status, c.title]));
-    return COLUMNS.map(col => ({
+    const base: { key: string; name: string; value: number }[] = COLUMNS.map(col => ({
+      key: col.status as string,
       name: statusMap[col.status],
       value: filteredTasks.filter(t => t.status === col.status).length,
-    })).filter(d => d.value > 0);
+    }));
+    const now = Date.now();
+    const overdue = filteredTasks.filter(t =>
+      t.due_date && new Date(t.due_date).getTime() < now &&
+      t.status !== "done" && t.status !== "discarded"
+    ).length;
+    if (overdue > 0) base.push({ key: "overdue", name: "Atrasadas", value: overdue });
+    return base.filter(d => d.value > 0);
   }, [filteredTasks]);
-
   const timePerUser = useMemo(() => {
     if (!profiles) return [];
     const map: Record<string, number> = {};
@@ -349,7 +358,7 @@ const ManagerDashboard = () => {
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
                     <Pie data={statusData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value" stroke="none">
-                      {statusData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                      {statusData.map((d, i) => <Cell key={i} fill={STATUS_COLORS[d.key] || FALLBACK_COLOR} />)}
                     </Pie>
                     <Tooltip contentStyle={tooltipStyle} />
                   </PieChart>
@@ -357,7 +366,7 @@ const ManagerDashboard = () => {
                 <div className="flex flex-wrap gap-3 mt-2">
                   {statusData.map((d, i) => (
                     <div key={d.name} className="flex items-center gap-1.5 text-xs">
-                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: STATUS_COLORS[d.key] || FALLBACK_COLOR }} />
                       <span className="text-muted-foreground">{d.name}</span>
                       <span className="text-foreground font-semibold">{d.value}</span>
                     </div>
