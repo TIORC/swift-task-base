@@ -96,6 +96,10 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
         status: status as any,
         assigned_to: assignedTo && assignedTo !== "none" ? assignedTo : null,
         due_date: dueDate ? dueDate.toISOString() : null,
+        legal_date: legalDate ? legalDate.toISOString() : null,
+        legal_is_business_day: legalIsBusinessDay,
+        meta_date: metaDate ? metaDate.toISOString() : null,
+        meta_is_business_day: metaIsBusinessDay,
         recurrence_type: isRecurring ? recurrenceType : null,
         recurrence_interval: isRecurring ? recurrenceInterval : null,
         recurrence_until: isRecurring && recurrenceUntil ? recurrenceUntil.toISOString() : null,
@@ -106,6 +110,8 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
           onOpenChange(false);
           setTitle(""); setDescription(""); setPriority("medium"); setStatus(defaultStatus);
           setAssignedTo(""); setDueDate(undefined);
+          setLegalDate(undefined); setLegalIsBusinessDay(false);
+          setMetaDate(undefined); setMetaIsBusinessDay(false);
           setRecurrenceType("none"); setRecurrenceInterval(1); setRecurrenceUntil(undefined);
         },
       }
