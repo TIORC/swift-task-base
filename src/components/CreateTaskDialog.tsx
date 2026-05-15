@@ -182,6 +182,50 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
             </div>
           </div>
 
+          {/* Datas Legal / Meta */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Data Legal</Label>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground">Dia útil</span>
+                  <Switch checked={legalIsBusinessDay} onCheckedChange={setLegalIsBusinessDay} />
+                </div>
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-9", !legalDate && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {legalDate ? format(legalDate, "dd/MM/yyyy") : "Selecionar..."}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={legalDate} onSelect={setLegalDate} initialFocus className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Data Meta</Label>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground">Dia útil</span>
+                  <Switch checked={metaIsBusinessDay} onCheckedChange={setMetaIsBusinessDay} />
+                </div>
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-9", !metaDate && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {metaDate ? format(metaDate, "dd/MM/yyyy") : "Selecionar..."}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={metaDate} onSelect={setMetaDate} initialFocus className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
           {/* Recurrence */}
           <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-3">
             <div className="flex items-center gap-2">
