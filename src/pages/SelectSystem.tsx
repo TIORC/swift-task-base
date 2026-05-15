@@ -85,10 +85,7 @@ export default function SelectSystem() {
               <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-4">
                 <Monitor className="h-6 w-6" />
               </div>
-              <h2 className="text-xl font-semibold mb-1">Gestão de TI</h2>
-              <p className="text-sm text-muted-foreground">
-                Tarefas, chamados, automações, kanban e gestão da equipe de tecnologia.
-              </p>
+              <h2 className="text-xl font-semibold">Gestão de TI</h2>
               {loggedIn && !hasTI && <p className="text-xs text-destructive mt-3">Sem permissão</p>}
             </Card>
           </button>
@@ -98,18 +95,12 @@ export default function SelectSystem() {
             onClick={() => handlePick("social")}
             className="text-left disabled:opacity-40 disabled:cursor-not-allowed group"
           >
-            <Card className="theme-social p-7 h-full border-2 transition-all group-hover:border-primary group-hover:shadow-lg group-hover:-translate-y-0.5 flex flex-col items-center text-center">
-              <div className="w-full flex items-center justify-center mb-4">
-                <img
-                  src={logoM7}
-                  alt="M7"
-                  className="w-auto h-20 sm:h-24 max-w-[60%] object-contain"
-                />
-              </div>
-              <h2 className="text-xl font-semibold mb-1">M7</h2>
-              <p className="text-sm text-muted-foreground">
-                Calendário editorial, aprovações, clientes, campanhas e conteúdo das redes sociais.
-              </p>
+            <Card className="theme-social p-7 h-full border-2 transition-all group-hover:border-primary group-hover:shadow-lg group-hover:-translate-y-0.5 flex flex-col items-center justify-center text-center">
+              <img
+                src={logoM7}
+                alt="M7"
+                className="w-auto h-20 sm:h-24 max-w-[60%] object-contain"
+              />
               {loggedIn && !hasSocial && <p className="text-xs text-destructive mt-3">Sem permissão</p>}
             </Card>
           </button>
