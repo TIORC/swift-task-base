@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useTasks, useProfiles, COLUMNS } from "@/hooks/useTasks";
 import { useTaskFilter } from "@/hooks/useTaskFilter";
 import { TaskFilterSelect } from "@/components/TaskFilterSelect";
@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ListTodo, Clock, CheckCircle2, Users, AlertTriangle,
   TrendingUp, Timer, BarChart3, Activity, LayoutDashboard,
@@ -21,21 +22,43 @@ import {
   PieChart, Pie, Cell,
 } from "recharts";
 
-const PIE_COLORS = [
-  "hsl(230, 80%, 60%)",
-  "hsl(38, 92%, 50%)",
-  "hsl(152, 69%, 40%)",
-  "hsl(0, 72%, 51%)",
-  "hsl(262, 83%, 58%)",
-  "hsl(199, 89%, 48%)",
-  "hsl(220, 9%, 46%)",
-];
+// Cores fixas por status
+const STATUS_COLORS: Record<string, string> = {
+  backlog: "hsl(220, 9%, 55%)",         // cinza
+  pending: "hsl(45, 95%, 55%)",         // amarelo
+  in_progress: "hsl(215, 90%, 55%)",    // azul
+  review: "hsl(280, 70%, 60%)",         // roxo (em validação)
+  done: "hsl(142, 70%, 42%)",           // verde
+  discarded: "hsl(25, 50%, 38%)",       // marrom
+  overdue: "hsl(0, 80%, 55%)",          // vermelho (atrasadas)
+};
+
+type RangeMode = "all" | "day" | "month" | "year";
+
 
 const Dashboard = () => {
   const { data: tasks } = useTasks();
-  const { filteredTasks, selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(tasks);
+  const { filteredTasks: userFilteredTasks, selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(tasks);
   const { data: profiles } = useProfiles();
   const queryClient = useQueryClient();
+
+  const [rangeMode, setRangeMode] = useState<RangeMode>("all");
+  const now = new Date();
+  const [selectedDay, setSelectedDay] = useState(() => now.toISOString().slice(0, 10));
+  const [selectedMonth, setSelectedMonth] = useState(() => now.toISOString().slice(0, 7));
+  const [selectedYear, setSelectedYear] = useState(() => String(now.getFullYear()));
+
+  const filteredTasks = useMemo(() => {
+    if (!userFilteredTasks) return userFilteredTasks;
+    if (rangeMode === "all") return userFilteredTasks;
+    return userFilteredTasks.filter((t) => {
+      const d = new Date(t.created_at);
+      if (rangeMode === "day") return d.toISOString().slice(0, 10) === selectedDay;
+      if (rangeMode === "month") return d.toISOString().slice(0, 7) === selectedMonth;
+      if (rangeMode === "year") return String(d.getFullYear()) === selectedYear;
+      return true;
+    });
+  }, [userFilteredTasks, rangeMode, selectedDay, selectedMonth, selectedYear]);
 
   useEffect(() => {
     const channel = supabase
@@ -64,11 +87,16 @@ const Dashboard = () => {
 
   const statusData = useMemo(() => {
     if (!filteredTasks) return [];
-    const statusMap = Object.fromEntries(COLUMNS.map((c) => [c.status, c.title]));
-    return COLUMNS.map((col) => ({
-      name: statusMap[col.status],
+    const nowTs = Date.now();
+    const overdueCount = filteredTasks.filter(
+      (t) => t.due_date && new Date(t.due_date).getTime() < nowTs && t.status !== "done" && t.status !== "discarded"
+    ).length;
+    const base = COLUMNS.map((col) => ({
+      key: col.status,
+      name: col.title,
       value: filteredTasks.filter((t) => t.status === col.status).length,
-    })).filter((d) => d.value > 0);
+    }));
+    return [...base, { key: "overdue", name: "Atrasadas", value: overdueCount }].filter((d) => d.value > 0);
   }, [filteredTasks]);
 
   const timePerUser = useMemo(() => {
@@ -144,9 +172,31 @@ const Dashboard = () => {
         description="Visão estratégica em tempo real"
         icon={<LayoutDashboard className="h-5 w-5" />}
         actions={
-          canFilter ? (
-            <TaskFilterSelect value={selectedUserId} onChange={setSelectedUserId} />
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={rangeMode} onValueChange={(v) => setRangeMode(v as RangeMode)}>
+              <SelectTrigger className="h-9 w-[130px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todo período</SelectItem>
+                <SelectItem value="day">Por dia</SelectItem>
+                <SelectItem value="month">Por mês</SelectItem>
+                <SelectItem value="year">Por ano</SelectItem>
+              </SelectContent>
+            </Select>
+            {rangeMode === "day" && (
+              <input type="date" value={selectedDay} onChange={(e) => setSelectedDay(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm" />
+            )}
+            {rangeMode === "month" && (
+              <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm" />
+            )}
+            {rangeMode === "year" && (
+              <input type="number" min="2000" max="2100" value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="h-9 w-24 rounded-md border border-input bg-background px-2 text-sm" />
+            )}
+            {canFilter && <TaskFilterSelect value={selectedUserId} onChange={setSelectedUserId} />}
+          </div>
         }
       />
 
@@ -192,15 +242,15 @@ const Dashboard = () => {
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
                     <Pie data={statusData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value" stroke="none">
-                      {statusData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                      {statusData.map((d) => <Cell key={d.key} fill={STATUS_COLORS[d.key]} />)}
                     </Pie>
                     <Tooltip contentStyle={tooltipStyle} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap gap-3 mt-2">
-                  {statusData.map((d, i) => (
-                    <div key={d.name} className="flex items-center gap-1.5 text-xs">
-                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                  {statusData.map((d) => (
+                    <div key={d.key} className="flex items-center gap-1.5 text-xs">
+                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: STATUS_COLORS[d.key] }} />
                       <span className="text-muted-foreground">{d.name}</span>
                       <span className="text-foreground font-semibold">{d.value}</span>
                     </div>
