@@ -157,12 +157,19 @@ const ManagerDashboard = () => {
 
   const statusData = useMemo(() => {
     const statusMap = Object.fromEntries(COLUMNS.map(c => [c.status, c.title]));
-    return COLUMNS.map(col => ({
+    const base = COLUMNS.map(col => ({
+      key: col.status,
       name: statusMap[col.status],
       value: filteredTasks.filter(t => t.status === col.status).length,
-    })).filter(d => d.value > 0);
+    }));
+    const now = Date.now();
+    const overdue = filteredTasks.filter(t =>
+      t.due_date && new Date(t.due_date).getTime() < now &&
+      t.status !== "done" && t.status !== "discarded"
+    ).length;
+    if (overdue > 0) base.push({ key: "overdue", name: "Atrasadas", value: overdue });
+    return base.filter(d => d.value > 0);
   }, [filteredTasks]);
-
   const timePerUser = useMemo(() => {
     if (!profiles) return [];
     const map: Record<string, number> = {};
