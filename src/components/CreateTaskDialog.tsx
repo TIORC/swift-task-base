@@ -38,9 +38,14 @@ const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
 
 const RECURRENCE_OPTIONS = [
   { value: "none", label: "Não repetir" },
-  { value: "daily", label: "Todos os dias" },
-  { value: "weekly", label: "Toda semana" },
-  { value: "monthly", label: "Todo mês" },
+  { value: "daily", label: "Diária" },
+  { value: "weekly", label: "Semanal" },
+  { value: "decendial", label: "Decendial (a cada 10 dias)" },
+  { value: "monthly", label: "Mensal" },
+  { value: "bimonthly", label: "Bimestral" },
+  { value: "quarterly", label: "Trimestral" },
+  { value: "semiannual", label: "Semestral" },
+  { value: "annual", label: "Anual" },
   { value: "custom", label: "Personalizado (a cada N dias)" },
 ] as const;
 
@@ -57,6 +62,10 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
   const [status, setStatus] = useState<TaskStatus>(defaultStatus);
   const [assignedTo, setAssignedTo] = useState<string>("");
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+  const [legalDate, setLegalDate] = useState<Date | undefined>(undefined);
+  const [legalIsBusinessDay, setLegalIsBusinessDay] = useState(false);
+  const [metaDate, setMetaDate] = useState<Date | undefined>(undefined);
+  const [metaIsBusinessDay, setMetaIsBusinessDay] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState<string>("none");
   const [recurrenceInterval, setRecurrenceInterval] = useState<number>(1);
   const [recurrenceUntil, setRecurrenceUntil] = useState<Date | undefined>(undefined);
@@ -87,6 +96,10 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
         status: status as any,
         assigned_to: assignedTo && assignedTo !== "none" ? assignedTo : null,
         due_date: dueDate ? dueDate.toISOString() : null,
+        legal_date: legalDate ? legalDate.toISOString() : null,
+        legal_is_business_day: legalIsBusinessDay,
+        meta_date: metaDate ? metaDate.toISOString() : null,
+        meta_is_business_day: metaIsBusinessDay,
         recurrence_type: isRecurring ? recurrenceType : null,
         recurrence_interval: isRecurring ? recurrenceInterval : null,
         recurrence_until: isRecurring && recurrenceUntil ? recurrenceUntil.toISOString() : null,
@@ -97,6 +110,8 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
           onOpenChange(false);
           setTitle(""); setDescription(""); setPriority("medium"); setStatus(defaultStatus);
           setAssignedTo(""); setDueDate(undefined);
+          setLegalDate(undefined); setLegalIsBusinessDay(false);
+          setMetaDate(undefined); setMetaIsBusinessDay(false);
           setRecurrenceType("none"); setRecurrenceInterval(1); setRecurrenceUntil(undefined);
         },
       }
@@ -162,6 +177,50 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          {/* Datas Legal / Meta */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Data Legal</Label>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground">Dia útil</span>
+                  <Switch checked={legalIsBusinessDay} onCheckedChange={setLegalIsBusinessDay} />
+                </div>
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-9", !legalDate && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {legalDate ? format(legalDate, "dd/MM/yyyy") : "Selecionar..."}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={legalDate} onSelect={setLegalDate} initialFocus className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Data Meta</Label>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground">Dia útil</span>
+                  <Switch checked={metaIsBusinessDay} onCheckedChange={setMetaIsBusinessDay} />
+                </div>
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-9", !metaDate && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {metaDate ? format(metaDate, "dd/MM/yyyy") : "Selecionar..."}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={metaDate} onSelect={setMetaDate} initialFocus className="p-3 pointer-events-auto" />
                 </PopoverContent>
               </Popover>
             </div>
