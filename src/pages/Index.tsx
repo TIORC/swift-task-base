@@ -220,15 +220,15 @@ const Dashboard = () => {
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
                     <Pie data={statusData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value" stroke="none">
-                      {statusData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                      {statusData.map((d) => <Cell key={d.key} fill={STATUS_COLORS[d.key]} />)}
                     </Pie>
                     <Tooltip contentStyle={tooltipStyle} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap gap-3 mt-2">
-                  {statusData.map((d, i) => (
-                    <div key={d.name} className="flex items-center gap-1.5 text-xs">
-                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                  {statusData.map((d) => (
+                    <div key={d.key} className="flex items-center gap-1.5 text-xs">
+                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: STATUS_COLORS[d.key] }} />
                       <span className="text-muted-foreground">{d.name}</span>
                       <span className="text-foreground font-semibold">{d.value}</span>
                     </div>
