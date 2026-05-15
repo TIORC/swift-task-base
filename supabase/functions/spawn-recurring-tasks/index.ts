@@ -21,6 +21,22 @@ function nextDue(type: string, interval: number, from: Date): Date {
   return d;
 }
 
+// Ajusta para o próximo dia útil (pula sábado/domingo)
+function toNextBusinessDay(d: Date): Date {
+  const out = new Date(d);
+  while (out.getDay() === 0 || out.getDay() === 6) {
+    out.setDate(out.getDate() + 1);
+  }
+  return out;
+}
+
+function nextDate(type: string, interval: number, base: string | null, businessDay: boolean): string | null {
+  if (!base) return null;
+  let d = nextDue(type, interval, new Date(base));
+  if (businessDay) d = toNextBusinessDay(d);
+  return d.toISOString();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
