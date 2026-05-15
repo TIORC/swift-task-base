@@ -86,8 +86,16 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
 
   const isRecurring = recurrenceType !== "none";
 
+  const toNextBusinessDay = (d: Date): Date => {
+    const out = new Date(d);
+    while (out.getDay() === 0 || out.getDay() === 6) out.setDate(out.getDate() + 1);
+    return out;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const adjustedLegal = legalDate ? (legalIsBusinessDay ? toNextBusinessDay(legalDate) : legalDate) : null;
+    const adjustedMeta = metaDate ? (metaIsBusinessDay ? toNextBusinessDay(metaDate) : metaDate) : null;
     createTask.mutate(
       {
         title,
