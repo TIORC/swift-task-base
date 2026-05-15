@@ -38,9 +38,14 @@ const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
 
 const RECURRENCE_OPTIONS = [
   { value: "none", label: "Não repetir" },
-  { value: "daily", label: "Todos os dias" },
-  { value: "weekly", label: "Toda semana" },
-  { value: "monthly", label: "Todo mês" },
+  { value: "daily", label: "Diária" },
+  { value: "weekly", label: "Semanal" },
+  { value: "decendial", label: "Decendial (a cada 10 dias)" },
+  { value: "monthly", label: "Mensal" },
+  { value: "bimonthly", label: "Bimestral" },
+  { value: "quarterly", label: "Trimestral" },
+  { value: "semiannual", label: "Semestral" },
+  { value: "annual", label: "Anual" },
   { value: "custom", label: "Personalizado (a cada N dias)" },
 ] as const;
 
