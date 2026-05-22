@@ -30,10 +30,18 @@ function toNextBusinessDay(d: Date): Date {
   return out;
 }
 
+// Normaliza para o primeiro horário do dia (00:00:00 local)
+function startOfDay(d: Date): Date {
+  const out = new Date(d);
+  out.setHours(0, 0, 0, 0);
+  return out;
+}
+
 function nextDate(type: string, interval: number, base: string | null, businessDay: boolean): string | null {
   if (!base) return null;
   let d = nextDue(type, interval, new Date(base));
   if (businessDay) d = toNextBusinessDay(d);
+  d = startOfDay(d);
   return d.toISOString();
 }
 
