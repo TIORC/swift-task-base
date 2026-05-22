@@ -255,6 +255,33 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                 </div>
               )}
 
+              {/* Gestor: edição apenas de prazos */}
+              {isReadOnly && (
+                <div className="space-y-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                  <p className="text-xs font-medium text-amber-600 dark:text-amber-400">Ajuste de prazos (Gestor)</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Prazo Estimado</label>
+                      <Input
+                        type="date"
+                        value={a.estimated_deadline ? a.estimated_deadline.substring(0, 10) : ""}
+                        onChange={e => handleUpdate({ estimated_deadline: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                        className="h-8 mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Prazo Final</label>
+                      <Input
+                        type="date"
+                        value={a.final_deadline ? a.final_deadline.substring(0, 10) : ""}
+                        onChange={e => handleUpdate({ final_deadline: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                        className="h-8 mt-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Read-only info */}
               <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                 <div>Criado: {format(new Date(a.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}</div>
