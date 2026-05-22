@@ -78,7 +78,7 @@ function NoAccessibleMenuState() {
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
   if (loading) return <FullScreenLoader />;
-  if (!session) return <Navigate to="/select-system" replace />;
+  if (!session) return <Navigate to="/auth" replace />;
   return <>{children}</>;
 }
 
