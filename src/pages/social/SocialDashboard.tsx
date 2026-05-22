@@ -31,13 +31,22 @@ export default function SocialDashboard() {
   const { data: campaigns } = useSmCampaigns();
 
   const stats = useMemo(() => {
-    const planejados = posts.filter(p => ["ideia","roteiro","design"].includes(p.status)).length;
-    const aprovacoes = posts.filter(p => ["revisao_interna","aprovacao_cliente"].includes(p.status)).length;
-    const agendados = posts.filter(p => p.status === "agendado").length;
-    const publicados = posts.filter(p => p.status === "publicado").length;
+    // Reseta a cada virada de mês — mantém apenas posts criados no mês atual ou em aberto
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const isOpen = (s: string) => !["publicado", "reprovado"].includes(s);
+    const monthPosts = posts.filter(p => new Date(p.created_at) >= monthStart || isOpen(p.status));
+
+    const planejados = monthPosts.filter(p => ["ideia","roteiro","design"].includes(p.status)).length;
+    const aprovacoes = monthPosts.filter(p => ["revisao_interna","aprovacao_cliente"].includes(p.status)).length;
+    const agendados = monthPosts.filter(p => p.status === "agendado").length;
+    const publicados = posts.filter(p => {
+      if (p.status !== "publicado" || !p.published_at) return false;
+      return new Date(p.published_at) >= monthStart;
+    }).length;
     const ativasCampanhas = campaigns.filter(c => c.status !== "completed" && c.status !== "cancelled").length;
     const tarefasAbertas = tasks.filter(t => t.status !== "concluido" && t.status !== "descartado").length;
-    return { planejados, aprovacoes, agendados, publicados, ativasCampanhas, tarefasAbertas };
+    return { planejados, aprovacoes, agendados, publicados, ativasCampanhas, tarefasAbertas, totalMes: monthPosts.length };
   }, [posts, tasks, campaigns]);
 
   if (lc || lp || lt) {
