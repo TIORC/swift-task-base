@@ -140,6 +140,11 @@ export default function SupportTickets() {
     updateTask.mutate({ id: taskId, status: newStatus as any });
   };
 
+  const handleTransfer = (taskId: string, newAssignee: string) => {
+    updateTask.mutate({ id: taskId, assigned_to: newAssignee === "none" ? null : newAssignee });
+  };
+
+
   return (
     <div className="space-y-6">
       <PageHeader title="Chamados de Suporte" description="Chamados abertos pelo cliente Windows" />
