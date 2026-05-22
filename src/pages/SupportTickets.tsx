@@ -59,7 +59,7 @@ export default function SupportTickets() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const updateTask = useUpdateTask();
   const queryClient = useQueryClient();
-  const { data: profiles } = useProfiles();
+  const { data: profiles } = useAssignableProfiles();
   const { isGestor } = useUserRole();
 
   const { data: tickets, isLoading } = useQuery({
