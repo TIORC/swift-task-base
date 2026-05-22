@@ -26,27 +26,37 @@ const tooltipStyle = {
   fontSize: "12px",
 };
 
-type PeriodFilter = "week" | "month" | "quarter" | "all";
+type PeriodFilter = "week" | "month" | "quarter" | "specific" | "all";
 
 export default function SocialReports() {
   const { data: posts } = useSmPosts();
   const { data: clients } = useSmClients();
   const { data: tasks } = useSmTasks();
   const [period, setPeriod] = useState<PeriodFilter>("month");
+  const [specificMonth, setSpecificMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
   const [clientId, setClientId] = useState<string>("all");
 
   const filtered = useMemo(() => {
     const now = new Date();
     let cutoff: Date | null = null;
+    let start: Date | null = null;
+    let end: Date | null = null;
     if (period === "week") cutoff = new Date(now.getTime() - 7 * 86400000);
     else if (period === "month") cutoff = new Date(now.getTime() - 30 * 86400000);
     else if (period === "quarter") cutoff = new Date(now.getTime() - 90 * 86400000);
+    else if (period === "specific") {
+      const [y, m] = specificMonth.split("-").map(Number);
+      start = new Date(y, m - 1, 1);
+      end = new Date(y, m, 1);
+    }
     return posts.filter((p) => {
-      if (cutoff && new Date(p.created_at) < cutoff) return false;
+      const created = new Date(p.created_at);
+      if (start && end && (created < start || created >= end)) return false;
+      if (cutoff && created < cutoff) return false;
       if (clientId !== "all" && p.client_id !== clientId) return false;
       return true;
     });
-  }, [posts, period, clientId]);
+  }, [posts, period, specificMonth, clientId]);
 
   const byStatus = useMemo(
     () => SM_POST_STATUS_ORDER.map((s) => ({
