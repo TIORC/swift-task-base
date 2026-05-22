@@ -218,6 +218,31 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
                 </Button>
               </div>
               )}
+              {isReadOnly && (
+                <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                  <p className="text-xs font-medium text-amber-600 dark:text-amber-400">Ajuste de prazo (Gestor)</p>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className={cn("w-full justify-start text-left font-normal", !dueDate && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dueDate ? format(dueDate, "dd/MM/yyyy") : "Definir prazo"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dueDate}
+                        onSelect={(d) => {
+                          setDueDate(d);
+                          updateTask.mutate({ id: task.id, due_date: d ? d.toISOString() : null });
+                        }}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
             </div>
           )}
 

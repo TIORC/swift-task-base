@@ -30,10 +30,18 @@ function toNextBusinessDay(d: Date): Date {
   return out;
 }
 
+// Normaliza para o primeiro horário do dia (00:00:00 local)
+function startOfDay(d: Date): Date {
+  const out = new Date(d);
+  out.setHours(0, 0, 0, 0);
+  return out;
+}
+
 function nextDate(type: string, interval: number, base: string | null, businessDay: boolean): string | null {
   if (!base) return null;
   let d = nextDue(type, interval, new Date(base));
   if (businessDay) d = toNextBusinessDay(d);
+  d = startOfDay(d);
   return d.toISOString();
 }
 
@@ -63,7 +71,8 @@ Deno.serve(async (req) => {
   for (const t of templates ?? []) {
     const interval = t.recurrence_interval || 1;
     const last = t.last_spawned_at ? new Date(t.last_spawned_at) : new Date(t.created_at);
-    const next = nextDue(t.recurrence_type, interval, last);
+    // Próximo disparo é no PRIMEIRO horário do dia (00:00), e não no horário de criação
+    const next = startOfDay(nextDue(t.recurrence_type, interval, last));
 
     if (next > now) continue;
     if (t.recurrence_until && now > new Date(t.recurrence_until)) continue;
@@ -76,7 +85,7 @@ Deno.serve(async (req) => {
       status: "backlog",
       assigned_to: t.assigned_to,
       created_by: t.created_by,
-      due_date: t.due_date ? nextDue(t.recurrence_type, interval, new Date(t.due_date)).toISOString() : null,
+      due_date: t.due_date ? startOfDay(nextDue(t.recurrence_type, interval, new Date(t.due_date))).toISOString() : null,
       legal_date: nextDate(t.recurrence_type, interval, t.legal_date, !!t.legal_is_business_day),
       legal_is_business_day: !!t.legal_is_business_day,
       meta_date: nextDate(t.recurrence_type, interval, t.meta_date, !!t.meta_is_business_day),

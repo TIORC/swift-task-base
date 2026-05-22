@@ -12,8 +12,9 @@ import { Headset, Monitor, FileText, Printer, Phone, Clock, User, Laptop, Search
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useUpdateTask } from "@/hooks/useTasks";
+import { useUpdateTask, useProfiles } from "@/hooks/useTasks";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
+import { useUserRole } from "@/hooks/useUserRole";
 import type { Task } from "@/hooks/useTasks";
 
 const CATEGORY_ICONS: Record<string, typeof Monitor> = {
@@ -58,6 +59,8 @@ export default function SupportTickets() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const updateTask = useUpdateTask();
   const queryClient = useQueryClient();
+  const { data: profiles } = useProfiles();
+  const { isGestor } = useUserRole();
 
   const { data: tickets, isLoading } = useQuery({
     queryKey: ["support-tickets"],
@@ -136,6 +139,11 @@ export default function SupportTickets() {
   const handleStatusChange = (taskId: string, newStatus: string) => {
     updateTask.mutate({ id: taskId, status: newStatus as any });
   };
+
+  const handleTransfer = (taskId: string, newAssignee: string) => {
+    updateTask.mutate({ id: taskId, assigned_to: newAssignee === "none" ? null : newAssignee });
+  };
+
 
   return (
     <div className="space-y-6">
@@ -283,13 +291,26 @@ export default function SupportTickets() {
                           <span className="text-sm text-muted-foreground">{machine}</span>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-6 w-6">
-                            <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{initials}</AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm">{assigneeName}</span>
-                        </div>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Select
+                          value={ticket.assigned_to || "none"}
+                          onValueChange={(v) => handleTransfer(ticket.id, v)}
+                        >
+                          <SelectTrigger className="h-8 text-xs w-[170px]">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Avatar className="h-5 w-5 shrink-0">
+                                <AvatarFallback className="text-[9px] bg-primary/10 text-primary">{initials}</AvatarFallback>
+                              </Avatar>
+                              <span className="truncate">{assigneeName}</span>
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Sem responsável</SelectItem>
+                            {profiles?.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
                         <span className="text-sm text-muted-foreground">
@@ -330,6 +351,7 @@ export default function SupportTickets() {
           task={selectedTask}
           open={!!selectedTask}
           onOpenChange={(open) => !open && setSelectedTask(null)}
+          isReadOnly={isGestor}
         />
       )}
     </div>
