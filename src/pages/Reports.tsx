@@ -34,10 +34,10 @@ const tooltipStyle = {
   fontSize: "12px",
 };
 
-type PeriodFilter = "week" | "month" | "quarter" | "all";
+type PeriodFilter = "week" | "month" | "quarter" | "specific" | "all";
 
 const periodLabels: Record<PeriodFilter, string> = {
-  week: "Semana", month: "Mês", quarter: "Trimestre", all: "Todo período",
+  week: "Semana", month: "Mês", quarter: "Trimestre", specific: "Mês específico", all: "Todo período",
 };
 
 const Reports = () => {
@@ -46,18 +46,28 @@ const Reports = () => {
   const { filteredTasks, selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(tasks);
   const { isAdmin, isGestor } = useUserRole();
   const [period, setPeriod] = useState<PeriodFilter>("month");
+  const [specificMonth, setSpecificMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
   const reportRef = useRef<HTMLDivElement>(null);
 
   const periodFiltered = useMemo(() => {
     if (!filteredTasks) return [];
     const now = new Date();
+    if (period === "specific") {
+      const [y, m] = specificMonth.split("-").map(Number);
+      const start = new Date(y, m - 1, 1);
+      const end = new Date(y, m, 1);
+      return filteredTasks.filter(t => {
+        const d = new Date(t.created_at);
+        return d >= start && d < end;
+      });
+    }
     let cutoff: Date | null = null;
     if (period === "week") cutoff = subDays(now, 7);
     else if (period === "month") cutoff = subMonths(now, 1);
     else if (period === "quarter") cutoff = subMonths(now, 3);
     if (cutoff) return filteredTasks.filter(t => new Date(t.created_at) >= cutoff!);
     return filteredTasks;
-  }, [filteredTasks, period]);
+  }, [filteredTasks, period, specificMonth]);
 
   const metrics = useMemo(() => {
     const total = periodFiltered.length;
