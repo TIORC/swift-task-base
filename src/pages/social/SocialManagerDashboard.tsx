@@ -22,7 +22,7 @@ const tooltipStyle = {
 type PeriodMode = "month" | "specific" | "all";
 
 export default function SocialManagerDashboard() {
-  const { data: posts: allPosts } = useSmPosts();
+  const { data: allPosts } = useSmPosts();
   const { data: tasks } = useSmTasks();
   const { data: clients } = useSmClients();
 
