@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, ListTodo, Trash2, Target } from "lucide-react";
 import { useSmTasks, useSmClients, useSocialMutations } from "@/hooks/useSocial";
+import { useSocialAssignableProfiles } from "@/hooks/useTasks";
 import { SM_PRIORITY_LABEL } from "@/types/social";
 import type { SmPriority } from "@/types/social";
 import { EmptyState } from "@/components/EmptyState";
@@ -22,6 +23,7 @@ const STATUS_LABEL: Record<string, string> = { backlog:"Backlog", pendente:"Pend
 export default function SocialTasks() {
   const { data, loading, refresh } = useSmTasks();
   const { data: clients } = useSmClients();
+  const { data: assignableProfiles } = useSocialAssignableProfiles();
   const m = useSocialMutations();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -57,6 +59,10 @@ export default function SocialTasks() {
     const { error } = await m.updateTask(id, { status });
     if (error) toast.error(error.message); else refresh();
   };
+  const transfer = async (id: string, userId: string) => {
+    const { error } = await m.updateTask(id, { assigned_to: userId === "none" ? null : userId });
+    if (error) toast.error(error.message); else { toast.success("Tarefa transferida"); refresh(); }
+  };
   const del = async (id: string) => {
     if (!confirm("Excluir tarefa?")) return;
     const { error } = await m.deleteTask(id);
@@ -89,6 +95,15 @@ export default function SocialTasks() {
                     {t.due_date && <span>• {new Date(t.due_date).toLocaleDateString("pt-BR")}</span>}
                   </div>
                 </div>
+                <Select value={t.assigned_to || "none"} onValueChange={(v) => transfer(t.id, v)}>
+                  <SelectTrigger className="w-[170px] h-8 text-xs"><SelectValue placeholder="Responsável"/></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem responsável</SelectItem>
+                    {assignableProfiles?.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Select value={t.status} onValueChange={(v) => setStatus(t.id, v)}>
                   <SelectTrigger className="w-[160px] h-8"><SelectValue/></SelectTrigger>
                   <SelectContent>{STATUS.map(s => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}</SelectContent>
