@@ -311,14 +311,17 @@ const Reports = () => {
     autoTable(doc, {
       startY: (doc as any).lastAutoTable.finalY + 20,
       head: [["Título", "Status", "Prioridade", "Complex.", "Resp.", "Tempo"]],
-      body: periodFiltered.map(t => [
-        t.title.length > 50 ? t.title.slice(0, 50) + "…" : t.title,
-        statusLabels[t.status] || t.status,
-        priorityLabels[t.priority] || t.priority,
-        complexityLabels[(t as any).complexity] || "—",
-        t.profiles?.full_name?.split(" ")[0] || "—",
-        fmtMin(t.total_minutes || 0),
-      ]),
+      body: periodFiltered.map(t => {
+        const cleanTitle = sanitize(t.title) || "(sem título)";
+        return [
+          cleanTitle.length > 55 ? cleanTitle.slice(0, 55) + "..." : cleanTitle,
+          statusLabels[t.status] || t.status,
+          priorityLabels[t.priority] || t.priority,
+          complexityLabels[(t as any).complexity] || "-",
+          sanitize(t.profiles?.full_name?.split(" ")[0]) || "-",
+          fmtMin(t.total_minutes || 0),
+        ];
+      }),
       theme: "grid",
       headStyles: { fillColor: [71, 85, 105], textColor: 255, fontSize: 9 },
       bodyStyles: { fontSize: 8 },
