@@ -173,6 +173,16 @@ const Reports = () => {
       low: "Baixa", medium: "Média", high: "Alta", very_high: "Muito Alta",
     };
 
+    // Remove emojis e caracteres fora do Latin-1 (jsPDF padrão não suporta)
+    const sanitize = (s: any): string => {
+      if (s == null) return "";
+      return String(s)
+        .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F000}-\u{1F2FF}\u{FE00}-\u{FE0F}\u{200D}]/gu, "")
+        .replace(/[^\x00-\xFF]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    };
+
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
     const periodLabel = period === "specific"
