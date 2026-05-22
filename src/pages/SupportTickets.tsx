@@ -291,13 +291,26 @@ export default function SupportTickets() {
                           <span className="text-sm text-muted-foreground">{machine}</span>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-6 w-6">
-                            <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{initials}</AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm">{assigneeName}</span>
-                        </div>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Select
+                          value={ticket.assigned_to || "none"}
+                          onValueChange={(v) => handleTransfer(ticket.id, v)}
+                        >
+                          <SelectTrigger className="h-8 text-xs w-[170px]">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Avatar className="h-5 w-5 shrink-0">
+                                <AvatarFallback className="text-[9px] bg-primary/10 text-primary">{initials}</AvatarFallback>
+                              </Avatar>
+                              <span className="truncate">{assigneeName}</span>
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Sem responsável</SelectItem>
+                            {profiles?.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
                         <span className="text-sm text-muted-foreground">
