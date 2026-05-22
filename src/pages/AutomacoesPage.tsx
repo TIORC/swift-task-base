@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Loader2, Zap, AlertTriangle } from "lucide-react";
-import { useAutomations, useAllProfiles, useAllBlockers, useUpdateAutomation } from "@/hooks/useAutomationsData";
+import { useAutomations, useAllBlockers, useUpdateAutomation } from "@/hooks/useAutomationsData";
+import { useAssignableProfiles } from "@/hooks/useTasks";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAuth } from "@/hooks/useAuth";
 import { Automation, AutomationStatus } from "@/types/automation";
