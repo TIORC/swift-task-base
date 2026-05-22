@@ -289,14 +289,23 @@ const ManagerDashboard = () => {
         <div className="flex items-center gap-3 flex-wrap">
           <TeamHealthIndicator health={teamHealth} />
           <Select value={period} onValueChange={(v) => setPeriod(v as PeriodFilter)}>
-            <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[150px] h-9 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="today">Hoje</SelectItem>
-              <SelectItem value="week">Semana</SelectItem>
-              <SelectItem value="month">Mês</SelectItem>
+              <SelectItem value="week">Última semana</SelectItem>
+              <SelectItem value="month">Mês atual</SelectItem>
+              <SelectItem value="specific">Mês específico</SelectItem>
               <SelectItem value="all">Tudo</SelectItem>
             </SelectContent>
           </Select>
+          {period === "specific" && (
+            <input
+              type="month"
+              value={specificMonth}
+              onChange={(e) => setSpecificMonth(e.target.value)}
+              className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+            />
+          )}
           <Select value={userFilter} onValueChange={setUserFilter}>
             <SelectTrigger className="w-[160px] h-9 text-xs"><SelectValue placeholder="Usuário" /></SelectTrigger>
             <SelectContent>
