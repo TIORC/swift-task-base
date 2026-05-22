@@ -40,14 +40,33 @@ const tooltipStyle = {
   boxShadow: "var(--shadow-lg)",
 };
 
-type PeriodFilter = "today" | "week" | "month" | "all";
+type PeriodFilter = "today" | "week" | "month" | "specific" | "all";
 
-function getDateFilter(period: PeriodFilter): Date | null {
+function getDateFilter(period: PeriodFilter, specificMonth?: string): { start: Date; end: Date } | null {
   const now = new Date();
   switch (period) {
-    case "today": return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    case "week": { const d = new Date(now); d.setDate(d.getDate() - 7); return d; }
-    case "month": { const d = new Date(now); d.setMonth(d.getMonth() - 1); return d; }
+    case "today": {
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      return { start, end };
+    }
+    case "week": {
+      const start = new Date(now); start.setDate(start.getDate() - 7);
+      return { start, end: new Date(8640000000000000) };
+    }
+    case "month": {
+      // mês corrente do calendário (reseta na virada do mês)
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      return { start, end };
+    }
+    case "specific": {
+      if (!specificMonth) return null;
+      const [y, m] = specificMonth.split("-").map(Number);
+      const start = new Date(y, m - 1, 1);
+      const end = new Date(y, m, 1);
+      return { start, end };
+    }
     default: return null;
   }
 }
@@ -71,7 +90,8 @@ const ManagerDashboard = () => {
   const { data: tasks } = useTasks();
   const { data: profiles } = useProfiles();
   const queryClient = useQueryClient();
-  const [period, setPeriod] = useState<PeriodFilter>("all");
+  const [period, setPeriod] = useState<PeriodFilter>("month");
+  const [specificMonth, setSpecificMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
   const [userFilter, setUserFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -91,12 +111,20 @@ const ManagerDashboard = () => {
   const filteredTasks = useMemo(() => {
     if (!tasks) return [];
     let result = tasks;
-    const dateLimit = getDateFilter(period);
-    if (dateLimit) result = result.filter(t => new Date(t.created_at) >= dateLimit);
+    const range = getDateFilter(period, specificMonth);
+    if (range) {
+      result = result.filter(t => {
+        const created = new Date(t.created_at);
+        const inRange = created >= range.start && created < range.end;
+        // Carrega pendentes/atrasadas mesmo de períodos anteriores
+        const isOpen = t.status !== "done" && t.status !== "discarded";
+        return inRange || isOpen;
+      });
+    }
     if (userFilter !== "all") result = result.filter(t => t.assigned_to === userFilter);
     if (statusFilter !== "all") result = result.filter(t => t.status === statusFilter);
     return result;
-  }, [tasks, period, userFilter, statusFilter]);
+  }, [tasks, period, specificMonth, userFilter, statusFilter]);
 
   const kpis = useMemo(() => {
     const total = filteredTasks.length;
@@ -261,14 +289,23 @@ const ManagerDashboard = () => {
         <div className="flex items-center gap-3 flex-wrap">
           <TeamHealthIndicator health={teamHealth} />
           <Select value={period} onValueChange={(v) => setPeriod(v as PeriodFilter)}>
-            <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[150px] h-9 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="today">Hoje</SelectItem>
-              <SelectItem value="week">Semana</SelectItem>
-              <SelectItem value="month">Mês</SelectItem>
+              <SelectItem value="week">Última semana</SelectItem>
+              <SelectItem value="month">Mês atual</SelectItem>
+              <SelectItem value="specific">Mês específico</SelectItem>
               <SelectItem value="all">Tudo</SelectItem>
             </SelectContent>
           </Select>
+          {period === "specific" && (
+            <input
+              type="month"
+              value={specificMonth}
+              onChange={(e) => setSpecificMonth(e.target.value)}
+              className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+            />
+          )}
           <Select value={userFilter} onValueChange={setUserFilter}>
             <SelectTrigger className="w-[160px] h-9 text-xs"><SelectValue placeholder="Usuário" /></SelectTrigger>
             <SelectContent>

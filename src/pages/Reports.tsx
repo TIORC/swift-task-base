@@ -34,10 +34,10 @@ const tooltipStyle = {
   fontSize: "12px",
 };
 
-type PeriodFilter = "week" | "month" | "quarter" | "all";
+type PeriodFilter = "week" | "month" | "quarter" | "specific" | "all";
 
 const periodLabels: Record<PeriodFilter, string> = {
-  week: "Semana", month: "Mês", quarter: "Trimestre", all: "Todo período",
+  week: "Semana", month: "Mês", quarter: "Trimestre", specific: "Mês específico", all: "Todo período",
 };
 
 const Reports = () => {
@@ -46,18 +46,28 @@ const Reports = () => {
   const { filteredTasks, selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(tasks);
   const { isAdmin, isGestor } = useUserRole();
   const [period, setPeriod] = useState<PeriodFilter>("month");
+  const [specificMonth, setSpecificMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
   const reportRef = useRef<HTMLDivElement>(null);
 
   const periodFiltered = useMemo(() => {
     if (!filteredTasks) return [];
     const now = new Date();
+    if (period === "specific") {
+      const [y, m] = specificMonth.split("-").map(Number);
+      const start = new Date(y, m - 1, 1);
+      const end = new Date(y, m, 1);
+      return filteredTasks.filter(t => {
+        const d = new Date(t.created_at);
+        return d >= start && d < end;
+      });
+    }
     let cutoff: Date | null = null;
     if (period === "week") cutoff = subDays(now, 7);
     else if (period === "month") cutoff = subMonths(now, 1);
     else if (period === "quarter") cutoff = subMonths(now, 3);
     if (cutoff) return filteredTasks.filter(t => new Date(t.created_at) >= cutoff!);
     return filteredTasks;
-  }, [filteredTasks, period]);
+  }, [filteredTasks, period, specificMonth]);
 
   const metrics = useMemo(() => {
     const total = periodFiltered.length;
@@ -234,14 +244,23 @@ const Reports = () => {
             <TaskFilterSelect value={selectedUserId} onChange={setSelectedUserId} />
           )}
           <Select value={period} onValueChange={(v) => setPeriod(v as PeriodFilter)}>
-            <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[150px] h-9 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="week">Semana</SelectItem>
               <SelectItem value="month">Mês</SelectItem>
               <SelectItem value="quarter">Trimestre</SelectItem>
+              <SelectItem value="specific">Mês específico</SelectItem>
               <SelectItem value="all">Tudo</SelectItem>
             </SelectContent>
           </Select>
+          {period === "specific" && (
+            <input
+              type="month"
+              value={specificMonth}
+              onChange={(e) => setSpecificMonth(e.target.value)}
+              className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+            />
+          )}
           <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={handlePrintPDF}>
             <Printer className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">PDF</span>
