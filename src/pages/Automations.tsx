@@ -7,7 +7,7 @@ import {
   TRIGGER_FIELDS,
   ACTION_TYPES,
 } from "@/hooks/useAutomationRules";
-import { useProfiles, COLUMNS } from "@/hooks/useTasks";
+import { useAssignableProfiles, COLUMNS } from "@/hooks/useTasks";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
