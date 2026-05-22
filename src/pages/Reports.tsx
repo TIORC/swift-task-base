@@ -294,7 +294,7 @@ const Reports = () => {
         startY: (doc as any).lastAutoTable.finalY + 20,
         head: [["Usuário", "Total", "Concluídas", "Eficiência", "Horas"]],
         body: userMetrics.map(u => [
-          u.fullName,
+          sanitize(u.fullName) || "-",
           String(u.total),
           String(u.done),
           `${u.efficiency}%`,
