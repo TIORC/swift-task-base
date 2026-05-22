@@ -1,4 +1,4 @@
-import { Task, useUpdateTask, useDeleteTask, useProfiles, COLUMNS } from "@/hooks/useTasks";
+import { Task, useUpdateTask, useDeleteTask, useAssignableProfiles, COLUMNS } from "@/hooks/useTasks";
 import { useTimeTracker, useTaskTimeLogs, formatTime, formatMinutes } from "@/hooks/useTimeTracker";
 import { useLogResponsibilityChange } from "@/hooks/useResponsibilityHistory";
 import { StatusBadge } from "@/components/StatusBadge";
