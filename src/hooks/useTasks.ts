@@ -77,6 +77,41 @@ export function useProfiles() {
   });
 }
 
+export function useAssignableProfiles() {
+  return useQuery({
+    queryKey: ["assignable-profiles"],
+    queryFn: async () => {
+      // Fetch all user roles
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id, role");
+      if (rolesError) throw rolesError;
+
+      // Group roles by user_id
+      const userRoles: Record<string, string[]> = {};
+      roles.forEach((r) => {
+        if (!userRoles[r.user_id]) userRoles[r.user_id] = [];
+        userRoles[r.user_id].push(r.role);
+      });
+
+      // Exclude users whose ONLY role is 'suporte'
+      const assignableIds = Object.entries(userRoles)
+        .filter(([_, roles]) => !(roles.length === 1 && roles[0] === "suporte"))
+        .map(([id]) => id);
+
+      if (assignableIds.length === 0) return [];
+
+      const { data: profiles, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url")
+        .in("id", assignableIds);
+
+      if (error) throw error;
+      return profiles ?? [];
+    },
+  });
+}
+
 export function useCreateTask() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
