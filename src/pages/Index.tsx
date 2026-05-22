@@ -42,7 +42,8 @@ const Dashboard = () => {
   const { data: profiles } = useProfiles();
   const queryClient = useQueryClient();
 
-  const [rangeMode, setRangeMode] = useState<RangeMode>("all");
+  // Default = mês atual: a cada virada de mês o dashboard "reseta"
+  const [rangeMode, setRangeMode] = useState<RangeMode>("month");
   const now = new Date();
   const [selectedDay, setSelectedDay] = useState(() => now.toISOString().slice(0, 10));
   const [selectedMonth, setSelectedMonth] = useState(() => now.toISOString().slice(0, 7));
@@ -53,10 +54,13 @@ const Dashboard = () => {
     if (rangeMode === "all") return userFilteredTasks;
     return userFilteredTasks.filter((t) => {
       const d = new Date(t.created_at);
-      if (rangeMode === "day") return d.toISOString().slice(0, 10) === selectedDay;
-      if (rangeMode === "month") return d.toISOString().slice(0, 7) === selectedMonth;
-      if (rangeMode === "year") return String(d.getFullYear()) === selectedYear;
-      return true;
+      const inRange =
+        rangeMode === "day" ? d.toISOString().slice(0, 10) === selectedDay :
+        rangeMode === "month" ? d.toISOString().slice(0, 7) === selectedMonth :
+        rangeMode === "year" ? String(d.getFullYear()) === selectedYear : true;
+      // Carrega tarefas em aberto (pendentes/atrasadas/em andamento) mesmo fora do período
+      const isOpen = t.status !== "done" && t.status !== "discarded";
+      return inRange || isOpen;
     });
   }, [userFilteredTasks, rangeMode, selectedDay, selectedMonth, selectedYear]);
 
