@@ -1,4 +1,4 @@
-import { useProfiles } from "@/hooks/useTasks";
+import { useAssignableProfiles } from "@/hooks/useTasks";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Select,
