@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, ListTodo, Trash2, Target } from "lucide-react";
 import { useSmTasks, useSmClients, useSocialMutations } from "@/hooks/useSocial";
+import { useSocialAssignableProfiles } from "@/hooks/useTasks";
 import { SM_PRIORITY_LABEL } from "@/types/social";
 import type { SmPriority } from "@/types/social";
 import { EmptyState } from "@/components/EmptyState";
