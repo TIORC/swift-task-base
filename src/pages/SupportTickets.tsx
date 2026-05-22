@@ -351,6 +351,7 @@ export default function SupportTickets() {
           task={selectedTask}
           open={!!selectedTask}
           onOpenChange={(open) => !open && setSelectedTask(null)}
+          isReadOnly={isGestor}
         />
       )}
     </div>
