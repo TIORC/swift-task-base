@@ -123,14 +123,23 @@ export default function SocialReports() {
 
       <div className="flex flex-wrap gap-2">
         <Select value={period} onValueChange={(v) => setPeriod(v as PeriodFilter)}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="week">Semana</SelectItem>
             <SelectItem value="month">Mês</SelectItem>
             <SelectItem value="quarter">Trimestre</SelectItem>
+            <SelectItem value="specific">Mês específico</SelectItem>
             <SelectItem value="all">Todo período</SelectItem>
           </SelectContent>
         </Select>
+        {period === "specific" && (
+          <input
+            type="month"
+            value={specificMonth}
+            onChange={(e) => setSpecificMonth(e.target.value)}
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+          />
+        )}
         <Select value={clientId} onValueChange={setClientId}>
           <SelectTrigger className="w-56"><SelectValue placeholder="Cliente" /></SelectTrigger>
           <SelectContent>
