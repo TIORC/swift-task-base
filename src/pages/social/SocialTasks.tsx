@@ -95,6 +95,15 @@ export default function SocialTasks() {
                     {t.due_date && <span>• {new Date(t.due_date).toLocaleDateString("pt-BR")}</span>}
                   </div>
                 </div>
+                <Select value={t.assigned_to || "none"} onValueChange={(v) => transfer(t.id, v)}>
+                  <SelectTrigger className="w-[170px] h-8 text-xs"><SelectValue placeholder="Responsável"/></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem responsável</SelectItem>
+                    {assignableProfiles?.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Select value={t.status} onValueChange={(v) => setStatus(t.id, v)}>
                   <SelectTrigger className="w-[160px] h-8"><SelectValue/></SelectTrigger>
                   <SelectContent>{STATUS.map(s => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}</SelectContent>
