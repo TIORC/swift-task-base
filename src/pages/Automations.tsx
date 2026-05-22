@@ -33,7 +33,7 @@ const PRIORITY_OPTIONS = [
 
 const Automations = () => {
   const { data: rules, isLoading } = useAutomationRules();
-  const { data: profiles } = useProfiles();
+  const { data: profiles } = useAssignableProfiles();
   const createRule = useCreateAutomationRule();
   const toggleRule = useToggleAutomationRule();
   const deleteRule = useDeleteAutomationRule();
