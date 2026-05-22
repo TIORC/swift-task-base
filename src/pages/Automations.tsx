@@ -7,7 +7,7 @@ import {
   TRIGGER_FIELDS,
   ACTION_TYPES,
 } from "@/hooks/useAutomationRules";
-import { useProfiles, COLUMNS } from "@/hooks/useTasks";
+import { useAssignableProfiles, COLUMNS } from "@/hooks/useTasks";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,7 +33,7 @@ const PRIORITY_OPTIONS = [
 
 const Automations = () => {
   const { data: rules, isLoading } = useAutomationRules();
-  const { data: profiles } = useProfiles();
+  const { data: profiles } = useAssignableProfiles();
   const createRule = useCreateAutomationRule();
   const toggleRule = useToggleAutomationRule();
   const deleteRule = useDeleteAutomationRule();

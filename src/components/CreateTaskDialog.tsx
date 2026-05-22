@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useCreateTask, useProfiles, TaskStatus } from "@/hooks/useTasks";
+import { useCreateTask, useAssignableProfiles, TaskStatus } from "@/hooks/useTasks";
 import { useUserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -70,7 +70,7 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
   const [recurrenceInterval, setRecurrenceInterval] = useState<number>(1);
   const [recurrenceUntil, setRecurrenceUntil] = useState<Date | undefined>(undefined);
 
-  const { data: profiles } = useProfiles();
+  const { data: profiles } = useAssignableProfiles();
   const { data: adminIds } = useQuery({
     queryKey: ["admin-user-ids"],
     queryFn: async () => {

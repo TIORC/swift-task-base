@@ -1,4 +1,4 @@
-import { Task, useUpdateTask, useDeleteTask, useProfiles, COLUMNS } from "@/hooks/useTasks";
+import { Task, useUpdateTask, useDeleteTask, useAssignableProfiles, COLUMNS } from "@/hooks/useTasks";
 import { useTimeTracker, useTaskTimeLogs, formatTime, formatMinutes } from "@/hooks/useTimeTracker";
 import { useLogResponsibilityChange } from "@/hooks/useResponsibilityHistory";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -45,7 +45,7 @@ interface TaskDetailDialogProps {
 export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskDetailDialogProps) {
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
-  const { data: profiles } = useProfiles();
+  const { data: profiles } = useAssignableProfiles();
   const logResponsibility = useLogResponsibilityChange();
   const { isRunning, elapsed, start, stop } = useTimeTracker(task?.id ?? null);
   const { logs, userSummaries, totalMinutes } = useTaskTimeLogs(open && task ? task.id : null);

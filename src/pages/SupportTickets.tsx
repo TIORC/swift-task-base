@@ -12,7 +12,7 @@ import { Headset, Monitor, FileText, Printer, Phone, Clock, User, Laptop, Search
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useUpdateTask, useProfiles } from "@/hooks/useTasks";
+import { useUpdateTask, useAssignableProfiles } from "@/hooks/useTasks";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { useUserRole } from "@/hooks/useUserRole";
 import type { Task } from "@/hooks/useTasks";
@@ -59,7 +59,7 @@ export default function SupportTickets() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const updateTask = useUpdateTask();
   const queryClient = useQueryClient();
-  const { data: profiles } = useProfiles();
+  const { data: profiles } = useAssignableProfiles();
   const { isGestor } = useUserRole();
 
   const { data: tickets, isLoading } = useQuery({
