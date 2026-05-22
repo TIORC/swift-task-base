@@ -244,14 +244,23 @@ const Reports = () => {
             <TaskFilterSelect value={selectedUserId} onChange={setSelectedUserId} />
           )}
           <Select value={period} onValueChange={(v) => setPeriod(v as PeriodFilter)}>
-            <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[150px] h-9 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="week">Semana</SelectItem>
               <SelectItem value="month">Mês</SelectItem>
               <SelectItem value="quarter">Trimestre</SelectItem>
+              <SelectItem value="specific">Mês específico</SelectItem>
               <SelectItem value="all">Tudo</SelectItem>
             </SelectContent>
           </Select>
+          {period === "specific" && (
+            <input
+              type="month"
+              value={specificMonth}
+              onChange={(e) => setSpecificMonth(e.target.value)}
+              className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+            />
+          )}
           <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={handlePrintPDF}>
             <Printer className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">PDF</span>
