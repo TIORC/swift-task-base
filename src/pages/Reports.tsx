@@ -158,9 +158,175 @@ const Reports = () => {
 
   const fmtMin = (m: number) => m < 60 ? `${m}min` : `${Math.floor(m / 60)}h ${m % 60}min`;
 
-  const handlePrintPDF = useCallback(() => {
-    window.print();
-  }, []);
+  const handlePrintPDF = useCallback(async () => {
+    const { default: jsPDF } = await import("jspdf");
+    const { default: autoTable } = await import("jspdf-autotable");
+
+    const statusLabels: Record<string, string> = {
+      backlog: "Backlog", pending: "Pendente", todo: "A Fazer", in_progress: "Em Andamento",
+      review: "Em Validação", done: "Concluído", discarded: "Descartado",
+    };
+    const priorityLabels: Record<string, string> = {
+      low: "Baixa", medium: "Média", high: "Alta", urgent: "Urgente",
+    };
+    const complexityLabels: Record<string, string> = {
+      low: "Baixa", medium: "Média", high: "Alta", very_high: "Muito Alta",
+    };
+
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const periodLabel = period === "specific"
+      ? `Mês ${specificMonth}`
+      : periodLabels[period];
+
+    // Header
+    doc.setFontSize(18);
+    doc.setTextColor(30, 41, 59);
+    doc.text("Relatório de Produtividade", 40, 50);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Período: ${periodLabel}`, 40, 70);
+    doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR })}`, 40, 85);
+    if (selectedUserId && selectedUserId !== "all") {
+      const u = profiles?.find(p => p.id === selectedUserId);
+      if (u) doc.text(`Usuário: ${u.full_name || "—"}`, 40, 100);
+    }
+
+    // KPIs
+    autoTable(doc, {
+      startY: 120,
+      head: [["Indicador", "Valor"]],
+      body: [
+        ["Total de Tarefas", String(metrics.total)],
+        ["Concluídas", `${metrics.done} (${metrics.completionRate}%)`],
+        ["Em Andamento", String(metrics.inProgress)],
+        ["Em Validação", String(metrics.review)],
+        ["Tarefas Travadas (>2 dias)", String(metrics.stalled)],
+        ["Tempo Total Trabalhado", fmtMin(metrics.totalMinutes)],
+        ["Tempo Médio por Tarefa", fmtMin(metrics.avgExecMinutes)],
+        ["Taxa de Descarte", `${metrics.discardRate}%`],
+      ],
+      theme: "striped",
+      headStyles: { fillColor: [59, 130, 246], textColor: 255, fontSize: 10 },
+      bodyStyles: { fontSize: 9 },
+      margin: { left: 40, right: 40 },
+    });
+
+    // Status distribution
+    if (statusData.length > 0) {
+      autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 20,
+        head: [["Status", "Quantidade", "% do Total"]],
+        body: statusData.map(s => [
+          s.name,
+          String(s.value),
+          metrics.total > 0 ? `${Math.round((s.value / metrics.total) * 100)}%` : "0%",
+        ]),
+        theme: "striped",
+        headStyles: { fillColor: [99, 102, 241], textColor: 255, fontSize: 10 },
+        bodyStyles: { fontSize: 9 },
+        margin: { left: 40, right: 40 },
+      });
+    }
+
+    // Complexity distribution
+    const complexityCounts: Record<string, { count: number; minutes: number }> = {};
+    periodFiltered.forEach(t => {
+      const c = (t as any).complexity || "não definida";
+      if (!complexityCounts[c]) complexityCounts[c] = { count: 0, minutes: 0 };
+      complexityCounts[c].count++;
+      complexityCounts[c].minutes += t.total_minutes || 0;
+    });
+    const complexityRows = Object.entries(complexityCounts).map(([k, v]) => [
+      complexityLabels[k] || k,
+      String(v.count),
+      fmtMin(v.minutes),
+      v.count > 0 ? fmtMin(Math.round(v.minutes / v.count)) : "—",
+    ]);
+    if (complexityRows.length > 0) {
+      autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 20,
+        head: [["Complexidade", "Tarefas", "Tempo Total", "Tempo Médio"]],
+        body: complexityRows,
+        theme: "striped",
+        headStyles: { fillColor: [168, 85, 247], textColor: 255, fontSize: 10 },
+        bodyStyles: { fontSize: 9 },
+        margin: { left: 40, right: 40 },
+      });
+    }
+
+    // Priority distribution
+    const priorityCounts: Record<string, number> = {};
+    periodFiltered.forEach(t => {
+      const p = t.priority || "medium";
+      priorityCounts[p] = (priorityCounts[p] || 0) + 1;
+    });
+    const priorityRows = Object.entries(priorityCounts).map(([k, v]) => [
+      priorityLabels[k] || k,
+      String(v),
+      metrics.total > 0 ? `${Math.round((v / metrics.total) * 100)}%` : "0%",
+    ]);
+    if (priorityRows.length > 0) {
+      autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 20,
+        head: [["Prioridade", "Quantidade", "% do Total"]],
+        body: priorityRows,
+        theme: "striped",
+        headStyles: { fillColor: [234, 88, 12], textColor: 255, fontSize: 10 },
+        bodyStyles: { fontSize: 9 },
+        margin: { left: 40, right: 40 },
+      });
+    }
+
+    // Productivity per user
+    if (userMetrics.length > 0) {
+      autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 20,
+        head: [["Usuário", "Total", "Concluídas", "Eficiência", "Horas"]],
+        body: userMetrics.map(u => [
+          u.fullName,
+          String(u.total),
+          String(u.done),
+          `${u.efficiency}%`,
+          `${u.hours}h`,
+        ]),
+        theme: "striped",
+        headStyles: { fillColor: [16, 185, 129], textColor: 255, fontSize: 10 },
+        bodyStyles: { fontSize: 9 },
+        margin: { left: 40, right: 40 },
+      });
+    }
+
+    // Detailed task list
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 20,
+      head: [["Título", "Status", "Prioridade", "Complex.", "Resp.", "Tempo"]],
+      body: periodFiltered.map(t => [
+        t.title.length > 50 ? t.title.slice(0, 50) + "…" : t.title,
+        statusLabels[t.status] || t.status,
+        priorityLabels[t.priority] || t.priority,
+        complexityLabels[(t as any).complexity] || "—",
+        t.profiles?.full_name?.split(" ")[0] || "—",
+        fmtMin(t.total_minutes || 0),
+      ]),
+      theme: "grid",
+      headStyles: { fillColor: [71, 85, 105], textColor: 255, fontSize: 9 },
+      bodyStyles: { fontSize: 8 },
+      margin: { left: 40, right: 40 },
+    });
+
+    // Footer page numbers
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(`Página ${i} de ${pageCount}`, pageWidth - 80, doc.internal.pageSize.getHeight() - 20);
+    }
+
+    doc.save(`relatorio-${format(new Date(), "yyyy-MM-dd")}.pdf`);
+    toast.success("PDF gerado com sucesso!");
+  }, [metrics, userMetrics, periodFiltered, statusData, period, specificMonth, selectedUserId, profiles]);
 
   const handleExportExcel = useCallback(() => {
     const statusLabels: Record<string, string> = {
