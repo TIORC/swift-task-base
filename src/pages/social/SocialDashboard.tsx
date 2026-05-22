@@ -70,9 +70,9 @@ export default function SocialDashboard() {
         <Stat icon={ListTodo} label="Posts planejados" value={stats.planejados} />
         <Stat icon={CheckCircle2} label="Aprovações pendentes" value={stats.aprovacoes} />
         <Stat icon={CalendarIcon} label="Agendados" value={stats.agendados} />
-        <Stat icon={Sparkles} label="Publicados" value={stats.publicados} />
+        <Stat icon={Sparkles} label="Publicados no mês" value={stats.publicados} />
         <Stat icon={ListTodo} label="Tarefas abertas" value={stats.tarefasAbertas} />
-        <Stat icon={Clock} label="Total de posts" value={posts.length} />
+        <Stat icon={Clock} label="Posts no mês" value={stats.totalMes} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
