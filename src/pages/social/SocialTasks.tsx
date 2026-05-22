@@ -63,6 +63,7 @@ export default function SocialTasks() {
     const { error } = await m.updateTask(id, { assigned_to: userId === "none" ? null : userId });
     if (error) toast.error(error.message); else { toast.success("Tarefa transferida"); refresh(); }
   };
+  const del = async (id: string) => {
     if (!confirm("Excluir tarefa?")) return;
     const { error } = await m.deleteTask(id);
     if (error) toast.error(error.message); else refresh();
