@@ -15,7 +15,7 @@ interface TaskFilterSelectProps {
 }
 
 export function TaskFilterSelect({ value, onChange }: TaskFilterSelectProps) {
-  const { data: profiles } = useProfiles();
+  const { data: profiles } = useAssignableProfiles();
   const { user } = useAuth();
 
   return (
