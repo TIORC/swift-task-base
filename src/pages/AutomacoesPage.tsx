@@ -21,7 +21,7 @@ import { BLOCKER_TYPE_LABELS, computeHealthScore } from "@/types/automation";
 
 export default function AutomacoesPage() {
   const { data: automations = [], isLoading } = useAutomations();
-  const { data: profiles = [] } = useAllProfiles();
+  const { data: profiles = [] } = useAssignableProfiles();
   const { data: activeBlockers = [] } = useAllBlockers();
   const updateAutomation = useUpdateAutomation();
   const { profile } = useUserRole();
