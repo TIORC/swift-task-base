@@ -23,6 +23,7 @@ const STATUS_LABEL: Record<string, string> = { backlog:"Backlog", pendente:"Pend
 export default function SocialTasks() {
   const { data, loading, refresh } = useSmTasks();
   const { data: clients } = useSmClients();
+  const { data: assignableProfiles } = useSocialAssignableProfiles();
   const m = useSocialMutations();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
