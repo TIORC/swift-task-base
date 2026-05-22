@@ -19,10 +19,36 @@ const tooltipStyle = {
   fontSize: "12px",
 };
 
+type PeriodMode = "month" | "specific" | "all";
+
 export default function SocialManagerDashboard() {
-  const { data: posts } = useSmPosts();
+  const { data: posts: allPosts } = useSmPosts();
   const { data: tasks } = useSmTasks();
   const { data: clients } = useSmClients();
+
+  const [period, setPeriod] = useState<PeriodMode>("month");
+  const [specificMonth, setSpecificMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
+
+  // Carrega posts do período + aqueles em aberto (não publicados/reprovados) para carry-over
+  const posts = useMemo(() => {
+    if (period === "all") return allPosts;
+    const now = new Date();
+    let start: Date, end: Date;
+    if (period === "specific") {
+      const [y, m] = specificMonth.split("-").map(Number);
+      start = new Date(y, m - 1, 1);
+      end = new Date(y, m, 1);
+    } else {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    }
+    return allPosts.filter((p) => {
+      const created = new Date(p.created_at);
+      const inRange = created >= start && created < end;
+      const isOpen = p.status !== "publicado" && p.status !== "reprovado";
+      return inRange || isOpen;
+    });
+  }, [allPosts, period, specificMonth]);
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -67,7 +93,28 @@ export default function SocialManagerDashboard() {
         title="Painel do Gestor — Social Media"
         description="Visão geral, gargalos e produção"
         icon={<Gauge className="h-6 w-6" />}
+        actions={
+          <div className="flex items-center gap-2">
+            <Select value={period} onValueChange={(v) => setPeriod(v as PeriodMode)}>
+              <SelectTrigger className="w-[160px] h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="month">Mês atual</SelectItem>
+                <SelectItem value="specific">Mês específico</SelectItem>
+                <SelectItem value="all">Tudo</SelectItem>
+              </SelectContent>
+            </Select>
+            {period === "specific" && (
+              <input
+                type="month"
+                value={specificMonth}
+                onChange={(e) => setSpecificMonth(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+              />
+            )}
+          </div>
+        }
       />
+
 
       <div className="grid gap-4 md:grid-cols-4">
         {[
