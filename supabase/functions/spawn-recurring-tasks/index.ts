@@ -71,7 +71,8 @@ Deno.serve(async (req) => {
   for (const t of templates ?? []) {
     const interval = t.recurrence_interval || 1;
     const last = t.last_spawned_at ? new Date(t.last_spawned_at) : new Date(t.created_at);
-    const next = nextDue(t.recurrence_type, interval, last);
+    // Próximo disparo é no PRIMEIRO horário do dia (00:00), e não no horário de criação
+    const next = startOfDay(nextDue(t.recurrence_type, interval, last));
 
     if (next > now) continue;
     if (t.recurrence_until && now > new Date(t.recurrence_until)) continue;
