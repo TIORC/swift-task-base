@@ -165,6 +165,17 @@ export default function SocialTasks() {
               <div><Label>Prazo</Label><Input type="date" value={form.due_date} onChange={e => setForm({...form, due_date: e.target.value})}/></div>
             </div>
 
+            <div>
+              <Label>Responsável</Label>
+              <Select value={form.assigned_to || "none"} onValueChange={v => setForm({...form, assigned_to: v === "none" ? "" : v})}>
+                <SelectTrigger><SelectValue placeholder="Sem responsável"/></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem responsável</SelectItem>
+                  {assignableProfiles?.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="rounded-lg border border-border p-3 space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium">
                 <input type="checkbox" checked={form.is_recurring_template} onChange={(e) => setForm({ ...form, is_recurring_template: e.target.checked })} />
