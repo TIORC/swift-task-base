@@ -151,18 +151,29 @@ export default function SocialTasks() {
                 Tarefa recorrente
               </label>
               {form.is_recurring_template && (
-                <div className="grid grid-cols-3 gap-2">
-                  <Select value={form.recurrence_type || "daily"} onValueChange={(v) => setForm({ ...form, recurrence_type: v as any })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="daily">Diária</SelectItem>
-                      <SelectItem value="weekly">Semanal</SelectItem>
-                      <SelectItem value="monthly">Mensal</SelectItem>
-                      <SelectItem value="custom">A cada N dias</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input type="number" min={1} value={form.recurrence_interval} onChange={(e) => setForm({ ...form, recurrence_interval: Number(e.target.value) || 1 })} />
-                  <Input type="date" value={form.recurrence_until} onChange={(e) => setForm({ ...form, recurrence_until: e.target.value })} placeholder="Até" />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Frequência</Label>
+                    <Select value={form.recurrence_type || "daily"} onValueChange={(v) => setForm({ ...form, recurrence_type: v as any })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="daily">Diária</SelectItem>
+                        <SelectItem value="weekly">Semanal</SelectItem>
+                        <SelectItem value="monthly">Mensal</SelectItem>
+                        <SelectItem value="custom">A cada N dias</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.recurrence_type === "custom" && (
+                    <div>
+                      <Label className="text-xs">A cada (dias)</Label>
+                      <Input type="number" min={1} value={form.recurrence_interval} onChange={(e) => setForm({ ...form, recurrence_interval: Number(e.target.value) || 1 })} />
+                    </div>
+                  )}
+                  <div className="col-span-2">
+                    <Label className="text-xs">Repetir até (opcional)</Label>
+                    <Input type="date" value={form.recurrence_until} onChange={(e) => setForm({ ...form, recurrence_until: e.target.value })} />
+                  </div>
                 </div>
               )}
             </div>
