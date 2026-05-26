@@ -195,6 +195,17 @@ export default function SocialTasks() {
                       </SelectContent>
                     </Select>
                   </div>
+                  {form.recurrence_type === "weekly" && (
+                    <div>
+                      <Label className="text-xs">Dia da semana</Label>
+                      <Select value={form.recurrence_weekday} onValueChange={(v) => setForm({ ...form, recurrence_weekday: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {WEEKDAYS.map(w => <SelectItem key={w.v} value={w.v}>{w.l}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   {form.recurrence_type === "custom" && (
                     <div>
                       <Label className="text-xs">A cada (dias)</Label>
