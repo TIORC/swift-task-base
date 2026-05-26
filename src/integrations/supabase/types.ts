@@ -1124,6 +1124,39 @@ export type Database = {
         }
         Relationships: []
       }
+      sm_task_checklist_items: {
+        Row: {
+          created_at: string
+          created_by: string
+          done: boolean
+          id: string
+          sort_order: number
+          task_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          done?: boolean
+          id?: string
+          sort_order?: number
+          task_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          done?: boolean
+          id?: string
+          sort_order?: number
+          task_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sm_tasks: {
         Row: {
           assigned_to: string | null
