@@ -149,11 +149,20 @@ export default function SocialTasks() {
       recurrence_interval: form.is_recurring_template ? form.recurrence_interval || 1 : null,
       recurrence_until: form.is_recurring_template && form.recurrence_until ? new Date(form.recurrence_until).toISOString() : null,
     };
-    const { error } = await m.createTask(payload);
+    const { data: created, error } = await m.createTask(payload);
     if (error) return toast.error(error.message);
+    const newId = (created as any)?.id;
+    if (newId && draftChecklist.length > 0 && user) {
+      const rows = draftChecklist.map((title, i) => ({
+        task_id: newId, title, created_by: user.id, sort_order: i,
+      }));
+      const { error: clErr } = await (supabase as any).from("sm_task_checklist_items").insert(rows);
+      if (clErr) toast.error("Tarefa criada, mas falhou checklist: " + clErr.message);
+    }
     toast.success("Tarefa criada");
     setOpen(false);
     setForm({ title: "", description: "", client_id: "", priority: "medium", due_date: "", status: "backlog", assigned_to: "", is_recurring_template: false, recurrence_type: "", recurrence_interval: 1, recurrence_until: "", recurrence_weekday: "1" });
+    setDraftChecklist([]); setNewChecklistItem("");
     refresh();
   };
 
