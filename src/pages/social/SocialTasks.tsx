@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ListTodo, Trash2, Target } from "lucide-react";
+import { Plus, ListTodo, Trash2, Target, CheckSquare } from "lucide-react";
+import { SocialTaskChecklist } from "@/components/social/SocialTaskChecklist";
 import { useSmTasks, useSmClients, useSocialMutations } from "@/hooks/useSocial";
 import { useSocialAssignableProfiles } from "@/hooks/useTasks";
 import { SM_PRIORITY_LABEL } from "@/types/social";
@@ -26,6 +27,7 @@ export default function SocialTasks() {
   const { data: assignableProfiles } = useSocialAssignableProfiles();
   const m = useSocialMutations();
   const [open, setOpen] = useState(false);
+  const [checklistTaskId, setChecklistTaskId] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: "", description: "", client_id: "", priority: "medium" as SmPriority,
     due_date: "", status: "backlog",
@@ -128,6 +130,9 @@ export default function SocialTasks() {
                   <SelectTrigger className="w-[160px] h-8"><SelectValue/></SelectTrigger>
                   <SelectContent>{STATUS.map(s => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}</SelectContent>
                 </Select>
+                <Button variant="outline" size="sm" onClick={() => setChecklistTaskId(t.id)} title="Checklist">
+                  <CheckSquare className="h-4 w-4 mr-1"/>Checklist
+                </Button>
                 <Button asChild variant="outline" size="sm" title="Focar nesta tarefa">
                   <Link to={`/social/foco?taskId=${t.id}`}><Target className="h-4 w-4 mr-1"/>Focar</Link>
                 </Button>
@@ -224,6 +229,13 @@ export default function SocialTasks() {
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button onClick={save}>Criar</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!checklistTaskId} onOpenChange={(o) => !o && setChecklistTaskId(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Checklist da tarefa</DialogTitle></DialogHeader>
+          {checklistTaskId && <SocialTaskChecklist taskId={checklistTaskId} />}
         </DialogContent>
       </Dialog>
     </div>
