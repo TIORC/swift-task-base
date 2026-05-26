@@ -27,6 +27,7 @@ export default function SocialTasks() {
   const { data: assignableProfiles } = useSocialAssignableProfiles();
   const m = useSocialMutations();
   const [open, setOpen] = useState(false);
+  const [checklistTaskId, setChecklistTaskId] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: "", description: "", client_id: "", priority: "medium" as SmPriority,
     due_date: "", status: "backlog",
