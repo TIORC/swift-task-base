@@ -73,7 +73,7 @@ export default function SocialTasks() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
-  const [assigneeFilter, setAssigneeFilter] = useState<string>("mine"); // "mine" | "all" | userId
+  const [assigneeFilter, setAssigneeFilter] = useState<string>("all"); // "mine" | "all" | userId
 
   const [form, setForm] = useState({
     title: "", description: "", client_id: "", priority: "medium" as SmPriority,
