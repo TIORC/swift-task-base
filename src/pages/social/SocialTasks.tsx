@@ -130,6 +130,9 @@ export default function SocialTasks() {
                   <SelectTrigger className="w-[160px] h-8"><SelectValue/></SelectTrigger>
                   <SelectContent>{STATUS.map(s => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}</SelectContent>
                 </Select>
+                <Button variant="outline" size="sm" onClick={() => setChecklistTaskId(t.id)} title="Checklist">
+                  <CheckSquare className="h-4 w-4 mr-1"/>Checklist
+                </Button>
                 <Button asChild variant="outline" size="sm" title="Focar nesta tarefa">
                   <Link to={`/social/foco?taskId=${t.id}`}><Target className="h-4 w-4 mr-1"/>Focar</Link>
                 </Button>
