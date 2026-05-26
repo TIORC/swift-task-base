@@ -231,6 +231,13 @@ export default function SocialTasks() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!checklistTaskId} onOpenChange={(o) => !o && setChecklistTaskId(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Checklist da tarefa</DialogTitle></DialogHeader>
+          {checklistTaskId && <SocialTaskChecklist taskId={checklistTaskId} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
