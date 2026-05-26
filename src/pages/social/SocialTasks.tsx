@@ -68,6 +68,8 @@ export default function SocialTasks() {
   const m = useSocialMutations();
   const [open, setOpen] = useState(false);
   const [checklistTaskId, setChecklistTaskId] = useState<string | null>(null);
+  const [draftChecklist, setDraftChecklist] = useState<string[]>([]);
+  const [newChecklistItem, setNewChecklistItem] = useState("");
 
   // Filters
   const [statusChip, setStatusChip] = useState<StatusChip>("all");
