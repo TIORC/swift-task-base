@@ -29,19 +29,39 @@ export default function SocialTasks() {
   const [form, setForm] = useState({
     title: "", description: "", client_id: "", priority: "medium" as SmPriority,
     due_date: "", status: "backlog",
+    assigned_to: "",
     is_recurring_template: false,
     recurrence_type: "" as "" | "daily" | "weekly" | "monthly" | "custom",
     recurrence_interval: 1,
     recurrence_until: "",
+    recurrence_weekday: "1", // 0=Dom .. 6=Sáb
   });
+
+  const WEEKDAYS = [
+    { v: "0", l: "Domingo" }, { v: "1", l: "Segunda" }, { v: "2", l: "Terça" },
+    { v: "3", l: "Quarta" }, { v: "4", l: "Quinta" }, { v: "5", l: "Sexta" }, { v: "6", l: "Sábado" },
+  ];
+
+  const nextWeekdayDate = (weekday: number): Date => {
+    const d = new Date();
+    d.setHours(9, 0, 0, 0);
+    const diff = (weekday - d.getDay() + 7) % 7 || 7;
+    d.setDate(d.getDate() + diff);
+    return d;
+  };
 
   const save = async () => {
     if (!form.title.trim()) return toast.error("Título obrigatório");
+    let dueIso: string | null = form.due_date ? new Date(form.due_date).toISOString() : null;
+    if (form.is_recurring_template && form.recurrence_type === "weekly" && !form.due_date) {
+      dueIso = nextWeekdayDate(Number(form.recurrence_weekday)).toISOString();
+    }
     const payload: any = {
       title: form.title, description: form.description || null,
       client_id: form.client_id || null, priority: form.priority,
-      due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
+      due_date: dueIso,
       status: form.status,
+      assigned_to: form.assigned_to || null,
       is_recurring_template: form.is_recurring_template,
       recurrence_type: form.is_recurring_template && form.recurrence_type ? form.recurrence_type : null,
       recurrence_interval: form.is_recurring_template ? form.recurrence_interval || 1 : null,
@@ -51,7 +71,7 @@ export default function SocialTasks() {
     if (error) return toast.error(error.message);
     toast.success("Tarefa criada");
     setOpen(false);
-    setForm({ title: "", description: "", client_id: "", priority: "medium", due_date: "", status: "backlog", is_recurring_template: false, recurrence_type: "", recurrence_interval: 1, recurrence_until: "" });
+    setForm({ title: "", description: "", client_id: "", priority: "medium", due_date: "", status: "backlog", assigned_to: "", is_recurring_template: false, recurrence_type: "", recurrence_interval: 1, recurrence_until: "", recurrence_weekday: "1" });
     refresh();
   };
 
@@ -145,6 +165,17 @@ export default function SocialTasks() {
               <div><Label>Prazo</Label><Input type="date" value={form.due_date} onChange={e => setForm({...form, due_date: e.target.value})}/></div>
             </div>
 
+            <div>
+              <Label>Responsável</Label>
+              <Select value={form.assigned_to || "none"} onValueChange={v => setForm({...form, assigned_to: v === "none" ? "" : v})}>
+                <SelectTrigger><SelectValue placeholder="Sem responsável"/></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem responsável</SelectItem>
+                  {assignableProfiles?.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="rounded-lg border border-border p-3 space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium">
                 <input type="checkbox" checked={form.is_recurring_template} onChange={(e) => setForm({ ...form, is_recurring_template: e.target.checked })} />
@@ -164,6 +195,17 @@ export default function SocialTasks() {
                       </SelectContent>
                     </Select>
                   </div>
+                  {form.recurrence_type === "weekly" && (
+                    <div>
+                      <Label className="text-xs">Dia da semana</Label>
+                      <Select value={form.recurrence_weekday} onValueChange={(v) => setForm({ ...form, recurrence_weekday: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {WEEKDAYS.map(w => <SelectItem key={w.v} value={w.v}>{w.l}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   {form.recurrence_type === "custom" && (
                     <div>
                       <Label className="text-xs">A cada (dias)</Label>
