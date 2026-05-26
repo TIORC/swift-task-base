@@ -29,11 +29,26 @@ export default function SocialTasks() {
   const [form, setForm] = useState({
     title: "", description: "", client_id: "", priority: "medium" as SmPriority,
     due_date: "", status: "backlog",
+    assigned_to: "",
     is_recurring_template: false,
     recurrence_type: "" as "" | "daily" | "weekly" | "monthly" | "custom",
     recurrence_interval: 1,
     recurrence_until: "",
+    recurrence_weekday: "1", // 0=Dom .. 6=Sáb
   });
+
+  const WEEKDAYS = [
+    { v: "0", l: "Domingo" }, { v: "1", l: "Segunda" }, { v: "2", l: "Terça" },
+    { v: "3", l: "Quarta" }, { v: "4", l: "Quinta" }, { v: "5", l: "Sexta" }, { v: "6", l: "Sábado" },
+  ];
+
+  const nextWeekdayDate = (weekday: number): Date => {
+    const d = new Date();
+    d.setHours(9, 0, 0, 0);
+    const diff = (weekday - d.getDay() + 7) % 7 || 7;
+    d.setDate(d.getDate() + diff);
+    return d;
+  };
 
   const save = async () => {
     if (!form.title.trim()) return toast.error("Título obrigatório");
