@@ -52,11 +52,16 @@ export default function SocialTasks() {
 
   const save = async () => {
     if (!form.title.trim()) return toast.error("Título obrigatório");
+    let dueIso: string | null = form.due_date ? new Date(form.due_date).toISOString() : null;
+    if (form.is_recurring_template && form.recurrence_type === "weekly" && !form.due_date) {
+      dueIso = nextWeekdayDate(Number(form.recurrence_weekday)).toISOString();
+    }
     const payload: any = {
       title: form.title, description: form.description || null,
       client_id: form.client_id || null, priority: form.priority,
-      due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
+      due_date: dueIso,
       status: form.status,
+      assigned_to: form.assigned_to || null,
       is_recurring_template: form.is_recurring_template,
       recurrence_type: form.is_recurring_template && form.recurrence_type ? form.recurrence_type : null,
       recurrence_interval: form.is_recurring_template ? form.recurrence_interval || 1 : null,
@@ -66,7 +71,7 @@ export default function SocialTasks() {
     if (error) return toast.error(error.message);
     toast.success("Tarefa criada");
     setOpen(false);
-    setForm({ title: "", description: "", client_id: "", priority: "medium", due_date: "", status: "backlog", is_recurring_template: false, recurrence_type: "", recurrence_interval: 1, recurrence_until: "" });
+    setForm({ title: "", description: "", client_id: "", priority: "medium", due_date: "", status: "backlog", assigned_to: "", is_recurring_template: false, recurrence_type: "", recurrence_interval: 1, recurrence_until: "", recurrence_weekday: "1" });
     refresh();
   };
 
