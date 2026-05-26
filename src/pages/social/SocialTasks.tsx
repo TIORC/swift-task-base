@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, ListTodo, Trash2, Target, CheckSquare, CalendarDays, User } from "lucide-react";
+import { Plus, ListTodo, Trash2, Target, CheckSquare, CalendarDays, User, X } from "lucide-react";
 import { SocialTaskChecklist } from "@/components/social/SocialTaskChecklist";
 import { useSmTasks, useSmClients, useSocialMutations } from "@/hooks/useSocial";
 import { useSocialAssignableProfiles } from "@/hooks/useTasks";
@@ -23,6 +23,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
 
 const STATUS = ["backlog","pendente","em_andamento","concluido","descartado"] as const;
 const STATUS_LABEL: Record<string, string> = { backlog:"Backlog", pendente:"Pendente", em_andamento:"Em andamento", concluido:"Concluído", descartado:"Descartado" };
@@ -67,6 +68,8 @@ export default function SocialTasks() {
   const m = useSocialMutations();
   const [open, setOpen] = useState(false);
   const [checklistTaskId, setChecklistTaskId] = useState<string | null>(null);
+  const [draftChecklist, setDraftChecklist] = useState<string[]>([]);
+  const [newChecklistItem, setNewChecklistItem] = useState("");
 
   // Filters
   const [statusChip, setStatusChip] = useState<StatusChip>("all");
@@ -146,11 +149,20 @@ export default function SocialTasks() {
       recurrence_interval: form.is_recurring_template ? form.recurrence_interval || 1 : null,
       recurrence_until: form.is_recurring_template && form.recurrence_until ? new Date(form.recurrence_until).toISOString() : null,
     };
-    const { error } = await m.createTask(payload);
+    const { data: created, error } = await m.createTask(payload);
     if (error) return toast.error(error.message);
+    const newId = (created as any)?.id;
+    if (newId && draftChecklist.length > 0 && user) {
+      const rows = draftChecklist.map((title, i) => ({
+        task_id: newId, title, created_by: user.id, sort_order: i,
+      }));
+      const { error: clErr } = await (supabase as any).from("sm_task_checklist_items").insert(rows);
+      if (clErr) toast.error("Tarefa criada, mas falhou checklist: " + clErr.message);
+    }
     toast.success("Tarefa criada");
     setOpen(false);
     setForm({ title: "", description: "", client_id: "", priority: "medium", due_date: "", status: "backlog", assigned_to: "", is_recurring_template: false, recurrence_type: "", recurrence_interval: 1, recurrence_until: "", recurrence_weekday: "1" });
+    setDraftChecklist([]); setNewChecklistItem("");
     refresh();
   };
 
@@ -353,6 +365,51 @@ export default function SocialTasks() {
                     <Input type="date" value={form.recurrence_until} onChange={(e) => setForm({ ...form, recurrence_until: e.target.value })} />
                   </div>
                 </div>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-border p-3 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <CheckSquare className="h-4 w-4 text-primary"/> Checklist
+                {form.is_recurring_template && draftChecklist.length > 0 && (
+                  <Badge variant="secondary" className="text-[10px] ml-auto">Repetirá nas recorrências</Badge>
+                )}
+              </div>
+              {draftChecklist.length > 0 && (
+                <ul className="space-y-1">
+                  {draftChecklist.map((it, idx) => (
+                    <li key={idx} className="flex items-center gap-2 text-sm bg-muted/40 rounded px-2 py-1">
+                      <span className="flex-1">{it}</span>
+                      <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive"
+                        onClick={() => setDraftChecklist(prev => prev.filter((_, i) => i !== idx))}>
+                        <X className="h-3 w-3"/>
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Nova etapa..."
+                  value={newChecklistItem}
+                  onChange={(e) => setNewChecklistItem(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const t = newChecklistItem.trim();
+                      if (t) { setDraftChecklist(p => [...p, t]); setNewChecklistItem(""); }
+                    }
+                  }}
+                />
+                <Button type="button" size="sm" onClick={() => {
+                  const t = newChecklistItem.trim();
+                  if (t) { setDraftChecklist(p => [...p, t]); setNewChecklistItem(""); }
+                }}><Plus className="h-4 w-4"/></Button>
+              </div>
+              {form.is_recurring_template && (
+                <p className="text-[11px] text-muted-foreground">
+                  Este checklist será copiado automaticamente em cada nova tarefa gerada pela recorrência.
+                </p>
               )}
             </div>
           </div>

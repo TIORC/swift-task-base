@@ -68,14 +68,26 @@ Deno.serve(async (req) => {
     if (next > now) continue;
     if (t.recurrence_until && now > new Date(t.recurrence_until)) continue;
 
-    const { error: insErr } = await supabase.from("sm_tasks").insert({
+    const { data: inserted, error: insErr } = await supabase.from("sm_tasks").insert({
       client_id: t.client_id, campaign_id: t.campaign_id, title: t.title,
       description: t.description, status: "backlog", priority: t.priority,
       assigned_to: t.assigned_to, created_by: t.created_by,
       due_date: t.due_date ? nextDue(t.recurrence_type, interval, new Date(t.due_date)).toISOString() : null,
       parent_recurring_task_id: t.id, is_recurring_template: false,
-    });
-    if (!insErr) {
+    }).select().single();
+    if (!insErr && inserted) {
+      // Copy checklist items from template
+      const { data: tplItems } = await supabase
+        .from("sm_task_checklist_items").select("title, sort_order")
+        .eq("task_id", t.id).order("sort_order");
+      if (tplItems && tplItems.length > 0) {
+        await supabase.from("sm_task_checklist_items").insert(
+          tplItems.map((it: any, i: number) => ({
+            task_id: inserted.id, title: it.title,
+            created_by: t.created_by, sort_order: it.sort_order ?? i, done: false,
+          }))
+        );
+      }
       await supabase.from("sm_tasks").update({ last_spawned_at: now.toISOString() }).eq("id", t.id);
       tasksSpawned++;
     }
