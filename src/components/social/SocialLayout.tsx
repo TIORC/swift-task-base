@@ -27,6 +27,18 @@ import { Separator } from "@/components/ui/separator";
 import logoM7Dark from "@/assets/logo-m7.png";
 import logoM7Light from "@/assets/logo-m7-light.png";
 
+function SocialUserAvatar() {
+  const { user } = useAuth();
+  const { avatarUrl, profile } = useProfile();
+  const initials = (profile?.full_name || user?.email || "U").split(" ").map((s) => s[0]).join("").slice(0, 2).toUpperCase();
+  return (
+    <Avatar className="h-8 w-8 shrink-0">
+      {avatarUrl && <AvatarImage src={avatarUrl} alt="Avatar" />}
+      <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">{initials}</AvatarFallback>
+    </Avatar>
+  );
+}
+
 type Visibility = "all" | "leader" | "admin";
 const navItems: { title: string; url: string; icon: any; end?: boolean; visibility?: Visibility }[] = [
   { title: "Dashboard", url: "/social", icon: LayoutDashboard, end: true },
