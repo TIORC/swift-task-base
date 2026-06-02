@@ -6,7 +6,8 @@ import { useSocialRole } from "@/hooks/useSocialRole";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useProfile } from "@/hooks/useProfile";
 import {
   Sidebar,
   SidebarContent,
@@ -130,11 +131,8 @@ function SocialSidebar() {
           </Button>
         </div>
         <div className="flex items-center gap-3 p-3">
-          <Avatar className="h-8 w-8 shrink-0">
-            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+          <SocialUserAvatar />
+
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="truncate text-sm font-medium">{user?.email}</p>
