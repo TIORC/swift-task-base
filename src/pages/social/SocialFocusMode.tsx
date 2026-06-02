@@ -56,19 +56,34 @@ export default function SocialFocusMode() {
   const focusedTask = focusedTaskId ? tasks.find((t) => t.id === focusedTaskId) : null;
   const focusedPost = focusedPostId ? posts.find((p) => p.id === focusedPostId) : null;
 
-  // Timer
+  // Timer — persiste por tarefa/post em localStorage para não zerar ao sair/voltar
+  const timerKey = focusedTaskId ? `sm-focus-timer:task:${focusedTaskId}` : focusedPostId ? `sm-focus-timer:post:${focusedPostId}` : null;
   const [seconds, setSeconds] = useState(0);
   const [running, setRunning] = useState(false);
+
   useEffect(() => {
-    if (!running) return;
-    const id = setInterval(() => setSeconds((s) => s + 1), 1000);
+    if (!timerKey) { setSeconds(0); setRunning(false); return; }
+    const stored = Number(localStorage.getItem(timerKey) || "0");
+    setSeconds(isNaN(stored) ? 0 : stored);
+    setRunning(true);
+  }, [timerKey]);
+
+  useEffect(() => {
+    if (!running || !timerKey) return;
+    const id = setInterval(() => {
+      setSeconds((s) => {
+        const next = s + 1;
+        localStorage.setItem(timerKey, String(next));
+        return next;
+      });
+    }, 1000);
     return () => clearInterval(id);
-  }, [running]);
-  // Reset timer when focus target changes
-  useEffect(() => {
+  }, [running, timerKey]);
+
+  const resetTimer = () => {
     setSeconds(0);
-    setRunning(!!(focusedTaskId || focusedPostId));
-  }, [focusedTaskId, focusedPostId]);
+    if (timerKey) localStorage.removeItem(timerKey);
+  };
 
   const exitFocus = () => {
     setRunning(false);
@@ -88,6 +103,7 @@ export default function SocialFocusMode() {
     const { error } = await m.updateTask(focusedTask.id, { status: "concluido" });
     if (error) return toast.error(error.message);
     toast.success(`Tarefa concluída em ${fmt(seconds)}`);
+    if (timerKey) localStorage.removeItem(timerKey);
     refreshTasks();
     exitFocus();
   };
@@ -149,7 +165,7 @@ export default function SocialFocusMode() {
                 <Button onClick={() => setRunning((r) => !r)} size="lg">
                   {running ? <><Pause className="h-4 w-4 mr-1" /> Pausar</> : <><Play className="h-4 w-4 mr-1" /> Retomar</>}
                 </Button>
-                <Button variant="outline" size="lg" onClick={() => setSeconds(0)}>
+                <Button variant="outline" size="lg" onClick={resetTimer}>
                   <RotateCcw className="h-4 w-4 mr-1" /> Zerar
                 </Button>
               </div>

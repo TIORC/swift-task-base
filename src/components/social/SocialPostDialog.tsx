@@ -193,9 +193,19 @@ export function SocialPostDialog({ open, onOpenChange, post, onSaved }: Props) {
             </>
           )}
         </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={save} disabled={saving}>{saving ? "Salvando..." : (post ? "Salvar" : "Criar")}</Button>
+        <DialogFooter className="gap-2 sm:justify-between">
+          {post ? (
+            <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={async () => {
+              if (!confirm("Excluir este post? Esta ação não pode ser desfeita.")) return;
+              const { error } = await m.deletePost(post.id);
+              if (error) return toast.error(error.message);
+              toast.success("Post excluído"); onOpenChange(false); onSaved?.();
+            }}>Excluir</Button>
+          ) : <span/>}
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button onClick={save} disabled={saving}>{saving ? "Salvando..." : (post ? "Salvar" : "Criar")}</Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

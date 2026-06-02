@@ -6,7 +6,8 @@ import { useSocialRole } from "@/hooks/useSocialRole";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useProfile } from "@/hooks/useProfile";
 import {
   Sidebar,
   SidebarContent,
@@ -25,6 +26,18 @@ import {
 import { Separator } from "@/components/ui/separator";
 import logoM7Dark from "@/assets/logo-m7.png";
 import logoM7Light from "@/assets/logo-m7-light.png";
+
+function SocialUserAvatar() {
+  const { user } = useAuth();
+  const { avatarUrl, profile } = useProfile();
+  const initials = (profile?.full_name || user?.email || "U").split(" ").map((s) => s[0]).join("").slice(0, 2).toUpperCase();
+  return (
+    <Avatar className="h-8 w-8 shrink-0">
+      {avatarUrl && <AvatarImage src={avatarUrl} alt="Avatar" />}
+      <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">{initials}</AvatarFallback>
+    </Avatar>
+  );
+}
 
 type Visibility = "all" | "leader" | "admin";
 const navItems: { title: string; url: string; icon: any; end?: boolean; visibility?: Visibility }[] = [
@@ -130,11 +143,8 @@ function SocialSidebar() {
           </Button>
         </div>
         <div className="flex items-center gap-3 p-3">
-          <Avatar className="h-8 w-8 shrink-0">
-            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+          <SocialUserAvatar />
+
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="truncate text-sm font-medium">{user?.email}</p>

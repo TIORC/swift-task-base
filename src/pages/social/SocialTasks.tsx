@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, ListTodo, Trash2, Target, CheckSquare, CalendarDays, User, X } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Plus, ListTodo, Trash2, Target, CheckSquare, CalendarDays, User, X, Briefcase, Bookmark, FileStack } from "lucide-react";
 import { SocialTaskChecklist } from "@/components/social/SocialTaskChecklist";
 import { useSmTasks, useSmClients, useSocialMutations } from "@/hooks/useSocial";
 import { useSocialAssignableProfiles } from "@/hooks/useTasks";
@@ -25,13 +25,15 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 
-const STATUS = ["backlog","pendente","em_andamento","concluido","descartado"] as const;
+const sb = supabase as any;
+
 const STATUS_LABEL: Record<string, string> = { backlog:"Backlog", pendente:"Pendente", em_andamento:"Em andamento", concluido:"Concluído", descartado:"Descartado" };
 
-type StatusChip = "all" | "open" | "in_progress" | "pending" | "done" | "discarded";
+type StatusChip = "active" | "all" | "open" | "in_progress" | "pending" | "done" | "discarded";
 const STATUS_CHIPS: { key: StatusChip; label: string; statuses: string[] }[] = [
+  { key: "active", label: "Ativas", statuses: ["backlog","pendente","em_andamento"] },
   { key: "all", label: "Todas", statuses: [] },
-  { key: "open", label: "Abertas", statuses: ["backlog"] },
+  { key: "open", label: "Backlog", statuses: ["backlog"] },
   { key: "in_progress", label: "Em andamento", statuses: ["em_andamento"] },
   { key: "pending", label: "Pendentes", statuses: ["pendente"] },
   { key: "done", label: "Concluídas", statuses: ["concluido"] },
@@ -60,6 +62,9 @@ const PRIORITY_BADGE_CLS: Record<string, string> = {
   urgent: "bg-red-500/15 text-red-400 border-red-500/30",
 };
 
+type Template = { id: string; name: string; title: string; description: string | null; priority: SmPriority; client_id: string | null };
+type TemplateItem = { id: string; template_id: string; title: string; sort_order: number };
+
 export default function SocialTasks() {
   const { data, loading, refresh } = useSmTasks();
   const { data: clients } = useSmClients();
@@ -70,13 +75,31 @@ export default function SocialTasks() {
   const [checklistTaskId, setChecklistTaskId] = useState<string | null>(null);
   const [draftChecklist, setDraftChecklist] = useState<string[]>([]);
   const [newChecklistItem, setNewChecklistItem] = useState("");
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+
+  // Templates
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [templateItems, setTemplateItems] = useState<TemplateItem[]>([]);
+  const [templateManagerOpen, setTemplateManagerOpen] = useState(false);
+
+  const loadTemplates = async () => {
+    const [{ data: tpls }, { data: items }] = await Promise.all([
+      sb.from("sm_task_templates").select("*").order("name"),
+      sb.from("sm_task_template_items").select("*").order("sort_order"),
+    ]);
+    setTemplates(tpls ?? []);
+    setTemplateItems(items ?? []);
+  };
+  useEffect(() => { loadTemplates(); }, []);
 
   // Filters
-  const [statusChip, setStatusChip] = useState<StatusChip>("all");
+  const [statusChip, setStatusChip] = useState<StatusChip>("active");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
-  const [assigneeFilter, setAssigneeFilter] = useState<string>("all"); // "mine" | "all" | userId
+  const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
+  const [clientFilter, setClientFilter] = useState<string>("all");
 
   const [form, setForm] = useState({
     title: "", description: "", client_id: "", priority: "medium" as SmPriority,
@@ -102,20 +125,22 @@ export default function SocialTasks() {
     return d;
   };
 
-  // Apply assignee filter first
   const assigneeFiltered = useMemo(() => {
     if (!data) return [];
-    if (assigneeFilter === "all") return data;
-    if (assigneeFilter === "mine") return data.filter(t => t.assigned_to === user?.id);
-    return data.filter(t => t.assigned_to === assigneeFilter);
-  }, [data, assigneeFilter, user?.id]);
+    let list = data;
+    if (assigneeFilter === "mine") list = list.filter(t => t.assigned_to === user?.id);
+    else if (assigneeFilter !== "all") list = list.filter(t => t.assigned_to === assigneeFilter);
+    if (clientFilter !== "all") {
+      if (clientFilter === "none") list = list.filter(t => !t.client_id);
+      else list = list.filter(t => t.client_id === clientFilter);
+    }
+    return list;
+  }, [data, assigneeFilter, user?.id, clientFilter]);
 
   const advancedFiltered = useMemo(() => {
     let result = assigneeFiltered;
-    if (statusChip !== "all") {
-      const chip = STATUS_CHIPS.find(c => c.key === statusChip);
-      if (chip) result = result.filter(t => chip.statuses.includes(t.status));
-    }
+    const chip = STATUS_CHIPS.find(c => c.key === statusChip);
+    if (chip && chip.statuses.length > 0) result = result.filter(t => chip.statuses.includes(t.status));
     if (priorityFilter !== "all") result = result.filter(t => t.priority === priorityFilter);
     if (dateFrom) result = result.filter(t => new Date(t.created_at) >= dateFrom);
     if (dateTo) {
@@ -126,15 +151,25 @@ export default function SocialTasks() {
   }, [assigneeFiltered, statusChip, priorityFilter, dateFrom, dateTo]);
 
   const chipCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: assigneeFiltered.length };
+    const counts: Record<string, number> = {};
     STATUS_CHIPS.forEach(c => {
-      if (c.key !== "all") counts[c.key] = assigneeFiltered.filter(t => c.statuses.includes(t.status)).length;
+      counts[c.key] = c.statuses.length === 0 ? assigneeFiltered.length : assigneeFiltered.filter(t => c.statuses.includes(t.status)).length;
     });
     return counts;
   }, [assigneeFiltered]);
 
+  const applyTemplate = (tplId: string) => {
+    const tpl = templates.find(t => t.id === tplId);
+    if (!tpl) return;
+    setForm(f => ({ ...f, title: tpl.title, description: tpl.description ?? "", priority: tpl.priority, client_id: tpl.client_id ?? "" }));
+    const items = templateItems.filter(i => i.template_id === tplId).sort((a,b) => a.sort_order - b.sort_order).map(i => i.title);
+    setDraftChecklist(items);
+    toast.success(`Modelo "${tpl.name}" aplicado`);
+  };
+
   const save = async () => {
     if (!form.title.trim()) return toast.error("Título obrigatório");
+    if (saveAsTemplate && !templateName.trim()) return toast.error("Informe o nome do modelo");
     let dueIso: string | null = form.due_date ? new Date(form.due_date).toISOString() : null;
     if (form.is_recurring_template && form.recurrence_type === "weekly" && !form.due_date) {
       dueIso = nextWeekdayDate(Number(form.recurrence_weekday)).toISOString();
@@ -153,16 +188,28 @@ export default function SocialTasks() {
     if (error) return toast.error(error.message);
     const newId = (created as any)?.id;
     if (newId && draftChecklist.length > 0 && user) {
-      const rows = draftChecklist.map((title, i) => ({
-        task_id: newId, title, created_by: user.id, sort_order: i,
-      }));
-      const { error: clErr } = await (supabase as any).from("sm_task_checklist_items").insert(rows);
+      const rows = draftChecklist.map((title, i) => ({ task_id: newId, title, created_by: user.id, sort_order: i }));
+      const { error: clErr } = await sb.from("sm_task_checklist_items").insert(rows);
       if (clErr) toast.error("Tarefa criada, mas falhou checklist: " + clErr.message);
+    }
+    if (saveAsTemplate && user) {
+      const { data: tpl, error: tplErr } = await sb.from("sm_task_templates").insert({
+        name: templateName.trim(), title: form.title, description: form.description || null,
+        priority: form.priority, client_id: form.client_id || null, created_by: user.id,
+      }).select().single();
+      if (tplErr) toast.error("Falha ao salvar modelo: " + tplErr.message);
+      else if (tpl && draftChecklist.length > 0) {
+        await sb.from("sm_task_template_items").insert(
+          draftChecklist.map((title, i) => ({ template_id: tpl.id, title, sort_order: i, created_by: user.id }))
+        );
+        loadTemplates();
+      }
     }
     toast.success("Tarefa criada");
     setOpen(false);
     setForm({ title: "", description: "", client_id: "", priority: "medium", due_date: "", status: "backlog", assigned_to: "", is_recurring_template: false, recurrence_type: "", recurrence_interval: 1, recurrence_until: "", recurrence_weekday: "1" });
     setDraftChecklist([]); setNewChecklistItem("");
+    setSaveAsTemplate(false); setTemplateName("");
     refresh();
   };
 
@@ -172,11 +219,19 @@ export default function SocialTasks() {
     if (error) toast.error(error.message); else refresh();
   };
 
+  const delTemplate = async (id: string) => {
+    if (!confirm("Excluir este modelo?")) return;
+    const { error } = await sb.from("sm_task_templates").delete().eq("id", id);
+    if (error) toast.error(error.message); else loadTemplates();
+  };
+
   const clearDateFilters = () => { setDateFrom(undefined); setDateTo(undefined); };
   const hasDateFilter = dateFrom || dateTo;
 
   const initialsOf = (name?: string | null) =>
     name ? name.split(" ").map(n => n[0]).join("").slice(0,2).toUpperCase() : null;
+
+  const clientName = (id?: string | null) => id ? (clients.find(c => c.id === id)?.name ?? null) : null;
 
   return (
     <div className="space-y-4 max-w-5xl">
@@ -185,26 +240,39 @@ export default function SocialTasks() {
         description="Gerencie e acompanhe o tempo das tarefas."
         icon={<ListTodo className="h-5 w-5"/>}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={clientFilter} onValueChange={setClientFilter}>
+              <SelectTrigger className="h-9 w-[170px]">
+                <Briefcase className="h-4 w-4 mr-1 text-muted-foreground"/>
+                <SelectValue/>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos clientes</SelectItem>
+                <SelectItem value="none">Sem cliente</SelectItem>
+                {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
-              <SelectTrigger className="h-9 w-[180px]">
+              <SelectTrigger className="h-9 w-[170px]">
                 <User className="h-4 w-4 mr-1 text-muted-foreground"/>
                 <SelectValue/>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="mine">Minhas tarefas</SelectItem>
-                <SelectItem value="all">Todas da equipe</SelectItem>
+                <SelectItem value="all">Toda equipe</SelectItem>
                 {assignableProfiles?.map(p => (
                   <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <Button variant="outline" className="h-9" onClick={() => setTemplateManagerOpen(true)}>
+              <FileStack className="h-4 w-4 mr-1"/>Modelos
+            </Button>
             <Button onClick={() => setOpen(true)} className="h-9"><Plus className="h-4 w-4 mr-1"/>Nova Tarefa</Button>
           </div>
         }
       />
 
-      {/* Chips */}
       <div className="flex flex-wrap items-center gap-2">
         {STATUS_CHIPS.map(chip => (
           <button key={chip.key} onClick={() => setStatusChip(chip.key)}
@@ -257,6 +325,7 @@ export default function SocialTasks() {
           {advancedFiltered.map(t => {
             const profile = assignableProfiles?.find(p => p.id === t.assigned_to);
             const initials = initialsOf(profile?.full_name);
+            const cName = clientName(t.client_id);
             return (
               <div key={t.id}
                 onClick={() => setChecklistTaskId(t.id)}
@@ -266,7 +335,14 @@ export default function SocialTasks() {
                     {t.title}
                     {(t as any).is_recurring_template && <Badge variant="secondary" className="text-[10px]">Recorrente</Badge>}
                   </p>
-                  {t.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{t.description}</p>}
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {cName && (
+                      <Badge variant="outline" className="text-[10px] bg-primary/5 text-primary border-primary/20 gap-1">
+                        <Briefcase className="h-2.5 w-2.5"/>{cName}
+                      </Badge>
+                    )}
+                    {t.description && <p className="text-xs text-muted-foreground truncate">{t.description}</p>}
+                  </div>
                 </div>
 
                 <Badge variant="outline" className={`text-[10px] ${STATUS_BADGE_CLS[t.status] || ""}`}>{STATUS_LABEL[t.status]}</Badge>
@@ -274,6 +350,7 @@ export default function SocialTasks() {
 
                 {initials && (
                   <Avatar className="h-6 w-6 shrink-0">
+                    {(profile as any)?.avatar_url && <AvatarImage src={(profile as any).avatar_url} alt="" />}
                     <AvatarFallback className="bg-primary/10 text-primary text-[9px] font-semibold">{initials}</AvatarFallback>
                   </Avatar>
                 )}
@@ -296,9 +373,20 @@ export default function SocialTasks() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Nova tarefa</DialogTitle></DialogHeader>
           <div className="space-y-3">
+            {templates.length > 0 && (
+              <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3">
+                <Label className="text-xs flex items-center gap-1.5"><Bookmark className="h-3 w-3"/>Usar modelo</Label>
+                <Select onValueChange={applyTemplate}>
+                  <SelectTrigger className="mt-1.5"><SelectValue placeholder="Escolha um modelo..."/></SelectTrigger>
+                  <SelectContent>
+                    {templates.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div><Label>Título *</Label><Input value={form.title} onChange={e => setForm({...form, title: e.target.value})}/></div>
             <div><Label>Descrição</Label><Textarea rows={3} value={form.description} onChange={e => setForm({...form, description: e.target.value})}/></div>
             <div>
@@ -369,6 +457,19 @@ export default function SocialTasks() {
             </div>
 
             <div className="rounded-lg border border-border p-3 space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" checked={saveAsTemplate} onChange={(e) => setSaveAsTemplate(e.target.checked)} />
+                <Bookmark className="h-4 w-4 text-primary"/> Salvar como modelo
+              </label>
+              {saveAsTemplate && (
+                <Input placeholder="Nome do modelo (ex.: Post Reels - Cliente X)" value={templateName} onChange={(e) => setTemplateName(e.target.value)} />
+              )}
+              {saveAsTemplate && (
+                <p className="text-[11px] text-muted-foreground">O modelo guarda título, descrição, cliente, prioridade e o checklist abaixo para reutilizar depois.</p>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-border p-3 space-y-2">
               <div className="flex items-center gap-2 text-sm font-medium">
                 <CheckSquare className="h-4 w-4 text-primary"/> Checklist
                 {form.is_recurring_template && draftChecklist.length > 0 && (
@@ -389,9 +490,7 @@ export default function SocialTasks() {
                 </ul>
               )}
               <div className="flex gap-2">
-                <Input
-                  placeholder="Nova etapa..."
-                  value={newChecklistItem}
+                <Input placeholder="Nova etapa..." value={newChecklistItem}
                   onChange={(e) => setNewChecklistItem(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -399,18 +498,12 @@ export default function SocialTasks() {
                       const t = newChecklistItem.trim();
                       if (t) { setDraftChecklist(p => [...p, t]); setNewChecklistItem(""); }
                     }
-                  }}
-                />
+                  }}/>
                 <Button type="button" size="sm" onClick={() => {
                   const t = newChecklistItem.trim();
                   if (t) { setDraftChecklist(p => [...p, t]); setNewChecklistItem(""); }
                 }}><Plus className="h-4 w-4"/></Button>
               </div>
-              {form.is_recurring_template && (
-                <p className="text-[11px] text-muted-foreground">
-                  Este checklist será copiado automaticamente em cada nova tarefa gerada pela recorrência.
-                </p>
-              )}
             </div>
           </div>
           <DialogFooter>
@@ -424,6 +517,39 @@ export default function SocialTasks() {
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Checklist da tarefa</DialogTitle></DialogHeader>
           {checklistTaskId && <SocialTaskChecklist taskId={checklistTaskId} />}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={templateManagerOpen} onOpenChange={setTemplateManagerOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Modelos de tarefa</DialogTitle></DialogHeader>
+          {templates.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              Nenhum modelo ainda. Ao criar uma nova tarefa, marque "Salvar como modelo" para reutilizar depois.
+            </p>
+          ) : (
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+              {templates.map(t => {
+                const items = templateItems.filter(i => i.template_id === t.id);
+                return (
+                  <div key={t.id} className="rounded-lg border border-border p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">{t.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{t.title}</p>
+                        {items.length > 0 && (
+                          <p className="text-[11px] text-muted-foreground mt-1">{items.length} item(ns) no checklist</p>
+                        )}
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => delTemplate(t.id)}>
+                        <Trash2 className="h-3.5 w-3.5"/>
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -64,15 +64,40 @@ export default function SocialEditorialCalendar() {
     return { days, monthLabel: ref.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }) };
   }, [ref]);
 
+  // Expande templates recorrentes em ocorrências virtuais dentro do mês visível
   const postsByDay = useMemo(() => {
     const map = new Map<string, SmPost[]>();
-    posts.filter(p => p.scheduled_at).forEach(p => {
-      const k = new Date(p.scheduled_at!).toDateString();
+    const monthStart = days[0];
+    const monthEnd = days[days.length - 1];
+    const addToDay = (date: Date, post: SmPost) => {
+      const k = date.toDateString();
       if (!map.has(k)) map.set(k, []);
-      map.get(k)!.push(p);
+      map.get(k)!.push(post);
+    };
+    posts.forEach((p) => {
+      const isTpl = (p as any).is_recurring_template;
+      const rType = (p as any).recurrence_type;
+      if (isTpl && rType && p.scheduled_at) {
+        const interval = Math.max(1, (p as any).recurrence_interval || 1);
+        const until = (p as any).recurrence_until ? new Date((p as any).recurrence_until) : null;
+        let cur = new Date(p.scheduled_at);
+        let guard = 0;
+        while (cur <= monthEnd && guard < 500) {
+          if (cur >= monthStart && (!until || cur <= until)) {
+            addToDay(cur, { ...p, scheduled_at: cur.toISOString() } as SmPost);
+          }
+          if (rType === "daily" || rType === "custom") cur.setDate(cur.getDate() + interval);
+          else if (rType === "weekly") cur.setDate(cur.getDate() + 7 * interval);
+          else if (rType === "monthly") cur.setMonth(cur.getMonth() + interval);
+          else break;
+          guard++;
+        }
+      } else if (p.scheduled_at) {
+        addToDay(new Date(p.scheduled_at), p);
+      }
     });
     return map;
-  }, [posts]);
+  }, [posts, days]);
 
   const eventsByDay = useMemo(() => {
     const map = new Map<string, SmEvent[]>();
