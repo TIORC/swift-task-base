@@ -165,7 +165,7 @@ export default function SocialFocusMode() {
                 <Button onClick={() => setRunning((r) => !r)} size="lg">
                   {running ? <><Pause className="h-4 w-4 mr-1" /> Pausar</> : <><Play className="h-4 w-4 mr-1" /> Retomar</>}
                 </Button>
-                <Button variant="outline" size="lg" onClick={() => setSeconds(0)}>
+                <Button variant="outline" size="lg" onClick={resetTimer}>
                   <RotateCcw className="h-4 w-4 mr-1" /> Zerar
                 </Button>
               </div>
