@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { KeyRound, Loader2 } from "lucide-react";
+import { KeyRound, Loader2, User } from "lucide-react";
+import { AvatarUploader } from "@/components/AvatarUploader";
 
 export default function SocialAccount() {
   const { user } = useAuth();
@@ -42,6 +43,14 @@ export default function SocialAccount() {
         <h1 className="text-2xl font-bold tracking-tight">Minha Conta</h1>
         <p className="text-sm text-muted-foreground">{user?.email}</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><User className="h-5 w-5"/>Foto de perfil</CardTitle>
+          <CardDescription>Sua foto aparece em comentários, tarefas e na barra lateral.</CardDescription>
+        </CardHeader>
+        <CardContent><AvatarUploader /></CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
