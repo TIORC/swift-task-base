@@ -1157,6 +1157,77 @@ export type Database = {
         }
         Relationships: []
       }
+      sm_task_template_items: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          sort_order: number
+          template_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          sort_order?: number
+          template_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          sort_order?: number
+          template_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sm_task_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "sm_task_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sm_task_templates: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          priority: Database["public"]["Enums"]["sm_priority"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          priority?: Database["public"]["Enums"]["sm_priority"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          priority?: Database["public"]["Enums"]["sm_priority"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sm_tasks: {
         Row: {
           assigned_to: string | null
