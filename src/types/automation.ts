@@ -97,13 +97,16 @@ export const BLOCKER_TYPES = [
 ] as const;
 
 export const BLOCKER_TYPE_LABELS: Record<string, string> = {
-  approval: "Aprovação do Gestor",
+  approval: "Aprovação",
   user_response: "Retorno do Usuário",
   access: "Acesso",
   credential: "Credencial",
   environment: "Ambiente",
   third_party: "Sistema Terceiro",
   validation: "Validação Final",
+  purchase: "Compra",
+  sector: "Setor",
+  system: "Sistema",
   other: "Outro",
 };
 
