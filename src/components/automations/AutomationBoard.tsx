@@ -177,6 +177,41 @@ export function AutomationBoard({ automations, onSelect, profileMap, onStatusCha
           </Table>
         </div>
       )}
+
+      <Dialog open={!!pendingMove} onOpenChange={(v) => !v && setPendingMove(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Mover para Pendente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Motivo da pendência</label>
+              <Select value={reason} onValueChange={(v) => setReason(v as PendingReason)}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PENDING_REASONS.map((r) => (
+                    <SelectItem key={r} value={r}>{PENDING_REASON_LABELS[r]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Descrição (opcional)</label>
+              <Textarea
+                value={reasonDesc}
+                onChange={(e) => setReasonDesc(e.target.value)}
+                placeholder="Detalhe o motivo..."
+                rows={3}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPendingMove(null)}>Cancelar</Button>
+            <Button onClick={confirmPending} disabled={createBlocker.isPending}>Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
