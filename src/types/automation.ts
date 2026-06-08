@@ -17,11 +17,21 @@ export const STATUS_LABELS: Record<AutomationStatus, string> = {
   analysis: "Análise",
   development: "Desenvolvimento",
   internal_testing: "Testes Internos",
-  homologation: "Homologação",
+  homologation: "Pendente",
   waiting_user: "Aguardando Usuário",
   completed: "Concluído",
   blocked: "Bloqueado",
   cancelled: "Cancelado",
+};
+
+// Pending reasons shown when an automation moves to "Pendente"
+export const PENDING_REASONS = ["purchase", "approval", "sector", "system"] as const;
+export type PendingReason = (typeof PENDING_REASONS)[number];
+export const PENDING_REASON_LABELS: Record<PendingReason, string> = {
+  purchase: "Compra",
+  approval: "Aprovação",
+  sector: "Setor",
+  system: "Sistema",
 };
 
 export const STATUS_COLORS: Record<AutomationStatus, string> = {
@@ -87,13 +97,16 @@ export const BLOCKER_TYPES = [
 ] as const;
 
 export const BLOCKER_TYPE_LABELS: Record<string, string> = {
-  approval: "Aprovação do Gestor",
+  approval: "Aprovação",
   user_response: "Retorno do Usuário",
   access: "Acesso",
   credential: "Credencial",
   environment: "Ambiente",
   third_party: "Sistema Terceiro",
   validation: "Validação Final",
+  purchase: "Compra",
+  sector: "Setor",
+  system: "Sistema",
   other: "Outro",
 };
 

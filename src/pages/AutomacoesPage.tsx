@@ -49,22 +49,11 @@ export default function AutomacoesPage() {
     });
   }, [automations, search, statusFilter, priorityFilter, assigneeFilter]);
 
-  // Alerts
+  // Alerts (somente bloqueios; atrasos/sem atualização foram removidos)
   const alerts = useMemo(() => {
     const items: { text: string; type: "warning" | "danger" }[] = [];
     automations.forEach(a => {
       if (a.status === "blocked") items.push({ text: `"${a.title}" está bloqueada`, type: "danger" });
-      if (a.final_deadline && !["completed", "cancelled"].includes(a.status)) {
-        const due = new Date(a.final_deadline);
-        const endOfDueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate(), 23, 59, 59, 999);
-        if (Date.now() > endOfDueDay.getTime()) {
-          items.push({ text: `"${a.title}" está atrasada`, type: "danger" });
-        }
-      }
-      const daysSinceUpdate = (Date.now() - new Date(a.updated_at).getTime()) / (1000 * 60 * 60 * 24);
-      if (daysSinceUpdate > 5 && !["completed", "cancelled"].includes(a.status)) {
-        items.push({ text: `"${a.title}" sem atualização há ${Math.floor(daysSinceUpdate)} dias`, type: "warning" });
-      }
     });
     return items.slice(0, 5);
   }, [automations]);

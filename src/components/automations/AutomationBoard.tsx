@@ -1,4 +1,4 @@
-import { Automation, BOARD_COLUMNS, STATUS_LABELS, AutomationStatus, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, computeHealthScore } from "@/types/automation";
+import { Automation, BOARD_COLUMNS, STATUS_LABELS, AutomationStatus, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, computeHealthScore, PENDING_REASONS, PENDING_REASON_LABELS, PendingReason } from "@/types/automation";
 import { AutomationCard } from "./AutomationCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
@@ -9,6 +9,11 @@ import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { useCreateBlocker } from "@/hooks/useAutomationsData";
 
 interface Props {
   automations: Automation[];
@@ -20,16 +25,38 @@ interface Props {
 
 export function AutomationBoard({ automations, onSelect, profileMap, onStatusChange, isReadOnly }: Props) {
   const [viewMode, setViewMode] = useState<"board" | "list">("board");
+  const [pendingMove, setPendingMove] = useState<{ id: string; status: AutomationStatus } | null>(null);
+  const [reason, setReason] = useState<PendingReason>("approval");
+  const [reasonDesc, setReasonDesc] = useState("");
+  const createBlocker = useCreateBlocker();
 
   const handleDragEnd = (result: DropResult) => {
     if (isReadOnly || !result.destination || !onStatusChange) return;
     const newStatus = result.destination.droppableId as AutomationStatus;
     const automationId = result.draggableId;
     const automation = automations.find(a => a.id === automationId);
-    if (automation && automation.status !== newStatus) {
-      onStatusChange(automationId, newStatus);
+    if (!automation || automation.status === newStatus) return;
+    // Mover para "Pendente" exige escolher motivo
+    if (newStatus === "homologation") {
+      setPendingMove({ id: automationId, status: newStatus });
+      setReason("approval");
+      setReasonDesc("");
+      return;
     }
+    onStatusChange(automationId, newStatus);
   };
+
+  const confirmPending = () => {
+    if (!pendingMove || !onStatusChange) return;
+    createBlocker.mutate({
+      automation_id: pendingMove.id,
+      blocker_type: reason,
+      description: reasonDesc.trim() || PENDING_REASON_LABELS[reason],
+    });
+    onStatusChange(pendingMove.id, pendingMove.status);
+    setPendingMove(null);
+  };
+
 
   return (
     <div>
@@ -150,6 +177,41 @@ export function AutomationBoard({ automations, onSelect, profileMap, onStatusCha
           </Table>
         </div>
       )}
+
+      <Dialog open={!!pendingMove} onOpenChange={(v) => !v && setPendingMove(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Mover para Pendente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Motivo da pendência</label>
+              <Select value={reason} onValueChange={(v) => setReason(v as PendingReason)}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PENDING_REASONS.map((r) => (
+                    <SelectItem key={r} value={r}>{PENDING_REASON_LABELS[r]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Descrição (opcional)</label>
+              <Textarea
+                value={reasonDesc}
+                onChange={(e) => setReasonDesc(e.target.value)}
+                placeholder="Detalhe o motivo..."
+                rows={3}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPendingMove(null)}>Cancelar</Button>
+            <Button onClick={confirmPending} disabled={createBlocker.isPending}>Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
