@@ -84,8 +84,8 @@ const Ranking = () => {
                         <p className="text-[10px] text-muted-foreground">XP</p>
                       </div>
                       <div className="text-right shrink-0 border-l pl-3 border-border/40">
-                        <p className="text-lg font-bold">{MEDAL_ICON} {entry.medals_year}</p>
-                        <p className="text-[10px] text-muted-foreground">no ano · {entry.medals_month} no mês</p>
+                        <p className="text-lg font-bold">{MEDAL_ICON} {entry.medals_month}</p>
+                        <p className="text-[10px] text-muted-foreground">medalhas no mês</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -239,22 +239,13 @@ const Ranking = () => {
                 </Card>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-1">
                 <Card className="shadow-card">
                   <CardContent className="py-4 px-5 flex items-center gap-3">
                     <span className="text-3xl">{MEDAL_ICON}</span>
                     <div>
                       <p className="text-2xl font-bold">{myData.medalsMonth}</p>
                       <p className="text-xs text-muted-foreground">medalhas este mês</p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="shadow-card">
-                  <CardContent className="py-4 px-5 flex items-center gap-3">
-                    <span className="text-3xl">🏆</span>
-                    <div>
-                      <p className="text-2xl font-bold">{myData.medalsYear}</p>
-                      <p className="text-xs text-muted-foreground">medalhas no ano</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -322,13 +313,11 @@ const Ranking = () => {
                   <div className="flex items-center gap-4">
                     <span className="text-6xl">{MEDAL_ICON}</span>
                     <div>
-                      <p className="text-4xl font-bold">{myData.medalsYear}</p>
-                      <p className="text-sm text-muted-foreground">medalhas acumuladas em {new Date().getFullYear()}</p>
+                      <p className="text-4xl font-bold">{myData.medalsMonth}</p>
+                      <p className="text-sm text-muted-foreground">
+                        medalhas em {new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+                      </p>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-3xl font-bold text-primary">{myData.medalsMonth}</p>
-                    <p className="text-xs text-muted-foreground">este mês</p>
                   </div>
                 </CardContent>
               </Card>
