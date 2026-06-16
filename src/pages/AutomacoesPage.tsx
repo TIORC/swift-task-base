@@ -67,11 +67,11 @@ export default function AutomacoesPage() {
   // Alerts (somente bloqueios; atrasos/sem atualização foram removidos)
   const alerts = useMemo(() => {
     const items: { text: string; type: "warning" | "danger" }[] = [];
-    automations.forEach(a => {
+    visibleAutomations.forEach(a => {
       if (a.status === "blocked") items.push({ text: `"${a.title}" está bloqueada`, type: "danger" });
     });
     return items.slice(0, 5);
-  }, [automations]);
+  }, [visibleAutomations]);
 
   const blockerCounts = useMemo(() => {
     const map: Record<string, number> = {};
@@ -123,10 +123,10 @@ export default function AutomacoesPage() {
       )}
 
       {/* Summary Cards */}
-      <AutomationSummaryCards automations={automations} />
+      <AutomationSummaryCards automations={visibleAutomations} />
 
       {/* WIP Control */}
-      <WipControl automations={automations} profileMap={profileMap} wipLimit={3} />
+      <WipControl automations={visibleAutomations} profileMap={profileMap} wipLimit={3} />
 
       {/* Main Content with Tabs */}
       <Tabs defaultValue="board" className="space-y-4">
