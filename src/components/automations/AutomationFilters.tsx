@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search } from "lucide-react";
 import { AUTOMATION_STATUSES, STATUS_LABELS, STATUS_COLORS, PRIORITY_OPTIONS, PRIORITY_LABELS, AutomationStatus } from "@/types/automation";
+import { SECTORS } from "@/types/sectors";
 
 interface Props {
   search: string;
@@ -13,6 +14,9 @@ interface Props {
   onPriorityFilterChange: (v: string) => void;
   assigneeFilter: string;
   onAssigneeFilterChange: (v: string) => void;
+  sectorFilter?: string;
+  onSectorFilterChange?: (v: string) => void;
+  availableSectors?: string[];
   profiles: { id: string; full_name: string | null }[];
 }
 
@@ -21,8 +25,10 @@ export function AutomationFilters({
   statusFilter, onStatusFilterChange,
   priorityFilter, onPriorityFilterChange,
   assigneeFilter, onAssigneeFilterChange,
+  sectorFilter, onSectorFilterChange, availableSectors,
   profiles,
 }: Props) {
+  const sectorOptions = availableSectors && availableSectors.length > 0 ? availableSectors : SECTORS;
   return (
     <div className="space-y-3">
       {/* Quick status chips */}
@@ -81,6 +87,20 @@ export function AutomationFilters({
             ))}
           </SelectContent>
         </Select>
+        {onSectorFilterChange && (
+          <Select value={sectorFilter || "all"} onValueChange={onSectorFilterChange}>
+            <SelectTrigger className="w-[140px] h-9">
+              <SelectValue placeholder="Setor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos setores</SelectItem>
+              <SelectItem value="none">Sem setor</SelectItem>
+              {sectorOptions.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
     </div>
   );
