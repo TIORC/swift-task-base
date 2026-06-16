@@ -623,7 +623,17 @@ const Reports = () => {
             </CardContent>
           </Card>
         )}
-      </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="automations" className="mt-0">
+          <AutomationsReport />
+        </TabsContent>
+
+        <TabsContent value="support" className="mt-0">
+          <SupportReport />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
