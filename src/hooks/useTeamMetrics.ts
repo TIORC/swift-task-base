@@ -11,6 +11,7 @@ export interface UserMetric {
   minutes: number;
   comments: number;
   completion_rate: number;
+  medals_month: number;
 }
 
 export interface SectorMetric {
