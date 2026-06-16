@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   BarChart3, Clock, TrendingUp, CheckCircle2, Timer, Activity,
   AlertTriangle, Users, FileDown, Loader2, Printer, FileSpreadsheet,
+  Bot, LifeBuoy,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -20,6 +21,9 @@ import {
 import { format, subDays, subMonths, startOfWeek, endOfWeek, eachWeekOfInterval, startOfMonth, endOfMonth, eachMonthOfInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AutomationsReport } from "@/components/reports/AutomationsReport";
+import { SupportReport } from "@/components/reports/SupportReport";
 
 const PIE_COLORS = [
   "hsl(230, 80%, 60%)", "hsl(38, 92%, 50%)", "hsl(152, 69%, 40%)",
@@ -412,7 +416,17 @@ const Reports = () => {
 
   return (
     <div className="space-y-6 max-w-7xl">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <Tabs defaultValue="tasks" className="space-y-6">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <TabsList className="bg-muted/50 p-1 rounded-xl">
+            <TabsTrigger value="tasks" className="rounded-lg"><Activity className="h-4 w-4 mr-1.5" />Tarefas</TabsTrigger>
+            <TabsTrigger value="automations" className="rounded-lg"><Bot className="h-4 w-4 mr-1.5" />Automações</TabsTrigger>
+            <TabsTrigger value="support" className="rounded-lg"><LifeBuoy className="h-4 w-4 mr-1.5" />Chamados</TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="tasks" className="space-y-6 mt-0">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
         <PageHeader
           title="Relatórios"
           description="Análise detalhada de produtividade e execução"
@@ -609,7 +623,17 @@ const Reports = () => {
             </CardContent>
           </Card>
         )}
-      </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="automations" className="mt-0">
+          <AutomationsReport />
+        </TabsContent>
+
+        <TabsContent value="support" className="mt-0">
+          <SupportReport />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
