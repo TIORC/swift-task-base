@@ -158,6 +158,7 @@ export default function AutomacoesPage() {
             automations={filtered}
             onSelect={setSelectedAutomation}
             profileMap={profileMap}
+            blockerCounts={blockerCounts}
             onStatusChange={isReadOnly ? undefined : handleStatusChange}
             isReadOnly={isReadOnly}
           />
