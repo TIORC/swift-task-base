@@ -105,8 +105,8 @@ export function useTeamMetrics() {
         const s = sectorMap.get(sec)!;
         s.total += 1;
         if (a.status === "completed") s.done += 1;
-        else if (a.status === "in_progress") s.in_progress += 1;
-        else if (a.status === "pending" || a.status === "homologation") s.pending += 1;
+        else if (["analysis", "development", "internal_testing"].includes(a.status)) s.in_progress += 1;
+        else if (["homologation", "waiting_user"].includes(a.status)) s.pending += 1;
         else if (a.status === "blocked") s.blocked += 1;
       });
 
