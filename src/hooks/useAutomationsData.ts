@@ -386,3 +386,97 @@ export function useAllProfiles() {
     },
   });
 }
+
+// ─── Aggregators for card preview ───
+
+export interface LatestEventInfo {
+  automation_id: string;
+  event_type: string;
+  description: string | null;
+  user_id: string;
+  created_at: string;
+}
+
+/** Último evento por automação (timeline mais recente). */
+export function useLatestAutomationEvents() {
+  return useQuery({
+    queryKey: ["automation_events", "latest-by-id"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("automation_events")
+        .select("automation_id, event_type, description, user_id, created_at")
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      const map: Record<string, LatestEventInfo> = {};
+      (data || []).forEach((ev: any) => {
+        if (!map[ev.automation_id]) map[ev.automation_id] = ev as LatestEventInfo;
+      });
+      return map;
+    },
+    staleTime: 30_000,
+  });
+}
+
+export interface LatestCommentInfo {
+  automation_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+}
+
+/** Último comentário por automação. */
+export function useLatestAutomationComments() {
+  return useQuery({
+    queryKey: ["automation_comments", "latest-by-id"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("automation_comments")
+        .select("automation_id, user_id, content, created_at")
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      const map: Record<string, LatestCommentInfo> = {};
+      (data || []).forEach((c: any) => {
+        if (!map[c.automation_id]) map[c.automation_id] = c as LatestCommentInfo;
+      });
+      return map;
+    },
+    staleTime: 30_000,
+  });
+}
+
+export interface CurrentStepInfo {
+  title: string;
+  total: number;
+  done: number;
+}
+
+/** Etapa atual de cada automação = primeira subtask não concluída (ordenada por sort_order). */
+export function useAllAutomationSteps() {
+  return useQuery({
+    queryKey: ["automation_subtasks", "all-current"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("automation_subtasks")
+        .select("automation_id, title, completed, sort_order")
+        .order("sort_order");
+      if (error) throw error;
+      const grouped: Record<string, { open: string[]; total: number; done: number }> = {};
+      (data || []).forEach((s: any) => {
+        const id = s.automation_id;
+        if (!grouped[id]) grouped[id] = { open: [], total: 0, done: 0 };
+        grouped[id].total += 1;
+        if (s.completed) grouped[id].done += 1;
+        else grouped[id].open.push(s.title);
+      });
+      const map: Record<string, CurrentStepInfo> = {};
+      Object.entries(grouped).forEach(([id, v]) => {
+        map[id] = { title: v.open[0] || "—", total: v.total, done: v.done };
+      });
+      return map;
+    },
+    staleTime: 30_000,
+  });
+}
+
