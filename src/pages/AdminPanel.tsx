@@ -20,9 +20,10 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
-  ShieldCheck, UserPlus, KeyRound, Trash2, Users, Loader2, Search, Shield, Settings2, Headset,
+  ShieldCheck, UserPlus, KeyRound, Trash2, Users, Loader2, Search, Shield, Settings2, Headset, Building2,
 } from "lucide-react";
 import { UserPermissionsDialog } from "@/components/UserPermissionsDialog";
+import { UserSectorsDialog } from "@/components/UserSectorsDialog";
 
 const SUPPORT_USERS_EMAILS = [
   "adalgiza.argolo@orcoma.com.br","adeir@orcoma.com.br","aelica.sampaio@orcoma.com.br","anderson.rocha@orcoma.com.br",
@@ -138,6 +139,11 @@ const AdminPanel = () => {
   const [permsOpen, setPermsOpen] = useState(false);
   const [permsUserId, setPermsUserId] = useState("");
   const [permsUserEmail, setPermsUserEmail] = useState("");
+
+  // Sectors dialog
+  const [sectorsOpen, setSectorsOpen] = useState(false);
+  const [sectorsUserId, setSectorsUserId] = useState("");
+  const [sectorsUserEmail, setSectorsUserEmail] = useState("");
 
   const loadUsers = useCallback(async () => {
     try {
@@ -385,6 +391,17 @@ const AdminPanel = () => {
                         }}
                       >
                         <Settings2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost" size="icon" className="h-8 w-8"
+                        title="Setores permitidos"
+                        onClick={() => {
+                          setSectorsUserId(u.id);
+                          setSectorsUserEmail(u.email);
+                          setSectorsOpen(true);
+                        }}
+                      >
+                        <Building2 className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost" size="icon" className="h-8 w-8"
