@@ -87,7 +87,7 @@ export function AutomationBoard({ automations, onSelect, profileMap, blockerCoun
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`flex-shrink-0 w-[260px] rounded-lg transition-colors ${snapshot.isDraggingOver ? "bg-primary/5" : ""}`}
+                      className={`flex-shrink-0 w-[320px] rounded-lg transition-colors ${snapshot.isDraggingOver ? "bg-primary/5" : ""}`}
                     >
                       <div className="flex items-center justify-between mb-2 px-1">
                         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
