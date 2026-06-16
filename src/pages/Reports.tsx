@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   BarChart3, Clock, TrendingUp, CheckCircle2, Timer, Activity,
   AlertTriangle, Users, FileDown, Loader2, Printer, FileSpreadsheet,
+  Bot, LifeBuoy,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -20,6 +21,9 @@ import {
 import { format, subDays, subMonths, startOfWeek, endOfWeek, eachWeekOfInterval, startOfMonth, endOfMonth, eachMonthOfInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AutomationsReport } from "@/components/reports/AutomationsReport";
+import { SupportReport } from "@/components/reports/SupportReport";
 
 const PIE_COLORS = [
   "hsl(230, 80%, 60%)", "hsl(38, 92%, 50%)", "hsl(152, 69%, 40%)",
