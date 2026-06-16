@@ -164,7 +164,7 @@ export default function AutomacoesPage() {
         </TabsContent>
 
         <TabsContent value="metrics">
-          <AutomationMetrics automations={automations} profileMap={profileMap} />
+          <AutomationMetrics automations={visibleAutomations} profileMap={profileMap} />
         </TabsContent>
 
         <TabsContent value="blockers">
