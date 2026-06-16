@@ -30,7 +30,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useTheme } from "next-themes";
-import { useEffect } from "react";
+
 import { toast } from "sonner";
 
 // ─── Layout helper ────────────────────────────────────────────────────────────
