@@ -25,7 +25,7 @@ import {
 } from "@/hooks/useAutomationDependencies";
 import { STATUS_LABELS as A_LABELS } from "@/types/automation";
 import { SECTOR_LABELS } from "@/types/sectors";
-import { GitBranch, Loader2, Trash2 } from "lucide-react";
+import { GitBranch, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
