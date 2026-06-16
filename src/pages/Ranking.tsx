@@ -84,8 +84,8 @@ const Ranking = () => {
                         <p className="text-[10px] text-muted-foreground">XP</p>
                       </div>
                       <div className="text-right shrink-0 border-l pl-3 border-border/40">
-                        <p className="text-lg font-bold">{MEDAL_ICON} {entry.medals_year}</p>
-                        <p className="text-[10px] text-muted-foreground">no ano · {entry.medals_month} no mês</p>
+                        <p className="text-lg font-bold">{MEDAL_ICON} {entry.medals_month}</p>
+                        <p className="text-[10px] text-muted-foreground">medalhas no mês</p>
                       </div>
                     </CardContent>
                   </Card>
