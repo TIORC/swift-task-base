@@ -126,6 +126,48 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_dependencies: {
+        Row: {
+          automation_id: string
+          created_at: string
+          created_by: string
+          depends_on_automation_id: string
+          id: string
+          relation_type: string
+        }
+        Insert: {
+          automation_id: string
+          created_at?: string
+          created_by: string
+          depends_on_automation_id: string
+          id?: string
+          relation_type?: string
+        }
+        Update: {
+          automation_id?: string
+          created_at?: string
+          created_by?: string
+          depends_on_automation_id?: string
+          id?: string
+          relation_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_dependencies_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_dependencies_depends_on_automation_id_fkey"
+            columns: ["depends_on_automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       automation_events: {
         Row: {
           automation_id: string
