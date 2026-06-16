@@ -30,8 +30,8 @@ export function useTeamMetrics() {
     queryKey: ["team-metrics"],
     queryFn: async () => {
       const [tasksRes, autosRes, timeRes, autoTimeRes, profilesRes, commentsRes] = await Promise.all([
-        supabase.from("tasks").select("id, assignee_id, status"),
-        supabase.from("automations").select("id, owner_id, sector, status"),
+        supabase.from("tasks").select("id, assignee_id, status, updated_at, title"),
+        supabase.from("automations").select("id, owner_id, sector, status, updated_at, completed_at"),
         supabase.from("time_logs").select("user_id, duration_minutes"),
         supabase.from("automation_time_logs").select("user_id, duration_minutes"),
         supabase.from("profiles").select("id, full_name"),
@@ -40,6 +40,11 @@ export function useTeamMetrics() {
 
       const profiles = profilesRes.data || [];
       const profileMap = Object.fromEntries(profiles.map((p: any) => [p.id, p.full_name || "Sem nome"]));
+
+      const now = new Date();
+      const curY = now.getFullYear();
+      const curM = now.getMonth();
+      const MEDAL_PER_TASKS = 30;
 
       const userMap = new Map<string, UserMetric>();
       const ensureUser = (uid: string) => {
@@ -55,23 +60,41 @@ export function useTeamMetrics() {
             minutes: 0,
             comments: 0,
             completion_rate: 0,
+            medals_month: 0,
           });
         }
         return userMap.get(uid)!;
       };
 
+      // Tasks/chamados completed this month per user (for medal counting)
+      const monthTasksByUser = new Map<string, number>();
+      const monthAutosByUser = new Map<string, number>();
+
       (tasksRes.data || []).forEach((t: any) => {
         const u = ensureUser(t.assignee_id);
         if (!u) return;
         u.tasks_total += 1;
-        if (t.status === "done") u.tasks_done += 1;
+        if (t.status === "done") {
+          u.tasks_done += 1;
+          const d = new Date(t.updated_at);
+          if (d.getFullYear() === curY && d.getMonth() === curM) {
+            monthTasksByUser.set(t.assignee_id, (monthTasksByUser.get(t.assignee_id) || 0) + 1);
+          }
+        }
       });
 
       (autosRes.data || []).forEach((a: any) => {
         const u = ensureUser(a.owner_id);
         if (!u) return;
         u.automations_total += 1;
-        if (a.status === "completed") u.automations_done += 1;
+        if (a.status === "completed") {
+          u.automations_done += 1;
+          const ts = a.completed_at || a.updated_at;
+          const d = new Date(ts);
+          if (d.getFullYear() === curY && d.getMonth() === curM) {
+            monthAutosByUser.set(a.owner_id, (monthAutosByUser.get(a.owner_id) || 0) + 1);
+          }
+        }
       });
 
       (timeRes.data || []).forEach((l: any) => {
@@ -91,6 +114,9 @@ export function useTeamMetrics() {
         const total = u.tasks_total + u.automations_total;
         const done = u.tasks_done + u.automations_done;
         u.completion_rate = total > 0 ? Math.round((done / total) * 100) : 0;
+        const taskMedals = Math.floor((monthTasksByUser.get(u.user_id) || 0) / MEDAL_PER_TASKS);
+        const autoMedals = monthAutosByUser.get(u.user_id) || 0;
+        u.medals_month = taskMedals + autoMedals;
         return u;
       });
 
