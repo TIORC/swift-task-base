@@ -125,7 +125,7 @@ export function useTeamMetrics() {
       });
 
       return {
-        users: users.sort((a, b) => (b.tasks_done + b.automations_done) - (a.tasks_done + a.automations_done)),
+        users: users.sort((a, b) => b.minutes - a.minutes),
         sectors: Array.from(sectorMap.values()).sort((a, b) => b.total - a.total),
         totals: {
           tasks: (tasksRes.data || []).length,
