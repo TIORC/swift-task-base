@@ -209,6 +209,36 @@ const Ranking = () => {
                 </CardContent>
               </Card>
 
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Card className="shadow-card">
+                  <CardContent className="py-4 px-5 flex items-center gap-3">
+                    <CheckCircle2 className="h-7 w-7 text-emerald-500" />
+                    <div>
+                      <p className="text-2xl font-bold">{myData.tasksOnlyDone}</p>
+                      <p className="text-xs text-muted-foreground">tarefas concluídas</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="shadow-card">
+                  <CardContent className="py-4 px-5 flex items-center gap-3">
+                    <Zap className="h-7 w-7 text-amber-500" />
+                    <div>
+                      <p className="text-2xl font-bold">{myData.chamadosDone}</p>
+                      <p className="text-xs text-muted-foreground">chamados concluídos</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="shadow-card">
+                  <CardContent className="py-4 px-5 flex items-center gap-3">
+                    <Bot className="h-7 w-7 text-indigo-500" />
+                    <div>
+                      <p className="text-2xl font-bold">{myData.autosDone}</p>
+                      <p className="text-xs text-muted-foreground">automações concluídas</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
               <div className="grid gap-3 sm:grid-cols-2">
                 <Card className="shadow-card">
                   <CardContent className="py-4 px-5 flex items-center gap-3">
