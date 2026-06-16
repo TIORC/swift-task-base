@@ -1,13 +1,17 @@
 import { useRanking, useMyGamification, LEVELS, MEDAL_DEFS } from "@/hooks/useGamification";
+import { useTeamMetrics } from "@/hooks/useTeamMetrics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
-import { Trophy, Medal, Star, Loader2, Zap, TrendingUp } from "lucide-react";
+import { Trophy, Medal, Star, Loader2, Zap, TrendingUp, Users, Building2, CheckCircle2, Bot, Clock } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { SECTOR_COLORS, SECTOR_LABELS } from "@/types/sectors";
+
 
 const Ranking = () => {
   const { data: ranking, isLoading } = useRanking();
