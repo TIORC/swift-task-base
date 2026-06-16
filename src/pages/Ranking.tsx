@@ -239,22 +239,13 @@ const Ranking = () => {
                 </Card>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-1">
                 <Card className="shadow-card">
                   <CardContent className="py-4 px-5 flex items-center gap-3">
                     <span className="text-3xl">{MEDAL_ICON}</span>
                     <div>
                       <p className="text-2xl font-bold">{myData.medalsMonth}</p>
                       <p className="text-xs text-muted-foreground">medalhas este mês</p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="shadow-card">
-                  <CardContent className="py-4 px-5 flex items-center gap-3">
-                    <span className="text-3xl">🏆</span>
-                    <div>
-                      <p className="text-2xl font-bold">{myData.medalsYear}</p>
-                      <p className="text-xs text-muted-foreground">medalhas no ano</p>
                     </div>
                   </CardContent>
                 </Card>
