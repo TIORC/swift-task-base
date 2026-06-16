@@ -627,6 +627,14 @@ const AdminPanel = () => {
         userEmail={permsUserEmail}
         allUsers={users.map((u) => ({ id: u.id, email: u.email, full_name: u.full_name }))}
       />
+
+      {/* SECTORS DIALOG */}
+      <UserSectorsDialog
+        open={sectorsOpen}
+        onOpenChange={setSectorsOpen}
+        userId={sectorsUserId}
+        userEmail={sectorsUserEmail}
+      />
     </div>
   );
 };
