@@ -152,6 +152,7 @@ export interface Automation {
   risk_level: string;
   deploy_status: string;
   documentation_done: boolean;
+  sector: string | null;
   created_at: string;
   updated_at: string;
 }

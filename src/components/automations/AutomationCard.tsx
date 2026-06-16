@@ -1,8 +1,9 @@
 import { Automation, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, AutomationStatus } from "@/types/automation";
+import { SECTOR_COLORS } from "@/types/sectors";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Clock, Lock, User, Timer, Play, Square } from "lucide-react";
+import { Clock, Lock, User, Timer, Play, Square, Building2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAutomationTotalMinutes } from "@/hooks/useAutomationsData";
@@ -51,6 +52,12 @@ export function AutomationCard({ automation: a, onClick, profileName }: Props) {
         <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${PRIORITY_COLORS[a.priority]}`}>
           {PRIORITY_LABELS[a.priority] || a.priority}
         </Badge>
+        {a.sector && (
+          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 gap-1 ${SECTOR_COLORS[a.sector] || ""}`}>
+            <Building2 className="h-2.5 w-2.5" />
+            {a.sector}
+          </Badge>
+        )}
         {isBlocked && <Lock className="h-3 w-3 text-red-500" />}
       </div>
 
