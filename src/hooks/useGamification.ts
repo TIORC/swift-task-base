@@ -247,6 +247,11 @@ export function useMyGamification() {
       const seed = TI_TEAM[uid]?.seedXp || 0;
       const totalXp = computeXp(tasks.length, autos.length, seed);
 
+      const isChamado = (title: string | null | undefined) =>
+        !!title && /^\s*\[Chamado\]/i.test(title);
+      const chamadosDone = tasks.filter((t: any) => isChamado(t.title)).length;
+      const tasksOnlyDone = tasks.length - chamadosDone;
+
       const monthly = buildMonthlyMedals(tasks as any, autos as any);
       const now = new Date();
       const curY = now.getFullYear();
@@ -258,7 +263,7 @@ export function useMyGamification() {
       const recent = [
         ...tasks.map((t: any) => ({
           ts: t.updated_at,
-          label: `Tarefa concluída: ${t.title || ""}`.trim(),
+          label: `${isChamado(t.title) ? "Chamado" : "Tarefa"} concluído: ${t.title || ""}`.trim(),
           xp: XP_PER_TASK,
         })),
         ...autos.map((a: any) => ({
@@ -274,6 +279,8 @@ export function useMyGamification() {
         totalXp,
         seedXp: seed,
         tasksDone: tasks.length,
+        tasksOnlyDone,
+        chamadosDone,
         autosDone: autos.length,
         level: getLevel(totalXp),
         monthly,

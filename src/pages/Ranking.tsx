@@ -148,10 +148,8 @@ const Ranking = () => {
                         <TableRow>
                           <TableHead className="w-10">#</TableHead>
                           <TableHead>Pessoa</TableHead>
-                          <TableHead className="text-center">Horas</TableHead>
-                          <TableHead className="text-center">Tarefas</TableHead>
-                          <TableHead className="text-center">Automações</TableHead>
-                          <TableHead className="text-right">Conclusão</TableHead>
+                          <TableHead className="text-center">Horas trabalhadas</TableHead>
+                          <TableHead className="text-right">Medalhas (mês)</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -167,14 +165,7 @@ const Ranking = () => {
                                 </div>
                               </TableCell>
                               <TableCell className="text-center text-sm font-semibold">{fmtH(u.minutes)}</TableCell>
-                              <TableCell className="text-center text-sm">{u.tasks_done}<span className="text-muted-foreground">/{u.tasks_total}</span></TableCell>
-                              <TableCell className="text-center text-sm">{u.automations_done}<span className="text-muted-foreground">/{u.automations_total}</span></TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex items-center gap-2 justify-end">
-                                  <Progress value={u.completion_rate} className="h-1.5 w-20" />
-                                  <span className="text-xs text-muted-foreground w-8">{u.completion_rate}%</span>
-                                </div>
-                              </TableCell>
+                              <TableCell className="text-right text-sm font-semibold">{MEDAL_ICON} {u.medals_month}</TableCell>
                             </TableRow>
                           );
                         })}
@@ -217,6 +208,36 @@ const Ranking = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Card className="shadow-card">
+                  <CardContent className="py-4 px-5 flex items-center gap-3">
+                    <CheckCircle2 className="h-7 w-7 text-emerald-500" />
+                    <div>
+                      <p className="text-2xl font-bold">{myData.tasksOnlyDone}</p>
+                      <p className="text-xs text-muted-foreground">tarefas concluídas</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="shadow-card">
+                  <CardContent className="py-4 px-5 flex items-center gap-3">
+                    <Zap className="h-7 w-7 text-amber-500" />
+                    <div>
+                      <p className="text-2xl font-bold">{myData.chamadosDone}</p>
+                      <p className="text-xs text-muted-foreground">chamados concluídos</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="shadow-card">
+                  <CardContent className="py-4 px-5 flex items-center gap-3">
+                    <Bot className="h-7 w-7 text-indigo-500" />
+                    <div>
+                      <p className="text-2xl font-bold">{myData.autosDone}</p>
+                      <p className="text-xs text-muted-foreground">automações concluídas</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <Card className="shadow-card">
