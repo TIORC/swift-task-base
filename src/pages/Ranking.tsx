@@ -32,15 +32,18 @@ const Ranking = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <PageHeader title="Engajamento" description="XP, ranking, níveis e medalhas." icon={<Trophy className="h-5 w-5" />} />
+    <div className="space-y-6 max-w-6xl">
+      <PageHeader title="Engajamento & Ranking TI" description="XP, equipe, setores, níveis e medalhas." icon={<Trophy className="h-5 w-5" />} />
 
       <Tabs defaultValue="ranking" className="space-y-4">
-        <TabsList className="bg-muted/50 p-1 rounded-xl">
-          <TabsTrigger value="ranking" className="rounded-lg"><Trophy className="h-4 w-4 mr-1.5" />Ranking</TabsTrigger>
+        <TabsList className="bg-muted/50 p-1 rounded-xl flex-wrap">
+          <TabsTrigger value="ranking" className="rounded-lg"><Trophy className="h-4 w-4 mr-1.5" />Ranking XP</TabsTrigger>
+          <TabsTrigger value="team" className="rounded-lg"><Users className="h-4 w-4 mr-1.5" />Equipe</TabsTrigger>
+          <TabsTrigger value="sectors" className="rounded-lg"><Building2 className="h-4 w-4 mr-1.5" />Setores</TabsTrigger>
           <TabsTrigger value="me" className="rounded-lg"><Star className="h-4 w-4 mr-1.5" />Meu Progresso</TabsTrigger>
           <TabsTrigger value="medals" className="rounded-lg"><Medal className="h-4 w-4 mr-1.5" />Medalhas</TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="ranking" className="space-y-2">
           {!ranking || ranking.length === 0 ? (
