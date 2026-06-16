@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BLOCKER_TYPE_LABELS, computeHealthScore } from "@/types/automation";
+import { useSectorVisibility } from "@/hooks/useUserSectors";
 
 export default function AutomacoesPage() {
   const { data: automations = [], isLoading } = useAutomations();
@@ -31,7 +32,10 @@ export default function AutomacoesPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [assigneeFilter, setAssigneeFilter] = useState("all");
+  const [sectorFilter, setSectorFilter] = useState("all");
   const [selectedAutomation, setSelectedAutomation] = useState<Automation | null>(null);
+
+  const { canSeeAll, allowedSectors } = useSectorVisibility();
 
   const profileMap = useMemo(() => {
     const m: Record<string, string> = {};
@@ -39,15 +43,26 @@ export default function AutomacoesPage() {
     return m;
   }, [profiles]);
 
+  // Aplica visibilidade por setor: privileged/TI vê tudo; demais só vêem seus setores (e itens sem setor ficam ocultos)
+  const visibleAutomations = useMemo(() => {
+    if (canSeeAll) return automations;
+    if (allowedSectors.length === 0) return [];
+    return automations.filter((a) => a.sector && allowedSectors.includes(a.sector));
+  }, [automations, canSeeAll, allowedSectors]);
+
   const filtered = useMemo(() => {
-    return automations.filter(a => {
+    return visibleAutomations.filter(a => {
       if (search && !a.title.toLowerCase().includes(search.toLowerCase())) return false;
       if (statusFilter !== "all" && a.status !== statusFilter) return false;
       if (priorityFilter !== "all" && a.priority !== priorityFilter) return false;
       if (assigneeFilter !== "all" && a.assigned_to !== assigneeFilter) return false;
+      if (sectorFilter !== "all") {
+        if (sectorFilter === "none" && a.sector) return false;
+        if (sectorFilter !== "none" && a.sector !== sectorFilter) return false;
+      }
       return true;
     });
-  }, [automations, search, statusFilter, priorityFilter, assigneeFilter]);
+  }, [visibleAutomations, search, statusFilter, priorityFilter, assigneeFilter, sectorFilter]);
 
   // Alerts (somente bloqueios; atrasos/sem atualização foram removidos)
   const alerts = useMemo(() => {
@@ -132,6 +147,9 @@ export default function AutomacoesPage() {
             onPriorityFilterChange={setPriorityFilter}
             assigneeFilter={assigneeFilter}
             onAssigneeFilterChange={setAssigneeFilter}
+            sectorFilter={sectorFilter}
+            onSectorFilterChange={setSectorFilter}
+            availableSectors={canSeeAll ? undefined : allowedSectors}
             profiles={profiles}
           />
 
