@@ -29,8 +29,20 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   AlertTriangle, CheckCircle2, Clock, Code2, FileText, History,
-  ListChecks, Lock, MessageSquare, Play, Plus, Save, Square, Timer, Trash2, X
+  ListChecks, Lock, MessageSquare, Play, Plus, Save, Square, Timer, Trash2, X,
+  Sparkles, RefreshCcw, Unlock,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
+const TIMELINE_META: Record<string, { label: string; color: string; Icon: LucideIcon }> = {
+  created: { label: "criou a automação", color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", Icon: Sparkles },
+  status_changed: { label: "mudou o status", color: "bg-blue-500/15 text-blue-600 dark:text-blue-400", Icon: RefreshCcw },
+  blocker_added: { label: "registrou um bloqueio", color: "bg-red-500/15 text-red-600 dark:text-red-400", Icon: Lock },
+  blocker_resolved: { label: "resolveu um bloqueio", color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", Icon: Unlock },
+  comment: { label: "comentou", color: "bg-muted text-muted-foreground", Icon: MessageSquare },
+  subtask_added: { label: "adicionou uma etapa", color: "bg-amber-500/15 text-amber-600 dark:text-amber-400", Icon: Plus },
+  subtask_completed: { label: "concluiu uma etapa", color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", Icon: CheckCircle2 },
+};
 import { AutomationComments } from "@/components/automations/AutomationComments";
 
 interface Props {
