@@ -29,8 +29,20 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   AlertTriangle, CheckCircle2, Clock, Code2, FileText, History,
-  ListChecks, Lock, MessageSquare, Play, Plus, Save, Square, Timer, Trash2, X
+  ListChecks, Lock, MessageSquare, Play, Plus, Save, Square, Timer, Trash2, X,
+  Sparkles, RefreshCcw, Unlock,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
+const TIMELINE_META: Record<string, { label: string; color: string; Icon: LucideIcon }> = {
+  created: { label: "criou a automação", color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", Icon: Sparkles },
+  status_changed: { label: "mudou o status", color: "bg-blue-500/15 text-blue-600 dark:text-blue-400", Icon: RefreshCcw },
+  blocker_added: { label: "registrou um bloqueio", color: "bg-red-500/15 text-red-600 dark:text-red-400", Icon: Lock },
+  blocker_resolved: { label: "resolveu um bloqueio", color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", Icon: Unlock },
+  comment: { label: "comentou", color: "bg-muted text-muted-foreground", Icon: MessageSquare },
+  subtask_added: { label: "adicionou uma etapa", color: "bg-amber-500/15 text-amber-600 dark:text-amber-400", Icon: Plus },
+  subtask_completed: { label: "concluiu uma etapa", color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", Icon: CheckCircle2 },
+};
 import { AutomationComments } from "@/components/automations/AutomationComments";
 
 interface Props {
@@ -397,20 +409,54 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
 
             {/* ─── Timeline Tab ─── */}
             <TabsContent value="timeline" className="mt-3">
-              <div className="space-y-3">
-                {events.map(ev => (
-                  <div key={ev.id} className="flex gap-3">
-                    <div className="w-1 rounded-full bg-primary/20 shrink-0" />
-                    <div>
-                      <p className="text-sm">{ev.description || ev.event_type}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {profileMap[ev.user_id] || "—"} • {format(new Date(ev.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}
-                      </p>
-                    </div>
+              {events.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">Nenhuma atualização registrada ainda.</p>
+              ) : (
+                <div className="relative pl-6">
+                  {/* linha vertical */}
+                  <div className="absolute left-2 top-1 bottom-1 w-px bg-border" />
+                  <div className="space-y-4">
+                    {events.map((ev) => {
+                      const meta = TIMELINE_META[ev.event_type] || {
+                        label: ev.event_type.replace(/_/g, " "),
+                        color: "bg-muted text-muted-foreground",
+                        Icon: History,
+                      };
+                      const Icon = meta.Icon;
+                      const newStatus = (ev.metadata as any)?.new_status as string | undefined;
+                      return (
+                        <div key={ev.id} className="relative">
+                          {/* dot */}
+                          <div className={`absolute -left-[18px] top-0.5 h-4 w-4 rounded-full flex items-center justify-center ${meta.color}`}>
+                            <Icon className="h-2.5 w-2.5" />
+                          </div>
+                          <div className="rounded-md border border-border bg-card/40 px-3 py-2">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <div className="flex items-center gap-1.5 text-xs">
+                                <span className="font-medium text-foreground">
+                                  {profileMap[ev.user_id] || "Sistema"}
+                                </span>
+                                <span className="text-muted-foreground">{meta.label}</span>
+                                {newStatus && (
+                                  <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${STATUS_COLORS[newStatus as AutomationStatus] || ""}`}>
+                                    {STATUS_LABELS[newStatus as AutomationStatus] || newStatus}
+                                  </Badge>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-muted-foreground tabular-nums">
+                                {format(new Date(ev.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}
+                              </span>
+                            </div>
+                            {ev.description && (
+                              <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{ev.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-                {events.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">Nenhum evento registrado</p>}
-              </div>
+                </div>
+              )}
             </TabsContent>
 
             {/* ─── Time Tab ─── */}

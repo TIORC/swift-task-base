@@ -19,11 +19,12 @@ interface Props {
   automations: Automation[];
   onSelect: (a: Automation) => void;
   profileMap: Record<string, string>;
+  blockerCounts?: Record<string, number>;
   onStatusChange?: (id: string, newStatus: AutomationStatus) => void;
   isReadOnly?: boolean;
 }
 
-export function AutomationBoard({ automations, onSelect, profileMap, onStatusChange, isReadOnly }: Props) {
+export function AutomationBoard({ automations, onSelect, profileMap, blockerCounts, onStatusChange, isReadOnly }: Props) {
   const [viewMode, setViewMode] = useState<"board" | "list">("board");
   const [pendingMove, setPendingMove] = useState<{ id: string; status: AutomationStatus } | null>(null);
   const [reason, setReason] = useState<PendingReason>("approval");
@@ -109,6 +110,8 @@ export function AutomationBoard({ automations, onSelect, profileMap, onStatusCha
                                     automation={a}
                                     onClick={() => onSelect(a)}
                                     profileName={a.assigned_to ? profileMap[a.assigned_to] : undefined}
+                                    profileMap={profileMap}
+                                    pendingCount={blockerCounts?.[a.id] || 0}
                                   />
                                 </div>
                               )}
