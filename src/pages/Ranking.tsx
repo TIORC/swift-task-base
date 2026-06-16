@@ -76,11 +76,7 @@ const Ranking = () => {
                         <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted-foreground">
                           <span><CheckCircle2 className="inline h-3 w-3 mr-0.5" />{entry.tasks_done} tarefas</span>
                           <span><Bot className="inline h-3 w-3 mr-0.5" />{entry.automations_done} automações</span>
-                          {entry.seed_xp > 0 && (
-                            <span>
-                              {entry.seed_xp === 3600 ? "l" : entry.seed_xp === 1750 ? "\n" : `+${entry.seed_xp} XP inicial`}
-                            </span>
-                          )}
+                          {entry.seed_xp > 0 && <span>+{entry.seed_xp} XP inicial</span>}
                         </div>
                       </div>
                       <div className="text-right shrink-0">
