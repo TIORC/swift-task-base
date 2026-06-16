@@ -313,13 +313,11 @@ const Ranking = () => {
                   <div className="flex items-center gap-4">
                     <span className="text-6xl">{MEDAL_ICON}</span>
                     <div>
-                      <p className="text-4xl font-bold">{myData.medalsYear}</p>
-                      <p className="text-sm text-muted-foreground">medalhas acumuladas em {new Date().getFullYear()}</p>
+                      <p className="text-4xl font-bold">{myData.medalsMonth}</p>
+                      <p className="text-sm text-muted-foreground">
+                        medalhas em {new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+                      </p>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-3xl font-bold text-primary">{myData.medalsMonth}</p>
-                    <p className="text-xs text-muted-foreground">este mês</p>
                   </div>
                 </CardContent>
               </Card>
