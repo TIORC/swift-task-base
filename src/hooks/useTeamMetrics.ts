@@ -129,7 +129,7 @@ export function useTeamMetrics() {
         sectors: Array.from(sectorMap.values()).sort((a, b) => b.total - a.total),
         totals: {
           tasks: (tasksRes.data || []).length,
-          tasks_done: (tasksRes.data || []).filter((t: any) => t.status === "concluido").length,
+          tasks_done: (tasksRes.data || []).filter((t: any) => t.status === "done").length,
           automations: (autosRes.data || []).length,
           automations_done: (autosRes.data || []).filter((a: any) => a.status === "completed").length,
           minutes: users.reduce((s, u) => s + u.minutes, 0),
