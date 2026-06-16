@@ -1,16 +1,25 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-// --- LEVELS ---
+// ============================================================================
+// LEVELS  (XP-based)
+// ============================================================================
+// XP rules:
+//  - Each completed task (incluindo chamados) = 1 XP
+//  - Each completed automation = 50 XP
+//  - Some founding members receive a seed XP for time of service
+//
+// Thresholds were tuned so the founding members land on the levels defined by
+// the team manager (Welder=Especialista @ 3600 XP, Angel=Praticante @ 1750 XP).
 export const LEVELS = [
-  { level: 1, name: "Iniciante", minXp: 0, icon: "🌱" },
-  { level: 2, name: "Aprendiz", minXp: 30, icon: "📘" },
-  { level: 3, name: "Praticante", minXp: 80, icon: "⚡" },
-  { level: 4, name: "Profissional", minXp: 180, icon: "🔥" },
-  { level: 5, name: "Especialista", minXp: 350, icon: "💎" },
-  { level: 6, name: "Mestre", minXp: 600, icon: "🏆" },
-  { level: 7, name: "Lenda", minXp: 1000, icon: "👑" },
+  { level: 1, name: "Iniciante",     minXp: 0,     icon: "🌱" },
+  { level: 2, name: "Aprendiz",      minXp: 200,   icon: "📘" },
+  { level: 3, name: "Praticante",    minXp: 1000,  icon: "⚡" },
+  { level: 4, name: "Profissional",  minXp: 2500,  icon: "🔥" },
+  { level: 5, name: "Especialista",  minXp: 3500,  icon: "💎" },
+  { level: 6, name: "Mestre",        minXp: 6000,  icon: "🏆" },
+  { level: 7, name: "Lenda",         minXp: 10000, icon: "👑" },
 ];
 
 export function getLevel(xp: number) {
@@ -26,81 +35,203 @@ export function getLevel(xp: number) {
   return { ...current, xp, nextLevel, progressToNext };
 }
 
-// --- MEDALS ---
-export const MEDAL_DEFS: Record<string, { name: string; description: string; icon: string }> = {
-  first_task: { name: "Primeira Tarefa", description: "Concluiu a primeira tarefa", icon: "🎯" },
-  five_tasks: { name: "Cinco Estrelas", description: "Concluiu 5 tarefas", icon: "⭐" },
-  ten_tasks: { name: "Veterano", description: "Concluiu 10 tarefas", icon: "🎖️" },
-  twenty_five_tasks: { name: "Máquina", description: "Concluiu 25 tarefas", icon: "🤖" },
-  first_approval: { name: "Primeiro Selo", description: "Primeira aprovação como líder/gestor", icon: "✅" },
-  ten_approvals: { name: "Guardião", description: "10 aprovações realizadas", icon: "🛡️" },
-  time_warrior: { name: "Guerreiro do Tempo", description: "Registrou mais de 10 horas", icon: "⏱️" },
-  speed_demon: { name: "Veloz", description: "Concluiu 3 tarefas em um dia", icon: "🚀" },
-  team_player: { name: "Jogador de Equipe", description: "Comentou em 10 tarefas diferentes", icon: "🤝" },
+// ============================================================================
+// TI TEAM  (only these users appear in Ranking XP)
+// ============================================================================
+export const TI_TEAM: Record<string, { seedXp: number; note?: string }> = {
+  // Welder Silva Santos - 6 anos TI (seed: Especialista)
+  "f7c4a624-0f8f-432d-b7c0-047b36817670": { seedXp: 3600, note: "6 anos TI" },
+  // Angel Kauan - 2 anos (seed: Praticante)
+  "242acd59-00fb-478f-8d78-b25219798aa6": { seedXp: 1750, note: "2 anos TI" },
+  // Gabriel Anacleto - calculado por tarefas/chamados
+  "5bbd3dc1-985c-4ffd-a0c0-b4223faff98e": { seedXp: 0 },
+  // Sofia Nardes - calculado por tarefas concluídas
+  "2f71bd5e-c557-486e-aff8-0606cba4ebbb": { seedXp: 0 },
 };
+export const TI_TEAM_IDS = Object.keys(TI_TEAM);
 
-// --- HOOKS ---
+// XP values
+export const XP_PER_TASK = 1;
+export const XP_PER_AUTOMATION = 50;
+
+// ============================================================================
+// MEDALS  (monthly milestones)
+// ============================================================================
+// Rules:
+//  - 1 medal for every 30 completed tasks/chamados in the month
+//  - 1 medal for every completed automation in the month
+//  - Year total = sum of monthly medals in the current year
+export const MEDAL_PER_TASKS = 30;
+export const MEDAL_PER_AUTOMATION = 1;
+
+export const MEDAL_ICON = "🏅";
+
+// Kept for backward compatibility with existing imports (no longer used in UI).
+export const MEDAL_DEFS: Record<string, { name: string; description: string; icon: string }> = {};
+
+// ============================================================================
+// Shared data loaders
+// ============================================================================
+
+async function fetchUserActivity(userId: string) {
+  const [tasksRes, autosRes] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select("id, status, updated_at, title")
+      .eq("assigned_to", userId)
+      .eq("status", "done"),
+    supabase
+      .from("automations")
+      .select("id, status, updated_at, completed_at, title")
+      .eq("assigned_to", userId)
+      .eq("status", "completed"),
+  ]);
+  return {
+    tasks: tasksRes.data || [],
+    autos: autosRes.data || [],
+  };
+}
+
+function computeXp(tasksDone: number, autosDone: number, seedXp: number) {
+  return tasksDone * XP_PER_TASK + autosDone * XP_PER_AUTOMATION + seedXp;
+}
+
+interface MonthlyMedal {
+  key: string; // 'YYYY-MM'
+  label: string;
+  year: number;
+  month: number;
+  tasksDone: number;
+  autosDone: number;
+  taskMedals: number;
+  autoMedals: number;
+  total: number;
+  xp: number;
+}
+
+function buildMonthlyMedals(
+  tasks: { updated_at: string }[],
+  autos: { completed_at: string | null; updated_at: string }[],
+): MonthlyMedal[] {
+  const map = new Map<string, MonthlyMedal>();
+
+  const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  const monthLabel = (d: Date) =>
+    d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+
+  const ensure = (d: Date) => {
+    const k = monthKey(d);
+    if (!map.has(k)) {
+      map.set(k, {
+        key: k,
+        label: monthLabel(d),
+        year: d.getFullYear(),
+        month: d.getMonth() + 1,
+        tasksDone: 0,
+        autosDone: 0,
+        taskMedals: 0,
+        autoMedals: 0,
+        total: 0,
+        xp: 0,
+      });
+    }
+    return map.get(k)!;
+  };
+
+  tasks.forEach((t) => {
+    const d = new Date(t.updated_at);
+    if (Number.isNaN(d.getTime())) return;
+    const m = ensure(d);
+    m.tasksDone += 1;
+    m.xp += XP_PER_TASK;
+  });
+  autos.forEach((a) => {
+    const ts = a.completed_at || a.updated_at;
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return;
+    const m = ensure(d);
+    m.autosDone += 1;
+    m.xp += XP_PER_AUTOMATION;
+  });
+
+  map.forEach((m) => {
+    m.taskMedals = Math.floor(m.tasksDone / MEDAL_PER_TASKS);
+    m.autoMedals = m.autosDone * MEDAL_PER_AUTOMATION;
+    m.total = m.taskMedals + m.autoMedals;
+  });
+
+  return Array.from(map.values()).sort((a, b) => (a.key < b.key ? 1 : -1));
+}
+
+// ============================================================================
+// HOOKS
+// ============================================================================
 
 export interface RankingEntry {
   user_id: string;
   full_name: string;
   avatar_url: string | null;
   total_xp: number;
+  tasks_done: number;
+  automations_done: number;
+  seed_xp: number;
   level: ReturnType<typeof getLevel>;
-  medals: string[];
+  medals_year: number;
+  medals_month: number;
 }
 
 export function useRanking() {
   return useQuery({
-    queryKey: ["ranking"],
+    queryKey: ["ranking-ti", TI_TEAM_IDS.join(",")],
     queryFn: async () => {
-      // Fetch all XP logs
-      const { data: xpLogs, error } = await supabase
-        .from("xp_logs")
-        .select("user_id, xp_earned");
-      if (error) throw error;
+      const [profilesRes, tasksRes, autosRes] = await Promise.all([
+        supabase.from("profiles").select("id, full_name, avatar_url").in("id", TI_TEAM_IDS),
+        supabase
+          .from("tasks")
+          .select("assigned_to, status, updated_at")
+          .in("assigned_to", TI_TEAM_IDS)
+          .eq("status", "done"),
+        supabase
+          .from("automations")
+          .select("assigned_to, status, updated_at, completed_at")
+          .in("assigned_to", TI_TEAM_IDS)
+          .eq("status", "completed"),
+      ]);
 
-      // Aggregate XP per user
-      const xpMap: Record<string, number> = {};
-      xpLogs.forEach((log: any) => {
-        xpMap[log.user_id] = (xpMap[log.user_id] || 0) + log.xp_earned;
-      });
+      const profileMap = Object.fromEntries((profilesRes.data || []).map((p: any) => [p.id, p]));
+      const now = new Date();
+      const curY = now.getFullYear();
+      const curM = now.getMonth() + 1;
 
-      const userIds = Object.keys(xpMap);
-      if (userIds.length === 0) return [];
+      const entries: RankingEntry[] = TI_TEAM_IDS.map((uid) => {
+        const tasks = (tasksRes.data || []).filter((t: any) => t.assigned_to === uid);
+        const autos = (autosRes.data || []).filter((a: any) => a.assigned_to === uid);
+        const seed = TI_TEAM[uid].seedXp;
+        const xp = computeXp(tasks.length, autos.length, seed);
 
-      // Fetch profiles
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name, avatar_url")
-        .in("id", userIds);
+        const monthly = buildMonthlyMedals(tasks as any, autos as any);
+        const medalsYear = monthly
+          .filter((m) => m.year === curY)
+          .reduce((s, m) => s + m.total, 0);
+        const medalsMonth = monthly
+          .find((m) => m.year === curY && m.month === curM)?.total || 0;
 
-      // Fetch medals
-      const { data: medals } = await supabase
-        .from("user_medals")
-        .select("user_id, medal_key")
-        .in("user_id", userIds);
-
-      const medalsMap: Record<string, string[]> = {};
-      medals?.forEach((m: any) => {
-        if (!medalsMap[m.user_id]) medalsMap[m.user_id] = [];
-        medalsMap[m.user_id].push(m.medal_key);
-      });
-
-      const profilesMap = Object.fromEntries(
-        (profiles || []).map((p) => [p.id, p])
-      );
-
-      return userIds
-        .map((uid) => ({
+        const p = profileMap[uid];
+        return {
           user_id: uid,
-          full_name: profilesMap[uid]?.full_name || "Sem nome",
-          avatar_url: profilesMap[uid]?.avatar_url || null,
-          total_xp: xpMap[uid],
-          level: getLevel(xpMap[uid]),
-          medals: medalsMap[uid] || [],
-        }))
-        .sort((a, b) => b.total_xp - a.total_xp) as RankingEntry[];
+          full_name: p?.full_name || "Sem nome",
+          avatar_url: p?.avatar_url || null,
+          total_xp: xp,
+          tasks_done: tasks.length,
+          automations_done: autos.length,
+          seed_xp: seed,
+          level: getLevel(xp),
+          medals_year: medalsYear,
+          medals_month: medalsMonth,
+        };
+      });
+
+      return entries.sort((a, b) => b.total_xp - a.total_xp);
     },
   });
 }
@@ -108,78 +239,57 @@ export function useRanking() {
 export function useMyGamification() {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ["my-gamification", user?.id],
+    queryKey: ["my-gamification-v2", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data: xpLogs } = await supabase
-        .from("xp_logs")
-        .select("xp_earned, action, created_at")
-        .eq("user_id", user!.id)
-        .order("created_at", { ascending: false });
+      const uid = user!.id;
+      const { tasks, autos } = await fetchUserActivity(uid);
+      const seed = TI_TEAM[uid]?.seedXp || 0;
+      const totalXp = computeXp(tasks.length, autos.length, seed);
 
-      const totalXp = xpLogs?.reduce((s: number, l: any) => s + l.xp_earned, 0) || 0;
+      const monthly = buildMonthlyMedals(tasks as any, autos as any);
+      const now = new Date();
+      const curY = now.getFullYear();
+      const curM = now.getMonth() + 1;
+      const medalsYear = monthly.filter((m) => m.year === curY).reduce((s, m) => s + m.total, 0);
+      const currentMonth = monthly.find((m) => m.year === curY && m.month === curM);
 
-      const { data: medals } = await supabase
-        .from("user_medals")
-        .select("medal_key, awarded_at")
-        .eq("user_id", user!.id);
+      // Recent activity for the "XP recente" panel
+      const recent = [
+        ...tasks.map((t: any) => ({
+          ts: t.updated_at,
+          label: `Tarefa concluída: ${t.title || ""}`.trim(),
+          xp: XP_PER_TASK,
+        })),
+        ...autos.map((a: any) => ({
+          ts: a.completed_at || a.updated_at,
+          label: `Automação concluída: ${a.title || ""}`.trim(),
+          xp: XP_PER_AUTOMATION,
+        })),
+      ]
+        .sort((a, b) => +new Date(b.ts) - +new Date(a.ts))
+        .slice(0, 10);
 
       return {
         totalXp,
+        seedXp: seed,
+        tasksDone: tasks.length,
+        autosDone: autos.length,
         level: getLevel(totalXp),
-        medals: medals?.map((m: any) => m.medal_key) || [],
-        recentXp: xpLogs?.slice(0, 10) || [],
+        monthly,
+        medalsYear,
+        medalsMonth: currentMonth?.total || 0,
+        currentMonth,
+        recent,
       };
     },
   });
 }
 
 /**
- * Check and award medals for a user based on their current stats.
- * Call after XP-earning actions.
+ * Backwards-compatible stub. The new medal system computes medals on the fly
+ * from completed tasks/automations, so there is nothing to write here.
  */
-export async function checkAndAwardMedals(userId: string) {
-  try {
-    // Fetch user stats
-    const [tasksRes, approvalsRes, timeRes, commentsRes] = await Promise.all([
-      supabase.from("xp_logs").select("id").eq("user_id", userId).eq("action", "executed"),
-      supabase.from("xp_logs").select("id").eq("user_id", userId).in("action", ["approved_lider", "approved_gestor"]),
-      supabase.from("time_logs").select("duration_minutes").eq("user_id", userId),
-      supabase.from("comments").select("task_id").eq("user_id", userId),
-    ]);
-
-    const tasksDone = tasksRes.data?.length || 0;
-    const approvals = approvalsRes.data?.length || 0;
-    const totalMinutes = timeRes.data?.reduce((s: number, l: any) => s + l.duration_minutes, 0) || 0;
-    const uniqueCommentTasks = new Set(commentsRes.data?.map((c: any) => c.task_id)).size;
-
-    const earned: string[] = [];
-    if (tasksDone >= 1) earned.push("first_task");
-    if (tasksDone >= 5) earned.push("five_tasks");
-    if (tasksDone >= 10) earned.push("ten_tasks");
-    if (tasksDone >= 25) earned.push("twenty_five_tasks");
-    if (approvals >= 1) earned.push("first_approval");
-    if (approvals >= 10) earned.push("ten_approvals");
-    if (totalMinutes >= 600) earned.push("time_warrior");
-    if (uniqueCommentTasks >= 10) earned.push("team_player");
-
-    // Fetch existing medals
-    const { data: existing } = await supabase
-      .from("user_medals")
-      .select("medal_key")
-      .eq("user_id", userId);
-    const existingKeys = new Set(existing?.map((m: any) => m.medal_key));
-
-    const newMedals = earned.filter((k) => !existingKeys.has(k));
-    if (newMedals.length > 0) {
-      await supabase.from("user_medals").insert(
-        newMedals.map((key) => ({ user_id: userId, medal_key: key }))
-      );
-    }
-
-    return newMedals;
-  } catch (err) {
-    console.error("Medal check error:", err);
-    return [];
-  }
+export async function checkAndAwardMedals(_userId: string) {
+  return [];
 }
