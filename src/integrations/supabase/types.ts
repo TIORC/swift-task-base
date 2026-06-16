@@ -312,6 +312,7 @@ export type Database = {
           requester: string | null
           requester_department: string | null
           risk_level: string | null
+          sector: string | null
           spent_hours: number | null
           started_at: string | null
           status: string
@@ -345,6 +346,7 @@ export type Database = {
           requester?: string | null
           requester_department?: string | null
           risk_level?: string | null
+          sector?: string | null
           spent_hours?: number | null
           started_at?: string | null
           status?: string
@@ -378,6 +380,7 @@ export type Database = {
           requester?: string | null
           requester_department?: string | null
           risk_level?: string | null
+          sector?: string | null
           spent_hours?: number | null
           started_at?: string | null
           status?: string
@@ -1597,6 +1600,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sectors: {
+        Row: {
+          created_at: string
+          id: string
+          sector: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          sector: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          sector?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_social_roles: {
         Row: {
           created_at: string
@@ -1714,6 +1738,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_sector_access: {
+        Args: { _sector: string; _user_id: string }
+        Returns: boolean
+      }
       has_social_access: { Args: { _user_id: string }; Returns: boolean }
       has_social_role: {
         Args: {
@@ -1723,6 +1751,7 @@ export type Database = {
         Returns: boolean
       }
       user_client_ids: { Args: { _user_id: string }; Returns: string[] }
+      user_sector_codes: { Args: { _user_id: string }; Returns: string[] }
     }
     Enums: {
       app_role: "admin" | "member" | "dev" | "lider" | "gestor" | "suporte"

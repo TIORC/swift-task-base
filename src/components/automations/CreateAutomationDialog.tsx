@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-react";
 import { useCreateAutomation } from "@/hooks/useAutomationsData";
 import { PRIORITY_OPTIONS, PRIORITY_LABELS, COMPLEXITY_OPTIONS, COMPLEXITY_LABELS } from "@/types/automation";
+import { SECTORS } from "@/types/sectors";
 
 interface Props {
   profiles: { id: string; full_name: string | null }[];
@@ -30,6 +31,7 @@ export function CreateAutomationDialog({ profiles }: Props) {
     automation_type: "",
     estimated_hours: "",
     final_deadline: "",
+    sector: "",
   });
 
   const set = (key: string, value: string) => setForm(prev => ({ ...prev, [key]: value }));
@@ -49,10 +51,11 @@ export function CreateAutomationDialog({ profiles }: Props) {
       automation_type: form.automation_type || null,
       estimated_hours: parseFloat(form.estimated_hours) || 0,
       final_deadline: form.final_deadline ? new Date(form.final_deadline).toISOString() : null,
+      sector: form.sector || null,
     } as any, {
       onSuccess: () => {
         setOpen(false);
-        setForm({ title: "", description: "", objective: "", system_process: "", requester: "", requester_department: "", assigned_to: "", priority: "medium", complexity: "medium", automation_type: "", estimated_hours: "", final_deadline: "" });
+        setForm({ title: "", description: "", objective: "", system_process: "", requester: "", requester_department: "", assigned_to: "", priority: "medium", complexity: "medium", automation_type: "", estimated_hours: "", final_deadline: "", sector: "" });
       },
     });
   };
@@ -137,6 +140,15 @@ export function CreateAutomationDialog({ profiles }: Props) {
               <Label className="text-xs">Prazo Final</Label>
               <Input type="date" value={form.final_deadline} onChange={e => set("final_deadline", e.target.value)} className="h-9 mt-1" />
             </div>
+          </div>
+          <div>
+            <Label className="text-xs">Setor Vinculado</Label>
+            <Select value={form.sector} onValueChange={v => set("sector", v)}>
+              <SelectTrigger className="h-9 mt-1"><SelectValue placeholder="Selecionar setor" /></SelectTrigger>
+              <SelectContent>
+                {SECTORS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           <Button onClick={handleSubmit} className="w-full" disabled={!form.title.trim() || createAutomation.isPending}>
             Criar Automação
