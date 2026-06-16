@@ -17,6 +17,7 @@ import {
   RISK_LABELS, BLOCKER_TYPES, BLOCKER_TYPE_LABELS, DEFAULT_SUBTASKS,
   computeHealthScore, computePrediction, AutomationStatus,
 } from "@/types/automation";
+import { SECTORS } from "@/types/sectors";
 import { useUpdateAutomation } from "@/hooks/useAutomationsData";
 import { useAutomationSubtasks, useCreateSubtask, useUpdateSubtask, useDeleteSubtask } from "@/hooks/useAutomationsData";
 import { useAutomationBlockers, useCreateBlocker, useResolveBlocker } from "@/hooks/useAutomationsData";
@@ -207,7 +208,23 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                         </SelectContent>
                       </Select>
                     </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Setor Vinculado</label>
+                      <Select
+                        value={a.sector || "none"}
+                        onValueChange={(v) => handleUpdate({ sector: v === "none" ? null : v } as any)}
+                      >
+                        <SelectTrigger className="h-8 mt-1"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sem setor</SelectItem>
+                          {SECTORS.map((s) => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
+
 
                   <div>
                     <label className="text-xs font-medium text-muted-foreground">Progresso: {a.progress_percent}%</label>
