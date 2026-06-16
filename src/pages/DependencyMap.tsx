@@ -182,7 +182,7 @@ function AutomationsMap() {
     return automations.map((a) => {
       const p = posMap.get(a.id)!;
       const color = automationStatusColors[a.status] ?? "#6b7280";
-      const sector = a.sector ? SECTORS.find((s) => s.code === a.sector) : null;
+      const sectorLabel = a.sector ? SECTOR_LABELS[a.sector] : null;
       return {
         id: a.id,
         position: { x: p.x, y: p.y },
@@ -192,7 +192,7 @@ function AutomationsMap() {
               <div className="font-medium text-xs leading-tight">{a.title}</div>
               <div className="flex gap-1 items-center text-[10px] opacity-80">
                 <span>{A_LABELS[a.status]}</span>
-                {sector && <span>· {sector.label}</span>}
+                {sectorLabel && <span>· {sectorLabel}</span>}
               </div>
             </div>
           ),
