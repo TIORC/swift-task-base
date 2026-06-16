@@ -1,117 +1,314 @@
+import { useMemo, useCallback } from "react";
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  MiniMap,
+  type Node,
+  type Edge,
+  type Connection,
+  addEdge,
+  useNodesState,
+  useEdgesState,
+  MarkerType,
+  Panel,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+
 import { useTasks, COLUMNS } from "@/hooks/useTasks";
-import { useAllDependencies } from "@/hooks/useDependencies";
-import { Loader2, GitBranch } from "lucide-react";
+import { useAllDependencies, useAddDependency, useRemoveDependency } from "@/hooks/useDependencies";
+import { useAutomations } from "@/hooks/useAutomationsData";
+import {
+  useAllAutomationDependencies,
+  useAddAutomationDependency,
+  useRemoveAutomationDependency,
+} from "@/hooks/useAutomationDependencies";
+import { STATUS_LABELS as A_LABELS } from "@/types/automation";
+import { SECTORS } from "@/types/sectors";
+import { GitBranch, Loader2, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
-import { useMemo, useRef, useEffect, useState } from "react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useTheme } from "next-themes";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
-const statusColors: Record<string, string> = {
-  backlog: "hsl(220 9% 46%)",
-  pending: "hsl(38 92% 50%)",
-  in_progress: "hsl(230 80% 60%)",
-  review: "hsl(280 67% 60%)",
-  done: "hsl(152 69% 40%)",
-  discarded: "hsl(0 72% 51%)",
-  todo: "hsl(220 9% 46%)",
+// ─── Layout helper ────────────────────────────────────────────────────────────
+function gridLayout<T extends { id: string }>(items: T[], columnsCount = 4) {
+  const colW = 280;
+  const rowH = 130;
+  return items.map((it, i) => ({
+    id: it.id,
+    x: (i % columnsCount) * colW,
+    y: Math.floor(i / columnsCount) * rowH,
+  }));
+}
+
+const taskStatusColors: Record<string, string> = {
+  backlog: "#6b7280",
+  pending: "#f59e0b",
+  in_progress: "#3b82f6",
+  review: "#a855f7",
+  done: "#10b981",
+  discarded: "#ef4444",
+  todo: "#6b7280",
 };
 
-const statusLabels = Object.fromEntries(COLUMNS.map((c) => [c.status, c.title]));
+const automationStatusColors: Record<string, string> = {
+  backlog: "#6b7280",
+  analysis: "#3b82f6",
+  development: "#6366f1",
+  internal_testing: "#f59e0b",
+  homologation: "#a855f7",
+  waiting_user: "#fb923c",
+  completed: "#10b981",
+  blocked: "#ef4444",
+  cancelled: "#6b7280",
+};
 
-interface NodePos { id: string; x: number; y: number; title: string; status: string; }
+// ─── Tasks Map ────────────────────────────────────────────────────────────────
+function TasksMap() {
+  const { data: tasks, isLoading: lT } = useTasks();
+  const { data: deps, isLoading: lD } = useAllDependencies();
+  const addDep = useAddDependency();
+  const removeDep = useRemoveDependency();
 
-const DependencyMap = () => {
-  const { data: tasks, isLoading: loadingTasks } = useTasks();
-  const { data: deps, isLoading: loadingDeps } = useAllDependencies();
-  const { resolvedTheme } = useTheme();
-  const svgRef = useRef<SVGSVGElement>(null);
-  const [dimensions, setDimensions] = useState({ w: 900, h: 600 });
-
-  const isDark = resolvedTheme === "dark";
-  const textColor = isDark ? "hsl(213 31% 91%)" : "hsl(220 13% 13%)";
-  const mutedColor = isDark ? "hsl(215 20% 55%)" : "hsl(220 9% 46%)";
-
-  useEffect(() => {
-    const updateSize = () => {
-      const container = svgRef.current?.parentElement;
-      if (container) setDimensions({ w: container.clientWidth, h: Math.max(500, container.clientHeight) });
-    };
-    updateSize();
-    window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
-  }, []);
-
-  const { nodes, edges } = useMemo(() => {
-    if (!tasks || !deps) return { nodes: [], edges: [] };
-    const taskIds = new Set(deps.flatMap((d) => [d.task_id, d.depends_on_task_id]));
-    const relevantTasks = tasks.filter((t) => taskIds.has(t.id));
-    if (relevantTasks.length === 0) return { nodes: [], edges: [] };
-
-    const statusOrder = COLUMNS.map((c) => c.status);
-    const grouped: Record<string, typeof relevantTasks> = {};
-    relevantTasks.forEach((t) => { if (!grouped[t.status]) grouped[t.status] = []; grouped[t.status].push(t); });
-
-    const colWidth = dimensions.w / (statusOrder.length + 1);
-    const nodePositions: NodePos[] = [];
-    statusOrder.forEach((status, colIdx) => {
-      const group = grouped[status] || [];
-      const rowHeight = dimensions.h / (group.length + 1);
-      group.forEach((t, rowIdx) => {
-        nodePositions.push({
-          id: t.id, x: colWidth * (colIdx + 0.5), y: rowHeight * (rowIdx + 1),
-          title: t.title.length > 25 ? t.title.slice(0, 22) + "..." : t.title, status: t.status,
-        });
-      });
+  const initialNodes = useMemo<Node[]>(() => {
+    if (!tasks) return [];
+    const positions = gridLayout(tasks);
+    const posMap = new Map(positions.map((p) => [p.id, p]));
+    return tasks.map((t) => {
+      const p = posMap.get(t.id)!;
+      const color = taskStatusColors[t.status] ?? "#6b7280";
+      return {
+        id: t.id,
+        position: { x: p.x, y: p.y },
+        data: { label: t.title },
+        style: {
+          background: "hsl(var(--card))",
+          color: "hsl(var(--card-foreground))",
+          border: `2px solid ${color}`,
+          borderRadius: 12,
+          padding: 10,
+          width: 240,
+          fontSize: 12,
+        },
+      } as Node;
     });
+  }, [tasks]);
 
-    const nodeMap = new Map(nodePositions.map((n) => [n.id, n]));
-    const edgeList = deps.map((d) => ({ from: nodeMap.get(d.depends_on_task_id), to: nodeMap.get(d.task_id) }))
-      .filter((e) => e.from && e.to) as { from: NodePos; to: NodePos }[];
-    return { nodes: nodePositions, edges: edgeList };
-  }, [tasks, deps, dimensions]);
+  const initialEdges = useMemo<Edge[]>(() => {
+    if (!deps) return [];
+    return deps.map((d) => ({
+      id: d.id,
+      source: d.depends_on_task_id,
+      target: d.task_id,
+      animated: true,
+      markerEnd: { type: MarkerType.ArrowClosed },
+      style: { stroke: "#3b82f6", strokeWidth: 2 },
+    }));
+  }, [deps]);
 
-  if (loadingTasks || loadingDeps) {
-    return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  useEffect(() => setNodes(initialNodes), [initialNodes, setNodes]);
+  useEffect(() => setEdges(initialEdges), [initialEdges, setEdges]);
+
+  const onConnect = useCallback(
+    (c: Connection) => {
+      if (!c.source || !c.target || c.source === c.target) return;
+      addDep.mutate({ taskId: c.target, dependsOnTaskId: c.source });
+      setEdges((eds) => addEdge({ ...c, animated: true, markerEnd: { type: MarkerType.ArrowClosed } }, eds));
+    },
+    [addDep, setEdges]
+  );
+
+  const onEdgeClick = useCallback(
+    (_: any, edge: Edge) => {
+      if (confirm("Remover este vínculo de dependência?")) {
+        removeDep.mutate(edge.id);
+      }
+    },
+    [removeDep]
+  );
+
+  if (lT || lD) {
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!tasks?.length) {
+    return <EmptyState icon={GitBranch} title="Sem tarefas" description="Crie tarefas para visualizar dependências." />;
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Mapa de Dependências" description="Visualize as conexões entre tarefas." icon={<GitBranch className="h-5 w-5" />} />
+    <div className="h-[calc(100vh-260px)] min-h-[500px] rounded-xl border border-border bg-card overflow-hidden">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onEdgeClick={onEdgeClick}
+        fitView
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background gap={16} />
+        <Controls />
+        <MiniMap pannable zoomable />
+        <Panel position="top-right" className="text-xs bg-card/90 backdrop-blur px-3 py-2 rounded-md border border-border">
+          Arraste de uma tarefa para outra para criar vínculo. Clique em uma linha para remover.
+        </Panel>
+      </ReactFlow>
+    </div>
+  );
+}
 
-      <div className="flex flex-wrap gap-3">
-        {COLUMNS.map((c) => (
-          <div key={c.status} className="flex items-center gap-1.5 text-xs">
-            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: statusColors[c.status] }} />
-            <span className="text-muted-foreground">{c.title}</span>
-          </div>
-        ))}
+// ─── Automations Map ──────────────────────────────────────────────────────────
+function AutomationsMap() {
+  const { data: automations, isLoading: lA } = useAutomations();
+  const { data: deps, isLoading: lD } = useAllAutomationDependencies();
+  const addDep = useAddAutomationDependency();
+  const removeDep = useRemoveAutomationDependency();
+
+  const initialNodes = useMemo<Node[]>(() => {
+    if (!automations) return [];
+    const positions = gridLayout(automations);
+    const posMap = new Map(positions.map((p) => [p.id, p]));
+    return automations.map((a) => {
+      const p = posMap.get(a.id)!;
+      const color = automationStatusColors[a.status] ?? "#6b7280";
+      const sector = a.sector ? SECTORS.find((s) => s.code === a.sector) : null;
+      return {
+        id: a.id,
+        position: { x: p.x, y: p.y },
+        data: {
+          label: (
+            <div className="space-y-1">
+              <div className="font-medium text-xs leading-tight">{a.title}</div>
+              <div className="flex gap-1 items-center text-[10px] opacity-80">
+                <span>{A_LABELS[a.status]}</span>
+                {sector && <span>· {sector.label}</span>}
+              </div>
+            </div>
+          ),
+        },
+        style: {
+          background: "hsl(var(--card))",
+          color: "hsl(var(--card-foreground))",
+          border: `2px solid ${color}`,
+          borderRadius: 12,
+          padding: 10,
+          width: 240,
+        },
+      } as Node;
+    });
+  }, [automations]);
+
+  const initialEdges = useMemo<Edge[]>(() => {
+    if (!deps) return [];
+    const colorByRelation: Record<string, string> = {
+      depends_on: "#3b82f6",
+      blocks: "#ef4444",
+      related: "#a855f7",
+    };
+    return deps.map((d) => ({
+      id: d.id,
+      source: d.depends_on_automation_id,
+      target: d.automation_id,
+      animated: true,
+      markerEnd: { type: MarkerType.ArrowClosed },
+      style: { stroke: colorByRelation[d.relation_type] ?? "#3b82f6", strokeWidth: 2 },
+      label: d.relation_type === "blocks" ? "bloqueia" : d.relation_type === "related" ? "relacionada" : "depende",
+      labelBgStyle: { fill: "hsl(var(--card))" },
+      labelStyle: { fontSize: 10 },
+    }));
+  }, [deps]);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  useEffect(() => setNodes(initialNodes), [initialNodes, setNodes]);
+  useEffect(() => setEdges(initialEdges), [initialEdges, setEdges]);
+
+  const onConnect = useCallback(
+    (c: Connection) => {
+      if (!c.source || !c.target || c.source === c.target) return;
+      addDep.mutate({ automationId: c.target, dependsOnAutomationId: c.source });
+    },
+    [addDep]
+  );
+
+  const onEdgeClick = useCallback(
+    (_: any, edge: Edge) => {
+      if (confirm("Remover este vínculo de dependência?")) removeDep.mutate(edge.id);
+    },
+    [removeDep]
+  );
+
+  if (lA || lD) {
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
+    );
+  }
 
-      {nodes.length === 0 ? (
-        <EmptyState icon={GitBranch} title="Nenhuma dependência" description="Adicione dependências nos detalhes de uma tarefa." />
-      ) : (
-        <div className="rounded-xl border border-border bg-card overflow-hidden shadow-card">
-          <svg ref={svgRef} width={dimensions.w} height={dimensions.h} className="w-full">
-            <defs>
-              <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-                <polygon points="0 0, 10 3.5, 0 7" fill="hsl(230 80% 60%)" opacity="0.6" />
-              </marker>
-            </defs>
-            {edges.map((e, i) => (
-              <line key={i} x1={e.from.x} y1={e.from.y} x2={e.to.x} y2={e.to.y}
-                stroke="hsl(230 80% 60%)" strokeWidth="2" strokeOpacity="0.3" markerEnd="url(#arrowhead)" />
-            ))}
-            {nodes.map((n) => (
-              <g key={n.id}>
-                <circle cx={n.x} cy={n.y} r="28" fill={statusColors[n.status]} opacity="0.15" stroke={statusColors[n.status]} strokeWidth="2" />
-                <circle cx={n.x} cy={n.y} r="6" fill={statusColors[n.status]} />
-                <text x={n.x} y={n.y + 42} textAnchor="middle" fill={textColor} fontSize="11" fontWeight="500">{n.title}</text>
-                <text x={n.x} y={n.y + 56} textAnchor="middle" fill={mutedColor} fontSize="9">{statusLabels[n.status]}</text>
-              </g>
-            ))}
-          </svg>
-        </div>
-      )}
+  if (!automations?.length) {
+    return <EmptyState icon={GitBranch} title="Sem automações" description="Crie automações para visualizar dependências." />;
+  }
+
+  return (
+    <div className="h-[calc(100vh-260px)] min-h-[500px] rounded-xl border border-border bg-card overflow-hidden">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onEdgeClick={onEdgeClick}
+        fitView
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background gap={16} />
+        <Controls />
+        <MiniMap pannable zoomable />
+        <Panel position="top-right" className="text-xs bg-card/90 backdrop-blur px-3 py-2 rounded-md border border-border max-w-[280px]">
+          Arraste de uma automação a outra para vincular. Cores: azul=depende, vermelho=bloqueia, roxo=relacionada. Clique numa linha para remover.
+        </Panel>
+      </ReactFlow>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+const DependencyMap = () => {
+  const { resolvedTheme } = useTheme();
+  // react-flow theme via CSS class on root
+  return (
+    <div className={`space-y-4 ${resolvedTheme === "dark" ? "dark" : ""}`}>
+      <PageHeader
+        title="Mapa de Dependências"
+        description="Visualize e gerencie vínculos entre tarefas e entre automações."
+        icon={<GitBranch className="h-5 w-5" />}
+      />
+
+      <Tabs defaultValue="tasks" className="w-full">
+        <TabsList>
+          <TabsTrigger value="tasks">Tarefas</TabsTrigger>
+          <TabsTrigger value="automations">Automações</TabsTrigger>
+        </TabsList>
+        <TabsContent value="tasks" className="mt-4">
+          <TasksMap />
+        </TabsContent>
+        <TabsContent value="automations" className="mt-4">
+          <AutomationsMap />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
