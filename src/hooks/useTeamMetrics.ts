@@ -63,7 +63,7 @@ export function useTeamMetrics() {
         const u = ensureUser(t.assignee_id);
         if (!u) return;
         u.tasks_total += 1;
-        if (t.status === "concluido") u.tasks_done += 1;
+        if (t.status === "done") u.tasks_done += 1;
       });
 
       (autosRes.data || []).forEach((a: any) => {
