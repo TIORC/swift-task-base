@@ -91,6 +91,104 @@ const Ranking = () => {
           )}
         </TabsContent>
 
+        <TabsContent value="team" className="space-y-4">
+          {teamLoading || !team ? (
+            <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          ) : (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <Card className="shadow-card"><CardContent className="py-4 px-5"><div className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-emerald-500" /><div><p className="text-xs text-muted-foreground">Tarefas concluídas</p><p className="text-xl font-bold">{team.totals.tasks_done}<span className="text-xs text-muted-foreground font-normal"> / {team.totals.tasks}</span></p></div></div></CardContent></Card>
+                <Card className="shadow-card"><CardContent className="py-4 px-5"><div className="flex items-center gap-3"><Bot className="h-5 w-5 text-indigo-500" /><div><p className="text-xs text-muted-foreground">Automações concluídas</p><p className="text-xl font-bold">{team.totals.automations_done}<span className="text-xs text-muted-foreground font-normal"> / {team.totals.automations}</span></p></div></div></CardContent></Card>
+                <Card className="shadow-card"><CardContent className="py-4 px-5"><div className="flex items-center gap-3"><Clock className="h-5 w-5 text-amber-500" /><div><p className="text-xs text-muted-foreground">Horas trabalhadas</p><p className="text-xl font-bold">{fmtH(team.totals.minutes)}</p></div></div></CardContent></Card>
+                <Card className="shadow-card"><CardContent className="py-4 px-5"><div className="flex items-center gap-3"><Users className="h-5 w-5 text-primary" /><div><p className="text-xs text-muted-foreground">Pessoas ativas</p><p className="text-xl font-bold">{team.users.length}</p></div></div></CardContent></Card>
+              </div>
+
+              <Card className="shadow-card">
+                <CardHeader className="pb-2"><CardTitle className="text-sm">Ranking por atividade</CardTitle></CardHeader>
+                <CardContent className="p-0">
+                  {team.users.length === 0 ? (
+                    <EmptyState icon={Users} title="Sem atividade registrada" />
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-10">#</TableHead>
+                          <TableHead>Pessoa</TableHead>
+                          <TableHead className="text-center">Tarefas</TableHead>
+                          <TableHead className="text-center">Automações</TableHead>
+                          <TableHead className="text-center">Horas</TableHead>
+                          <TableHead className="text-center">Comentários</TableHead>
+                          <TableHead className="text-right">Conclusão</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {team.users.map((u, i) => {
+                          const initials = u.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+                          return (
+                            <TableRow key={u.user_id}>
+                              <TableCell className="font-bold text-muted-foreground">{i + 1}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-7 w-7"><AvatarFallback className="bg-primary/10 text-primary text-xs">{initials}</AvatarFallback></Avatar>
+                                  <span className="text-sm font-medium">{u.full_name}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center text-sm">{u.tasks_done}<span className="text-muted-foreground">/{u.tasks_total}</span></TableCell>
+                              <TableCell className="text-center text-sm">{u.automations_done}<span className="text-muted-foreground">/{u.automations_total}</span></TableCell>
+                              <TableCell className="text-center text-sm">{fmtH(u.minutes)}</TableCell>
+                              <TableCell className="text-center text-sm">{u.comments}</TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center gap-2 justify-end">
+                                  <Progress value={u.completion_rate} className="h-1.5 w-20" />
+                                  <span className="text-xs text-muted-foreground w-8">{u.completion_rate}%</span>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="sectors" className="space-y-3">
+          {teamLoading || !team ? (
+            <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          ) : team.sectors.length === 0 ? (
+            <Card className="shadow-card"><CardContent className="p-0"><EmptyState icon={Building2} title="Nenhuma automação por setor" /></CardContent></Card>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {team.sectors.map((s) => (
+                <Card key={s.sector} className="shadow-card">
+                  <CardContent className="py-4 px-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className={SECTOR_COLORS[s.sector] || ""}>{SECTOR_LABELS[s.sector] || s.sector}</Badge>
+                      <span className="text-xs text-muted-foreground">{fmtH(s.minutes)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Progress value={s.completion_rate} className="h-2 flex-1" />
+                      <span className="text-xs font-semibold w-10 text-right">{s.completion_rate}%</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 text-center">
+                      <div><p className="text-lg font-bold text-emerald-500">{s.done}</p><p className="text-[10px] text-muted-foreground">Concluídas</p></div>
+                      <div><p className="text-lg font-bold text-blue-500">{s.in_progress}</p><p className="text-[10px] text-muted-foreground">Em andamento</p></div>
+                      <div><p className="text-lg font-bold text-purple-500">{s.pending}</p><p className="text-[10px] text-muted-foreground">Pendentes</p></div>
+                      <div><p className="text-lg font-bold text-red-500">{s.blocked}</p><p className="text-[10px] text-muted-foreground">Bloqueadas</p></div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground text-right">Total: {s.total}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+
+
         <TabsContent value="me" className="space-y-4">
           {myData ? (
             <>
