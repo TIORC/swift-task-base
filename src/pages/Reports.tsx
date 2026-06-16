@@ -416,7 +416,17 @@ const Reports = () => {
 
   return (
     <div className="space-y-6 max-w-7xl">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <Tabs defaultValue="tasks" className="space-y-6">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <TabsList className="bg-muted/50 p-1 rounded-xl">
+            <TabsTrigger value="tasks" className="rounded-lg"><Activity className="h-4 w-4 mr-1.5" />Tarefas</TabsTrigger>
+            <TabsTrigger value="automations" className="rounded-lg"><Bot className="h-4 w-4 mr-1.5" />Automações</TabsTrigger>
+            <TabsTrigger value="support" className="rounded-lg"><LifeBuoy className="h-4 w-4 mr-1.5" />Chamados</TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="tasks" className="space-y-6 mt-0">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
         <PageHeader
           title="Relatórios"
           description="Análise detalhada de produtividade e execução"
