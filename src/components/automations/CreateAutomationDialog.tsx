@@ -37,7 +37,7 @@ export function CreateAutomationDialog({ profiles }: Props) {
   const set = (key: string, value: string) => setForm(prev => ({ ...prev, [key]: value }));
 
   const handleSubmit = () => {
-    if (!form.title.trim()) return;
+    if (!form.title.trim() || !form.sector) return;
     createAutomation.mutate({
       title: form.title,
       description: form.description || null,
@@ -51,7 +51,7 @@ export function CreateAutomationDialog({ profiles }: Props) {
       automation_type: form.automation_type || null,
       estimated_hours: parseFloat(form.estimated_hours) || 0,
       final_deadline: form.final_deadline ? new Date(form.final_deadline).toISOString() : null,
-      sector: form.sector || null,
+      sector: form.sector,
     } as any, {
       onSuccess: () => {
         setOpen(false);
@@ -142,15 +142,16 @@ export function CreateAutomationDialog({ profiles }: Props) {
             </div>
           </div>
           <div>
-            <Label className="text-xs">Setor Vinculado</Label>
+            <Label className="text-xs">Setor Vinculado *</Label>
             <Select value={form.sector} onValueChange={v => set("sector", v)}>
               <SelectTrigger className="h-9 mt-1"><SelectValue placeholder="Selecionar setor" /></SelectTrigger>
               <SelectContent>
                 {SECTORS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
+            <p className="text-[10px] text-muted-foreground mt-1">Define quais usuários podem visualizar esta automação.</p>
           </div>
-          <Button onClick={handleSubmit} className="w-full" disabled={!form.title.trim() || createAutomation.isPending}>
+          <Button onClick={handleSubmit} className="w-full" disabled={!form.title.trim() || !form.sector || createAutomation.isPending}>
             Criar Automação
           </Button>
         </div>
