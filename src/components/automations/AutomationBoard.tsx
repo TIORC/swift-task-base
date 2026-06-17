@@ -79,7 +79,7 @@ export function AutomationBoard({ automations, onSelect, profileMap, blockerCoun
       {viewMode === "board" ? (
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="overflow-x-auto pb-4">
-            <div className="flex gap-3" style={{ minWidth: `${BOARD_COLUMNS.length * 320}px` }}>
+            <div className="flex gap-3" style={{ minWidth: `${BOARD_COLUMNS.length * 260}px` }}>
               {BOARD_COLUMNS.map(col => {
                 const items = automations.filter(a => a.status === col);
                 return (
@@ -88,7 +88,7 @@ export function AutomationBoard({ automations, onSelect, profileMap, blockerCoun
                       <div
                         ref={provided.innerRef}
                         {...provided.droppableProps}
-                        className={`flex-shrink-0 w-[310px] rounded-lg transition-colors ${snapshot.isDraggingOver ? "bg-primary/5" : ""}`}
+                        className={`flex-1 min-w-[260px] rounded-lg transition-colors ${snapshot.isDraggingOver ? "bg-primary/5" : ""}`}
                       >
                         <div className="flex items-center justify-between mb-2 px-1 gap-1">
                           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider truncate">
