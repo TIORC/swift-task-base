@@ -43,11 +43,10 @@ export default function AutomacoesPage() {
     return m;
   }, [profiles]);
 
-  // Aplica visibilidade por setor: privileged/TI vê tudo; demais só vêem seus setores (e itens sem setor ficam ocultos)
+  // Aplica visibilidade por setor: privileged/TI vê tudo; demais vêem itens dos seus setores e itens sem setor (globais)
   const visibleAutomations = useMemo(() => {
     if (canSeeAll) return automations;
-    if (allowedSectors.length === 0) return [];
-    return automations.filter((a) => a.sector && allowedSectors.includes(a.sector));
+    return automations.filter((a) => !a.sector || allowedSectors.includes(a.sector));
   }, [automations, canSeeAll, allowedSectors]);
 
   const filtered = useMemo(() => {
