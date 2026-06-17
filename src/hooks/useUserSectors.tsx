@@ -70,9 +70,7 @@ export function useSetUserSectors() {
 export function useSectorVisibility() {
   const { profile } = useUserRole();
   const { data: mySectors = [], isLoading } = useMySectors();
-  const isPrivileged = profile === "admin" || profile === "gestor";
-  const hasTI = mySectors.includes("TI");
-  const canSeeAll = isPrivileged || hasTI;
+  const canSeeAll = profile === "admin" || profile === "gestor";
   return {
     canSeeAll,
     allowedSectors: mySectors,

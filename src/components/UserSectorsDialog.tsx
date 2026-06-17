@@ -70,8 +70,8 @@ export function UserSectorsDialog({ open, onOpenChange, userId, userEmail }: Pro
         )}
 
         <p className="text-[11px] text-muted-foreground">
-          Usuários com setor <strong>TI</strong> visualizam todas as automações.
-          Admin e Gestor sempre visualizam todas.
+          O usuário visualizará apenas automações dos setores marcados acima.
+          <strong> Admin</strong> e <strong>Gestor</strong> visualizam todas.
         </p>
 
         <DialogFooter>

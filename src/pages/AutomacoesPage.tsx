@@ -46,7 +46,7 @@ export default function AutomacoesPage() {
   // Aplica visibilidade por setor: privileged/TI vê tudo; demais vêem itens dos seus setores e itens sem setor (globais)
   const visibleAutomations = useMemo(() => {
     if (canSeeAll) return automations;
-    return automations.filter((a) => !a.sector || allowedSectors.includes(a.sector));
+    return automations.filter((a) => a.sector && allowedSectors.includes(a.sector));
   }, [automations, canSeeAll, allowedSectors]);
 
   const filtered = useMemo(() => {
