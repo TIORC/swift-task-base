@@ -83,7 +83,7 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
     <div
       onClick={onClick}
       className={`
-        group p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md overflow-hidden
+        group h-auto p-3 pb-4 rounded-lg border cursor-pointer transition-all hover:shadow-md overflow-visible
         ${isBlocked ? "border-red-500/40 bg-red-500/5"
           : isTimerOnThis ? "border-primary/40 bg-primary/5"
           : "border-border hover:border-primary/30 bg-card"}
@@ -91,7 +91,7 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
     >
       {/* Title */}
       <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
-        <h4 className="text-sm font-medium text-foreground line-clamp-2 leading-snug flex-1 min-w-0 break-words">
+        <h4 className="text-sm font-medium text-foreground leading-snug flex-1 min-w-0 break-words whitespace-normal">
           {a.title}
         </h4>
         {isBlocked && <Lock className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />}
@@ -128,7 +128,7 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
         <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1 gap-2">
           <div className="flex items-center gap-1 min-w-0">
             <ListTodo className="h-3 w-3 shrink-0" />
-            <span className="truncate">
+            <span className="break-words whitespace-normal">
               {step ? step.title : "Sem etapas"}
             </span>
           </div>
@@ -168,7 +168,7 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
             {formatDistanceToNow(new Date(lastActivity.ts), { addSuffix: true, locale: ptBR })}
           </span>
           {lastEvent && lastEventAuthor && (
-            <span className="block truncate">
+            <span className="block break-words whitespace-normal">
               <span className="font-medium text-foreground/70">{lastEventAuthor}</span>{" "}
               {eventLabel(lastEvent.event_type)}
               {lastEvent.description ? `: ${lastEvent.description}` : ""}
@@ -185,16 +185,16 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
             {lastCommentAuthor && (
               <span className="font-medium text-foreground/70">{lastCommentAuthor}: </span>
             )}
-            <span className="line-clamp-1">{lastComment.content}</span>
+            <span className="break-words whitespace-normal">{lastComment.content}</span>
           </div>
         </div>
       )}
 
       {/* Footer: responsável + previsão de entrega */}
-      <div className="flex items-center justify-between text-[10px] text-muted-foreground gap-2 pt-1.5 border-t border-border/40">
-        <div className="flex items-center gap-1 min-w-0">
+      <div className="flex flex-wrap items-start justify-between text-[10px] text-muted-foreground gap-2 pt-1.5 border-t border-border/40">
+        <div className="flex items-start gap-1 min-w-0 flex-1">
           <User className="h-3 w-3 shrink-0" />
-          <span className="truncate max-w-[110px]">{profileName || "Não atribuído"}</span>
+          <span className="break-words whitespace-normal">{profileName || "Não atribuído"}</span>
         </div>
         {a.final_deadline && (
           <div className="flex items-center gap-1 shrink-0">
