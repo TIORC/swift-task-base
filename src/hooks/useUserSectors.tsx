@@ -4,6 +4,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { toast } from "sonner";
 
+const DEFAULT_SECTOR_WHEN_UNASSIGNED = "TI";
+
 /** Setores do usuário atual */
 export function useMySectors() {
   const { user } = useAuth();
@@ -71,9 +73,13 @@ export function useSectorVisibility() {
   const { profile } = useUserRole();
   const { data: mySectors = [], isLoading } = useMySectors();
   const canSeeAll = profile === "admin" || profile === "gestor";
+  const allowedSectors = canSeeAll || isLoading || mySectors.length > 0
+    ? mySectors
+    : [DEFAULT_SECTOR_WHEN_UNASSIGNED];
+
   return {
     canSeeAll,
-    allowedSectors: mySectors,
+    allowedSectors,
     ready: !isLoading,
   };
 }
