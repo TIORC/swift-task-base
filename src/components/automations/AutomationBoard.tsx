@@ -79,10 +79,7 @@ export function AutomationBoard({ automations, onSelect, profileMap, blockerCoun
       {viewMode === "board" ? (
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="overflow-x-auto pb-4">
-            <div
-              className="grid gap-2"
-              style={{ gridTemplateColumns: `repeat(${BOARD_COLUMNS.length}, minmax(200px, 1fr))` }}
-            >
+            <div className="flex gap-3" style={{ minWidth: `${BOARD_COLUMNS.length * 320}px` }}>
               {BOARD_COLUMNS.map(col => {
                 const items = automations.filter(a => a.status === col);
                 return (
@@ -91,10 +88,10 @@ export function AutomationBoard({ automations, onSelect, profileMap, blockerCoun
                       <div
                         ref={provided.innerRef}
                         {...provided.droppableProps}
-                        className={`min-w-0 rounded-lg transition-colors ${snapshot.isDraggingOver ? "bg-primary/5" : ""}`}
+                        className={`flex-shrink-0 w-[310px] rounded-lg transition-colors ${snapshot.isDraggingOver ? "bg-primary/5" : ""}`}
                       >
                         <div className="flex items-center justify-between mb-2 px-1 gap-1">
-                          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
+                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider truncate">
                             {STATUS_LABELS[col]}
                           </span>
                           <Badge variant="secondary" className="text-[10px] h-5 shrink-0">{items.length}</Badge>
