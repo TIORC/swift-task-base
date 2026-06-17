@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -117,12 +117,12 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
   const totalTimeMinutes = timeLogs.reduce((sum, l) => sum + l.duration_minutes, 0);
 
   return (
-    <Sheet open={open} onOpenChange={v => !v && onClose()}>
-      <SheetContent className="w-full sm:max-w-[540px] p-0 flex flex-col">
-        <SheetHeader className="p-4 pb-2">
-          <div className="flex items-start justify-between gap-2">
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="w-[95vw] sm:max-w-3xl max-h-[90vh] p-0 flex flex-col gap-0">
+        <DialogHeader className="p-4 pb-2">
+          <div className="flex items-start justify-between gap-2 pr-6">
             <div className="min-w-0">
-              <SheetTitle className="text-lg leading-snug">{a.title}</SheetTitle>
+              <DialogTitle className="text-lg leading-snug">{a.title}</DialogTitle>
               {a.requester_department && (
                 <p className="text-xs text-muted-foreground mt-0.5">{a.requester} • {a.requester_department}</p>
               )}
@@ -140,7 +140,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
             <span className="text-xs text-muted-foreground">{a.progress_percent}%</span>
           </div>
           <Progress value={a.progress_percent} className="h-2 mt-2" />
-        </SheetHeader>
+        </DialogHeader>
 
         <Separator />
 
@@ -499,8 +499,8 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
             </TabsContent>
           </ScrollArea>
         </Tabs>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 

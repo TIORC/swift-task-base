@@ -13,13 +13,14 @@ import { useAuth } from "@/hooks/useAuth";
 // Thresholds were tuned so the founding members land on the levels defined by
 // the team manager (Welder=Especialista @ 3600 XP, Angel=Praticante @ 1750 XP).
 export const LEVELS = [
-  { level: 1, name: "Iniciante",     minXp: 0,     icon: "🌱" },
-  { level: 2, name: "Aprendiz",      minXp: 200,   icon: "📘" },
-  { level: 3, name: "Praticante",    minXp: 1000,  icon: "⚡" },
-  { level: 4, name: "Profissional",  minXp: 2500,  icon: "🔥" },
-  { level: 5, name: "Especialista",  minXp: 3500,  icon: "💎" },
-  { level: 6, name: "Mestre",        minXp: 6000,  icon: "🏆" },
-  { level: 7, name: "Lenda",         minXp: 10000, icon: "👑" },
+  { level: 1, name: "Ferro",       minXp: 0,     icon: "⚙️" },
+  { level: 2, name: "Bronze",      minXp: 500,   icon: "🥉" },
+  { level: 3, name: "Prata",       minXp: 1500,  icon: "🥈" },
+  { level: 4, name: "Ouro",        minXp: 3000,  icon: "🥇" },
+  { level: 5, name: "Platina",     minXp: 5000,  icon: "💠" },
+  { level: 6, name: "Diamante",    minXp: 8000,  icon: "💎" },
+  { level: 7, name: "Mestre",      minXp: 12000, icon: "🏆" },
+  { level: 8, name: "Desafiante",  minXp: 15000, icon: "👑" },
 ];
 
 export function getLevel(xp: number) {

@@ -144,7 +144,7 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
         <div className={`flex items-center gap-1.5 text-xs ${isTimerOnThis ? "text-primary font-semibold" : "text-foreground"}`}>
           <Timer className="h-3.5 w-3.5" />
           <span className="tabular-nums">
-            {isTimerOnThis ? formatTime(elapsed) : formatMinutes(totalWorked)}
+            {formatMinutes(totalWorked)}
           </span>
           <span className="text-[10px] text-muted-foreground font-normal">trabalhadas</span>
         </div>

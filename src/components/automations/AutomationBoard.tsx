@@ -78,56 +78,61 @@ export function AutomationBoard({ automations, onSelect, profileMap, blockerCoun
 
       {viewMode === "board" ? (
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex gap-3 overflow-x-auto pb-4">
-            {BOARD_COLUMNS.map(col => {
-              const items = automations.filter(a => a.status === col);
-              return (
-                <Droppable key={col} droppableId={col} isDropDisabled={isReadOnly}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className={`flex-shrink-0 w-[320px] rounded-lg transition-colors ${snapshot.isDraggingOver ? "bg-primary/5" : ""}`}
-                    >
-                      <div className="flex items-center justify-between mb-2 px-1">
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                          {STATUS_LABELS[col]}
-                        </span>
-                        <Badge variant="secondary" className="text-[10px] h-5">{items.length}</Badge>
-                      </div>
-                      <ScrollArea className="h-[calc(100vh-420px)] min-h-[300px]">
-                        <div className="space-y-2 pr-2">
-                          {items.map((a, index) => (
-                            <Draggable key={a.id} draggableId={a.id} index={index} isDragDisabled={isReadOnly}>
-                              {(dragProvided, dragSnapshot) => (
-                                <div
-                                  ref={dragProvided.innerRef}
-                                  {...dragProvided.draggableProps}
-                                  {...dragProvided.dragHandleProps}
-                                  className={dragSnapshot.isDragging ? "opacity-80" : ""}
-                                >
-                                  <AutomationCard
-                                    automation={a}
-                                    onClick={() => onSelect(a)}
-                                    profileName={a.assigned_to ? profileMap[a.assigned_to] : undefined}
-                                    profileMap={profileMap}
-                                    pendingCount={blockerCounts?.[a.id] || 0}
-                                  />
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                          {items.length === 0 && (
-                            <div className="text-center py-8 text-xs text-muted-foreground">Nenhuma</div>
-                          )}
+          <div className="overflow-x-auto pb-4">
+            <div
+              className="grid gap-2"
+              style={{ gridTemplateColumns: `repeat(${BOARD_COLUMNS.length}, minmax(200px, 1fr))` }}
+            >
+              {BOARD_COLUMNS.map(col => {
+                const items = automations.filter(a => a.status === col);
+                return (
+                  <Droppable key={col} droppableId={col} isDropDisabled={isReadOnly}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={`min-w-0 rounded-lg transition-colors ${snapshot.isDraggingOver ? "bg-primary/5" : ""}`}
+                      >
+                        <div className="flex items-center justify-between mb-2 px-1 gap-1">
+                          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
+                            {STATUS_LABELS[col]}
+                          </span>
+                          <Badge variant="secondary" className="text-[10px] h-5 shrink-0">{items.length}</Badge>
                         </div>
-                      </ScrollArea>
-                    </div>
-                  )}
-                </Droppable>
-              );
-            })}
+                        <ScrollArea className="h-[calc(100vh-420px)] min-h-[300px]">
+                          <div className="space-y-2 pr-2">
+                            {items.map((a, index) => (
+                              <Draggable key={a.id} draggableId={a.id} index={index} isDragDisabled={isReadOnly}>
+                                {(dragProvided, dragSnapshot) => (
+                                  <div
+                                    ref={dragProvided.innerRef}
+                                    {...dragProvided.draggableProps}
+                                    {...dragProvided.dragHandleProps}
+                                    className={dragSnapshot.isDragging ? "opacity-80" : ""}
+                                  >
+                                    <AutomationCard
+                                      automation={a}
+                                      onClick={() => onSelect(a)}
+                                      profileName={a.assigned_to ? profileMap[a.assigned_to] : undefined}
+                                      profileMap={profileMap}
+                                      pendingCount={blockerCounts?.[a.id] || 0}
+                                    />
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                            {items.length === 0 && (
+                              <div className="text-center py-8 text-xs text-muted-foreground">Nenhuma</div>
+                            )}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    )}
+                  </Droppable>
+                );
+              })}
+            </div>
           </div>
         </DragDropContext>
       ) : (
