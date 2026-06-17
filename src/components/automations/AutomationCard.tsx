@@ -83,15 +83,15 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
     <div
       onClick={onClick}
       className={`
-        group p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md
+        group p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md overflow-hidden
         ${isBlocked ? "border-red-500/40 bg-red-500/5"
           : isTimerOnThis ? "border-primary/40 bg-primary/5"
           : "border-border hover:border-primary/30 bg-card"}
       `}
     >
       {/* Title */}
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <h4 className="text-sm font-medium text-foreground line-clamp-2 leading-snug flex-1">
+      <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
+        <h4 className="text-sm font-medium text-foreground line-clamp-2 leading-snug flex-1 min-w-0 break-words">
           {a.title}
         </h4>
         {isBlocked && <Lock className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />}
