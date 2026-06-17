@@ -499,8 +499,8 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
             </TabsContent>
           </ScrollArea>
         </Tabs>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
