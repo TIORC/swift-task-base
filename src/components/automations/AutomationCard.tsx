@@ -90,8 +90,8 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
       `}
     >
       {/* Title */}
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <h4 className="text-sm font-medium text-foreground line-clamp-2 leading-snug flex-1">
+      <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
+        <h4 className="text-sm font-medium text-foreground line-clamp-2 leading-snug flex-1 min-w-0 break-words">
           {a.title}
         </h4>
         {isBlocked && <Lock className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />}
