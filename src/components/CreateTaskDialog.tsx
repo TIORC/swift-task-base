@@ -381,6 +381,7 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
             </Button>
           </div>
         </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
