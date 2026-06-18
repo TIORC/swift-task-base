@@ -9,6 +9,7 @@ export interface TaskDependency {
   depends_on_task_id: string;
   created_by: string;
   created_at: string;
+  line_color?: string | null;
 }
 
 export function useTaskDependencies(taskId: string | null) {
@@ -42,18 +43,45 @@ export function useAddDependency() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ taskId, dependsOnTaskId }: { taskId: string; dependsOnTaskId: string }) => {
+    mutationFn: async ({
+      taskId,
+      dependsOnTaskId,
+      lineColor,
+    }: {
+      taskId: string;
+      dependsOnTaskId: string;
+      lineColor?: string;
+    }) => {
       const { error } = await supabase.from("task_dependencies").insert({
         task_id: taskId,
         depends_on_task_id: dependsOnTaskId,
         created_by: user!.id,
-      });
+        ...(lineColor ? { line_color: lineColor } : {}),
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["task_dependencies"] });
       queryClient.invalidateQueries({ queryKey: ["all_dependencies"] });
       toast.success("Dependência adicionada!");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useUpdateDependencyColor() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, lineColor }: { id: string; lineColor: string }) => {
+      const { error } = await supabase
+        .from("task_dependencies")
+        .update({ line_color: lineColor } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["task_dependencies"] });
+      queryClient.invalidateQueries({ queryKey: ["all_dependencies"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
