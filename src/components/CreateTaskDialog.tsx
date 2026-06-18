@@ -155,7 +155,8 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-0">
+        <div className="p-6 space-y-4">
         <DialogHeader>
           <DialogTitle className="text-foreground flex items-center gap-2">
             <Plus className="h-5 w-5 text-primary" />
