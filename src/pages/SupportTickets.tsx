@@ -16,6 +16,7 @@ import { useUpdateTask, useAssignableProfiles } from "@/hooks/useTasks";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { useUserRole } from "@/hooks/useUserRole";
 import type { Task } from "@/hooks/useTasks";
+import { CloseTicketDialog } from "@/components/CloseTicketDialog";
 
 const CATEGORY_ICONS: Record<string, typeof Monitor> = {
   "computador": Monitor,
@@ -57,6 +58,7 @@ export default function SupportTickets() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [closingTicket, setClosingTicket] = useState<Task | null>(null);
   const updateTask = useUpdateTask();
   const queryClient = useQueryClient();
   const { data: profiles } = useAssignableProfiles();
@@ -136,8 +138,12 @@ export default function SupportTickets() {
     done: tickets?.filter((t) => t.status === "done").length ?? 0,
   };
 
-  const handleStatusChange = (taskId: string, newStatus: string) => {
-    updateTask.mutate({ id: taskId, status: newStatus as any });
+  const handleStatusChange = (ticket: Task, newStatus: string) => {
+    if (newStatus === "done" && ticket.status !== "done") {
+      setClosingTicket(ticket);
+      return;
+    }
+    updateTask.mutate({ id: ticket.id, status: newStatus as any });
   };
 
   const handleTransfer = (taskId: string, newAssignee: string) => {
@@ -323,7 +329,7 @@ export default function SupportTickets() {
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Select
                           value={ticket.status}
-                          onValueChange={(v) => handleStatusChange(ticket.id, v)}
+                          onValueChange={(v) => handleStatusChange(ticket, v)}
                         >
                           <SelectTrigger className="h-8 text-xs w-[120px]">
                             <SelectValue />
@@ -354,6 +360,13 @@ export default function SupportTickets() {
           isReadOnly={isGestor}
         />
       )}
+
+      <CloseTicketDialog
+        taskId={closingTicket?.id ?? null}
+        taskTitle={closingTicket?.title}
+        open={!!closingTicket}
+        onOpenChange={(o) => !o && setClosingTicket(null)}
+      />
     </div>
   );
 }
