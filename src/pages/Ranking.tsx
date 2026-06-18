@@ -150,14 +150,14 @@ const Ranking = () => {
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <Card className="shadow-card"><CardContent className="py-4 px-5"><div className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-emerald-500" /><div><p className="text-xs text-muted-foreground">Tarefas concluídas</p><p className="text-xl font-bold">{team.totals.tasks_done}<span className="text-xs text-muted-foreground font-normal"> / {team.totals.tasks}</span></p></div></div></CardContent></Card>
                 <Card className="shadow-card"><CardContent className="py-4 px-5"><div className="flex items-center gap-3"><Bot className="h-5 w-5 text-indigo-500" /><div><p className="text-xs text-muted-foreground">Automações concluídas</p><p className="text-xl font-bold">{team.totals.automations_done}<span className="text-xs text-muted-foreground font-normal"> / {team.totals.automations}</span></p></div></div></CardContent></Card>
-                <Card className="shadow-card"><CardContent className="py-4 px-5"><div className="flex items-center gap-3"><Clock className="h-5 w-5 text-amber-500" /><div><p className="text-xs text-muted-foreground">Horas trabalhadas</p><p className="text-xl font-bold">{fmtH(team.totals.minutes)}</p></div></div></CardContent></Card>
-                <Card className="shadow-card"><CardContent className="py-4 px-5"><div className="flex items-center gap-3"><Users className="h-5 w-5 text-primary" /><div><p className="text-xs text-muted-foreground">Pessoas ativas</p><p className="text-xl font-bold">{team.users.length}</p></div></div></CardContent></Card>
+                <Card className="shadow-card"><CardContent className="py-4 px-5"><div className="flex items-center gap-3"><Clock className="h-5 w-5 text-amber-500" /><div><p className="text-xs text-muted-foreground">Horas trabalhadas (TI)</p><p className="text-xl font-bold">{fmtH(teamMinutes)}</p></div></div></CardContent></Card>
+                <Card className="shadow-card"><CardContent className="py-4 px-5"><div className="flex items-center gap-3"><Users className="h-5 w-5 text-primary" /><div><p className="text-xs text-muted-foreground">Pessoas do TI</p><p className="text-xl font-bold">{teamUsers.length}</p></div></div></CardContent></Card>
               </div>
 
               <Card className="shadow-card">
-                <CardHeader className="pb-2"><CardTitle className="text-sm">Ranking por horas trabalhadas (chamados + tarefas + automações)</CardTitle></CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-sm">Horas trabalhadas por pessoa (chamados + tarefas + automações)</CardTitle></CardHeader>
                 <CardContent className="p-0">
-                  {team.users.length === 0 ? (
+                  {teamUsers.length === 0 ? (
                     <EmptyState icon={Users} title="Sem atividade registrada" />
                   ) : (
                     <Table>
@@ -165,12 +165,11 @@ const Ranking = () => {
                         <TableRow>
                           <TableHead className="w-10">#</TableHead>
                           <TableHead>Pessoa</TableHead>
-                          <TableHead className="text-center">Horas trabalhadas</TableHead>
-                          <TableHead className="text-right">Medalhas (mês)</TableHead>
+                          <TableHead className="text-right">Horas trabalhadas</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {team.users.map((u, i) => {
+                        {teamUsers.map((u, i) => {
                           const initials = u.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
                           return (
                             <TableRow key={u.user_id}>
@@ -181,8 +180,7 @@ const Ranking = () => {
                                   <span className="text-sm font-medium">{u.full_name}</span>
                                 </div>
                               </TableCell>
-                              <TableCell className="text-center text-sm font-semibold">{fmtH(u.minutes)}</TableCell>
-                              <TableCell className="text-right text-sm font-semibold">{MEDAL_ICON} {u.medals_month}</TableCell>
+                              <TableCell className="text-right text-sm font-semibold tabular-nums">{fmtH(u.minutes)}</TableCell>
                             </TableRow>
                           );
                         })}
