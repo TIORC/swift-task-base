@@ -1508,6 +1508,8 @@ export type Database = {
       tasks: {
         Row: {
           assigned_to: string | null
+          closed_at: string | null
+          closed_by: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -1525,11 +1527,16 @@ export type Database = {
           recurrence_type: string | null
           recurrence_until: string | null
           status: Database["public"]["Enums"]["task_status"]
+          support_real_reason: string | null
+          support_tags: string[]
+          support_technical_notes: string | null
           title: string
           updated_at: string
         }
         Insert: {
           assigned_to?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -1547,11 +1554,16 @@ export type Database = {
           recurrence_type?: string | null
           recurrence_until?: string | null
           status?: Database["public"]["Enums"]["task_status"]
+          support_real_reason?: string | null
+          support_tags?: string[]
+          support_technical_notes?: string | null
           title: string
           updated_at?: string
         }
         Update: {
           assigned_to?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
@@ -1569,6 +1581,9 @@ export type Database = {
           recurrence_type?: string | null
           recurrence_until?: string | null
           status?: Database["public"]["Enums"]["task_status"]
+          support_real_reason?: string | null
+          support_tags?: string[]
+          support_technical_notes?: string | null
           title?: string
           updated_at?: string
         }
