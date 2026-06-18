@@ -1805,6 +1805,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      award_xp: {
+        Args: { _action: string; _task_id: string; _user_id: string }
+        Returns: undefined
+      }
       get_admin_user_ids: { Args: never; Returns: string[] }
       get_gestor_user_ids: { Args: never; Returns: string[] }
       get_social_assignable_user_ids: { Args: never; Returns: string[] }

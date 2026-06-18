@@ -174,13 +174,11 @@ Deno.serve(async (req) => {
         });
       }
 
-      const results = { created: 0, skipped: 0, errors: [] as { email: string; error: string }[] };
-
-      // Helper: extract first name from email "first.last@..." -> "first"
-      const extractName = (email: string) => {
-        const local = email.split("@")[0];
-        const first = local.split(".")[0] || local;
-        return first.toLowerCase();
+      const results = {
+        created: 0,
+        skipped: 0,
+        errors: [] as { email: string; error: string }[],
+        credentials: [] as { email: string; password: string }[],
       };
 
       // Helper: friendly full name from local part
@@ -192,9 +190,19 @@ Deno.serve(async (req) => {
           .join(" ");
       };
 
+      // Cryptographically strong random password (URL-safe, ~22 chars)
+      const generatePassword = () => {
+        const bytes = new Uint8Array(16);
+        crypto.getRandomValues(bytes);
+        return btoa(String.fromCharCode(...bytes))
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/, "");
+      };
+
       for (const email of users as string[]) {
         try {
-          const password = extractName(email);
+          const password = generatePassword();
           const full_name = buildFullName(email);
 
           const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
@@ -223,6 +231,7 @@ Deno.serve(async (req) => {
           }
 
           results.created++;
+          results.credentials.push({ email, password });
         } catch (e: any) {
           results.errors.push({ email, error: e.message || "Erro desconhecido" });
         }
@@ -232,6 +241,7 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     // DELETE USER
     if (action === "delete") {

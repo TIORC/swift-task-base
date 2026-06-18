@@ -112,14 +112,13 @@ export function useSubmitApproval() {
         .single();
       if (error) throw error;
 
-      // Grant XP to approver
+      // Grant XP to approver (validated server-side via SECURITY DEFINER RPC)
       if (status === "approved") {
         const action = level === "lider" ? "approved_lider" : "approved_gestor";
-        await supabase.from("xp_logs").insert({
-          user_id: user!.id,
-          task_id: taskId,
-          action,
-          xp_earned: XP_VALUES[action],
+        await supabase.rpc("award_xp", {
+          _user_id: user!.id,
+          _task_id: taskId,
+          _action: action,
         });
         checkAndAwardMedals(user!.id);
 
@@ -132,11 +131,10 @@ export function useSubmitApproval() {
             .single();
 
           if (task?.assigned_to) {
-            await supabase.from("xp_logs").insert({
-              user_id: task.assigned_to,
-              task_id: taskId,
-              action: "executed",
-              xp_earned: XP_VALUES.executed,
+            await supabase.rpc("award_xp", {
+              _user_id: task.assigned_to,
+              _task_id: taskId,
+              _action: "executed",
             });
             checkAndAwardMedals(task.assigned_to);
           }
@@ -145,6 +143,7 @@ export function useSubmitApproval() {
           await supabase.from("tasks").update({ status: "done" }).eq("id", taskId);
         }
       }
+
 
       return data;
     },
