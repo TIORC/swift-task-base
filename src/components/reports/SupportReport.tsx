@@ -41,6 +41,7 @@ const fmtMin = (m: number) => (m < 60 ? `${m}min` : `${Math.floor(m / 60)}h ${m 
 
 export function SupportReport() {
   const [period, setPeriod] = useState<Period>("month");
+  const [monthFilter, setMonthFilter] = useState<string>("all"); // "YYYY-MM" or "all"
   const [requesterFilter, setRequesterFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [reasonFilter, setReasonFilter] = useState<string>("all");
@@ -65,12 +66,21 @@ export function SupportReport() {
   const filtered = useMemo(() => {
     if (!data) return [];
     const now = new Date();
-    let cutoff: Date | null = null;
-    if (period === "week") cutoff = subDays(now, 7);
-    else if (period === "month") cutoff = subMonths(now, 1);
-    else if (period === "quarter") cutoff = subMonths(now, 3);
+    let cutoffStart: Date | null = null;
+    let cutoffEnd: Date | null = null;
+    if (monthFilter !== "all") {
+      const [y, m] = monthFilter.split("-").map(Number);
+      cutoffStart = new Date(y, m - 1, 1);
+      cutoffEnd = new Date(y, m, 1);
+    } else {
+      if (period === "week") cutoffStart = subDays(now, 7);
+      else if (period === "month") cutoffStart = subMonths(now, 1);
+      else if (period === "quarter") cutoffStart = subMonths(now, 3);
+    }
     return data.tasks.filter((t: any) => {
-      if (cutoff && new Date(t.created_at) < cutoff) return false;
+      const created = new Date(t.created_at);
+      if (cutoffStart && created < cutoffStart) return false;
+      if (cutoffEnd && created >= cutoffEnd) return false;
       if (requesterFilter !== "all") {
         const req = extractRequester(t.description) || profileName(t.created_by);
         if (req !== requesterFilter) return false;
@@ -82,7 +92,7 @@ export function SupportReport() {
       if (statusFilter !== "all" && t.status !== statusFilter) return false;
       return true;
     });
-  }, [data, period, requesterFilter, categoryFilter, reasonFilter, tagFilter, assigneeFilter, statusFilter]);
+  }, [data, period, monthFilter, requesterFilter, categoryFilter, reasonFilter, tagFilter, assigneeFilter, statusFilter]);
 
   const kpis = useMemo(() => {
     const total = filtered.length;
@@ -211,7 +221,22 @@ export function SupportReport() {
     return [...set].map((id) => ({ id, name: profileName(id) })).sort((a, b) => a.name.localeCompare(b.name));
   }, [data]);
 
-  const periodLabel = { week: "Última semana", month: "Último mês", quarter: "Último trimestre", all: "Todo o período" }[period];
+  const monthOptions = useMemo(() => {
+    if (!data) return [];
+    const set = new Set<string>();
+    data.tasks.forEach((t: any) => {
+      const d = new Date(t.created_at);
+      set.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    });
+    return [...set].sort().reverse().map((ym) => {
+      const [y, m] = ym.split("-").map(Number);
+      return { value: ym, label: format(new Date(y, m - 1, 1), "MMMM 'de' yyyy", { locale: ptBR }) };
+    });
+  }, [data]);
+
+  const periodLabel = monthFilter !== "all"
+    ? (monthOptions.find((o) => o.value === monthFilter)?.label || monthFilter)
+    : { week: "Última semana", month: "Último mês", quarter: "Último trimestre", all: "Todo o período" }[period];
 
   const handlePrint = () => {
     const esc = (s: any) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
@@ -326,13 +351,20 @@ ${perRequester.map((r) => `<tr>
       <Card className="shadow-card">
         <CardContent className="pt-4 pb-4">
           <div className="flex flex-wrap gap-2">
-            <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+            <Select value={period} onValueChange={(v) => { setPeriod(v as Period); setMonthFilter("all"); }} disabled={monthFilter !== "all"}>
               <SelectTrigger className="w-[140px] h-9 text-xs"><SelectValue placeholder="Período" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="week">Semana</SelectItem>
                 <SelectItem value="month">Mês</SelectItem>
                 <SelectItem value="quarter">Trimestre</SelectItem>
                 <SelectItem value="all">Tudo</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={monthFilter} onValueChange={setMonthFilter}>
+              <SelectTrigger className="w-[200px] h-9 text-xs capitalize"><SelectValue placeholder="Mês específico" /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="all">Todos os meses</SelectItem>
+                {monthOptions.map((o) => <SelectItem key={o.value} value={o.value} className="capitalize">{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={requesterFilter} onValueChange={setRequesterFilter}>
