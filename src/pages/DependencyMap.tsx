@@ -189,9 +189,12 @@ function useMapInteractions(nodeType: NodeType) {
 // ── Tasks Map ────────────────────────────────────────────────────────────────
 function TasksMap() {
   const { data: rawTasks, isLoading: lT } = useTasks();
-  // Filter out chamados (titles starting with [Chamado])
+  // Filter out chamados and completed tasks from the dependency map.
   const tasks = useMemo(
-    () => (rawTasks ?? []).filter((t) => !/^\s*\[Chamado\]/i.test(t.title || "")),
+    () =>
+      (rawTasks ?? []).filter(
+        (t) => !/^\s*\[Chamado\]/i.test(t.title || "") && t.status !== "done"
+      ),
     [rawTasks]
   );
 
@@ -331,15 +334,33 @@ function TasksMap() {
 
 // ── Automations Map ──────────────────────────────────────────────────────────
 function AutomationsMap() {
-  const { data: automations, isLoading: lA } = useAutomations();
-  const { data: deps, isLoading: lD } = useAllAutomationDependencies();
+  const { data: rawAutomations, isLoading: lA } = useAutomations();
+  const automations = useMemo(
+    () => (rawAutomations ?? []).filter((a) => a.status !== "completed"),
+    [rawAutomations]
+  );
+
+  const { data: rawDeps, isLoading: lD } = useAllAutomationDependencies();
+  const validAutomationIds = useMemo(
+    () => new Set(automations.map((a) => a.id)),
+    [automations]
+  );
+  const deps = useMemo(
+    () =>
+      (rawDeps ?? []).filter(
+        (d) =>
+          validAutomationIds.has(d.automation_id) &&
+          validAutomationIds.has(d.depends_on_automation_id)
+      ),
+    [rawDeps, validAutomationIds]
+  );
   const addDep = useAddAutomationDependency();
   const removeDep = useRemoveAutomationDependency();
   const updateColor = useUpdateAutomationDependencyColor();
   const { posMap, onNodeDragStop } = useMapInteractions("automation");
 
   const initialNodes = useMemo<Node[]>(() => {
-    if (!automations) return [];
+    if (!automations.length) return [];
     const fallback = gridLayout(automations);
     const fallbackMap = new Map(fallback.map((p) => [p.id, p]));
     return automations.map((a) => {
@@ -375,7 +396,6 @@ function AutomationsMap() {
   }, [automations, posMap]);
 
   const initialEdges = useMemo<Edge[]>(() => {
-    if (!deps) return [];
     const colorByRelation: Record<string, string> = {
       depends_on: "#3b82f6",
       blocks: "#ef4444",
