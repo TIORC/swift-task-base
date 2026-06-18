@@ -101,8 +101,27 @@ const Tasks = () => {
       result = result.filter(t => new Date(t.created_at) <= endOfDay);
     }
 
+    // Recurring only
+    if (recurringOnly) {
+      result = result.filter((t) => isRecurringTask(t));
+    }
+
+    // Weekday filter (matches recurrence_days OR due_date weekday)
+    if (weekdayFilter !== "all") {
+      const codeMap = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"];
+      result = result.filter((t: any) => {
+        const days: string[] = Array.isArray(t.recurrence_days) ? t.recurrence_days : [];
+        if (days.length > 0) return days.includes(weekdayFilter);
+        if (t.due_date) {
+          const d = new Date(t.due_date);
+          return codeMap[d.getDay()] === weekdayFilter;
+        }
+        return false;
+      });
+    }
+
     return result;
-  }, [filteredTasks, statusChip, priorityFilter, dateFrom, dateTo]);
+  }, [filteredTasks, statusChip, priorityFilter, dateFrom, dateTo, recurringOnly, weekdayFilter]);
 
   // Count per status chip
   const chipCounts = useMemo(() => {
