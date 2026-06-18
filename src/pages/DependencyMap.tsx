@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useEffect, useState, useRef } from "react";
+import { useMemo, useCallback, useEffect, useState, useRef, type CSSProperties } from "react";
 import {
   ReactFlow,
   Background,
@@ -172,7 +172,7 @@ function useMapInteractions(nodeType: NodeType) {
 
   // Debounce-save when a drag ends
   const onNodeDragStop = useCallback(
-    (_: any, node: Node) => {
+    (_event: React.MouseEvent, node: Node) => {
       savePos.mutate({
         nodeType,
         nodeId: node.id,
@@ -289,8 +289,8 @@ function TasksMap() {
     return <EmptyState icon={GitBranch} title="Sem tarefas" description="Crie tarefas para visualizar dependências." />;
   }
 
-  const editingColor =
-    (editing && (editing.edge.style as any)?.stroke) || DEFAULT_COLOR;
+  const editingStroke = editing ? (editing.edge.style as CSSProperties | undefined)?.stroke : undefined;
+  const editingColor = typeof editingStroke === "string" ? editingStroke : DEFAULT_COLOR;
 
   return (
     <div className="relative h-[calc(100vh-260px)] min-h-[500px] rounded-xl border border-border bg-card overflow-hidden">
@@ -457,8 +457,8 @@ function AutomationsMap() {
     return <EmptyState icon={GitBranch} title="Sem automações" description="Crie automações para visualizar dependências." />;
   }
 
-  const editingColor =
-    (editing && (editing.edge.style as any)?.stroke) || DEFAULT_COLOR;
+  const editingStroke = editing ? (editing.edge.style as CSSProperties | undefined)?.stroke : undefined;
+  const editingColor = typeof editingStroke === "string" ? editingStroke : DEFAULT_COLOR;
 
   return (
     <div className="relative h-[calc(100vh-260px)] min-h-[500px] rounded-xl border border-border bg-card overflow-hidden">
