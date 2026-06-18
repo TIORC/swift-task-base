@@ -6,9 +6,10 @@ import { EmptyState } from "@/components/EmptyState";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  LifeBuoy, CheckCircle2, Clock, AlertTriangle, Users, Loader2, Wrench, GitCompareArrows, Tag, UserCheck,
+  LifeBuoy, CheckCircle2, Clock, AlertTriangle, Users, Loader2, Wrench, GitCompareArrows, Tag, UserCheck, Printer,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend,
@@ -210,6 +211,112 @@ export function SupportReport() {
     return [...set].map((id) => ({ id, name: profileName(id) })).sort((a, b) => a.name.localeCompare(b.name));
   }, [data]);
 
+  const periodLabel = { week: "Última semana", month: "Último mês", quarter: "Último trimestre", all: "Todo o período" }[period];
+
+  const handlePrint = () => {
+    const esc = (s: any) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
+    const filtersUsed: string[] = [`Período: ${periodLabel}`];
+    if (requesterFilter !== "all") filtersUsed.push(`Solicitante: ${requesterFilter}`);
+    if (categoryFilter !== "all") filtersUsed.push(`Categoria inicial: ${categoryFilter}`);
+    if (reasonFilter !== "all") filtersUsed.push(`Motivo real: ${reasonFilter}`);
+    if (tagFilter !== "all") filtersUsed.push(`Tag: ${tagFilter}`);
+    if (assigneeFilter !== "all") filtersUsed.push(`Responsável TI: ${profileName(assigneeFilter)}`);
+    if (statusFilter !== "all") filtersUsed.push(`Status: ${statusFilter}`);
+
+    const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"/>
+<title>Relatório de Chamados — ${esc(format(new Date(), "dd/MM/yyyy HH:mm"))}</title>
+<style>
+  *{box-sizing:border-box} body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#0f172a;margin:0;padding:32px;background:#fff;font-size:12px;line-height:1.4}
+  h1{font-size:22px;margin:0 0 4px;color:#0f172a} h2{font-size:14px;margin:24px 0 8px;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:4px}
+  .meta{color:#64748b;font-size:11px;margin-bottom:16px}
+  .filters{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;margin-bottom:20px;font-size:11px;color:#475569}
+  .filters span{display:inline-block;margin-right:14px}
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
+  .kpi{border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;background:#fff}
+  .kpi .l{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.4px}
+  .kpi .v{font-size:18px;font-weight:700;margin-top:4px;color:#0f172a}
+  table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:11px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid #e2e8f0;vertical-align:top}
+  th{background:#f1f5f9;font-weight:600;color:#334155;font-size:10px;text-transform:uppercase;letter-spacing:.3px}
+  tr:nth-child(even) td{background:#fafbfc}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .footer{margin-top:30px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;text-align:center}
+  .badge{display:inline-block;background:#eef2ff;color:#3730a3;padding:2px 7px;border-radius:10px;font-size:10px;margin:1px 3px 1px 0}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  @media print{body{padding:18px} h2{page-break-after:avoid} table{page-break-inside:auto} tr{page-break-inside:avoid}}
+  .noprint{margin-bottom:20px} .noprint button{background:#2563eb;color:#fff;border:0;padding:8px 16px;border-radius:6px;font-weight:600;cursor:pointer;font-size:12px}
+  @media print{.noprint{display:none}}
+</style></head><body>
+<div class="noprint"><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button></div>
+<h1>Relatório de Chamados — Suporte TI</h1>
+<div class="meta">Gerado em ${esc(format(new Date(), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR }))}</div>
+<div class="filters"><strong>Filtros aplicados:</strong> ${filtersUsed.map((f) => `<span>• ${esc(f)}</span>`).join("")}</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="l">Total</div><div class="v">${kpis.total}</div></div>
+  <div class="kpi"><div class="l">Resolvidos</div><div class="v">${kpis.done} (${kpis.rate}%)</div></div>
+  <div class="kpi"><div class="l">Em andamento</div><div class="v">${kpis.inProgress}</div></div>
+  <div class="kpi"><div class="l">Pendentes</div><div class="v">${kpis.pending}</div></div>
+  <div class="kpi"><div class="l">Tempo médio</div><div class="v">${esc(fmtMin(kpis.avg))}</div></div>
+</div>
+
+<div class="grid2">
+  <div>
+    <h2>Motivos reais identificados</h2>
+    <table><thead><tr><th>Motivo</th><th class="num">Qtd</th><th class="num">%</th></tr></thead><tbody>
+    ${reasonCounts.map((r) => `<tr><td>${esc(r.name)}</td><td class="num">${r.value}</td><td class="num">${kpis.total ? Math.round((r.value / kpis.total) * 100) : 0}%</td></tr>`).join("") || `<tr><td colspan="3" style="color:#94a3b8">Sem dados</td></tr>`}
+    </tbody></table>
+  </div>
+  <div>
+    <h2>Tags mais recorrentes</h2>
+    <table><thead><tr><th>Tag</th><th class="num">Qtd</th></tr></thead><tbody>
+    ${tagCounts.map((t) => `<tr><td>${esc(t.name)}</td><td class="num">${t.value}</td></tr>`).join("") || `<tr><td colspan="2" style="color:#94a3b8">Sem dados</td></tr>`}
+    </tbody></table>
+  </div>
+</div>
+
+<h2>Categoria inicial × Motivo real</h2>
+<table><thead><tr><th>Categoria inicial</th><th>Motivo real (TI)</th><th class="num">Qtd</th></tr></thead><tbody>
+${comparison.map((r) => `<tr><td style="text-transform:capitalize">${esc(r.initial)}</td><td>${esc(r.reason)}</td><td class="num">${r.count}</td></tr>`).join("") || `<tr><td colspan="3" style="color:#94a3b8">Sem dados</td></tr>`}
+</tbody></table>
+
+<div class="grid2">
+  <div>
+    <h2>Colaboradores que mais solicitaram</h2>
+    <table><thead><tr><th>#</th><th>Colaborador</th><th class="num">Chamados</th></tr></thead><tbody>
+    ${requesters.slice(0, 15).map((u, i) => `<tr><td>${i + 1}</td><td>${esc(u.name)}</td><td class="num">${u.count}</td></tr>`).join("") || `<tr><td colspan="3" style="color:#94a3b8">Sem dados</td></tr>`}
+    </tbody></table>
+  </div>
+  <div>
+    <h2>Atendimentos por responsável TI</h2>
+    <table><thead><tr><th>#</th><th>Responsável</th><th class="num">Chamados</th></tr></thead><tbody>
+    ${assigneeCounts.slice(0, 15).map((u, i) => `<tr><td>${i + 1}</td><td>${esc(u.name)}</td><td class="num">${u.count}</td></tr>`).join("") || `<tr><td colspan="3" style="color:#94a3b8">Sem dados</td></tr>`}
+    </tbody></table>
+  </div>
+</div>
+
+<h2>Detalhamento por colaborador</h2>
+<table><thead><tr><th>Colaborador</th><th class="num">Total</th><th>Motivos reais</th><th>Tags frequentes</th><th class="num">Tempo médio</th><th class="num">Último</th></tr></thead><tbody>
+${perRequester.map((r) => `<tr>
+  <td><strong>${esc(r.name)}</strong></td>
+  <td class="num">${r.total}</td>
+  <td>${r.reasons.length ? r.reasons.map(([n, c]) => `<span class="badge">${esc(n)}: ${c}</span>`).join("") : "—"}</td>
+  <td>${r.tags.length ? r.tags.map(([n, c]) => `<span class="badge">${esc(n)}: ${c}</span>`).join("") : "—"}</td>
+  <td class="num">${r.avg ? esc(fmtMin(r.avg)) : "—"}</td>
+  <td class="num">${esc(format(r.last, "dd/MM/yy", { locale: ptBR }))}</td>
+</tr>`).join("") || `<tr><td colspan="6" style="color:#94a3b8">Sem dados</td></tr>`}
+</tbody></table>
+
+<div class="footer">Orcoma TI Gestão — Relatório de Chamados • ${esc(format(new Date(), "dd/MM/yyyy HH:mm"))}</div>
+</body></html>`;
+
+    const w = window.open("", "_blank", "width=1100,height=800");
+    if (!w) return;
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
+
   if (isLoading)
     return <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
@@ -274,6 +381,9 @@ export function SupportReport() {
                 <SelectItem value="discarded">Descartado</SelectItem>
               </SelectContent>
             </Select>
+            <Button onClick={handlePrint} size="sm" className="h-9 ml-auto gap-2">
+              <Printer className="h-4 w-4" /> Imprimir relatório
+            </Button>
           </div>
         </CardContent>
       </Card>
