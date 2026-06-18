@@ -41,6 +41,39 @@ export function useTeamMetrics() {
       const profiles = profilesRes.data || [];
       const profileMap = Object.fromEntries(profiles.map((p: any) => [p.id, p.full_name || "Sem nome"]));
 
+      // First-completion timestamps to avoid double-counting reopens/recompletes
+      const doneTaskIds = (tasksRes.data || []).filter((t: any) => t.status === "done").map((t: any) => t.id);
+      const doneAutoIds = (autosRes.data || []).filter((a: any) => a.status === "completed").map((a: any) => a.id);
+
+      const [taskEventsRes, autoEventsRes] = await Promise.all([
+        doneTaskIds.length
+          ? supabase
+              .from("task_events")
+              .select("task_id, created_at")
+              .in("task_id", doneTaskIds)
+              .eq("event_type", "completed")
+              .order("created_at", { ascending: true })
+          : Promise.resolve({ data: [] as any[] }),
+        doneAutoIds.length
+          ? supabase
+              .from("automation_events")
+              .select("automation_id, created_at, metadata")
+              .in("automation_id", doneAutoIds)
+              .eq("event_type", "status_changed")
+              .order("created_at", { ascending: true })
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+
+      const taskFirst = new Map<string, string>();
+      (taskEventsRes.data || []).forEach((e: any) => {
+        if (!taskFirst.has(e.task_id)) taskFirst.set(e.task_id, e.created_at);
+      });
+      const autoFirst = new Map<string, string>();
+      (autoEventsRes.data || []).forEach((e: any) => {
+        if (e?.metadata?.new_status !== "completed") return;
+        if (!autoFirst.has(e.automation_id)) autoFirst.set(e.automation_id, e.created_at);
+      });
+
       const now = new Date();
       const curY = now.getFullYear();
       const curM = now.getMonth();
@@ -76,7 +109,8 @@ export function useTeamMetrics() {
         u.tasks_total += 1;
         if (t.status === "done") {
           u.tasks_done += 1;
-          const d = new Date(t.updated_at);
+          const ts = taskFirst.get(t.id) || t.updated_at;
+          const d = new Date(ts);
           if (d.getFullYear() === curY && d.getMonth() === curM) {
             monthTasksByUser.set(t.assignee_id, (monthTasksByUser.get(t.assignee_id) || 0) + 1);
           }
@@ -89,13 +123,14 @@ export function useTeamMetrics() {
         u.automations_total += 1;
         if (a.status === "completed") {
           u.automations_done += 1;
-          const ts = a.completed_at || a.updated_at;
+          const ts = autoFirst.get(a.id) || a.completed_at || a.updated_at;
           const d = new Date(ts);
           if (d.getFullYear() === curY && d.getMonth() === curM) {
             monthAutosByUser.set(a.owner_id, (monthAutosByUser.get(a.owner_id) || 0) + 1);
           }
         }
       });
+
 
       (timeRes.data || []).forEach((l: any) => {
         const u = ensureUser(l.user_id);
