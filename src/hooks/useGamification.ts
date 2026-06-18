@@ -74,6 +74,38 @@ export const MEDAL_DEFS: Record<string, { name: string; description: string; ico
 // Shared data loaders
 // ============================================================================
 
+async function fetchFirstCompletionMap(taskIds: string[]) {
+  const map = new Map<string, string>();
+  if (taskIds.length === 0) return map;
+  const { data } = await supabase
+    .from("task_events")
+    .select("task_id, created_at")
+    .in("task_id", taskIds)
+    .eq("event_type", "completed")
+    .order("created_at", { ascending: true });
+  (data || []).forEach((e: any) => {
+    if (!map.has(e.task_id)) map.set(e.task_id, e.created_at);
+  });
+  return map;
+}
+
+async function fetchFirstAutomationCompletionMap(autoIds: string[]) {
+  const map = new Map<string, string>();
+  if (autoIds.length === 0) return map;
+  const { data } = await supabase
+    .from("automation_events")
+    .select("automation_id, created_at, metadata")
+    .in("automation_id", autoIds)
+    .eq("event_type", "status_changed")
+    .order("created_at", { ascending: true });
+  (data || []).forEach((e: any) => {
+    const newStatus = e?.metadata?.new_status;
+    if (newStatus !== "completed") return;
+    if (!map.has(e.automation_id)) map.set(e.automation_id, e.created_at);
+  });
+  return map;
+}
+
 async function fetchUserActivity(userId: string) {
   const [tasksRes, autosRes] = await Promise.all([
     supabase
@@ -87,10 +119,25 @@ async function fetchUserActivity(userId: string) {
       .eq("assigned_to", userId)
       .eq("status", "completed"),
   ]);
-  return {
-    tasks: tasksRes.data || [],
-    autos: autosRes.data || [],
-  };
+  const tasks = tasksRes.data || [];
+  const autos = autosRes.data || [];
+  const [taskFirst, autoFirst] = await Promise.all([
+    fetchFirstCompletionMap(tasks.map((t: any) => t.id)),
+    fetchFirstAutomationCompletionMap(autos.map((a: any) => a.id)),
+  ]);
+  // Override timestamps with first-completion when available
+  tasks.forEach((t: any) => {
+    const first = taskFirst.get(t.id);
+    if (first) t.updated_at = first;
+  });
+  autos.forEach((a: any) => {
+    const first = autoFirst.get(a.id);
+    if (first) {
+      a.completed_at = first;
+      a.updated_at = first;
+    }
+  });
+  return { tasks, autos };
 }
 
 function computeXp(tasksDone: number, autosDone: number, seedXp: number) {
@@ -163,6 +210,7 @@ function buildMonthlyMedals(
 
   return Array.from(map.values()).sort((a, b) => (a.key < b.key ? 1 : -1));
 }
+
 
 // ============================================================================
 // HOOKS
