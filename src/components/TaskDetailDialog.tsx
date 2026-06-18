@@ -1,4 +1,5 @@
 import { Task, useUpdateTask, useDeleteTask, useAssignableProfiles, COLUMNS } from "@/hooks/useTasks";
+import { EditRecurrenceSection } from "@/components/EditRecurrenceSection";
 import { useTimeTracker, useTaskTimeLogs, formatTime, formatMinutes } from "@/hooks/useTimeTracker";
 import { useLogResponsibilityChange } from "@/hooks/useResponsibilityHistory";
 import { StatusBadge } from "@/components/StatusBadge";
