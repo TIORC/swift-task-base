@@ -41,6 +41,7 @@ const fmtMin = (m: number) => (m < 60 ? `${m}min` : `${Math.floor(m / 60)}h ${m 
 
 export function SupportReport() {
   const [period, setPeriod] = useState<Period>("month");
+  const [monthFilter, setMonthFilter] = useState<string>("all"); // "YYYY-MM" or "all"
   const [requesterFilter, setRequesterFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [reasonFilter, setReasonFilter] = useState<string>("all");
