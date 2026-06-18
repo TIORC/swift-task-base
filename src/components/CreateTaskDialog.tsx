@@ -131,6 +131,13 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
         recurrence_interval: isRecurring ? recurrenceInterval : null,
         recurrence_until: isRecurring && recurrenceUntil ? recurrenceUntil.toISOString() : null,
         is_recurring_template: isRecurring,
+        recurrence_days: isRecurring
+          ? (onlyBusinessDays
+              ? recurrenceDays.filter((d) => d !== "SAB" && d !== "DOM")
+              : recurrenceDays)
+          : [],
+        recurrence_start_time: isRecurring ? (recurrenceStartTime || "07:00") : "07:00",
+        recurrence_only_business_days: isRecurring ? onlyBusinessDays : false,
       } as any,
       {
         onSuccess: () => {
@@ -140,6 +147,7 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
           setLegalDate(undefined); setLegalIsBusinessDay(false);
           setMetaDate(undefined); setMetaIsBusinessDay(false);
           setRecurrenceType("none"); setRecurrenceInterval(1); setRecurrenceUntil(undefined);
+          setRecurrenceDays([]); setRecurrenceStartTime("07:00"); setOnlyBusinessDays(false);
         },
       }
     );
