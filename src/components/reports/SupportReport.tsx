@@ -66,12 +66,21 @@ export function SupportReport() {
   const filtered = useMemo(() => {
     if (!data) return [];
     const now = new Date();
-    let cutoff: Date | null = null;
-    if (period === "week") cutoff = subDays(now, 7);
-    else if (period === "month") cutoff = subMonths(now, 1);
-    else if (period === "quarter") cutoff = subMonths(now, 3);
+    let cutoffStart: Date | null = null;
+    let cutoffEnd: Date | null = null;
+    if (monthFilter !== "all") {
+      const [y, m] = monthFilter.split("-").map(Number);
+      cutoffStart = new Date(y, m - 1, 1);
+      cutoffEnd = new Date(y, m, 1);
+    } else {
+      if (period === "week") cutoffStart = subDays(now, 7);
+      else if (period === "month") cutoffStart = subMonths(now, 1);
+      else if (period === "quarter") cutoffStart = subMonths(now, 3);
+    }
     return data.tasks.filter((t: any) => {
-      if (cutoff && new Date(t.created_at) < cutoff) return false;
+      const created = new Date(t.created_at);
+      if (cutoffStart && created < cutoffStart) return false;
+      if (cutoffEnd && created >= cutoffEnd) return false;
       if (requesterFilter !== "all") {
         const req = extractRequester(t.description) || profileName(t.created_by);
         if (req !== requesterFilter) return false;
@@ -83,7 +92,7 @@ export function SupportReport() {
       if (statusFilter !== "all" && t.status !== statusFilter) return false;
       return true;
     });
-  }, [data, period, requesterFilter, categoryFilter, reasonFilter, tagFilter, assigneeFilter, statusFilter]);
+  }, [data, period, monthFilter, requesterFilter, categoryFilter, reasonFilter, tagFilter, assigneeFilter, statusFilter]);
 
   const kpis = useMemo(() => {
     const total = filtered.length;
