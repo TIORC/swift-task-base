@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import {
   Plus, Loader2, Trash2, Clock, ListTodo,
-  Play, Square, CheckCircle, CalendarDays, Filter,
+  Play, Square, CheckCircle, CalendarDays, Filter, Repeat,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
