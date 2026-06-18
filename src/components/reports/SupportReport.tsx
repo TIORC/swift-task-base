@@ -221,7 +221,22 @@ export function SupportReport() {
     return [...set].map((id) => ({ id, name: profileName(id) })).sort((a, b) => a.name.localeCompare(b.name));
   }, [data]);
 
-  const periodLabel = { week: "Última semana", month: "Último mês", quarter: "Último trimestre", all: "Todo o período" }[period];
+  const monthOptions = useMemo(() => {
+    if (!data) return [];
+    const set = new Set<string>();
+    data.tasks.forEach((t: any) => {
+      const d = new Date(t.created_at);
+      set.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    });
+    return [...set].sort().reverse().map((ym) => {
+      const [y, m] = ym.split("-").map(Number);
+      return { value: ym, label: format(new Date(y, m - 1, 1), "MMMM 'de' yyyy", { locale: ptBR }) };
+    });
+  }, [data]);
+
+  const periodLabel = monthFilter !== "all"
+    ? (monthOptions.find((o) => o.value === monthFilter)?.label || monthFilter)
+    : { week: "Última semana", month: "Último mês", quarter: "Último trimestre", all: "Todo o período" }[period];
 
   const handlePrint = () => {
     const esc = (s: any) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
