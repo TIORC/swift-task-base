@@ -69,6 +69,25 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
   const [recurrenceType, setRecurrenceType] = useState<string>("none");
   const [recurrenceInterval, setRecurrenceInterval] = useState<number>(1);
   const [recurrenceUntil, setRecurrenceUntil] = useState<Date | undefined>(undefined);
+  const [recurrenceDays, setRecurrenceDays] = useState<string[]>([]);
+  const [recurrenceStartTime, setRecurrenceStartTime] = useState<string>("07:00");
+  const [onlyBusinessDays, setOnlyBusinessDays] = useState<boolean>(false);
+
+  const WEEK_DAYS = [
+    { code: "SEG", label: "SEG", weekend: false },
+    { code: "TER", label: "TER", weekend: false },
+    { code: "QUA", label: "QUA", weekend: false },
+    { code: "QUI", label: "QUI", weekend: false },
+    { code: "SEX", label: "SEX", weekend: false },
+    { code: "SAB", label: "SAB", weekend: true },
+    { code: "DOM", label: "DOM", weekend: true },
+  ];
+
+  const toggleDay = (code: string) => {
+    setRecurrenceDays((prev) =>
+      prev.includes(code) ? prev.filter((d) => d !== code) : [...prev, code]
+    );
+  };
 
   const { data: profiles } = useAssignableProfiles();
   const { data: adminIds } = useQuery({
