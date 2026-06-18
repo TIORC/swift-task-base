@@ -172,7 +172,7 @@ function useMapInteractions(nodeType: NodeType) {
 
   // Debounce-save when a drag ends
   const onNodeDragStop = useCallback(
-    (_event: React.MouseEvent, node: Node) => {
+    (_event: MouseEvent | TouchEvent, node: Node) => {
       savePos.mutate({
         nodeType,
         nodeId: node.id,
