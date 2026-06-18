@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useEffect, useState, useRef } from "react";
+import { useMemo, useCallback, useEffect, useState, type CSSProperties } from "react";
 import {
   ReactFlow,
   Background,
@@ -172,7 +172,7 @@ function useMapInteractions(nodeType: NodeType) {
 
   // Debounce-save when a drag ends
   const onNodeDragStop = useCallback(
-    (_: any, node: Node) => {
+    (_event: MouseEvent | TouchEvent, node: Node) => {
       savePos.mutate({
         nodeType,
         nodeId: node.id,
@@ -189,9 +189,12 @@ function useMapInteractions(nodeType: NodeType) {
 // ── Tasks Map ────────────────────────────────────────────────────────────────
 function TasksMap() {
   const { data: rawTasks, isLoading: lT } = useTasks();
-  // Filter out chamados (titles starting with [Chamado])
+  // Filter out chamados and completed tasks from the dependency map.
   const tasks = useMemo(
-    () => (rawTasks ?? []).filter((t) => !/^\s*\[Chamado\]/i.test(t.title || "")),
+    () =>
+      (rawTasks ?? []).filter(
+        (t) => !/^\s*\[Chamado\]/i.test(t.title || "") && t.status !== "done"
+      ),
     [rawTasks]
   );
 
@@ -286,8 +289,8 @@ function TasksMap() {
     return <EmptyState icon={GitBranch} title="Sem tarefas" description="Crie tarefas para visualizar dependências." />;
   }
 
-  const editingColor =
-    (editing && (editing.edge.style as any)?.stroke) || DEFAULT_COLOR;
+  const editingStroke = editing ? (editing.edge.style as CSSProperties | undefined)?.stroke : undefined;
+  const editingColor = typeof editingStroke === "string" ? editingStroke : DEFAULT_COLOR;
 
   return (
     <div className="relative h-[calc(100vh-260px)] min-h-[500px] rounded-xl border border-border bg-card overflow-hidden">
@@ -331,15 +334,33 @@ function TasksMap() {
 
 // ── Automations Map ──────────────────────────────────────────────────────────
 function AutomationsMap() {
-  const { data: automations, isLoading: lA } = useAutomations();
-  const { data: deps, isLoading: lD } = useAllAutomationDependencies();
+  const { data: rawAutomations, isLoading: lA } = useAutomations();
+  const automations = useMemo(
+    () => (rawAutomations ?? []).filter((a) => a.status !== "completed"),
+    [rawAutomations]
+  );
+
+  const { data: rawDeps, isLoading: lD } = useAllAutomationDependencies();
+  const validAutomationIds = useMemo(
+    () => new Set(automations.map((a) => a.id)),
+    [automations]
+  );
+  const deps = useMemo(
+    () =>
+      (rawDeps ?? []).filter(
+        (d) =>
+          validAutomationIds.has(d.automation_id) &&
+          validAutomationIds.has(d.depends_on_automation_id)
+      ),
+    [rawDeps, validAutomationIds]
+  );
   const addDep = useAddAutomationDependency();
   const removeDep = useRemoveAutomationDependency();
   const updateColor = useUpdateAutomationDependencyColor();
   const { posMap, onNodeDragStop } = useMapInteractions("automation");
 
   const initialNodes = useMemo<Node[]>(() => {
-    if (!automations) return [];
+    if (!automations.length) return [];
     const fallback = gridLayout(automations);
     const fallbackMap = new Map(fallback.map((p) => [p.id, p]));
     return automations.map((a) => {
@@ -375,7 +396,6 @@ function AutomationsMap() {
   }, [automations, posMap]);
 
   const initialEdges = useMemo<Edge[]>(() => {
-    if (!deps) return [];
     const colorByRelation: Record<string, string> = {
       depends_on: "#3b82f6",
       blocks: "#ef4444",
@@ -437,8 +457,8 @@ function AutomationsMap() {
     return <EmptyState icon={GitBranch} title="Sem automações" description="Crie automações para visualizar dependências." />;
   }
 
-  const editingColor =
-    (editing && (editing.edge.style as any)?.stroke) || DEFAULT_COLOR;
+  const editingStroke = editing ? (editing.edge.style as CSSProperties | undefined)?.stroke : undefined;
+  const editingColor = typeof editingStroke === "string" ? editingStroke : DEFAULT_COLOR;
 
   return (
     <div className="relative h-[calc(100vh-260px)] min-h-[500px] rounded-xl border border-border bg-card overflow-hidden">
