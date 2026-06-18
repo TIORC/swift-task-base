@@ -46,8 +46,6 @@ export const TI_TEAM: Record<string, { seedXp: number; note?: string }> = {
   "242acd59-00fb-478f-8d78-b25219798aa6": { seedXp: 1750, note: "2 anos TI" },
   // Gabriel Anacleto - calculado por tarefas/chamados
   "5bbd3dc1-985c-4ffd-a0c0-b4223faff98e": { seedXp: 0 },
-  // Sofia Nardes - calculado por tarefas concluídas
-  "2f71bd5e-c557-486e-aff8-0606cba4ebbb": { seedXp: 0 },
 };
 export const TI_TEAM_IDS = Object.keys(TI_TEAM);
 
