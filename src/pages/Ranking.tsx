@@ -18,23 +18,15 @@ const Ranking = () => {
   const { data: myData } = useMyGamification();
   const { data: team, isLoading: teamLoading } = useTeamMetrics();
 
-  // TI sector membership (to exclude non-TI users like Sirleide from team ranking)
-  const [tiUserIds, setTiUserIds] = useState<Set<string> | null>(null);
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.from("user_sectors").select("user_id, sector").eq("sector", "TI");
-      const set = new Set<string>(TI_TEAM_IDS);
-      (data || []).forEach((r: any) => set.add(r.user_id));
-      setTiUserIds(set);
-    })();
-  }, []);
+  // Filtro explícito: somente membros oficiais do TI_TEAM aparecem no ranking de equipe
+  const tiUserIds = new Set<string>(TI_TEAM_IDS);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   const fmtH = (m: number) => `${Math.floor(m / 60)}h ${m % 60}m`;
-  const teamUsers = team ? (tiUserIds ? team.users.filter((u) => tiUserIds.has(u.user_id)) : team.users) : [];
+  const teamUsers = team ? team.users.filter((u) => tiUserIds.has(u.user_id)) : [];
   const teamMinutes = teamUsers.reduce((s, u) => s + u.minutes, 0);
 
   return (
