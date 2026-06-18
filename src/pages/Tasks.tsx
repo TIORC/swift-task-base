@@ -308,17 +308,38 @@ const Tasks = () => {
             const isTimerOnThis = activeTaskId === task.id && isRunning;
             const hours = Math.floor((task.total_minutes || 0) / 60);
             const mins = (task.total_minutes || 0) % 60;
+            const recurring = isRecurringTask(task);
+            const recDays: string[] = Array.isArray((task as any).recurrence_days) ? (task as any).recurrence_days : [];
+            const startTime = (task as any).recurrence_start_time as string | null;
 
             return (
               <div
                 key={task.id}
                 onClick={() => setSelectedTask(task)}
-                className={`flex items-center gap-4 rounded-xl border bg-card p-3.5 cursor-pointer
+                className={`flex items-center gap-4 rounded-xl border-2 bg-card p-3.5 cursor-pointer
                   shadow-card hover:shadow-card-hover transition-all duration-150
-                  ${isTimerOnThis ? "border-primary/40 ring-1 ring-primary/20" : "border-border hover:border-primary/20"}`}
+                  ${isTimerOnThis
+                    ? "border-primary/40 ring-1 ring-primary/20"
+                    : recurring
+                      ? "border-amber-500/50 bg-amber-500/[0.03] hover:border-amber-500/70"
+                      : "border-border hover:border-primary/20"}`}
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{task.title}</p>
+                  <div className="flex items-center gap-2">
+                    {recurring && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/40 shrink-0">
+                        <Repeat className="h-2.5 w-2.5" />
+                        Recorrente
+                      </span>
+                    )}
+                    <p className="text-sm font-medium text-foreground truncate">{task.title}</p>
+                  </div>
+                  {recurring && (recDays.length > 0 || startTime) && (
+                    <p className="text-[10px] text-amber-700/80 dark:text-amber-300/80 mt-0.5">
+                      {recDays.length > 0 ? recDays.join(" · ") : "Todos os dias"}
+                      {startTime ? ` · ${startTime}` : ""}
+                    </p>
+                  )}
                   {task.description && (
                     <p className="text-xs text-muted-foreground truncate mt-0.5">{task.description}</p>
                   )}
