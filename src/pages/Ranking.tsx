@@ -1,7 +1,5 @@
-import { useEffect, useState } from "react";
 import { useRanking, useMyGamification, LEVELS, MEDAL_ICON, MEDAL_PER_TASKS, TI_TEAM, TI_TEAM_IDS, XP_PER_AUTOMATION, XP_PER_TASK } from "@/hooks/useGamification";
 import { useTeamMetrics } from "@/hooks/useTeamMetrics";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
