@@ -249,6 +249,40 @@ const Tasks = () => {
             </div>
           </PopoverContent>
         </Popover>
+
+        <div className="h-4 w-px bg-border mx-1" />
+
+        {/* Recurring toggle */}
+        <button
+          onClick={() => setRecurringOnly((v) => !v)}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 border ${
+            recurringOnly
+              ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/40 shadow-sm"
+              : "bg-muted text-muted-foreground border-transparent hover:bg-muted/80 hover:text-foreground"
+          }`}
+          title="Mostrar apenas tarefas recorrentes"
+        >
+          <Repeat className="h-3 w-3" />
+          Recorrentes
+        </button>
+      </div>
+
+      {/* Weekday filter */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-[11px] text-muted-foreground mr-1">Dia:</span>
+        {WEEKDAY_CHIPS.map((w) => (
+          <button
+            key={w.key}
+            onClick={() => setWeekdayFilter(w.key)}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-medium border transition-all ${
+              weekdayFilter === w.key
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:bg-muted"
+            }`}
+          >
+            {w.label}
+          </button>
+        ))}
       </div>
 
       {advancedFiltered.length === 0 ? (
