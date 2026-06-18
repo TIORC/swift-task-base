@@ -351,13 +351,20 @@ ${perRequester.map((r) => `<tr>
       <Card className="shadow-card">
         <CardContent className="pt-4 pb-4">
           <div className="flex flex-wrap gap-2">
-            <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+            <Select value={period} onValueChange={(v) => { setPeriod(v as Period); setMonthFilter("all"); }} disabled={monthFilter !== "all"}>
               <SelectTrigger className="w-[140px] h-9 text-xs"><SelectValue placeholder="Período" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="week">Semana</SelectItem>
                 <SelectItem value="month">Mês</SelectItem>
                 <SelectItem value="quarter">Trimestre</SelectItem>
                 <SelectItem value="all">Tudo</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={monthFilter} onValueChange={setMonthFilter}>
+              <SelectTrigger className="w-[200px] h-9 text-xs capitalize"><SelectValue placeholder="Mês específico" /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="all">Todos os meses</SelectItem>
+                {monthOptions.map((o) => <SelectItem key={o.value} value={o.value} className="capitalize">{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={requesterFilter} onValueChange={setRequesterFilter}>
