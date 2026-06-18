@@ -6,9 +6,10 @@ import { EmptyState } from "@/components/EmptyState";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  LifeBuoy, CheckCircle2, Clock, AlertTriangle, Users, Loader2, Wrench, GitCompareArrows, Tag, UserCheck,
+  LifeBuoy, CheckCircle2, Clock, AlertTriangle, Users, Loader2, Wrench, GitCompareArrows, Tag, UserCheck, Printer,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend,
