@@ -27,6 +27,7 @@ import { ResponsibilityHistorySection } from "@/components/ResponsibilityHistory
 import { TaskApprovalSection } from "@/components/TaskApprovalSection";
 import { TaskDependencies } from "@/components/TaskDependencies";
 import { TaskTimeline } from "@/components/TaskTimeline";
+import { CloseTicketDialog } from "@/components/CloseTicketDialog";
 
 const priorityOptions = [
   { value: "low", label: "Baixa" },
@@ -57,6 +58,9 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
   const [assignedTo, setAssignedTo] = useState("");
   const [status, setStatus] = useState("");
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+  const [closingChamado, setClosingChamado] = useState(false);
+
+  const isChamado = !!task?.title?.startsWith("[Chamado]");
 
   useEffect(() => {
     if (task) {
@@ -74,6 +78,13 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
     if (!task) return;
     const newAssigned = assignedTo === "none" ? null : assignedTo || null;
     const oldAssigned = task.assigned_to || null;
+
+    // For chamados, finishing requires the close dialog (real reason + tags + notes).
+    if (isChamado && status === "done" && task.status !== "done") {
+      setClosingChamado(true);
+      return;
+    }
+
     if (newAssigned !== oldAssigned) {
       logResponsibility.mutate({ taskId: task.id, fromUserId: oldAssigned, toUserId: newAssigned });
     }
@@ -306,6 +317,13 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
           </Tabs>
         </div>
       </DialogContent>
+      <CloseTicketDialog
+        taskId={task.id}
+        taskTitle={task.title}
+        open={closingChamado}
+        onOpenChange={setClosingChamado}
+        onClosed={() => { setEditing(false); onOpenChange(false); }}
+      />
     </Dialog>
   );
 }
