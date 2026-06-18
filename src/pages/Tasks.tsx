@@ -73,6 +73,8 @@ const Tasks = () => {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [recurringOnly, setRecurringOnly] = useState(false);
+  const [weekdayFilter, setWeekdayFilter] = useState<string>("all");
 
   // Apply advanced filters on top of user filter
   const advancedFiltered = useMemo(() => {
