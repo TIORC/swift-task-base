@@ -69,6 +69,25 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
   const [recurrenceType, setRecurrenceType] = useState<string>("none");
   const [recurrenceInterval, setRecurrenceInterval] = useState<number>(1);
   const [recurrenceUntil, setRecurrenceUntil] = useState<Date | undefined>(undefined);
+  const [recurrenceDays, setRecurrenceDays] = useState<string[]>([]);
+  const [recurrenceStartTime, setRecurrenceStartTime] = useState<string>("07:00");
+  const [onlyBusinessDays, setOnlyBusinessDays] = useState<boolean>(false);
+
+  const WEEK_DAYS = [
+    { code: "SEG", label: "SEG", weekend: false },
+    { code: "TER", label: "TER", weekend: false },
+    { code: "QUA", label: "QUA", weekend: false },
+    { code: "QUI", label: "QUI", weekend: false },
+    { code: "SEX", label: "SEX", weekend: false },
+    { code: "SAB", label: "SAB", weekend: true },
+    { code: "DOM", label: "DOM", weekend: true },
+  ];
+
+  const toggleDay = (code: string) => {
+    setRecurrenceDays((prev) =>
+      prev.includes(code) ? prev.filter((d) => d !== code) : [...prev, code]
+    );
+  };
 
   const { data: profiles } = useAssignableProfiles();
   const { data: adminIds } = useQuery({
@@ -112,6 +131,13 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
         recurrence_interval: isRecurring ? recurrenceInterval : null,
         recurrence_until: isRecurring && recurrenceUntil ? recurrenceUntil.toISOString() : null,
         is_recurring_template: isRecurring,
+        recurrence_days: isRecurring
+          ? (onlyBusinessDays
+              ? recurrenceDays.filter((d) => d !== "SAB" && d !== "DOM")
+              : recurrenceDays)
+          : [],
+        recurrence_start_time: isRecurring ? (recurrenceStartTime || "07:00") : "07:00",
+        recurrence_only_business_days: isRecurring ? onlyBusinessDays : false,
       } as any,
       {
         onSuccess: () => {
@@ -121,6 +147,7 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
           setLegalDate(undefined); setLegalIsBusinessDay(false);
           setMetaDate(undefined); setMetaIsBusinessDay(false);
           setRecurrenceType("none"); setRecurrenceInterval(1); setRecurrenceUntil(undefined);
+          setRecurrenceDays([]); setRecurrenceStartTime("07:00"); setOnlyBusinessDays(false);
         },
       }
     );
@@ -288,6 +315,58 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
                       </PopoverContent>
                     </Popover>
                   </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label className="text-xs">Horário de início</Label>
+                    <Input
+                      type="time"
+                      value={recurrenceStartTime}
+                      onChange={(e) => setRecurrenceStartTime(e.target.value || "07:00")}
+                      className="h-9"
+                    />
+                    <p className="text-[10px] text-muted-foreground">Padrão 07:00. Toda tarefa gerada inicia neste horário.</p>
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label className="text-xs">Dias da semana</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {WEEK_DAYS.map((d) => {
+                        const disabled = onlyBusinessDays && d.weekend;
+                        const active = recurrenceDays.includes(d.code) && !disabled;
+                        return (
+                          <button
+                            key={d.code}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => toggleDay(d.code)}
+                            className={cn(
+                              "px-2.5 py-1 rounded-md text-[11px] font-medium border transition",
+                              active
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background text-foreground border-border hover:bg-muted",
+                              disabled && "opacity-40 cursor-not-allowed"
+                            )}
+                          >
+                            {d.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Vazio = todos os dias permitidos pela frequência.</p>
+                  </div>
+                  <label className="col-span-2 flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={onlyBusinessDays}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setOnlyBusinessDays(checked);
+                        if (checked) {
+                          setRecurrenceDays((prev) => prev.filter((d) => d !== "SAB" && d !== "DOM"));
+                        }
+                      }}
+                      className="h-4 w-4 rounded border-border"
+                    />
+                    <span className="text-xs">Somente em dias úteis (ignora SAB e DOM)</span>
+                  </label>
                 </div>
               </>
             )}

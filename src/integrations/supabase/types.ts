@@ -1523,7 +1523,10 @@ export type Database = {
           meta_is_business_day: boolean
           parent_recurring_task_id: string | null
           priority: Database["public"]["Enums"]["task_priority"]
+          recurrence_days: string[]
           recurrence_interval: number | null
+          recurrence_only_business_days: boolean
+          recurrence_start_time: string
           recurrence_type: string | null
           recurrence_until: string | null
           status: Database["public"]["Enums"]["task_status"]
@@ -1550,7 +1553,10 @@ export type Database = {
           meta_is_business_day?: boolean
           parent_recurring_task_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
+          recurrence_days?: string[]
           recurrence_interval?: number | null
+          recurrence_only_business_days?: boolean
+          recurrence_start_time?: string
           recurrence_type?: string | null
           recurrence_until?: string | null
           status?: Database["public"]["Enums"]["task_status"]
@@ -1577,7 +1583,10 @@ export type Database = {
           meta_is_business_day?: boolean
           parent_recurring_task_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
+          recurrence_days?: string[]
           recurrence_interval?: number | null
+          recurrence_only_business_days?: boolean
+          recurrence_start_time?: string
           recurrence_type?: string | null
           recurrence_until?: string | null
           status?: Database["public"]["Enums"]["task_status"]
