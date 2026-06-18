@@ -381,6 +381,9 @@ ${perRequester.map((r) => `<tr>
                 <SelectItem value="discarded">Descartado</SelectItem>
               </SelectContent>
             </Select>
+            <Button onClick={handlePrint} size="sm" className="h-9 ml-auto gap-2">
+              <Printer className="h-4 w-4" /> Imprimir relatório
+            </Button>
           </div>
         </CardContent>
       </Card>
