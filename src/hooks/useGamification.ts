@@ -74,6 +74,38 @@ export const MEDAL_DEFS: Record<string, { name: string; description: string; ico
 // Shared data loaders
 // ============================================================================
 
+async function fetchFirstCompletionMap(taskIds: string[]) {
+  const map = new Map<string, string>();
+  if (taskIds.length === 0) return map;
+  const { data } = await supabase
+    .from("task_events")
+    .select("task_id, created_at")
+    .in("task_id", taskIds)
+    .eq("event_type", "completed")
+    .order("created_at", { ascending: true });
+  (data || []).forEach((e: any) => {
+    if (!map.has(e.task_id)) map.set(e.task_id, e.created_at);
+  });
+  return map;
+}
+
+async function fetchFirstAutomationCompletionMap(autoIds: string[]) {
+  const map = new Map<string, string>();
+  if (autoIds.length === 0) return map;
+  const { data } = await supabase
+    .from("automation_events")
+    .select("automation_id, created_at, metadata")
+    .in("automation_id", autoIds)
+    .eq("event_type", "status_changed")
+    .order("created_at", { ascending: true });
+  (data || []).forEach((e: any) => {
+    const newStatus = e?.metadata?.new_status;
+    if (newStatus !== "completed") return;
+    if (!map.has(e.automation_id)) map.set(e.automation_id, e.created_at);
+  });
+  return map;
+}
+
 async function fetchUserActivity(userId: string) {
   const [tasksRes, autosRes] = await Promise.all([
     supabase
@@ -87,10 +119,25 @@ async function fetchUserActivity(userId: string) {
       .eq("assigned_to", userId)
       .eq("status", "completed"),
   ]);
-  return {
-    tasks: tasksRes.data || [],
-    autos: autosRes.data || [],
-  };
+  const tasks = tasksRes.data || [];
+  const autos = autosRes.data || [];
+  const [taskFirst, autoFirst] = await Promise.all([
+    fetchFirstCompletionMap(tasks.map((t: any) => t.id)),
+    fetchFirstAutomationCompletionMap(autos.map((a: any) => a.id)),
+  ]);
+  // Override timestamps with first-completion when available
+  tasks.forEach((t: any) => {
+    const first = taskFirst.get(t.id);
+    if (first) t.updated_at = first;
+  });
+  autos.forEach((a: any) => {
+    const first = autoFirst.get(a.id);
+    if (first) {
+      a.completed_at = first;
+      a.updated_at = first;
+    }
+  });
+  return { tasks, autos };
 }
 
 function computeXp(tasksDone: number, autosDone: number, seedXp: number) {
@@ -164,6 +211,7 @@ function buildMonthlyMedals(
   return Array.from(map.values()).sort((a, b) => (a.key < b.key ? 1 : -1));
 }
 
+
 // ============================================================================
 // HOOKS
 // ============================================================================
@@ -189,15 +237,30 @@ export function useRanking() {
         supabase.from("profiles").select("id, full_name, avatar_url").in("id", TI_TEAM_IDS),
         supabase
           .from("tasks")
-          .select("assigned_to, status, updated_at")
+          .select("id, assigned_to, status, updated_at")
           .in("assigned_to", TI_TEAM_IDS)
           .eq("status", "done"),
         supabase
           .from("automations")
-          .select("assigned_to, status, updated_at, completed_at")
+          .select("id, assigned_to, status, updated_at, completed_at")
           .in("assigned_to", TI_TEAM_IDS)
           .eq("status", "completed"),
       ]);
+
+      const allTasks = tasksRes.data || [];
+      const allAutos = autosRes.data || [];
+      const [taskFirst, autoFirst] = await Promise.all([
+        fetchFirstCompletionMap(allTasks.map((t: any) => t.id)),
+        fetchFirstAutomationCompletionMap(allAutos.map((a: any) => a.id)),
+      ]);
+      allTasks.forEach((t: any) => {
+        const f = taskFirst.get(t.id);
+        if (f) t.updated_at = f;
+      });
+      allAutos.forEach((a: any) => {
+        const f = autoFirst.get(a.id);
+        if (f) { a.completed_at = f; a.updated_at = f; }
+      });
 
       const profileMap = Object.fromEntries((profilesRes.data || []).map((p: any) => [p.id, p]));
       const now = new Date();
@@ -205,8 +268,8 @@ export function useRanking() {
       const curM = now.getMonth() + 1;
 
       const entries: RankingEntry[] = TI_TEAM_IDS.map((uid) => {
-        const tasks = (tasksRes.data || []).filter((t: any) => t.assigned_to === uid);
-        const autos = (autosRes.data || []).filter((a: any) => a.assigned_to === uid);
+        const tasks = allTasks.filter((t: any) => t.assigned_to === uid);
+        const autos = allAutos.filter((a: any) => a.assigned_to === uid);
         const seed = TI_TEAM[uid].seedXp;
         const xp = computeXp(tasks.length, autos.length, seed);
 
@@ -236,6 +299,7 @@ export function useRanking() {
     },
   });
 }
+
 
 export function useMyGamification() {
   const { user } = useAuth();
