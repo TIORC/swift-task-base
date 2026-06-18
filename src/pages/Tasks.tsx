@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import {
   Plus, Loader2, Trash2, Clock, ListTodo,
-  Play, Square, CheckCircle, CalendarDays, Filter,
+  Play, Square, CheckCircle, CalendarDays, Filter, Repeat,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -43,6 +43,20 @@ const PRIORITY_CHIPS = [
   { key: "low", label: "Baixa" },
 ];
 
+const WEEKDAY_CHIPS = [
+  { key: "all", label: "Todos os dias", code: null as string | null },
+  { key: "SEG", label: "SEG", code: "SEG" },
+  { key: "TER", label: "TER", code: "TER" },
+  { key: "QUA", label: "QUA", code: "QUA" },
+  { key: "QUI", label: "QUI", code: "QUI" },
+  { key: "SEX", label: "SEX", code: "SEX" },
+  { key: "SAB", label: "SAB", code: "SAB" },
+  { key: "DOM", label: "DOM", code: "DOM" },
+];
+
+const isRecurringTask = (t: any) =>
+  !!(t?.is_recurring_template || t?.recurrence_type || (Array.isArray(t?.recurrence_days) && t.recurrence_days.length > 0));
+
 const Tasks = () => {
   const { data: tasks, isLoading } = useTasks();
   const { filteredTasks, selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(tasks);
@@ -59,6 +73,8 @@ const Tasks = () => {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [recurringOnly, setRecurringOnly] = useState(false);
+  const [weekdayFilter, setWeekdayFilter] = useState<string>("all");
 
   // Apply advanced filters on top of user filter
   const advancedFiltered = useMemo(() => {
@@ -85,8 +101,27 @@ const Tasks = () => {
       result = result.filter(t => new Date(t.created_at) <= endOfDay);
     }
 
+    // Recurring only
+    if (recurringOnly) {
+      result = result.filter((t) => isRecurringTask(t));
+    }
+
+    // Weekday filter (matches recurrence_days OR due_date weekday)
+    if (weekdayFilter !== "all") {
+      const codeMap = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"];
+      result = result.filter((t: any) => {
+        const days: string[] = Array.isArray(t.recurrence_days) ? t.recurrence_days : [];
+        if (days.length > 0) return days.includes(weekdayFilter);
+        if (t.due_date) {
+          const d = new Date(t.due_date);
+          return codeMap[d.getDay()] === weekdayFilter;
+        }
+        return false;
+      });
+    }
+
     return result;
-  }, [filteredTasks, statusChip, priorityFilter, dateFrom, dateTo]);
+  }, [filteredTasks, statusChip, priorityFilter, dateFrom, dateTo, recurringOnly, weekdayFilter]);
 
   // Count per status chip
   const chipCounts = useMemo(() => {
@@ -214,6 +249,40 @@ const Tasks = () => {
             </div>
           </PopoverContent>
         </Popover>
+
+        <div className="h-4 w-px bg-border mx-1" />
+
+        {/* Recurring toggle */}
+        <button
+          onClick={() => setRecurringOnly((v) => !v)}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 border ${
+            recurringOnly
+              ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/40 shadow-sm"
+              : "bg-muted text-muted-foreground border-transparent hover:bg-muted/80 hover:text-foreground"
+          }`}
+          title="Mostrar apenas tarefas recorrentes"
+        >
+          <Repeat className="h-3 w-3" />
+          Recorrentes
+        </button>
+      </div>
+
+      {/* Weekday filter */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-[11px] text-muted-foreground mr-1">Dia:</span>
+        {WEEKDAY_CHIPS.map((w) => (
+          <button
+            key={w.key}
+            onClick={() => setWeekdayFilter(w.key)}
+            className={`px-2.5 py-1 rounded-md text-[11px] font-medium border transition-all ${
+              weekdayFilter === w.key
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:bg-muted"
+            }`}
+          >
+            {w.label}
+          </button>
+        ))}
       </div>
 
       {advancedFiltered.length === 0 ? (
@@ -239,17 +308,38 @@ const Tasks = () => {
             const isTimerOnThis = activeTaskId === task.id && isRunning;
             const hours = Math.floor((task.total_minutes || 0) / 60);
             const mins = (task.total_minutes || 0) % 60;
+            const recurring = isRecurringTask(task);
+            const recDays: string[] = Array.isArray((task as any).recurrence_days) ? (task as any).recurrence_days : [];
+            const startTime = (task as any).recurrence_start_time as string | null;
 
             return (
               <div
                 key={task.id}
                 onClick={() => setSelectedTask(task)}
-                className={`flex items-center gap-4 rounded-xl border bg-card p-3.5 cursor-pointer
+                className={`flex items-center gap-4 rounded-xl border-2 bg-card p-3.5 cursor-pointer
                   shadow-card hover:shadow-card-hover transition-all duration-150
-                  ${isTimerOnThis ? "border-primary/40 ring-1 ring-primary/20" : "border-border hover:border-primary/20"}`}
+                  ${isTimerOnThis
+                    ? "border-primary/40 ring-1 ring-primary/20"
+                    : recurring
+                      ? "border-amber-500/50 bg-amber-500/[0.03] hover:border-amber-500/70"
+                      : "border-border hover:border-primary/20"}`}
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{task.title}</p>
+                  <div className="flex items-center gap-2">
+                    {recurring && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/40 shrink-0">
+                        <Repeat className="h-2.5 w-2.5" />
+                        Recorrente
+                      </span>
+                    )}
+                    <p className="text-sm font-medium text-foreground truncate">{task.title}</p>
+                  </div>
+                  {recurring && (recDays.length > 0 || startTime) && (
+                    <p className="text-[10px] text-amber-700/80 dark:text-amber-300/80 mt-0.5">
+                      {recDays.length > 0 ? recDays.join(" · ") : "Todos os dias"}
+                      {startTime ? ` · ${startTime}` : ""}
+                    </p>
+                  )}
                   {task.description && (
                     <p className="text-xs text-muted-foreground truncate mt-0.5">{task.description}</p>
                   )}
