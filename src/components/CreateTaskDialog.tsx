@@ -315,6 +315,58 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
                       </PopoverContent>
                     </Popover>
                   </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label className="text-xs">Horário de início</Label>
+                    <Input
+                      type="time"
+                      value={recurrenceStartTime}
+                      onChange={(e) => setRecurrenceStartTime(e.target.value || "07:00")}
+                      className="h-9"
+                    />
+                    <p className="text-[10px] text-muted-foreground">Padrão 07:00. Toda tarefa gerada inicia neste horário.</p>
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label className="text-xs">Dias da semana</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {WEEK_DAYS.map((d) => {
+                        const disabled = onlyBusinessDays && d.weekend;
+                        const active = recurrenceDays.includes(d.code) && !disabled;
+                        return (
+                          <button
+                            key={d.code}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => toggleDay(d.code)}
+                            className={cn(
+                              "px-2.5 py-1 rounded-md text-[11px] font-medium border transition",
+                              active
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background text-foreground border-border hover:bg-muted",
+                              disabled && "opacity-40 cursor-not-allowed"
+                            )}
+                          >
+                            {d.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Vazio = todos os dias permitidos pela frequência.</p>
+                  </div>
+                  <label className="col-span-2 flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={onlyBusinessDays}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setOnlyBusinessDays(checked);
+                        if (checked) {
+                          setRecurrenceDays((prev) => prev.filter((d) => d !== "SAB" && d !== "DOM"));
+                        }
+                      }}
+                      className="h-4 w-4 rounded border-border"
+                    />
+                    <span className="text-xs">Somente em dias úteis (ignora SAB e DOM)</span>
+                  </label>
                 </div>
               </>
             )}
