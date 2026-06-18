@@ -43,6 +43,20 @@ const PRIORITY_CHIPS = [
   { key: "low", label: "Baixa" },
 ];
 
+const WEEKDAY_CHIPS = [
+  { key: "all", label: "Todos os dias", code: null as string | null },
+  { key: "SEG", label: "SEG", code: "SEG" },
+  { key: "TER", label: "TER", code: "TER" },
+  { key: "QUA", label: "QUA", code: "QUA" },
+  { key: "QUI", label: "QUI", code: "QUI" },
+  { key: "SEX", label: "SEX", code: "SEX" },
+  { key: "SAB", label: "SAB", code: "SAB" },
+  { key: "DOM", label: "DOM", code: "DOM" },
+];
+
+const isRecurringTask = (t: any) =>
+  !!(t?.is_recurring_template || t?.recurrence_type || (Array.isArray(t?.recurrence_days) && t.recurrence_days.length > 0));
+
 const Tasks = () => {
   const { data: tasks, isLoading } = useTasks();
   const { filteredTasks, selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(tasks);
