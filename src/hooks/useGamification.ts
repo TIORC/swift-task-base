@@ -237,15 +237,30 @@ export function useRanking() {
         supabase.from("profiles").select("id, full_name, avatar_url").in("id", TI_TEAM_IDS),
         supabase
           .from("tasks")
-          .select("assigned_to, status, updated_at")
+          .select("id, assigned_to, status, updated_at")
           .in("assigned_to", TI_TEAM_IDS)
           .eq("status", "done"),
         supabase
           .from("automations")
-          .select("assigned_to, status, updated_at, completed_at")
+          .select("id, assigned_to, status, updated_at, completed_at")
           .in("assigned_to", TI_TEAM_IDS)
           .eq("status", "completed"),
       ]);
+
+      const allTasks = tasksRes.data || [];
+      const allAutos = autosRes.data || [];
+      const [taskFirst, autoFirst] = await Promise.all([
+        fetchFirstCompletionMap(allTasks.map((t: any) => t.id)),
+        fetchFirstAutomationCompletionMap(allAutos.map((a: any) => a.id)),
+      ]);
+      allTasks.forEach((t: any) => {
+        const f = taskFirst.get(t.id);
+        if (f) t.updated_at = f;
+      });
+      allAutos.forEach((a: any) => {
+        const f = autoFirst.get(a.id);
+        if (f) { a.completed_at = f; a.updated_at = f; }
+      });
 
       const profileMap = Object.fromEntries((profilesRes.data || []).map((p: any) => [p.id, p]));
       const now = new Date();
@@ -253,8 +268,8 @@ export function useRanking() {
       const curM = now.getMonth() + 1;
 
       const entries: RankingEntry[] = TI_TEAM_IDS.map((uid) => {
-        const tasks = (tasksRes.data || []).filter((t: any) => t.assigned_to === uid);
-        const autos = (autosRes.data || []).filter((a: any) => a.assigned_to === uid);
+        const tasks = allTasks.filter((t: any) => t.assigned_to === uid);
+        const autos = allAutos.filter((a: any) => a.assigned_to === uid);
         const seed = TI_TEAM[uid].seedXp;
         const xp = computeXp(tasks.length, autos.length, seed);
 
@@ -284,6 +299,7 @@ export function useRanking() {
     },
   });
 }
+
 
 export function useMyGamification() {
   const { user } = useAuth();
