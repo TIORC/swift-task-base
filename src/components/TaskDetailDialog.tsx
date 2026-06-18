@@ -268,7 +268,9 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
             </TabsList>
 
             <TabsContent value="details" className="space-y-4">
-              {/* Time per user */}
+              {(task as any).is_recurring_template && (
+                <EditRecurrenceSection task={task as any} />
+              )}
               {userSummaries.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
