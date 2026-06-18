@@ -10,6 +10,7 @@ export interface AutomationDependency {
   relation_type: string;
   created_by: string;
   created_at: string;
+  line_color?: string | null;
 }
 
 export function useAllAutomationDependencies() {
@@ -27,22 +28,46 @@ export function useAddAutomationDependency() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: async ({ automationId, dependsOnAutomationId, relationType = "depends_on" }: {
+    mutationFn: async ({
+      automationId,
+      dependsOnAutomationId,
+      relationType = "depends_on",
+      lineColor,
+    }: {
       automationId: string;
       dependsOnAutomationId: string;
       relationType?: string;
+      lineColor?: string;
     }) => {
       const { error } = await supabase.from("automation_dependencies").insert({
         automation_id: automationId,
         depends_on_automation_id: dependsOnAutomationId,
         relation_type: relationType,
         created_by: user!.id,
-      });
+        ...(lineColor ? { line_color: lineColor } : {}),
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automation_dependencies"] });
       toast.success("Vínculo criado!");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useUpdateAutomationDependencyColor() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, lineColor }: { id: string; lineColor: string }) => {
+      const { error } = await supabase
+        .from("automation_dependencies")
+        .update({ line_color: lineColor } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["automation_dependencies"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });

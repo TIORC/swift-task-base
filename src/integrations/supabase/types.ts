@@ -133,6 +133,7 @@ export type Database = {
           created_by: string
           depends_on_automation_id: string
           id: string
+          line_color: string | null
           relation_type: string
         }
         Insert: {
@@ -141,6 +142,7 @@ export type Database = {
           created_by: string
           depends_on_automation_id: string
           id?: string
+          line_color?: string | null
           relation_type?: string
         }
         Update: {
@@ -149,6 +151,7 @@ export type Database = {
           created_by?: string
           depends_on_automation_id?: string
           id?: string
+          line_color?: string | null
           relation_type?: string
         }
         Relationships: [
@@ -466,6 +469,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      dependency_map_positions: {
+        Row: {
+          id: string
+          node_id: string
+          node_type: string
+          position_x: number
+          position_y: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          node_id: string
+          node_type: string
+          position_x?: number
+          position_y?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          node_id?: string
+          node_type?: string
+          position_x?: number
+          position_y?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -1398,6 +1431,7 @@ export type Database = {
           created_by: string
           depends_on_task_id: string
           id: string
+          line_color: string | null
           task_id: string
         }
         Insert: {
@@ -1405,6 +1439,7 @@ export type Database = {
           created_by: string
           depends_on_task_id: string
           id?: string
+          line_color?: string | null
           task_id: string
         }
         Update: {
@@ -1412,6 +1447,7 @@ export type Database = {
           created_by?: string
           depends_on_task_id?: string
           id?: string
+          line_color?: string | null
           task_id?: string
         }
         Relationships: [

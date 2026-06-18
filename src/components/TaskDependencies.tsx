@@ -24,7 +24,10 @@ export function TaskDependencies({ taskId }: TaskDependenciesProps) {
     ...blockedBy.map((d) => d.depends_on_task_id),
     ...blocking.map((d) => d.task_id),
   ]);
-  const available = allTasks?.filter((t) => !usedIds.has(t.id)) || [];
+  const available =
+    allTasks?.filter(
+      (t) => !usedIds.has(t.id) && !/^\s*\[Chamado\]/i.test(t.title || "")
+    ) || [];
 
   const taskMap = new Map((allTasks || []).map((t) => [t.id, t]));
 
