@@ -81,11 +81,6 @@ const Auth = () => {
           }
 
           // Auto-seleciona sistema quando o usuário só tem acesso a um
-          const { data: systems } = await supabase
-            .from("user_systems")
-            .select("system, enabled")
-            .eq("user_id", data.user.id)
-            .eq("enabled", true);
           const sysList = (systems ?? []).map((s: any) => s.system);
           const hasTi = sysList.includes("ti");
           const hasSocial = sysList.includes("social");
