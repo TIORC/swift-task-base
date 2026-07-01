@@ -60,15 +60,17 @@ const Auth = () => {
 
         // Bloqueia acesso web para usuários que só têm papel "suporte"
         if (data.user) {
-          const { data: roles } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", data.user.id);
+          const [{ data: roles }, { data: socialRoles }, { data: systems }] = await Promise.all([
+            supabase.from("user_roles").select("role").eq("user_id", data.user.id),
+            supabase.from("user_social_roles").select("role").eq("user_id", data.user.id),
+            supabase.from("user_systems").select("system, enabled").eq("user_id", data.user.id).eq("enabled", true),
+          ]);
 
           const roleList = (roles ?? []).map((r) => r.role);
           const isSuporteOnly = roleList.length > 0 && roleList.every((r) => r === "suporte");
+          const hasWebAccess = (socialRoles ?? []).length > 0 || (systems ?? []).length > 0;
 
-          if (isSuporteOnly) {
+          if (isSuporteOnly && !hasWebAccess) {
             await supabase.auth.signOut();
             toast.error(
               "Sua conta é exclusiva para abertura de chamados pelo app ORCOMA Suporte (Windows). O acesso ao painel web não está disponível.",
@@ -79,11 +81,6 @@ const Auth = () => {
           }
 
           // Auto-seleciona sistema quando o usuário só tem acesso a um
-          const { data: systems } = await supabase
-            .from("user_systems")
-            .select("system, enabled")
-            .eq("user_id", data.user.id)
-            .eq("enabled", true);
           const sysList = (systems ?? []).map((s: any) => s.system);
           const hasTi = sysList.includes("ti");
           const hasSocial = sysList.includes("social");
