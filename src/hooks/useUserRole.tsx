@@ -42,6 +42,7 @@ const routePermissions: Record<string, RoleProfile[]> = {
   "/reports": ["admin", "gestor", "lider", "membro"],
   "/support": ["admin", "gestor", "lider"],
   "/hipocampo": ["admin", "gestor", "lider", "membro"],
+  "/almoxarifado": ["admin", "gestor", "lider", "membro"],
   "/admin": ["admin"],
 };
 
