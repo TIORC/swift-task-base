@@ -12,6 +12,7 @@ export const MENU_ACCESS_ITEMS = [
   { key: "/reports", label: "Relatórios" },
   { key: "/ranking", label: "Ranking" },
   { key: "/notifications", label: "Notificações" },
+  { key: "/hipocampo", label: "Hipocampo" },
 ] as const;
 
 const MENU_ACCESS_KEYS = new Set<string>(MENU_ACCESS_ITEMS.map((item) => item.key));
