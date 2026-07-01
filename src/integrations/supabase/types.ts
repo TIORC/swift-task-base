@@ -551,6 +551,307 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_assets: {
+        Row: {
+          acquired_at: string | null
+          assigned_to: string | null
+          created_at: string
+          id: string
+          item_id: string
+          location_id: string | null
+          notes: string | null
+          patrimony_number: string
+          serial_number: string | null
+          status: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          acquired_at?: string | null
+          assigned_to?: string | null
+          created_at?: string
+          id?: string
+          item_id: string
+          location_id?: string | null
+          notes?: string | null
+          patrimony_number: string
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          acquired_at?: string | null
+          assigned_to?: string | null
+          created_at?: string
+          id?: string
+          item_id?: string
+          location_id?: string | null
+          notes?: string | null
+          patrimony_number?: string
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_assets_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_assets_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      inventory_items: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          ideal_stock: number
+          location_id: string | null
+          min_stock: number
+          name: string
+          notes: string | null
+          quantity: number
+          sku: string | null
+          status: string
+          tracked_individually: boolean
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          ideal_stock?: number
+          location_id?: string | null
+          min_stock?: number
+          name: string
+          notes?: string | null
+          quantity?: number
+          sku?: string | null
+          status?: string
+          tracked_individually?: boolean
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          ideal_stock?: number
+          location_id?: string | null
+          min_stock?: number
+          name?: string
+          notes?: string | null
+          quantity?: number
+          sku?: string | null
+          status?: string
+          tracked_individually?: boolean
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_locations: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      inventory_movements: {
+        Row: {
+          asset_id: string | null
+          assigned_to: string | null
+          created_at: string
+          from_location_id: string | null
+          id: string
+          item_id: string
+          notes: string | null
+          performed_by: string
+          quantity: number
+          reason: string | null
+          to_location_id: string | null
+          type: string
+        }
+        Insert: {
+          asset_id?: string | null
+          assigned_to?: string | null
+          created_at?: string
+          from_location_id?: string | null
+          id?: string
+          item_id: string
+          notes?: string | null
+          performed_by?: string
+          quantity?: number
+          reason?: string | null
+          to_location_id?: string | null
+          type: string
+        }
+        Update: {
+          asset_id?: string | null
+          assigned_to?: string | null
+          created_at?: string
+          from_location_id?: string | null
+          id?: string
+          item_id?: string
+          notes?: string | null
+          performed_by?: string
+          quantity?: number
+          reason?: string | null
+          to_location_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_from_location_id_fkey"
+            columns: ["from_location_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_to_location_id_fkey"
+            columns: ["to_location_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_requests: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          justification: string | null
+          quantity: number
+          requester_id: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          justification?: string | null
+          quantity?: number
+          requester_id?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          justification?: string | null
+          quantity?: number
+          requester_id?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_requests_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -1907,6 +2208,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_ti_write: { Args: { _user_id: string }; Returns: boolean }
       user_client_ids: { Args: { _user_id: string }; Returns: string[] }
       user_sector_codes: { Args: { _user_id: string }; Returns: string[] }
     }
