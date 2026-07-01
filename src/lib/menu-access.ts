@@ -19,10 +19,10 @@ export const MENU_ACCESS_ITEMS = [
 const MENU_ACCESS_KEYS = new Set<string>(MENU_ACCESS_ITEMS.map((item) => item.key));
 
 const FALLBACK_ROUTES_BY_PROFILE: Record<RoleProfile, string[]> = {
-  admin: ["/", "/manager", "/kanban", "/tasks", "/support", "/automacoes", "/focus", "/dependencies", "/reports", "/ranking", "/notifications", "/hipocampo", "/admin"],
-  gestor: ["/manager", "/", "/kanban", "/tasks", "/automacoes", "/reports", "/ranking", "/notifications", "/hipocampo"],
-  lider: ["/manager", "/", "/kanban", "/tasks", "/automacoes", "/support", "/reports", "/ranking", "/focus", "/dependencies", "/notifications", "/hipocampo"],
-  membro: ["/kanban", "/tasks", "/automacoes", "/focus", "/dependencies", "/reports", "/notifications", "/hipocampo", "/"],
+  admin: ["/", "/manager", "/kanban", "/tasks", "/support", "/automacoes", "/focus", "/dependencies", "/reports", "/ranking", "/notifications", "/hipocampo", "/almoxarifado", "/admin"],
+  gestor: ["/manager", "/", "/kanban", "/tasks", "/automacoes", "/reports", "/ranking", "/notifications", "/hipocampo", "/almoxarifado"],
+  lider: ["/manager", "/", "/kanban", "/tasks", "/automacoes", "/support", "/reports", "/ranking", "/focus", "/dependencies", "/notifications", "/hipocampo", "/almoxarifado"],
+  membro: ["/kanban", "/tasks", "/automacoes", "/focus", "/dependencies", "/reports", "/notifications", "/hipocampo", "/almoxarifado", "/"],
 };
 
 export function canAccessMenuRoute({
