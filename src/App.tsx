@@ -32,6 +32,7 @@ import NotFound from "./pages/NotFound";
 import Reports from "./pages/Reports";
 import SupportTickets from "./pages/SupportTickets";
 import AutomacoesPage from "./pages/AutomacoesPage";
+import Hipocampo from "./pages/Hipocampo";
 import SocialDashboard from "./pages/social/SocialDashboard";
 import SocialClients from "./pages/social/SocialClients";
 import SocialCampaigns from "./pages/social/SocialCampaigns";
