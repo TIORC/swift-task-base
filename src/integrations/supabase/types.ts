@@ -500,6 +500,57 @@ export type Database = {
         }
         Relationships: []
       }
+      hippocampus_notes: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_archived: boolean
+          is_pinned: boolean
+          is_sensitive: boolean
+          reminder_at: string | null
+          reminder_repeat: string | null
+          reminder_seen: boolean
+          tags: string[]
+          title: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          is_pinned?: boolean
+          is_sensitive?: boolean
+          reminder_at?: string | null
+          reminder_repeat?: string | null
+          reminder_seen?: boolean
+          tags?: string[]
+          title?: string | null
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          is_pinned?: boolean
+          is_sensitive?: boolean
+          reminder_at?: string | null
+          reminder_repeat?: string | null
+          reminder_seen?: boolean
+          tags?: string[]
+          title?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
