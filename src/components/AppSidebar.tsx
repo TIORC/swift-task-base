@@ -1,4 +1,4 @@
-import { LayoutDashboard, Columns3, ListTodo, LogOut, Zap, Trophy, Target, GitBranch, Gauge, ShieldCheck, BarChart3, Headset, Bot, Loader2, ArrowLeftRight, Brain } from "lucide-react";
+import { LayoutDashboard, Columns3, ListTodo, LogOut, Zap, Trophy, Target, GitBranch, Gauge, ShieldCheck, BarChart3, Headset, Bot, Loader2, ArrowLeftRight, Brain, Package } from "lucide-react";
 import { useTheme } from "next-themes";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -36,6 +36,7 @@ const allNavItems = [
   { title: "Chamados", url: "/support", icon: Headset, profiles: ["admin", "gestor", "lider"] as RoleProfile[] },
   { title: "Automações", url: "/automacoes", icon: Bot, profiles: ["admin", "gestor", "lider", "membro"] as RoleProfile[] },
   { title: "Hipocampo", url: "/hipocampo", icon: Brain, profiles: ["admin", "gestor", "lider", "membro"] as RoleProfile[] },
+  { title: "Almoxarifado", url: "/almoxarifado", icon: Package, profiles: ["admin", "gestor", "lider", "membro"] as RoleProfile[] },
   { title: "Modo Foco", url: "/focus", icon: Target, profiles: ["admin", "lider", "membro"] as RoleProfile[] },
   { title: "Dependências", url: "/dependencies", icon: GitBranch, profiles: ["admin", "lider", "membro"] as RoleProfile[] },
   { title: "Relatórios", url: "/reports", icon: BarChart3, profiles: ["admin", "gestor", "lider", "membro"] as RoleProfile[] },

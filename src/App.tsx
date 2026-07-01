@@ -33,6 +33,7 @@ import Reports from "./pages/Reports";
 import SupportTickets from "./pages/SupportTickets";
 import AutomacoesPage from "./pages/AutomacoesPage";
 import Hipocampo from "./pages/Hipocampo";
+import Almoxarifado from "./pages/Almoxarifado";
 import SocialDashboard from "./pages/social/SocialDashboard";
 import SocialClients from "./pages/social/SocialClients";
 import SocialCampaigns from "./pages/social/SocialCampaigns";
@@ -181,6 +182,7 @@ const AppRoutes = () => (
     <Route path="/support" element={<ProtectedTI><RoleGate route="/support"><SupportTickets /></RoleGate></ProtectedTI>} />
     <Route path="/automacoes" element={<ProtectedTI><RoleGate route="/automacoes"><AutomacoesPage /></RoleGate></ProtectedTI>} />
     <Route path="/hipocampo" element={<ProtectedTI><RoleGate route="/hipocampo"><Hipocampo /></RoleGate></ProtectedTI>} />
+    <Route path="/almoxarifado" element={<ProtectedTI><RoleGate route="/almoxarifado"><Almoxarifado /></RoleGate></ProtectedTI>} />
 
     {/* Sistema Social Media */}
     <Route path="/social" element={<ProtectedSocial><SocialDashboard /></ProtectedSocial>} />
