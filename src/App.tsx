@@ -182,6 +182,7 @@ const AppRoutes = () => (
     <Route path="/support" element={<ProtectedTI><RoleGate route="/support"><SupportTickets /></RoleGate></ProtectedTI>} />
     <Route path="/automacoes" element={<ProtectedTI><RoleGate route="/automacoes"><AutomacoesPage /></RoleGate></ProtectedTI>} />
     <Route path="/hipocampo" element={<ProtectedTI><RoleGate route="/hipocampo"><Hipocampo /></RoleGate></ProtectedTI>} />
+    <Route path="/almoxarifado" element={<ProtectedTI><RoleGate route="/almoxarifado"><Almoxarifado /></RoleGate></ProtectedTI>} />
 
     {/* Sistema Social Media */}
     <Route path="/social" element={<ProtectedSocial><SocialDashboard /></ProtectedSocial>} />
