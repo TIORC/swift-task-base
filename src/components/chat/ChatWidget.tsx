@@ -67,14 +67,18 @@ export function ChatWidget({ context }: Props) {
   const activeConv = conversations.find(c => c.id === activeId);
   const otherOf = (conv: typeof conversations[number]) => conv.participants.find(p => p.user_id !== user?.id);
 
-  // Load users for "new chat"
+  // Load users for "new chat" — só membros do sistema atual
   useEffect(() => {
     if (view !== "new") return;
     (async () => {
-      const { data } = await sb.from("profiles").select("id, full_name, avatar_url").order("full_name");
-      setUsers((data ?? []).filter((p: Profile) => p.id !== user?.id));
+      const systemKey = context === "social" ? "social" : "ti";
+      const { data: sys } = await sb.from("user_systems").select("user_id").eq("system", systemKey).eq("enabled", true);
+      const ids = (sys ?? []).map((s: any) => s.user_id).filter((id: string) => id !== user?.id);
+      if (ids.length === 0) { setUsers([]); return; }
+      const { data } = await sb.from("profiles").select("id, full_name, avatar_url").in("id", ids).order("full_name");
+      setUsers((data ?? []) as Profile[]);
     })();
-  }, [view, user?.id]);
+  }, [view, user?.id, context]);
 
   // Auto-scroll on new messages
   useEffect(() => {
