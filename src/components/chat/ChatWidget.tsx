@@ -96,9 +96,10 @@ export function ChatWidget({ context }: Props) {
     const q = mentionQuery.trim();
     (async () => {
       const table = context === "social" ? "sm_tasks" : "tasks";
-      let query = sb.from(table).select("id, title").order("created_at", { ascending: false }).limit(8);
+      let query = sb.from(table).select("id, title").order("created_at", { ascending: false }).limit(10);
       if (q) query = query.ilike("title", `%${q}%`);
-      const { data } = await query;
+      const { data, error } = await query;
+      if (error) { console.error("[chat mention search]", error); return; }
       setMentionResults((data ?? []).map((t: any) => ({ id: t.id, title: t.title, kind: context === "social" ? "sm" : "ti" })));
     })();
   }, [mentionQuery, context]);
