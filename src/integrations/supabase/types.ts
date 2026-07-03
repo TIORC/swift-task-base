@@ -435,6 +435,103 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_conversations: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          is_group: boolean
+          last_message_at: string
+          name: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          is_group?: boolean
+          last_message_at?: string
+          name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_group?: boolean
+          last_message_at?: string
+          name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          mentioned_sm_task_ids: string[]
+          mentioned_task_ids: string[]
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          mentioned_sm_task_ids?: string[]
+          mentioned_task_ids?: string[]
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          mentioned_sm_task_ids?: string[]
+          mentioned_task_ids?: string[]
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_participants: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          last_read_at: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          last_read_at?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          last_read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           content: string
@@ -2187,6 +2284,7 @@ export type Database = {
       }
       get_admin_user_ids: { Args: never; Returns: string[] }
       get_gestor_user_ids: { Args: never; Returns: string[] }
+      get_or_create_direct_chat: { Args: { _other: string }; Returns: string }
       get_social_assignable_user_ids: { Args: never; Returns: string[] }
       get_ti_assignable_user_ids: { Args: never; Returns: string[] }
       has_role: {
@@ -2209,6 +2307,10 @@ export type Database = {
         Returns: boolean
       }
       has_ti_write: { Args: { _user_id: string }; Returns: boolean }
+      is_chat_participant: {
+        Args: { _conv: string; _user: string }
+        Returns: boolean
+      }
       user_client_ids: { Args: { _user_id: string }; Returns: string[] }
       user_sector_codes: { Args: { _user_id: string }; Returns: string[] }
     }

@@ -12,7 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, ListTodo, Trash2, Target, CheckSquare, CalendarDays, User, X, Briefcase, Bookmark, FileStack } from "lucide-react";
+import { Plus, ListTodo, Trash2, Target, CheckSquare, CalendarDays, User, X, Briefcase, Bookmark, FileStack, Clock } from "lucide-react";
+import { isOverdue } from "@/lib/dates";
 import { SocialTaskChecklist } from "@/components/social/SocialTaskChecklist";
 import { useSmTasks, useSmClients, useSocialMutations } from "@/hooks/useSocial";
 import { useSocialAssignableProfiles } from "@/hooks/useTasks";
@@ -335,10 +336,17 @@ export default function SocialTasks() {
                     {t.title}
                     {(t as any).is_recurring_template && <Badge variant="secondary" className="text-[10px]">Recorrente</Badge>}
                   </p>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     {cName && (
                       <Badge variant="outline" className="text-[10px] bg-primary/5 text-primary border-primary/20 gap-1">
                         <Briefcase className="h-2.5 w-2.5"/>{cName}
+                      </Badge>
+                    )}
+                    {t.due_date && t.status !== "concluido" && t.status !== "descartado" && (
+                      <Badge variant="outline" className={`text-[10px] gap-1 ${isOverdue(t.due_date) ? "bg-destructive/10 text-destructive border-destructive/30" : "bg-muted/50 text-muted-foreground border-border"}`}>
+                        <Clock className="h-2.5 w-2.5"/>
+                        Prazo {format(new Date(t.due_date), "dd/MM", { locale: ptBR })}
+                        {isOverdue(t.due_date) && <span className="font-semibold">· atrasada</span>}
                       </Badge>
                     )}
                     {t.description && <p className="text-xs text-muted-foreground truncate">{t.description}</p>}

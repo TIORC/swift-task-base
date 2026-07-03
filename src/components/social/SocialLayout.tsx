@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSocialRole } from "@/hooks/useSocialRole";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
+import { ChatWidget } from "@/components/chat/ChatWidget";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useProfile } from "@/hooks/useProfile";
@@ -181,6 +182,7 @@ export function SocialLayout({ children }: { children: ReactNode }) {
           </header>
           <main className="flex-1 p-6 overflow-auto animate-fade-in">{children}</main>
         </div>
+        <ChatWidget context="social" />
       </div>
     </SidebarProvider>
   );
