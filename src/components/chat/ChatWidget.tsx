@@ -96,9 +96,10 @@ export function ChatWidget({ context }: Props) {
     const q = mentionQuery.trim();
     (async () => {
       const table = context === "social" ? "sm_tasks" : "tasks";
-      let query = sb.from(table).select("id, title").order("created_at", { ascending: false }).limit(8);
+      let query = sb.from(table).select("id, title").order("created_at", { ascending: false }).limit(10);
       if (q) query = query.ilike("title", `%${q}%`);
-      const { data } = await query;
+      const { data, error } = await query;
+      if (error) { console.error("[chat mention search]", error); return; }
       setMentionResults((data ?? []).map((t: any) => ({ id: t.id, title: t.title, kind: context === "social" ? "sm" : "ti" })));
     })();
   }, [mentionQuery, context]);
@@ -285,31 +286,40 @@ export function ChatWidget({ context }: Props) {
                 })}
               </div>
 
-              {/* Mention dropdown */}
-              {mentionQuery !== null && mentionResults.length > 0 && (
-                <div className="border-t border-border bg-popover max-h-40 overflow-y-auto">
-                  {mentionResults.map(t => (
-                    <button key={t.id} onClick={() => insertMention(t)}
-                      className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted flex items-center gap-2">
-                      <AtSign className="h-3 w-3 text-primary"/>{t.title}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <div className="relative">
+                {/* Mention dropdown */}
+                {mentionQuery !== null && (
+                  <div className="absolute bottom-full left-0 right-0 border-t border-border bg-popover shadow-lg max-h-52 overflow-y-auto z-10">
+                    <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border bg-muted/40">
+                      Mencionar tarefa {mentionQuery && `· "${mentionQuery}"`}
+                    </div>
+                    {mentionResults.length === 0 ? (
+                      <p className="px-3 py-3 text-xs text-muted-foreground">Nenhuma tarefa encontrada.</p>
+                    ) : mentionResults.map(t => (
+                      <button key={t.id} type="button" onMouseDown={(e) => { e.preventDefault(); insertMention(t); }}
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center gap-2 border-b border-border/50 last:border-0">
+                        <AtSign className="h-3 w-3 text-primary shrink-0"/>
+                        <span className="truncate">{t.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
 
-              <form onSubmit={e => { e.preventDefault(); send(); }} className="p-2 border-t border-border flex items-center gap-2">
-                <Input
-                  ref={inputRef}
-                  value={input}
-                  onChange={e => handleInput(e.target.value)}
-                  placeholder="Digite mensagem. Use @ para mencionar tarefa"
-                  className="h-9"
-                  autoFocus
-                />
-                <Button type="submit" size="icon" className="h-9 w-9 shrink-0" disabled={!input.trim()}>
-                  <Send className="h-4 w-4"/>
-                </Button>
-              </form>
+                <form onSubmit={e => { e.preventDefault(); send(); }} className="p-2 border-t border-border flex items-center gap-2 bg-card">
+                  <Input
+                    ref={inputRef}
+                    value={input}
+                    onChange={e => handleInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Escape") setMentionQuery(null); }}
+                    placeholder="Digite mensagem. Use @ para mencionar tarefa"
+                    className="h-9"
+                    autoFocus
+                  />
+                  <Button type="submit" size="icon" className="h-9 w-9 shrink-0" disabled={!input.trim()}>
+                    <Send className="h-4 w-4"/>
+                  </Button>
+                </form>
+              </div>
             </>
           )}
         </div>
