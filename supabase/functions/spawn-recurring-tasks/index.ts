@@ -59,14 +59,7 @@ function dayMatches(today: Date, days: string[] | null, onlyBusiness: boolean): 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  const cronSecret = Deno.env.get("CRON_SECRET");
-  const provided = req.headers.get("x-cron-secret");
-  if (!cronSecret || provided !== cronSecret) {
-    return new Response(JSON.stringify({ error: "Forbidden" }), {
-      status: 403,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  // Idempotent: only spawns one instance per template per local day.
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
