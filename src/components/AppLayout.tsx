@@ -22,6 +22,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </header>
           <main className="flex-1 p-6 overflow-auto animate-fade-in">{children}</main>
         </div>
+        <ChatWidget context="ti" />
       </div>
     </SidebarProvider>
   );
