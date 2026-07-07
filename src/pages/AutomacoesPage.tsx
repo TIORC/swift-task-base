@@ -20,7 +20,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BLOCKER_TYPE_LABELS, computeHealthScore } from "@/types/automation";
 import { useSectorVisibility } from "@/hooks/useUserSectors";
 import { useMyAutomationVisibility } from "@/hooks/usePermissions";
-import { useUserSystems } from "@/hooks/useUserSystems";
 
 export default function AutomacoesPage() {
   const { data: automations = [], isLoading } = useAutomations();
@@ -39,8 +38,6 @@ export default function AutomacoesPage() {
 
   const { canSeeAll, allowedSectors } = useSectorVisibility();
   const { allowedAutomationIds } = useMyAutomationVisibility();
-  const { hasSystem } = useUserSystems();
-  const isTiSystemMember = hasSystem("ti");
 
   const profileMap = useMemo(() => {
     const m: Record<string, string> = {};
@@ -48,13 +45,13 @@ export default function AutomacoesPage() {
     return m;
   }, [profiles]);
 
-  // Visibilidade: admin/gestor e membros do sistema TI veem tudo.
+  // Visibilidade: admin/gestor veem tudo.
   // Demais: automações do(s) seu(s) setor(es) OU explicitamente liberadas em Permissões.
   const visibleAutomations = useMemo(() => {
-    if (canSeeAll || isTiSystemMember) return automations;
+    if (canSeeAll) return automations;
     const whitelist = new Set(allowedAutomationIds);
     return automations.filter((a) => (a.sector && allowedSectors.includes(a.sector)) || whitelist.has(a.id));
-  }, [automations, canSeeAll, isTiSystemMember, allowedSectors, allowedAutomationIds]);
+  }, [automations, canSeeAll, allowedSectors, allowedAutomationIds]);
 
   const filtered = useMemo(() => {
     return visibleAutomations.filter(a => {
