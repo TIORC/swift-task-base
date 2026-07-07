@@ -2088,6 +2088,35 @@ export type Database = {
           },
         ]
       }
+      user_automation_visibility: {
+        Row: {
+          automation_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          automation_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          automation_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_automation_visibility_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_medals: {
         Row: {
           awarded_at: string
