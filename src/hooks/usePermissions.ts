@@ -102,6 +102,30 @@ export function useMyTaskVisibility() {
   return { visibleUsers, loading, canViewUserTasks };
 }
 
+export function useMyAutomationVisibility() {
+  const { user } = useAuth();
+  const [ids, setIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) {
+      setIds([]);
+      setLoading(false);
+      return;
+    }
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("user_automation_visibility")
+        .select("automation_id")
+        .eq("user_id", user.id);
+      setIds(((data as any[]) ?? []).map((d) => d.automation_id));
+      setLoading(false);
+    })();
+  }, [user?.id]);
+
+  return { allowedAutomationIds: ids, loading };
+}
+
 export function useAdminPermissions() {
   const loadUserMenuAccess = async (userId: string) => {
     const { data, error } = await supabase
@@ -147,5 +171,36 @@ export function useAdminPermissions() {
     }
   };
 
-  return { loadUserMenuAccess, loadUserTaskVisibility, saveMenuAccess, saveTaskVisibility };
+  const loadUserAutomationVisibility = async (userId: string) => {
+    const { data, error } = await (supabase as any)
+      .from("user_automation_visibility")
+      .select("automation_id")
+      .eq("user_id", userId);
+    if (error) throw error;
+    return ((data as any[]) ?? []).map((d) => d.automation_id as string);
+  };
+
+  const saveAutomationVisibility = async (userId: string, automationIds: string[]) => {
+    const { error: delError } = await (supabase as any)
+      .from("user_automation_visibility")
+      .delete()
+      .eq("user_id", userId);
+    if (delError) throw delError;
+
+    if (automationIds.length > 0) {
+      const { error } = await (supabase as any).from("user_automation_visibility").insert(
+        automationIds.map((automation_id) => ({ user_id: userId, automation_id })),
+      );
+      if (error) throw error;
+    }
+  };
+
+  return {
+    loadUserMenuAccess,
+    loadUserTaskVisibility,
+    loadUserAutomationVisibility,
+    saveMenuAccess,
+    saveTaskVisibility,
+    saveAutomationVisibility,
+  };
 }

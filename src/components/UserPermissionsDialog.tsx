@@ -1,13 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Eye, Menu, ShieldCheck, ShieldOff } from "lucide-react";
+import { Loader2, Eye, Menu, ShieldCheck, ShieldOff, Zap } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useAdminPermissions } from "@/hooks/usePermissions";
 import { MENU_ACCESS_ITEMS } from "@/lib/menu-access";
+import { useAutomations } from "@/hooks/useAutomationsData";
+import { SECTOR_COLORS } from "@/types/sectors";
 
 interface UserPermissionsDialogProps {
   open: boolean;
@@ -24,10 +28,20 @@ export function UserPermissionsDialog({
   userEmail,
   allUsers,
 }: UserPermissionsDialogProps) {
-  const { loadUserMenuAccess, loadUserTaskVisibility, saveMenuAccess, saveTaskVisibility } = useAdminPermissions();
+  const {
+    loadUserMenuAccess,
+    loadUserTaskVisibility,
+    loadUserAutomationVisibility,
+    saveMenuAccess,
+    saveTaskVisibility,
+    saveAutomationVisibility,
+  } = useAdminPermissions();
+  const { data: automations = [] } = useAutomations();
 
   const [menuState, setMenuState] = useState<Record<string, boolean>>({});
   const [visibleUserIds, setVisibleUserIds] = useState<string[]>([]);
+  const [visibleAutomationIds, setVisibleAutomationIds] = useState<string[]>([]);
+  const [automationSearch, setAutomationSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -37,8 +51,12 @@ export function UserPermissionsDialog({
     if (!open || !userId) return;
     setLoading(true);
 
-    Promise.all([loadUserMenuAccess(userId), loadUserTaskVisibility(userId)])
-      .then(([menuData, visData]) => {
+    Promise.all([
+      loadUserMenuAccess(userId),
+      loadUserTaskVisibility(userId),
+      loadUserAutomationVisibility(userId),
+    ])
+      .then(([menuData, visData, autoData]) => {
         if (cancelled) return;
 
         const menuMap: Record<string, boolean> = {};
@@ -51,6 +69,7 @@ export function UserPermissionsDialog({
 
         setMenuState(menuMap);
         setVisibleUserIds(visData.map((item: any) => item.target_user_id));
+        setVisibleAutomationIds(autoData);
         setLoading(false);
       })
       .catch((error: any) => {
@@ -72,7 +91,11 @@ export function UserPermissionsDialog({
         enabled,
       }));
 
-      await Promise.all([saveMenuAccess(userId, menuItems), saveTaskVisibility(userId, visibleUserIds)]);
+      await Promise.all([
+        saveMenuAccess(userId, menuItems),
+        saveTaskVisibility(userId, visibleUserIds),
+        saveAutomationVisibility(userId, visibleAutomationIds),
+      ]);
       toast.success(`Permissões de ${userEmail} salvas!`);
       onOpenChange(false);
     } catch (error: any) {
@@ -92,7 +115,29 @@ export function UserPermissionsDialog({
     );
   };
 
+  const toggleAutomation = (autoId: string) => {
+    setVisibleAutomationIds((prev) =>
+      prev.includes(autoId) ? prev.filter((id) => id !== autoId) : [...prev, autoId],
+    );
+  };
+
   const otherUsers = allUsers.filter((user) => user.id !== userId);
+
+  const filteredAutomations = useMemo(() => {
+    const q = automationSearch.toLowerCase().trim();
+    const list = q
+      ? automations.filter((a) => a.title.toLowerCase().includes(q) || (a.sector || "").toLowerCase().includes(q))
+      : automations;
+    return [...list].sort((a, b) => (a.sector || "zz").localeCompare(b.sector || "zz") || a.title.localeCompare(b.title));
+  }, [automations, automationSearch]);
+
+  const selectAllFiltered = () => {
+    setVisibleAutomationIds((prev) => Array.from(new Set([...prev, ...filteredAutomations.map((a) => a.id)])));
+  };
+  const clearAllFiltered = () => {
+    const ids = new Set(filteredAutomations.map((a) => a.id));
+    setVisibleAutomationIds((prev) => prev.filter((id) => !ids.has(id)));
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -115,7 +160,11 @@ export function UserPermissionsDialog({
               </TabsTrigger>
               <TabsTrigger value="visibility" className="flex-1 gap-1.5">
                 <Eye className="h-3.5 w-3.5" />
-                Visibilidade
+                Tarefas
+              </TabsTrigger>
+              <TabsTrigger value="automations" className="flex-1 gap-1.5">
+                <Zap className="h-3.5 w-3.5" />
+                Automações
               </TabsTrigger>
             </TabsList>
 
@@ -188,6 +237,48 @@ export function UserPermissionsDialog({
                 </div>
               )}
             </TabsContent>
+
+            <TabsContent value="automations" className="space-y-3 mt-4">
+              <p className="text-xs text-muted-foreground">
+                Libere automações específicas para este usuário. Por padrão o usuário só vê automações do(s) seu(s) setor(es);
+                as marcadas aqui aparecem mesmo fora do setor. Admin, gestor e membros do sistema TI veem todas independentemente desta lista.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Buscar por título ou setor..."
+                  value={automationSearch}
+                  onChange={(e) => setAutomationSearch(e.target.value)}
+                  className="h-8 text-xs"
+                />
+                <Button size="sm" variant="outline" className="h-8" onClick={selectAllFiltered}>Todas</Button>
+                <Button size="sm" variant="outline" className="h-8" onClick={clearAllFiltered}>Limpar</Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">{visibleAutomationIds.length} selecionada(s)</p>
+              <Separator />
+              {filteredAutomations.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma automação</p>
+              ) : (
+                <div className="space-y-1 max-h-72 overflow-y-auto">
+                  {filteredAutomations.map((a) => (
+                    <div key={a.id} className="flex items-center gap-3 rounded-lg p-2 hover:bg-muted/50">
+                      <Checkbox
+                        id={`auto-${a.id}`}
+                        checked={visibleAutomationIds.includes(a.id)}
+                        onCheckedChange={() => toggleAutomation(a.id)}
+                      />
+                      <label htmlFor={`auto-${a.id}`} className="text-sm cursor-pointer flex-1 flex items-center gap-2">
+                        <span className="truncate">{a.title}</span>
+                        {a.sector && (
+                          <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${SECTOR_COLORS[a.sector] || ""}`}>
+                            {a.sector}
+                          </Badge>
+                        )}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
           </Tabs>
         )}
 
@@ -202,3 +293,4 @@ export function UserPermissionsDialog({
     </Dialog>
   );
 }
+
