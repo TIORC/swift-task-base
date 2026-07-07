@@ -102,6 +102,30 @@ export function useMyTaskVisibility() {
   return { visibleUsers, loading, canViewUserTasks };
 }
 
+export function useMyAutomationVisibility() {
+  const { user } = useAuth();
+  const [ids, setIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) {
+      setIds([]);
+      setLoading(false);
+      return;
+    }
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("user_automation_visibility")
+        .select("automation_id")
+        .eq("user_id", user.id);
+      setIds(((data as any[]) ?? []).map((d) => d.automation_id));
+      setLoading(false);
+    })();
+  }, [user?.id]);
+
+  return { allowedAutomationIds: ids, loading };
+}
+
 export function useAdminPermissions() {
   const loadUserMenuAccess = async (userId: string) => {
     const { data, error } = await supabase
