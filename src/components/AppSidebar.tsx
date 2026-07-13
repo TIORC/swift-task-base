@@ -1,4 +1,4 @@
-import { LayoutDashboard, Columns3, ListTodo, LogOut, Zap, Trophy, Target, GitBranch, Gauge, ShieldCheck, BarChart3, Headset, Bot, Loader2, ArrowLeftRight, Brain, Package } from "lucide-react";
+import { LayoutDashboard, Columns3, ListTodo, LogOut, Zap, Trophy, Target, GitBranch, Gauge, ShieldCheck, BarChart3, Headset, Bot, Loader2, ArrowLeftRight, Brain, Package, Repeat } from "lucide-react";
 import { useTheme } from "next-themes";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
