@@ -22,20 +22,24 @@ export function CoffeeButton() {
     else localStorage.removeItem(STORAGE_KEY);
   }, [coffeeTaskId]);
 
-  const isCoffeeRunning = isRunning && activeTaskId === coffeeTaskId && !!coffeeTaskId;
+  const hasActiveCoffee = !!coffeeTaskId;
+  const isCoffeeRunning = hasActiveCoffee && isRunning && activeTaskId === coffeeTaskId;
 
   const handleClick = async () => {
     if (!user || busy) return;
     setBusy(true);
     try {
-      if (isCoffeeRunning) {
-        await stop();
-        if (coffeeTaskId) {
-          await supabase
-            .from("tasks")
-            .update({ status: "done", completed_at: new Date().toISOString() } as any)
-            .eq("id", coffeeTaskId);
+      if (hasActiveCoffee) {
+        // Stop timer if it belongs to this coffee
+        if (isRunning && activeTaskId === coffeeTaskId) {
+          await stop();
         }
+        // Always mark the coffee task as done
+        const { error: upErr } = await supabase
+          .from("tasks")
+          .update({ status: "done", completed_at: new Date().toISOString() } as any)
+          .eq("id", coffeeTaskId!);
+        if (upErr) throw upErr;
         setCoffeeTaskId(null);
         queryClient.invalidateQueries({ queryKey: ["tasks"] });
         toast.success("Pausa para café concluída ☕");
