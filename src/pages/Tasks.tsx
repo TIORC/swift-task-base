@@ -164,6 +164,10 @@ const Tasks = () => {
             {canFilter && (
               <TaskFilterSelect value={selectedUserId} onChange={setSelectedUserId} />
             )}
+            <Button variant="outline" onClick={() => setRecurringOpen(true)} className="h-9">
+              <Repeat className="mr-2 h-4 w-4" />
+              Recorrentes
+            </Button>
             {!isGestor && (
               <Button onClick={() => setCreateOpen(true)} className="h-9">
                 <Plus className="mr-2 h-4 w-4" />
