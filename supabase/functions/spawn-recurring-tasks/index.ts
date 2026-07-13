@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
   let spawned = 0;
   for (const t of templates ?? []) {
     const interval = t.recurrence_interval || 1;
-    const startTime = t.recurrence_start_time || "07:00";
+    const startTime = t.recurrence_start_time || "00:00";
     const days: string[] = Array.isArray(t.recurrence_days) ? t.recurrence_days : [];
     const onlyBusiness = !!t.recurrence_only_business_days;
 
