@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ChatWidget } from "@/components/chat/ChatWidget";
+import { CoffeeButton } from "@/components/CoffeeButton";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   return (
