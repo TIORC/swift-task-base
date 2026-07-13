@@ -42,14 +42,14 @@ export function EditRecurrenceSection({ task }: Props) {
   const [type, setType] = useState<string>(task.recurrence_type || "daily");
   const [interval, setIntervalVal] = useState<number>(task.recurrence_interval || 1);
   const [days, setDays] = useState<string[]>(Array.isArray(task.recurrence_days) ? task.recurrence_days : []);
-  const [startTime, setStartTime] = useState<string>(task.recurrence_start_time || "07:00");
+  const [startTime, setStartTime] = useState<string>(task.recurrence_start_time || "00:00");
   const [onlyBusiness, setOnlyBusiness] = useState<boolean>(!!task.recurrence_only_business_days);
 
   useEffect(() => {
     setType(task.recurrence_type || "daily");
     setIntervalVal(task.recurrence_interval || 1);
     setDays(Array.isArray(task.recurrence_days) ? task.recurrence_days : []);
-    setStartTime(task.recurrence_start_time || "07:00");
+    setStartTime(task.recurrence_start_time || "00:00");
     setOnlyBusiness(!!task.recurrence_only_business_days);
   }, [task.id]);
 
@@ -64,7 +64,7 @@ export function EditRecurrenceSection({ task }: Props) {
       recurrence_type: type,
       recurrence_interval: interval,
       recurrence_days: cleanedDays,
-      recurrence_start_time: startTime || "07:00",
+      recurrence_start_time: startTime || "00:00",
       recurrence_only_business_days: onlyBusiness,
     } as any);
   };
@@ -105,7 +105,7 @@ export function EditRecurrenceSection({ task }: Props) {
           <Input
             type="time"
             value={startTime}
-            onChange={(e) => setStartTime(e.target.value || "07:00")}
+            onChange={(e) => setStartTime(e.target.value || "00:00")}
             className="h-9"
           />
         </div>
