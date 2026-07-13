@@ -69,6 +69,7 @@ const Tasks = () => {
   const { activeTaskId, isRunning, elapsed, start, stop } = useGlobalTimer();
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [recurringOpen, setRecurringOpen] = useState(false);
 
   // Advanced filters
   const [statusChip, setStatusChip] = useState<StatusChip>("all");
