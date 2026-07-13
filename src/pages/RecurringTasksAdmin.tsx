@@ -239,6 +239,8 @@ export default function RecurringTasksAdmin() {
               </Button>
 
               <EditRecurrenceSection task={editing as any} />
+
+              <HistoryPanel taskId={editing.id} />
             </div>
           )}
         </DialogContent>
