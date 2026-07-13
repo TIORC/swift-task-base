@@ -80,6 +80,29 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Minimum days that must have passed since last spawn for a given frequency.
+  // The day-of-week gate handles WHICH day; this only enforces interval spacing.
+  function minGapDays(type: string, intervalN: number): number {
+    const i = Math.max(1, intervalN || 1);
+    switch (type) {
+      case "daily": return i;
+      case "weekly": return (i - 1) * 7 + 1;
+      case "decendial": return (i - 1) * 10 + 1;
+      case "monthly": return (i - 1) * 28 + 1;
+      case "bimonthly": return (i - 1) * 60 + 27;
+      case "quarterly": return (i - 1) * 90 + 85;
+      case "semiannual": return (i - 1) * 180 + 175;
+      case "annual": return (i - 1) * 365 + 360;
+      case "custom": return i;
+      default: return 1;
+    }
+  }
+  function daysBetween(a: Date, b: Date): number {
+    const da = new Date(a.getFullYear(), a.getMonth(), a.getDate());
+    const db = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+    return Math.floor((db.getTime() - da.getTime()) / 86400000);
+  }
+
   let spawned = 0;
   for (const t of templates ?? []) {
     const interval = t.recurrence_interval || 1;
@@ -87,19 +110,23 @@ Deno.serve(async (req) => {
     const days: string[] = Array.isArray(t.recurrence_days) ? t.recurrence_days : [];
     const onlyBusiness = !!t.recurrence_only_business_days;
 
-    const last = t.last_spawned_at ? new Date(t.last_spawned_at) : new Date(t.created_at);
-    const next = applyStartTime(nextDue(t.recurrence_type, interval, last), startTime);
-
-    if (next > now) continue;
     if (t.recurrence_until && now > new Date(t.recurrence_until)) continue;
 
-    // Day-of-week / business-day gate
+    // Day-of-week / business-day gate: must fire on the right day of week.
     if (!dayMatches(now, days, onlyBusiness)) continue;
 
-    // Idempotency: avoid duplicate spawns within the same local day
-    if (t.last_spawned_at) {
-      const lastSpawn = new Date(t.last_spawned_at);
-      if (lastSpawn.toDateString() === now.toDateString()) continue;
+    // Must be past the configured start time today.
+    if (now < applyStartTime(now, startTime)) continue;
+
+    const lastSpawn = t.last_spawned_at ? new Date(t.last_spawned_at) : null;
+
+    // Never spawn twice in the same local day.
+    if (lastSpawn && lastSpawn.toDateString() === now.toDateString()) continue;
+
+    // Enforce interval spacing since last spawn (skipped on the very first spawn).
+    if (lastSpawn) {
+      const gap = daysBetween(lastSpawn, now);
+      if (gap < minGapDays(t.recurrence_type, interval)) continue;
     }
 
     const spawnedDue = applyStartTime(now, startTime);
