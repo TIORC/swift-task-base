@@ -248,3 +248,37 @@ export default function RecurringTasksAdmin() {
     </div>
   );
 }
+
+function HistoryPanel({ taskId }: { taskId: string }) {
+  const { data, isLoading } = useRecurringHistory(taskId);
+  return (
+    <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
+      <div className="flex items-center gap-2 text-sm font-semibold">
+        <History className="h-4 w-4 text-primary" />Histórico de alterações
+      </div>
+      {isLoading ? (
+        <p className="text-xs text-muted-foreground">Carregando...</p>
+      ) : !data || data.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Sem alterações registradas.</p>
+      ) : (
+        <div className="space-y-1.5 max-h-64 overflow-y-auto">
+          {data.map((h: any) => (
+            <div key={h.id} className="rounded-md bg-background/60 border border-border/60 px-3 py-2 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-foreground">{h.changed_by_name}</span>
+                <span className="text-muted-foreground">
+                  {new Date(h.changed_at).toLocaleString("pt-BR")}
+                </span>
+              </div>
+              <div className="mt-1 text-muted-foreground">
+                <span className="text-foreground font-medium">{FIELD_LABELS[h.field] || h.field}:</span>{" "}
+                <span className="line-through opacity-60">{h.old_value ?? "—"}</span>{" → "}
+                <span className="text-foreground">{h.new_value ?? "—"}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
