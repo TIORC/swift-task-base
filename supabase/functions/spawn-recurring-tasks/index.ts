@@ -32,11 +32,11 @@ function toNextBusinessDay(d: Date): Date {
   return out;
 }
 
-// Apply HH:MM as local start time (defaults to 07:00).
+// Apply HH:MM as local start time (defaults to 00:00 — task appears from midnight).
 function applyStartTime(d: Date, hhmm: string | null | undefined): Date {
   const out = new Date(d);
-  const [h, m] = (hhmm || "07:00").split(":").map((n) => parseInt(n, 10));
-  out.setHours(Number.isFinite(h) ? h : 7, Number.isFinite(m) ? m : 0, 0, 0);
+  const [h, m] = (hhmm || "00:00").split(":").map((n) => parseInt(n, 10));
+  out.setHours(Number.isFinite(h) ? h : 0, Number.isFinite(m) ? m : 0, 0, 0);
   return out;
 }
 
