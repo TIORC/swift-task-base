@@ -77,20 +77,21 @@ export function CoffeeButton() {
     <button
       onClick={handleClick}
       disabled={busy}
-      title={isCoffeeRunning ? "Concluir pausa de café" : "Iniciar pausa para café"}
+      title={hasActiveCoffee ? "Concluir pausa de café" : "Iniciar pausa para café"}
       className={cn(
         "fixed bottom-24 right-6 z-40 flex items-center gap-2 rounded-full shadow-lg border transition-all",
         "px-4 py-3 font-medium text-sm",
-        isCoffeeRunning
-          ? "bg-amber-500 text-white border-amber-600 hover:bg-amber-600 animate-pulse"
+        hasActiveCoffee
+          ? "bg-amber-500 text-white border-amber-600 hover:bg-amber-600"
           : "bg-card text-foreground border-border hover:bg-muted",
+        isCoffeeRunning && "animate-pulse",
         busy && "opacity-70 cursor-not-allowed",
       )}
     >
       {busy ? (
         <Loader2 className="h-5 w-5 animate-spin" />
       ) : (
-        <Coffee className={cn("h-5 w-5", isCoffeeRunning ? "text-white" : "text-amber-600")} />
+        <Coffee className={cn("h-5 w-5", hasActiveCoffee ? "text-white" : "text-amber-600")} />
       )}
       {isCoffeeRunning && (
         <span className="font-mono tabular-nums text-sm">{formatTime(elapsed)}</span>
