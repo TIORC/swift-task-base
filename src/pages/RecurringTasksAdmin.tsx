@@ -12,8 +12,44 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EditRecurrenceSection } from "@/components/EditRecurrenceSection";
 import { useUpdateTask, useDeleteTask, useAssignableProfiles, type Task } from "@/hooks/useTasks";
-import { Repeat, Search, Trash2, Pencil, Clock, Calendar as CalendarIcon, User } from "lucide-react";
+import { Repeat, Search, Trash2, Pencil, Clock, Calendar as CalendarIcon, User, History } from "lucide-react";
 import { toast } from "sonner";
+
+const FIELD_LABELS: Record<string, string> = {
+  title: "Título",
+  description: "Descrição",
+  assigned_to: "Responsável",
+  recurrence_type: "Frequência",
+  recurrence_interval: "Intervalo",
+  recurrence_days: "Dias da semana",
+  recurrence_start_time: "Horário",
+  recurrence_only_business_days: "Somente dias úteis",
+  recurrence_until: "Data-limite",
+};
+
+function useRecurringHistory(taskId: string | null) {
+  return useQuery({
+    queryKey: ["recurring-history", taskId],
+    enabled: !!taskId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("recurring_task_history" as any)
+        .select("*")
+        .eq("task_id", taskId!)
+        .order("changed_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      const rows = (data ?? []) as any[];
+      const userIds = [...new Set(rows.map((r) => r.changed_by).filter(Boolean))];
+      let names: Record<string, string> = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", userIds);
+        names = Object.fromEntries((profiles ?? []).map((p) => [p.id, p.full_name || "Usuário"]));
+      }
+      return rows.map((r) => ({ ...r, changed_by_name: r.changed_by ? names[r.changed_by] || "Usuário" : "Sistema" }));
+    },
+  });
+}
 
 const FREQ_LABELS: Record<string, string> = {
   daily: "Diária", weekly: "Semanal", decendial: "Decendial", monthly: "Mensal",
@@ -203,10 +239,46 @@ export default function RecurringTasksAdmin() {
               </Button>
 
               <EditRecurrenceSection task={editing as any} />
+
+              <HistoryPanel taskId={editing.id} />
             </div>
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function HistoryPanel({ taskId }: { taskId: string }) {
+  const { data, isLoading } = useRecurringHistory(taskId);
+  return (
+    <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
+      <div className="flex items-center gap-2 text-sm font-semibold">
+        <History className="h-4 w-4 text-primary" />Histórico de alterações
+      </div>
+      {isLoading ? (
+        <p className="text-xs text-muted-foreground">Carregando...</p>
+      ) : !data || data.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Sem alterações registradas.</p>
+      ) : (
+        <div className="space-y-1.5 max-h-64 overflow-y-auto">
+          {data.map((h: any) => (
+            <div key={h.id} className="rounded-md bg-background/60 border border-border/60 px-3 py-2 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-foreground">{h.changed_by_name}</span>
+                <span className="text-muted-foreground">
+                  {new Date(h.changed_at).toLocaleString("pt-BR")}
+                </span>
+              </div>
+              <div className="mt-1 text-muted-foreground">
+                <span className="text-foreground font-medium">{FIELD_LABELS[h.field] || h.field}:</span>{" "}
+                <span className="line-through opacity-60">{h.old_value ?? "—"}</span>{" → "}
+                <span className="text-foreground">{h.new_value ?? "—"}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
