@@ -28,6 +28,7 @@ import FocusMode from "./pages/FocusMode";
 import DependencyMap from "./pages/DependencyMap";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import AdminPanel from "./pages/AdminPanel";
+import RecurringTasksAdmin from "./pages/RecurringTasksAdmin";
 import NotFound from "./pages/NotFound";
 import Reports from "./pages/Reports";
 import SupportTickets from "./pages/SupportTickets";
@@ -178,6 +179,7 @@ const AppRoutes = () => (
     <Route path="/dependencies" element={<ProtectedTI><RoleGate route="/dependencies"><DependencyMap /></RoleGate></ProtectedTI>} />
     <Route path="/manager" element={<ProtectedTI><RoleGate route="/manager"><ManagerDashboard /></RoleGate></ProtectedTI>} />
     <Route path="/admin" element={<ProtectedTI><RoleGate route="/admin"><AdminPanel /></RoleGate></ProtectedTI>} />
+    <Route path="/admin/recorrentes" element={<ProtectedTI><RoleGate route="/admin"><RecurringTasksAdmin /></RoleGate></ProtectedTI>} />
     <Route path="/reports" element={<ProtectedTI><RoleGate route="/reports"><Reports /></RoleGate></ProtectedTI>} />
     <Route path="/support" element={<ProtectedTI><RoleGate route="/support"><SupportTickets /></RoleGate></ProtectedTI>} />
     <Route path="/automacoes" element={<ProtectedTI><RoleGate route="/automacoes"><AutomacoesPage /></RoleGate></ProtectedTI>} />

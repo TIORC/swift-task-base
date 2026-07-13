@@ -1,4 +1,4 @@
-import { LayoutDashboard, Columns3, ListTodo, LogOut, Zap, Trophy, Target, GitBranch, Gauge, ShieldCheck, BarChart3, Headset, Bot, Loader2, ArrowLeftRight, Brain, Package } from "lucide-react";
+import { LayoutDashboard, Columns3, ListTodo, LogOut, Zap, Trophy, Target, GitBranch, Gauge, ShieldCheck, BarChart3, Headset, Bot, Loader2, ArrowLeftRight, Brain, Package, Repeat } from "lucide-react";
 import { useTheme } from "next-themes";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -42,6 +42,7 @@ const allNavItems = [
   { title: "Relatórios", url: "/reports", icon: BarChart3, profiles: ["admin", "gestor", "lider", "membro"] as RoleProfile[] },
   { title: "Ranking", url: "/ranking", icon: Trophy, profiles: ["admin", "gestor", "lider"] as RoleProfile[] },
   { title: "Administração", url: "/admin", icon: ShieldCheck, profiles: ["admin"] as RoleProfile[] },
+  { title: "Tarefas Recorrentes", url: "/admin/recorrentes", icon: Repeat, profiles: ["admin"] as RoleProfile[] },
 ];
 
 const groupLabels: Record<string, string> = {
