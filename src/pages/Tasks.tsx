@@ -8,6 +8,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { TaskFilterSelect } from "@/components/TaskFilterSelect";
+import RecurringTasksAdmin from "@/pages/RecurringTasksAdmin";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
@@ -67,6 +69,7 @@ const Tasks = () => {
   const { activeTaskId, isRunning, elapsed, start, stop } = useGlobalTimer();
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [recurringOpen, setRecurringOpen] = useState(false);
 
   // Advanced filters
   const [statusChip, setStatusChip] = useState<StatusChip>("all");
@@ -161,6 +164,10 @@ const Tasks = () => {
             {canFilter && (
               <TaskFilterSelect value={selectedUserId} onChange={setSelectedUserId} />
             )}
+            <Button variant="outline" onClick={() => setRecurringOpen(true)} className="h-9">
+              <Repeat className="mr-2 h-4 w-4" />
+              Recorrentes
+            </Button>
             {!isGestor && (
               <Button onClick={() => setCreateOpen(true)} className="h-9">
                 <Plus className="mr-2 h-4 w-4" />
@@ -428,6 +435,17 @@ const Tasks = () => {
 
       {!isGestor && <CreateTaskDialog open={createOpen} onOpenChange={setCreateOpen} />}
       <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} isReadOnly={isGestor} />
+
+      <Dialog open={recurringOpen} onOpenChange={setRecurringOpen}>
+        <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Repeat className="h-5 w-5 text-primary" />Tarefas Recorrentes
+            </DialogTitle>
+          </DialogHeader>
+          <RecurringTasksAdmin />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

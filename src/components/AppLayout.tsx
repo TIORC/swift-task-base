@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ChatWidget } from "@/components/chat/ChatWidget";
+import { CoffeeButton } from "@/components/CoffeeButton";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -23,6 +24,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <main className="flex-1 p-6 overflow-auto animate-fade-in">{children}</main>
         </div>
         <ChatWidget context="ti" />
+        <CoffeeButton />
       </div>
     </SidebarProvider>
   );
