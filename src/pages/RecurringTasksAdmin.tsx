@@ -94,9 +94,9 @@ export default function RecurringTasksAdmin() {
   return (
     <div className="space-y-6">
       <PageHeader
-        icon={Repeat}
+        icon={<Repeat className="h-5 w-5" />}
         title="Tarefas Recorrentes"
-        subtitle="Administre os templates de tarefas que se repetem automaticamente."
+        description="Administre os templates de tarefas que se repetem automaticamente."
       />
 
       <div className="relative max-w-md">
