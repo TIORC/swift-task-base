@@ -22,20 +22,24 @@ export function CoffeeButton() {
     else localStorage.removeItem(STORAGE_KEY);
   }, [coffeeTaskId]);
 
-  const isCoffeeRunning = isRunning && activeTaskId === coffeeTaskId && !!coffeeTaskId;
+  const hasActiveCoffee = !!coffeeTaskId;
+  const isCoffeeRunning = hasActiveCoffee && isRunning && activeTaskId === coffeeTaskId;
 
   const handleClick = async () => {
     if (!user || busy) return;
     setBusy(true);
     try {
-      if (isCoffeeRunning) {
-        await stop();
-        if (coffeeTaskId) {
-          await supabase
-            .from("tasks")
-            .update({ status: "done", completed_at: new Date().toISOString() } as any)
-            .eq("id", coffeeTaskId);
+      if (hasActiveCoffee) {
+        // Stop timer if it belongs to this coffee
+        if (isRunning && activeTaskId === coffeeTaskId) {
+          await stop();
         }
+        // Always mark the coffee task as done
+        const { error: upErr } = await supabase
+          .from("tasks")
+          .update({ status: "done", completed_at: new Date().toISOString() } as any)
+          .eq("id", coffeeTaskId!);
+        if (upErr) throw upErr;
         setCoffeeTaskId(null);
         queryClient.invalidateQueries({ queryKey: ["tasks"] });
         toast.success("Pausa para café concluída ☕");
@@ -73,20 +77,21 @@ export function CoffeeButton() {
     <button
       onClick={handleClick}
       disabled={busy}
-      title={isCoffeeRunning ? "Concluir pausa de café" : "Iniciar pausa para café"}
+      title={hasActiveCoffee ? "Concluir pausa de café" : "Iniciar pausa para café"}
       className={cn(
         "fixed bottom-24 right-6 z-40 flex items-center gap-2 rounded-full shadow-lg border transition-all",
         "px-4 py-3 font-medium text-sm",
-        isCoffeeRunning
-          ? "bg-amber-500 text-white border-amber-600 hover:bg-amber-600 animate-pulse"
+        hasActiveCoffee
+          ? "bg-amber-500 text-white border-amber-600 hover:bg-amber-600"
           : "bg-card text-foreground border-border hover:bg-muted",
+        isCoffeeRunning && "animate-pulse",
         busy && "opacity-70 cursor-not-allowed",
       )}
     >
       {busy ? (
         <Loader2 className="h-5 w-5 animate-spin" />
       ) : (
-        <Coffee className={cn("h-5 w-5", isCoffeeRunning ? "text-white" : "text-amber-600")} />
+        <Coffee className={cn("h-5 w-5", hasActiveCoffee ? "text-white" : "text-amber-600")} />
       )}
       {isCoffeeRunning && (
         <span className="font-mono tabular-nums text-sm">{formatTime(elapsed)}</span>
