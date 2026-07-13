@@ -37,7 +37,7 @@ export function CoffeeButton() {
         // Always mark the coffee task as done
         const { error: upErr } = await supabase
           .from("tasks")
-          .update({ status: "done", completed_at: new Date().toISOString() } as any)
+          .update({ status: "done" } as any)
           .eq("id", coffeeTaskId!);
         if (upErr) throw upErr;
         setCoffeeTaskId(null);
