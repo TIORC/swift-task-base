@@ -8,6 +8,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { TaskFilterSelect } from "@/components/TaskFilterSelect";
+import RecurringTasksAdmin from "@/pages/RecurringTasksAdmin";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
