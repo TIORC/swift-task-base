@@ -28,6 +28,7 @@ import FocusMode from "./pages/FocusMode";
 import DependencyMap from "./pages/DependencyMap";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import AdminPanel from "./pages/AdminPanel";
+import RecurringTasksAdmin from "./pages/RecurringTasksAdmin";
 import NotFound from "./pages/NotFound";
 import Reports from "./pages/Reports";
 import SupportTickets from "./pages/SupportTickets";
