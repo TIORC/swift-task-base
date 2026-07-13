@@ -12,8 +12,44 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EditRecurrenceSection } from "@/components/EditRecurrenceSection";
 import { useUpdateTask, useDeleteTask, useAssignableProfiles, type Task } from "@/hooks/useTasks";
-import { Repeat, Search, Trash2, Pencil, Clock, Calendar as CalendarIcon, User } from "lucide-react";
+import { Repeat, Search, Trash2, Pencil, Clock, Calendar as CalendarIcon, User, History } from "lucide-react";
 import { toast } from "sonner";
+
+const FIELD_LABELS: Record<string, string> = {
+  title: "Título",
+  description: "Descrição",
+  assigned_to: "Responsável",
+  recurrence_type: "Frequência",
+  recurrence_interval: "Intervalo",
+  recurrence_days: "Dias da semana",
+  recurrence_start_time: "Horário",
+  recurrence_only_business_days: "Somente dias úteis",
+  recurrence_until: "Data-limite",
+};
+
+function useRecurringHistory(taskId: string | null) {
+  return useQuery({
+    queryKey: ["recurring-history", taskId],
+    enabled: !!taskId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("recurring_task_history" as any)
+        .select("*")
+        .eq("task_id", taskId!)
+        .order("changed_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      const rows = (data ?? []) as any[];
+      const userIds = [...new Set(rows.map((r) => r.changed_by).filter(Boolean))];
+      let names: Record<string, string> = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", userIds);
+        names = Object.fromEntries((profiles ?? []).map((p) => [p.id, p.full_name || "Usuário"]));
+      }
+      return rows.map((r) => ({ ...r, changed_by_name: r.changed_by ? names[r.changed_by] || "Usuário" : "Sistema" }));
+    },
+  });
+}
 
 const FREQ_LABELS: Record<string, string> = {
   daily: "Diária", weekly: "Semanal", decendial: "Decendial", monthly: "Mensal",
