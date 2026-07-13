@@ -435,6 +435,17 @@ const Tasks = () => {
 
       {!isGestor && <CreateTaskDialog open={createOpen} onOpenChange={setCreateOpen} />}
       <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} isReadOnly={isGestor} />
+
+      <Dialog open={recurringOpen} onOpenChange={setRecurringOpen}>
+        <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Repeat className="h-5 w-5 text-primary" />Tarefas Recorrentes
+            </DialogTitle>
+          </DialogHeader>
+          <RecurringTasksAdmin />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
