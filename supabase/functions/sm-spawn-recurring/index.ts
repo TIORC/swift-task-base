@@ -6,32 +6,42 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function nextDue(type: string, interval: number, from: Date): Date {
-  const d = new Date(from);
-  const step = Math.max(1, interval || 1);
-  if (type === "daily") d.setDate(d.getDate() + step);
-  else if (type === "weekly") d.setDate(d.getDate() + 7 * step);
-  else if (type === "monthly") d.setMonth(d.getMonth() + step);
-  else if (type === "custom") d.setDate(d.getDate() + step);
-  return d;
+// Minimum days between spawns to enforce interval spacing.
+function minGapDays(type: string, intervalN: number): number {
+  const i = Math.max(1, intervalN || 1);
+  switch (type) {
+    case "daily": return i;
+    case "weekly": return (i - 1) * 7 + 6; // ~ weekly
+    case "monthly": return (i - 1) * 28 + 27;
+    case "custom": return i;
+    default: return 1;
+  }
+}
+
+function daysBetween(a: Date, b: Date): number {
+  const da = new Date(a.getFullYear(), a.getMonth(), a.getDate());
+  const db = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+  return Math.floor((db.getTime() - da.getTime()) / 86400000);
+}
+
+function todayMidnight(now: Date): Date {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-
-  // Idempotent: only spawns one instance per template per local day.
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-
   const now = new Date();
+  const todayDue = todayMidnight(now).toISOString();
   let postsSpawned = 0;
   let tasksSpawned = 0;
 
-  // sm_posts
+  // ---------- sm_posts ----------
   const { data: postTpls } = await supabase
     .from("sm_posts").select("*")
     .eq("is_recurring_template", true)
@@ -39,17 +49,23 @@ Deno.serve(async (req) => {
 
   for (const t of postTpls ?? []) {
     const interval = t.recurrence_interval || 1;
-    const last = t.last_spawned_at ? new Date(t.last_spawned_at) : new Date(t.created_at);
-    const next = nextDue(t.recurrence_type, interval, last);
-    if (next > now) continue;
     if (t.recurrence_until && now > new Date(t.recurrence_until)) continue;
+
+    const lastSpawn = t.last_spawned_at ? new Date(t.last_spawned_at) : null;
+    // Never spawn twice in the same local day.
+    if (lastSpawn && lastSpawn.toDateString() === now.toDateString()) continue;
+    // Enforce interval spacing (skip only on very first spawn).
+    if (lastSpawn) {
+      const gap = daysBetween(lastSpawn, now);
+      if (gap < minGapDays(t.recurrence_type, interval)) continue;
+    }
 
     const { error: insErr } = await supabase.from("sm_posts").insert({
       client_id: t.client_id, campaign_id: t.campaign_id, network_id: t.network_id,
       content_type_id: t.content_type_id, title: t.title, caption: t.caption,
       hashtags: t.hashtags, priority: t.priority, status: "ideia",
       assigned_to: t.assigned_to, created_by: t.created_by, notes: t.notes,
-      scheduled_at: t.scheduled_at ? nextDue(t.recurrence_type, interval, new Date(t.scheduled_at)).toISOString() : null,
+      scheduled_at: todayDue,
       parent_recurring_post_id: t.id, is_recurring_template: false,
     });
     if (!insErr) {
@@ -58,7 +74,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  // sm_tasks
+  // ---------- sm_tasks ----------
   const { data: taskTpls } = await supabase
     .from("sm_tasks").select("*")
     .eq("is_recurring_template", true)
@@ -66,20 +82,23 @@ Deno.serve(async (req) => {
 
   for (const t of taskTpls ?? []) {
     const interval = t.recurrence_interval || 1;
-    const last = t.last_spawned_at ? new Date(t.last_spawned_at) : new Date(t.created_at);
-    const next = nextDue(t.recurrence_type, interval, last);
-    if (next > now) continue;
     if (t.recurrence_until && now > new Date(t.recurrence_until)) continue;
+
+    const lastSpawn = t.last_spawned_at ? new Date(t.last_spawned_at) : null;
+    if (lastSpawn && lastSpawn.toDateString() === now.toDateString()) continue;
+    if (lastSpawn) {
+      const gap = daysBetween(lastSpawn, now);
+      if (gap < minGapDays(t.recurrence_type, interval)) continue;
+    }
 
     const { data: inserted, error: insErr } = await supabase.from("sm_tasks").insert({
       client_id: t.client_id, campaign_id: t.campaign_id, title: t.title,
       description: t.description, status: "backlog", priority: t.priority,
       assigned_to: t.assigned_to, created_by: t.created_by,
-      due_date: t.due_date ? nextDue(t.recurrence_type, interval, new Date(t.due_date)).toISOString() : null,
+      due_date: todayDue,
       parent_recurring_task_id: t.id, is_recurring_template: false,
     }).select().single();
     if (!insErr && inserted) {
-      // Copy checklist items from template
       const { data: tplItems } = await supabase
         .from("sm_task_checklist_items").select("title, sort_order")
         .eq("task_id", t.id).order("sort_order");
