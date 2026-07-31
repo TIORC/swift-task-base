@@ -1,43 +1,79 @@
 // Cron-invoked edge function: spawns sm_posts and sm_tasks instances from recurring templates.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2.45.0";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const TIME_ZONE = "America/Sao_Paulo";
 
-// Minimum days between spawns to enforce interval spacing.
-function minGapDays(type: string, intervalN: number): number {
-  const i = Math.max(1, intervalN || 1);
-  switch (type) {
-    case "daily": return i;
-    case "weekly": return (i - 1) * 7 + 6; // ~ weekly
-    case "monthly": return (i - 1) * 28 + 27;
-    case "custom": return i;
-    default: return 1;
+function localDateKey(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
+// Dates selected in the M7 forms are stored as UTC midnight. Keep their literal
+// YYYY-MM-DD instead of shifting them to the previous day in the Brazil timezone.
+function storedDateKey(value: string | null, fallback: string): string {
+  return value?.slice(0, 10) || fallback;
+}
+
+function dateNumber(key: string): number {
+  return Date.parse(`${key}T00:00:00Z`);
+}
+
+function calendarParts(key: string) {
+  const [year, month, day] = key.split("-").map(Number);
+  return { year, month, day };
+}
+
+function matchesOccurrence(type: string, intervalN: number, anchorKey: string, todayKey: string): boolean {
+  const anchor = calendarParts(anchorKey);
+  const today = calendarParts(todayKey);
+  const dayDelta = Math.floor((dateNumber(todayKey) - dateNumber(anchorKey)) / 86400000);
+  if (dayDelta < 0) return false;
+
+  const interval = Math.max(1, intervalN || 1);
+  if (type === "daily" || type === "custom") return dayDelta % interval === 0;
+  if (type === "weekly") return dayDelta % (7 * interval) === 0;
+  if (type === "monthly") {
+    const monthDelta = (today.year - anchor.year) * 12 + today.month - anchor.month;
+    const lastDay = new Date(Date.UTC(today.year, today.month, 0)).getUTCDate();
+    return monthDelta >= 0 && monthDelta % interval === 0 && today.day === Math.min(anchor.day, lastDay);
   }
+  return false;
 }
 
-function daysBetween(a: Date, b: Date): number {
-  const da = new Date(a.getFullYear(), a.getMonth(), a.getDate());
-  const db = new Date(b.getFullYear(), b.getMonth(), b.getDate());
-  return Math.floor((db.getTime() - da.getTime()) / 86400000);
+function brazilDayBounds(key: string): { start: string; end: string } {
+  const start = new Date(`${key}T00:00:00-03:00`);
+  return { start: start.toISOString(), end: new Date(start.getTime() + 86400000).toISOString() };
 }
 
-function todayMidnight(now: Date): Date {
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+function occurrenceTime(key: string, source: string | null, endOfDay = false): string {
+  if (endOfDay) return new Date(`${key}T23:59:59-03:00`).toISOString();
+  const time = source?.slice(11, 19) || "09:00:00";
+  return new Date(`${key}T${time}-03:00`).toISOString();
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
+  const url = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !serviceKey) {
+    return new Response(JSON.stringify({ error: "Missing backend configuration" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const supabase = createClient(url, serviceKey);
 
   const now = new Date();
-  const todayDue = todayMidnight(now).toISOString();
+  const todayKey = localDateKey(now);
+  const todayBounds = brazilDayBounds(todayKey);
   let postsSpawned = 0;
   let tasksSpawned = 0;
 
@@ -50,22 +86,24 @@ Deno.serve(async (req) => {
   for (const t of postTpls ?? []) {
     const interval = t.recurrence_interval || 1;
     if (t.recurrence_until && now > new Date(t.recurrence_until)) continue;
+    const anchorKey = storedDateKey(t.scheduled_at, localDateKey(new Date(t.created_at)));
+    if (!matchesOccurrence(t.recurrence_type, interval, anchorKey, todayKey)) continue;
 
-    const lastSpawn = t.last_spawned_at ? new Date(t.last_spawned_at) : null;
-    // Never spawn twice in the same local day.
-    if (lastSpawn && lastSpawn.toDateString() === now.toDateString()) continue;
-    // Enforce interval spacing (skip only on very first spawn).
-    if (lastSpawn) {
-      const gap = daysBetween(lastSpawn, now);
-      if (gap < minGapDays(t.recurrence_type, interval)) continue;
-    }
+    // Completion never makes an occurrence eligible again. Check immutable creation
+    // time rather than status/last_spawned_at so reruns and concurrent cron calls are safe.
+    const { count: existing } = await supabase.from("sm_posts")
+      .select("id", { count: "exact", head: true })
+      .eq("parent_recurring_post_id", t.id)
+      .gte("created_at", todayBounds.start)
+      .lt("created_at", todayBounds.end);
+    if ((existing ?? 0) > 0) continue;
 
     const { error: insErr } = await supabase.from("sm_posts").insert({
       client_id: t.client_id, campaign_id: t.campaign_id, network_id: t.network_id,
       content_type_id: t.content_type_id, title: t.title, caption: t.caption,
       hashtags: t.hashtags, priority: t.priority, status: "ideia",
       assigned_to: t.assigned_to, created_by: t.created_by, notes: t.notes,
-      scheduled_at: todayDue,
+      scheduled_at: occurrenceTime(todayKey, t.scheduled_at),
       parent_recurring_post_id: t.id, is_recurring_template: false,
     });
     if (!insErr) {
@@ -83,19 +121,22 @@ Deno.serve(async (req) => {
   for (const t of taskTpls ?? []) {
     const interval = t.recurrence_interval || 1;
     if (t.recurrence_until && now > new Date(t.recurrence_until)) continue;
+    const anchorKey = storedDateKey(t.due_date, localDateKey(new Date(t.created_at)));
+    if (!matchesOccurrence(t.recurrence_type, interval, anchorKey, todayKey)) continue;
 
-    const lastSpawn = t.last_spawned_at ? new Date(t.last_spawned_at) : null;
-    if (lastSpawn && lastSpawn.toDateString() === now.toDateString()) continue;
-    if (lastSpawn) {
-      const gap = daysBetween(lastSpawn, now);
-      if (gap < minGapDays(t.recurrence_type, interval)) continue;
-    }
+    const { count: existing } = await supabase.from("sm_tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("parent_recurring_task_id", t.id)
+      .gte("created_at", todayBounds.start)
+      .lt("created_at", todayBounds.end);
+    if ((existing ?? 0) > 0) continue;
 
     const { data: inserted, error: insErr } = await supabase.from("sm_tasks").insert({
       client_id: t.client_id, campaign_id: t.campaign_id, title: t.title,
       description: t.description, status: "backlog", priority: t.priority,
       assigned_to: t.assigned_to, created_by: t.created_by,
-      due_date: todayDue,
+      // The task becomes visible at midnight, but is only overdue after its local day ends.
+      due_date: occurrenceTime(todayKey, t.due_date, true),
       parent_recurring_task_id: t.id, is_recurring_template: false,
     }).select().single();
     if (!insErr && inserted) {
