@@ -23,6 +23,8 @@ import { useAutomationSubtasks, useCreateSubtask, useUpdateSubtask, useDeleteSub
 import { useAutomationBlockers, useCreateBlocker, useResolveBlocker } from "@/hooks/useAutomationsData";
 import { useAutomationEvents } from "@/hooks/useAutomationsData";
 import { useAutomationTimeLogs, useCreateTimeLog } from "@/hooks/useAutomationsData";
+import { TimeLogsEditor } from "@/components/TimeLogsEditor";
+
 import { useGlobalTimer } from "@/hooks/useGlobalTimer";
 import { formatTime, formatMinutes } from "@/hooks/useTimeTracker";
 import { format } from "date-fns";
@@ -485,17 +487,8 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                 </div>
               )}
 
-              <div className="space-y-2">
-                {timeLogs.map(tl => (
-                  <div key={tl.id} className="flex justify-between text-sm p-2 rounded bg-muted/30">
-                    <div>
-                      <span className="font-medium">{tl.duration_minutes}min</span>
-                      {tl.description && <span className="text-muted-foreground ml-2">{tl.description}</span>}
-                    </div>
-                    <span className="text-[10px] text-muted-foreground">{format(new Date(tl.created_at), "dd/MM HH:mm", { locale: ptBR })}</span>
-                  </div>
-                ))}
-              </div>
+              <TimeLogsEditor scope="automation" targetId={a.id} />
+
             </TabsContent>
           </ScrollArea>
         </Tabs>

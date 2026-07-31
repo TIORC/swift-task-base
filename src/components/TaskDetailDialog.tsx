@@ -29,6 +29,8 @@ import { TaskApprovalSection } from "@/components/TaskApprovalSection";
 import { TaskDependencies } from "@/components/TaskDependencies";
 import { TaskTimeline } from "@/components/TaskTimeline";
 import { CloseTicketDialog } from "@/components/CloseTicketDialog";
+import { TimeLogsEditor } from "@/components/TimeLogsEditor";
+
 
 const priorityOptions = [
   { value: "low", label: "Baixa" },
@@ -287,19 +289,8 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
                 </div>
               )}
 
-              {logs.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-foreground">Registros Recentes</h4>
-                  <div className="space-y-1 max-h-32 overflow-y-auto">
-                    {logs.slice(0, 10).map((log) => (
-                      <div key={log.id} className="flex items-center justify-between text-xs text-muted-foreground px-3 py-1.5">
-                        <span>{new Date(log.started_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
-                        <span className="font-medium text-foreground">{formatMinutes(log.duration_minutes)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <TimeLogsEditor scope="task" targetId={task.id} />
+
 
               <TaskDependencies taskId={task.id} />
               <TaskApprovalSection taskId={task.id} taskStatus={task.status} />

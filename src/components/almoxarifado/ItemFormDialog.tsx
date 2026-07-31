@@ -10,6 +10,8 @@ import {
   useCreateItem, useUpdateItem, useInventoryCategories, useInventoryLocations,
   type InventoryItem,
 } from "@/hooks/useInventory";
+import { useAssignableProfiles } from "@/hooks/useTasks";
+
 
 interface Props {
   open: boolean;
@@ -20,6 +22,7 @@ interface Props {
 export function ItemFormDialog({ open, onOpenChange, item }: Props) {
   const { data: categories = [] } = useInventoryCategories();
   const { data: locations = [] } = useInventoryLocations();
+  const { data: profiles } = useAssignableProfiles();
   const createItem = useCreateItem();
   const updateItem = useUpdateItem();
 
@@ -27,6 +30,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
     name: "", sku: "", category_id: "", location_id: "",
     tracked_individually: false, unit_price: 0, min_stock: 0,
     ideal_stock: 0, quantity: 0, status: "active" as "active" | "inactive", notes: "",
+    responsible_id: "",
   });
 
   useEffect(() => {
@@ -38,20 +42,24 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
         unit_price: item.unit_price, min_stock: item.min_stock,
         ideal_stock: item.ideal_stock, quantity: item.quantity,
         status: item.status, notes: item.notes ?? "",
+        responsible_id: item.responsible_id ?? "",
       });
     } else {
       setForm({ name: "", sku: "", category_id: "", location_id: "",
         tracked_individually: false, unit_price: 0, min_stock: 0,
-        ideal_stock: 0, quantity: 0, status: "active", notes: "" });
+        ideal_stock: 0, quantity: 0, status: "active", notes: "", responsible_id: "" });
     }
   }, [item, open]);
+
 
   const submit = async () => {
     const payload: any = {
       ...form,
       category_id: form.category_id || null,
       location_id: form.location_id || null,
+      responsible_id: form.responsible_id || null,
     };
+
     if (item) await updateItem.mutateAsync({ id: item.id, ...payload });
     else await createItem.mutateAsync(payload);
     onOpenChange(false);
@@ -99,16 +107,29 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
                 onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} />
             </div>
           </div>
-          <div>
-            <Label>Status</Label>
-            <Select value={form.status} onValueChange={(v: any) => setForm({ ...form, status: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Ativo</SelectItem>
-                <SelectItem value="inactive">Inativo</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Status</Label>
+              <Select value={form.status} onValueChange={(v: any) => setForm({ ...form, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Ativo</SelectItem>
+                  <SelectItem value="inactive">Inativo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Responsável pelo equipamento</Label>
+              <Select value={form.responsible_id || "none"} onValueChange={(v) => setForm({ ...form, responsible_id: v === "none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {profiles?.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
           <div><Label>Observações</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
         </div>
         <DialogFooter>

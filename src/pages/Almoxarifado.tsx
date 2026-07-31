@@ -21,6 +21,8 @@ import { MovementDialog } from "@/components/almoxarifado/MovementDialog";
 import { AssetFormDialog } from "@/components/almoxarifado/AssetFormDialog";
 import { StockBadge } from "@/components/almoxarifado/StockBadge";
 import type { InventoryItem, InventoryAsset, MovementType } from "@/hooks/useInventory";
+import { useAssignableProfiles } from "@/hooks/useTasks";
+
 
 const currency = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const dateFmt = (s: string) => new Date(s).toLocaleString("pt-BR");
@@ -57,6 +59,8 @@ export default function Almoxarifado() {
   const { data: requests = [] } = useInventoryRequests();
   const { data: categories = [] } = useInventoryCategories();
   const { data: locations = [] } = useInventoryLocations();
+  const { data: profiles } = useAssignableProfiles();
+
 
   const [tab, setTab] = useState("dashboard");
   const [search, setSearch] = useState("");
@@ -94,7 +98,9 @@ export default function Almoxarifado() {
 
   const catName = (id: string | null) => categories.find((c) => c.id === id)?.name ?? "—";
   const locName = (id: string | null) => locations.find((l) => l.id === id)?.name ?? "—";
+  const personName = (id: string | null) => profiles?.find((p) => p.id === id)?.full_name ?? "—";
   const itemName = (id: string) => items.find((i) => i.id === id)?.name ?? "—";
+
 
   return (
     <div className="space-y-6">
@@ -103,20 +109,26 @@ export default function Almoxarifado() {
         description="Controle de equipamentos, peças, periféricos e materiais"
         icon={<Package className="h-6 w-6" />}
         actions={
-          canWrite && (
-            <>
-              <Button size="sm" variant="outline" onClick={() => setMovDlg({ open: true, type: "in" })}>
-                <ArrowDownToLine className="mr-2 h-4 w-4" /> Entrada
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => setMovDlg({ open: true, type: "out" })}>
-                <ArrowUpFromLine className="mr-2 h-4 w-4" /> Saída
-              </Button>
-              <Button size="sm" onClick={() => setItemDlg({ open: true, item: null })}>
-                <Plus className="mr-2 h-4 w-4" /> Novo item
-              </Button>
-            </>
-          )
+          <>
+            <Button size="sm" variant="outline" onClick={() => setTab("settings")}>
+              <Settings className="mr-2 h-4 w-4" /> Configurações
+            </Button>
+            {canWrite && (
+              <>
+                <Button size="sm" variant="outline" onClick={() => setMovDlg({ open: true, type: "in" })}>
+                  <ArrowDownToLine className="mr-2 h-4 w-4" /> Entrada
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setMovDlg({ open: true, type: "out" })}>
+                  <ArrowUpFromLine className="mr-2 h-4 w-4" /> Saída
+                </Button>
+                <Button size="sm" onClick={() => setItemDlg({ open: true, item: null })}>
+                  <Plus className="mr-2 h-4 w-4" /> Novo item
+                </Button>
+              </>
+            )}
+          </>
         }
+
       />
 
       <Tabs value={tab} onValueChange={setTab}>
@@ -214,7 +226,7 @@ export default function Almoxarifado() {
               <Table>
                 <TableHeader><TableRow>
                   <TableHead>Item</TableHead><TableHead>SKU</TableHead><TableHead>Categoria</TableHead>
-                  <TableHead>Local</TableHead><TableHead>Preço</TableHead><TableHead>Estoque</TableHead>
+                  <TableHead>Local</TableHead><TableHead>Responsável</TableHead><TableHead>Preço</TableHead><TableHead>Estoque</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
@@ -224,8 +236,10 @@ export default function Almoxarifado() {
                       <TableCell className="text-muted-foreground">{i.sku ?? "—"}</TableCell>
                       <TableCell>{catName(i.category_id)}</TableCell>
                       <TableCell>{locName(i.location_id)}</TableCell>
+                      <TableCell>{personName(i.responsible_id)}</TableCell>
                       <TableCell>{currency(i.unit_price)}</TableCell>
                       <TableCell><StockBadge item={i} /></TableCell>
+
                       <TableCell className="text-right">
                         {canWrite && (
                           <div className="flex justify-end gap-1">
@@ -373,14 +387,17 @@ function AssetTable({ assets, items, locations, canWrite, onEdit }: {
   assets: InventoryAsset[]; items: InventoryItem[]; locations: any[]; canWrite: boolean;
   onEdit: (a: InventoryAsset) => void;
 }) {
+  const { data: profiles } = useAssignableProfiles();
   const itemName = (id: string) => items.find((i) => i.id === id)?.name ?? "—";
   const locName = (id: string | null) => locations.find((l) => l.id === id)?.name ?? "—";
+  const personName = (id: string | null) => profiles?.find((p) => p.id === id)?.full_name ?? "—";
   return (
     <Card><CardContent className="p-0">
       <Table>
         <TableHeader><TableRow>
           <TableHead>Patrimônio</TableHead><TableHead>Item</TableHead><TableHead>Série</TableHead>
           <TableHead>Valor</TableHead><TableHead>Status</TableHead><TableHead>Local</TableHead>
+          <TableHead>Responsável</TableHead>
           <TableHead className="text-right">Ações</TableHead>
         </TableRow></TableHeader>
         <TableBody>
@@ -392,12 +409,14 @@ function AssetTable({ assets, items, locations, canWrite, onEdit }: {
               <TableCell>{currency(a.value)}</TableCell>
               <TableCell><Badge variant="outline">{ASSET_STATUS_LABELS[a.status]}</Badge></TableCell>
               <TableCell>{locName(a.location_id)}</TableCell>
+              <TableCell>{personName(a.assigned_to)}</TableCell>
+
               <TableCell className="text-right">
                 {canWrite && <Button size="sm" variant="ghost" onClick={() => onEdit(a)}>Editar</Button>}
               </TableCell>
             </TableRow>
           ))}
-          {assets.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Nenhum patrimônio.</TableCell></TableRow>}
+          {assets.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-6">Nenhum patrimônio.</TableCell></TableRow>}
         </TableBody>
       </Table>
     </CardContent></Card>

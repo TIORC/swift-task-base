@@ -56,6 +56,36 @@ function dayMatches(today: Date, days: string[] | null, onlyBusiness: boolean): 
   return days.includes(DOW_CODES[dow]);
 }
 
+const MONTH_BASED = ["monthly", "bimonthly", "quarterly", "semiannual", "annual"];
+
+// Ajusta o dia para dia útil sem sair do mês (inverte o sentido se necessário).
+function adjustToBusinessDayInMonth(
+  year: number,
+  month1: number,
+  day: number,
+  direction: string,
+): number {
+  const lastDay = new Date(year, month1, 0).getDate();
+  const base = Math.min(Math.max(1, day), lastDay);
+  const isWeekend = (dd: number) => {
+    const w = new Date(year, month1 - 1, dd).getDay();
+    return w === 0 || w === 6;
+  };
+  const step = direction === "previous" ? -1 : 1;
+  let cur = base;
+  while (isWeekend(cur)) {
+    cur += step;
+    if (cur < 1 || cur > lastDay) {
+      cur = base;
+      const back = -step;
+      while (isWeekend(cur)) cur += back;
+      break;
+    }
+  }
+  return cur;
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
