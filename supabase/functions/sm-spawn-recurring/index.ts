@@ -1,5 +1,5 @@
 // Cron-invoked edge function: spawns sm_posts and sm_tasks instances from recurring templates.
-import { createClient } from "npm:@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 const TIME_ZONE = "America/Sao_Paulo";
