@@ -19,6 +19,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { RecurrenceScheduleFields, type RecurrenceSchedule } from "@/components/RecurrenceScheduleFields";
+import { isMonthBased } from "@/lib/recurrence";
+
 
 const PRIORITY_OPTIONS = [
   { value: "low", label: "Baixa" },
@@ -72,6 +75,10 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
   const [recurrenceDays, setRecurrenceDays] = useState<string[]>([]);
   const [recurrenceStartTime, setRecurrenceStartTime] = useState<string>("07:00");
   const [onlyBusinessDays, setOnlyBusinessDays] = useState<boolean>(false);
+  const [schedule, setSchedule] = useState<RecurrenceSchedule>({
+    dayOfMonth: null, months: [], direction: "next", deadlineDays: null,
+  });
+
 
   const WEEK_DAYS = [
     { code: "SEG", label: "SEG", weekend: false },
@@ -138,7 +145,12 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
           : [],
         recurrence_start_time: isRecurring ? (recurrenceStartTime || "07:00") : "07:00",
         recurrence_only_business_days: isRecurring ? onlyBusinessDays : false,
+        recurrence_day_of_month: isRecurring && isMonthBased(recurrenceType) ? schedule.dayOfMonth : null,
+        recurrence_months: isRecurring && isMonthBased(recurrenceType) ? schedule.months : [],
+        recurrence_business_day_direction: schedule.direction,
+        recurrence_deadline_days: isRecurring && isMonthBased(recurrenceType) ? schedule.deadlineDays : null,
       } as any,
+
       {
         onSuccess: () => {
           onOpenChange(false);
@@ -148,6 +160,8 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
           setMetaDate(undefined); setMetaIsBusinessDay(false);
           setRecurrenceType("none"); setRecurrenceInterval(1); setRecurrenceUntil(undefined);
           setRecurrenceDays([]); setRecurrenceStartTime("07:00"); setOnlyBusinessDays(false);
+          setSchedule({ dayOfMonth: null, months: [], direction: "next", deadlineDays: null });
+
         },
       }
     );
@@ -302,6 +316,8 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
                       />
                     </div>
                   )}
+                  <RecurrenceScheduleFields type={recurrenceType} value={schedule} onChange={setSchedule} />
+
                   <div className="space-y-2 col-span-2">
                     <Label className="text-xs">Repetir até (opcional)</Label>
                     <Popover>

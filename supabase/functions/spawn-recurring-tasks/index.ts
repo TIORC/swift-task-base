@@ -56,6 +56,36 @@ function dayMatches(today: Date, days: string[] | null, onlyBusiness: boolean): 
   return days.includes(DOW_CODES[dow]);
 }
 
+const MONTH_BASED = ["monthly", "bimonthly", "quarterly", "semiannual", "annual"];
+
+// Ajusta o dia para dia útil sem sair do mês (inverte o sentido se necessário).
+function adjustToBusinessDayInMonth(
+  year: number,
+  month1: number,
+  day: number,
+  direction: string,
+): number {
+  const lastDay = new Date(year, month1, 0).getDate();
+  const base = Math.min(Math.max(1, day), lastDay);
+  const isWeekend = (dd: number) => {
+    const w = new Date(year, month1 - 1, dd).getDay();
+    return w === 0 || w === 6;
+  };
+  const step = direction === "previous" ? -1 : 1;
+  let cur = base;
+  while (isWeekend(cur)) {
+    cur += step;
+    if (cur < 1 || cur > lastDay) {
+      cur = base;
+      const back = -step;
+      while (isWeekend(cur)) cur += back;
+      break;
+    }
+  }
+  return cur;
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -112,24 +142,51 @@ Deno.serve(async (req) => {
 
     if (t.recurrence_until && now > new Date(t.recurrence_until)) continue;
 
-    // Day-of-week / business-day gate: must fire on the right day of week.
-    if (!dayMatches(now, days, onlyBusiness)) continue;
-
-    // Must be past the configured start time today.
-    if (now < applyStartTime(now, startTime)) continue;
-
+    const monthBased = MONTH_BASED.includes(t.recurrence_type) && !!t.recurrence_day_of_month;
     const lastSpawn = t.last_spawned_at ? new Date(t.last_spawned_at) : null;
+    let spawnedDue: Date;
 
-    // Never spawn twice in the same local day.
-    if (lastSpawn && lastSpawn.toDateString() === now.toDateString()) continue;
+    if (monthBased) {
+      const months: number[] = Array.isArray(t.recurrence_months) ? t.recurrence_months : [];
+      const curMonth = now.getMonth() + 1;
+      if (months.length > 0 && !months.includes(curMonth)) continue;
 
-    // Enforce interval spacing since last spawn (skipped on the very first spawn).
-    if (lastSpawn) {
-      const gap = daysBetween(lastSpawn, now);
-      if (gap < minGapDays(t.recurrence_type, interval)) continue;
+      const targetDay = adjustToBusinessDayInMonth(
+        now.getFullYear(),
+        curMonth,
+        t.recurrence_day_of_month,
+        t.recurrence_business_day_direction || "next",
+      );
+      if (now.getDate() !== targetDay) continue;
+      if (now < applyStartTime(now, startTime)) continue;
+
+      // Uma ocorrência por mês/ano.
+      if (lastSpawn && lastSpawn.getFullYear() === now.getFullYear() && lastSpawn.getMonth() === now.getMonth()) continue;
+
+      spawnedDue = applyStartTime(now, startTime);
+      const deadlineDays = t.recurrence_deadline_days;
+      if (typeof deadlineDays === "number" && deadlineDays > 0) {
+        spawnedDue = new Date(spawnedDue);
+        spawnedDue.setDate(spawnedDue.getDate() + deadlineDays);
+      }
+    } else {
+      // Day-of-week / business-day gate: must fire on the right day of week.
+      if (!dayMatches(now, days, onlyBusiness)) continue;
+
+      // Must be past the configured start time today.
+      if (now < applyStartTime(now, startTime)) continue;
+
+      // Never spawn twice in the same local day.
+      if (lastSpawn && lastSpawn.toDateString() === now.toDateString()) continue;
+
+      // Enforce interval spacing since last spawn (skipped on the very first spawn).
+      if (lastSpawn) {
+        const gap = daysBetween(lastSpawn, now);
+        if (gap < minGapDays(t.recurrence_type, interval)) continue;
+      }
+
+      spawnedDue = applyStartTime(now, startTime);
     }
-
-    const spawnedDue = applyStartTime(now, startTime);
 
     const { error: insErr } = await supabase.from("tasks").insert({
       title: t.title,
@@ -139,6 +196,7 @@ Deno.serve(async (req) => {
       assigned_to: t.assigned_to,
       created_by: t.created_by,
       due_date: spawnedDue.toISOString(),
+
       legal_date: nextDate(t.recurrence_type, interval, t.legal_date, !!t.legal_is_business_day, startTime),
       legal_is_business_day: !!t.legal_is_business_day,
       meta_date: nextDate(t.recurrence_type, interval, t.meta_date, !!t.meta_is_business_day, startTime),

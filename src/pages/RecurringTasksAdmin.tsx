@@ -25,6 +25,11 @@ const FIELD_LABELS: Record<string, string> = {
   recurrence_start_time: "Horário",
   recurrence_only_business_days: "Somente dias úteis",
   recurrence_until: "Data-limite",
+  recurrence_day_of_month: "Dia do mês",
+  recurrence_months: "Meses da ocorrência",
+  recurrence_business_day_direction: "Ajuste de dia útil",
+  recurrence_deadline_days: "Prazo (dias)",
+
 };
 
 function useRecurringHistory(taskId: string | null) {

@@ -26,6 +26,8 @@ export interface InventoryItem {
   quantity: number;
   status: "active" | "inactive";
   notes: string | null;
+  responsible_id: string | null;
+
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -171,7 +173,9 @@ export function useCreateItem() {
         quantity: payload.quantity ?? 0,
         status: payload.status ?? "active",
         notes: payload.notes || null,
+        responsible_id: payload.responsible_id || null,
         created_by: user?.id ?? null,
+
       });
       if (error) throw error;
     },

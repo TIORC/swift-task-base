@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Repeat, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RecurrenceScheduleFields, type RecurrenceSchedule } from "@/components/RecurrenceScheduleFields";
+import { isMonthBased } from "@/lib/recurrence";
+
 
 const RECURRENCE_OPTIONS = [
   { value: "daily", label: "Diária" },
@@ -44,6 +47,12 @@ export function EditRecurrenceSection({ task }: Props) {
   const [days, setDays] = useState<string[]>(Array.isArray(task.recurrence_days) ? task.recurrence_days : []);
   const [startTime, setStartTime] = useState<string>(task.recurrence_start_time || "00:00");
   const [onlyBusiness, setOnlyBusiness] = useState<boolean>(!!task.recurrence_only_business_days);
+  const [schedule, setSchedule] = useState<RecurrenceSchedule>({
+    dayOfMonth: (task as any).recurrence_day_of_month ?? null,
+    months: Array.isArray((task as any).recurrence_months) ? (task as any).recurrence_months : [],
+    direction: ((task as any).recurrence_business_day_direction as "next" | "previous") || "next",
+    deadlineDays: (task as any).recurrence_deadline_days ?? null,
+  });
 
   useEffect(() => {
     setType(task.recurrence_type || "daily");
@@ -51,11 +60,19 @@ export function EditRecurrenceSection({ task }: Props) {
     setDays(Array.isArray(task.recurrence_days) ? task.recurrence_days : []);
     setStartTime(task.recurrence_start_time || "00:00");
     setOnlyBusiness(!!task.recurrence_only_business_days);
+    setSchedule({
+      dayOfMonth: (task as any).recurrence_day_of_month ?? null,
+      months: Array.isArray((task as any).recurrence_months) ? (task as any).recurrence_months : [],
+      direction: ((task as any).recurrence_business_day_direction as "next" | "previous") || "next",
+      deadlineDays: (task as any).recurrence_deadline_days ?? null,
+    });
   }, [task.id]);
 
   const toggleDay = (code: string) => {
     setDays((prev) => (prev.includes(code) ? prev.filter((d) => d !== code) : [...prev, code]));
   };
+
+  const monthBased = isMonthBased(type);
 
   const handleSave = () => {
     const cleanedDays = onlyBusiness ? days.filter((d) => d !== "SAB" && d !== "DOM") : days;
@@ -66,8 +83,13 @@ export function EditRecurrenceSection({ task }: Props) {
       recurrence_days: cleanedDays,
       recurrence_start_time: startTime || "00:00",
       recurrence_only_business_days: onlyBusiness,
+      recurrence_day_of_month: monthBased ? schedule.dayOfMonth : null,
+      recurrence_months: monthBased ? schedule.months : [],
+      recurrence_business_day_direction: schedule.direction,
+      recurrence_deadline_days: monthBased ? schedule.deadlineDays : null,
     } as any);
   };
+
 
   return (
     <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
@@ -100,6 +122,8 @@ export function EditRecurrenceSection({ task }: Props) {
             />
           </div>
         )}
+        <RecurrenceScheduleFields type={type} value={schedule} onChange={setSchedule} />
+
         <div className="space-y-1 col-span-2">
           <Label className="text-xs">Horário de início</Label>
           <Input
