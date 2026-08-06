@@ -583,6 +583,39 @@ ${perRequester.map((r) => `<tr>
         </Card>
       </div>
 
+      {/* Sistemas / Sites / Equipamentos / Máquinas */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {[
+          { title: "Sistemas mais solicitados", icon: MonitorSmartphone, color: "text-blue-500", rows: systemCounts, bar: "hsl(230,80%,60%)" },
+          { title: "Sites / Portais mais solicitados", icon: Globe, color: "text-emerald-500", rows: siteCounts, bar: "hsl(152,69%,40%)" },
+          { title: "Equipamentos com mais chamados", icon: HardDrive, color: "text-amber-500", rows: equipmentCounts, bar: "hsl(38,92%,50%)" },
+          { title: "Máquinas com mais chamados", icon: Laptop, color: "text-indigo-500", rows: machineCounts, bar: "hsl(262,83%,58%)" },
+        ].map((block) => (
+          <Card key={block.title} className="shadow-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <block.icon className={`h-4 w-4 ${block.color}`} />{block.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {block.rows.length === 0 ? (
+                <EmptyState icon={block.icon} title="Sem dados" description="Nenhum registro no período/filtro selecionado." />
+              ) : (
+                <ResponsiveContainer width="100%" height={Math.max(200, Math.min(block.rows.length, 10) * 30)}>
+                  <BarChart data={block.rows.slice(0, 10)} layout="vertical" margin={{ left: 12 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" allowDecimals={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis type="category" dataKey="name" tick={{ fill: "hsl(var(--foreground))", fontSize: 11 }} width={130} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Bar dataKey="value" name="Chamados" fill={block.bar} radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       {/* Categoria inicial x Motivo real */}
       <Card className="shadow-card">
         <CardHeader className="pb-2">
