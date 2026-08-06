@@ -10,7 +10,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CheckCircle2, X } from "lucide-react";
-import { SUPPORT_REAL_REASONS, SUPPORT_TAGS_BY_REASON, type SupportRealReason } from "@/lib/support-reasons";
+import {
+  SUPPORT_REAL_REASONS, SUPPORT_TAGS_BY_REASON, REASONS_WITH_SYSTEM, REASONS_WITH_SITE,
+  REASONS_WITH_EQUIPMENT, type SupportRealReason,
+} from "@/lib/support-reasons";
+import { CatalogSelect } from "@/components/support/CatalogSelect";
 
 interface CloseTicketDialogProps {
   taskId: string | null;
