@@ -286,6 +286,9 @@ export function SupportReport() {
     if (tagFilter !== "all") filtersUsed.push(`Tag: ${tagFilter}`);
     if (assigneeFilter !== "all") filtersUsed.push(`Responsável TI: ${profileName(assigneeFilter)}`);
     if (statusFilter !== "all") filtersUsed.push(`Status: ${statusFilter}`);
+    if (systemFilter !== "all") filtersUsed.push(`Sistema: ${systemFilter}`);
+    if (siteFilter !== "all") filtersUsed.push(`Site: ${siteFilter}`);
+    if (equipmentFilter !== "all") filtersUsed.push(`Equipamento: ${equipmentFilter}`);
 
     const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"/>
 <title>Relatório de Chamados — ${esc(format(new Date(), "dd/MM/yyyy HH:mm"))}</title>
