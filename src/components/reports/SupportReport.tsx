@@ -49,6 +49,9 @@ export function SupportReport() {
   const [tagFilter, setTagFilter] = useState<string>("all");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [systemFilter, setSystemFilter] = useState<string>("all");
+  const [siteFilter, setSiteFilter] = useState<string>("all");
+  const [equipmentFilter, setEquipmentFilter] = useState<string>("all");
 
   const { data, isLoading } = useQuery({
     queryKey: ["support-report"],
