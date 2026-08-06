@@ -149,6 +149,36 @@ export function SupportReport() {
     return [...map.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 12);
   }, [filtered]);
 
+  const countBy = (fn: (t: any) => string | null | undefined) => {
+    const map = new Map<string, number>();
+    filtered.forEach((t: any) => {
+      const k = fn(t);
+      if (!k) return;
+      map.set(k, (map.get(k) || 0) + 1);
+    });
+    return [...map.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  };
+
+  const systemCounts = useMemo(() => countBy((t) => t.support_system), [filtered]);
+  const siteCounts = useMemo(() => countBy((t) => t.support_site), [filtered]);
+  const equipmentCounts = useMemo(() => countBy((t) => t.support_equipment), [filtered]);
+  const machineCounts = useMemo(() => countBy((t) => extractMachine(t.description)), [filtered]);
+
+  const systemOptions = useMemo(
+    () => [...new Set((data?.tasks ?? []).map((t: any) => t.support_system).filter(Boolean))].sort() as string[],
+    [data]
+  );
+  const siteOptions = useMemo(
+    () => [...new Set((data?.tasks ?? []).map((t: any) => t.support_site).filter(Boolean))].sort() as string[],
+    [data]
+  );
+  const equipmentOptions = useMemo(
+    () => [...new Set((data?.tasks ?? []).map((t: any) => t.support_equipment).filter(Boolean))].sort() as string[],
+    [data]
+  );
+
+
+
   const categoryCounts = useMemo(() => {
     const map = new Map<string, number>();
     filtered.forEach((t: any) => {
