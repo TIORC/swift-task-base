@@ -128,7 +128,9 @@ export default function SocialTasks() {
 
   const assigneeFiltered = useMemo(() => {
     if (!data) return [];
-    let list = data;
+    // Recurring templates are configuration records, not operational tasks.
+    // Showing them here makes a completed occurrence look like it returned.
+    let list = data.filter(t => !(t as any).is_recurring_template);
     if (assigneeFilter === "mine") list = list.filter(t => t.assigned_to === user?.id);
     else if (assigneeFilter !== "all") list = list.filter(t => t.assigned_to === assigneeFilter);
     if (clientFilter !== "all") {
