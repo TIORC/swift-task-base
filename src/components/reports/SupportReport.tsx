@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   LifeBuoy, CheckCircle2, Clock, AlertTriangle, Users, Loader2, Wrench, GitCompareArrows, Tag, UserCheck, Printer,
+  MonitorSmartphone, Globe, HardDrive, Laptop,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend,
@@ -17,7 +18,7 @@ import {
 import { subDays, subMonths, differenceInMinutes, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  SUPPORT_REAL_REASONS, ALL_SUPPORT_TAGS, INITIAL_CATEGORIES, extractInitialCategory,
+  SUPPORT_REAL_REASONS, ALL_SUPPORT_TAGS, INITIAL_CATEGORIES, extractInitialCategory, extractMachine,
 } from "@/lib/support-reasons";
 
 const PIE_COLORS = [
@@ -48,6 +49,9 @@ export function SupportReport() {
   const [tagFilter, setTagFilter] = useState<string>("all");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [systemFilter, setSystemFilter] = useState<string>("all");
+  const [siteFilter, setSiteFilter] = useState<string>("all");
+  const [equipmentFilter, setEquipmentFilter] = useState<string>("all");
 
   const { data, isLoading } = useQuery({
     queryKey: ["support-report"],
@@ -90,9 +94,14 @@ export function SupportReport() {
       if (tagFilter !== "all" && !(t.support_tags ?? []).includes(tagFilter)) return false;
       if (assigneeFilter !== "all" && t.assigned_to !== assigneeFilter) return false;
       if (statusFilter !== "all" && t.status !== statusFilter) return false;
+      if (systemFilter !== "all" && t.support_system !== systemFilter) return false;
+      if (siteFilter !== "all" && t.support_site !== siteFilter) return false;
+      if (equipmentFilter !== "all" && t.support_equipment !== equipmentFilter) return false;
       return true;
     });
-  }, [data, period, monthFilter, requesterFilter, categoryFilter, reasonFilter, tagFilter, assigneeFilter, statusFilter]);
+  }, [data, period, monthFilter, requesterFilter, categoryFilter, reasonFilter, tagFilter, assigneeFilter, statusFilter, systemFilter, siteFilter, equipmentFilter]);
+
+
 
   const kpis = useMemo(() => {
     const total = filtered.length;
@@ -139,6 +148,36 @@ export function SupportReport() {
     filtered.forEach((t: any) => (t.support_tags ?? []).forEach((tg: string) => map.set(tg, (map.get(tg) || 0) + 1)));
     return [...map.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 12);
   }, [filtered]);
+
+  const countBy = (fn: (t: any) => string | null | undefined) => {
+    const map = new Map<string, number>();
+    filtered.forEach((t: any) => {
+      const k = fn(t);
+      if (!k) return;
+      map.set(k, (map.get(k) || 0) + 1);
+    });
+    return [...map.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  };
+
+  const systemCounts = useMemo(() => countBy((t) => t.support_system), [filtered]);
+  const siteCounts = useMemo(() => countBy((t) => t.support_site), [filtered]);
+  const equipmentCounts = useMemo(() => countBy((t) => t.support_equipment), [filtered]);
+  const machineCounts = useMemo(() => countBy((t) => extractMachine(t.description)), [filtered]);
+
+  const systemOptions = useMemo(
+    () => [...new Set((data?.tasks ?? []).map((t: any) => t.support_system).filter(Boolean))].sort() as string[],
+    [data]
+  );
+  const siteOptions = useMemo(
+    () => [...new Set((data?.tasks ?? []).map((t: any) => t.support_site).filter(Boolean))].sort() as string[],
+    [data]
+  );
+  const equipmentOptions = useMemo(
+    () => [...new Set((data?.tasks ?? []).map((t: any) => t.support_equipment).filter(Boolean))].sort() as string[],
+    [data]
+  );
+
+
 
   const categoryCounts = useMemo(() => {
     const map = new Map<string, number>();
@@ -247,6 +286,9 @@ export function SupportReport() {
     if (tagFilter !== "all") filtersUsed.push(`Tag: ${tagFilter}`);
     if (assigneeFilter !== "all") filtersUsed.push(`Responsável TI: ${profileName(assigneeFilter)}`);
     if (statusFilter !== "all") filtersUsed.push(`Status: ${statusFilter}`);
+    if (systemFilter !== "all") filtersUsed.push(`Sistema: ${systemFilter}`);
+    if (siteFilter !== "all") filtersUsed.push(`Site: ${siteFilter}`);
+    if (equipmentFilter !== "all") filtersUsed.push(`Equipamento: ${equipmentFilter}`);
 
     const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"/>
 <title>Relatório de Chamados — ${esc(format(new Date(), "dd/MM/yyyy HH:mm"))}</title>
@@ -299,6 +341,37 @@ export function SupportReport() {
     </tbody></table>
   </div>
 </div>
+
+<div class="grid2">
+  <div>
+    <h2>Sistemas mais solicitados</h2>
+    <table><thead><tr><th>Sistema</th><th class="num">Qtd</th><th class="num">%</th></tr></thead><tbody>
+    ${systemCounts.map((r) => `<tr><td>${esc(r.name)}</td><td class="num">${r.value}</td><td class="num">${kpis.total ? Math.round((r.value / kpis.total) * 100) : 0}%</td></tr>`).join("") || `<tr><td colspan="3" style="color:#94a3b8">Sem dados</td></tr>`}
+    </tbody></table>
+  </div>
+  <div>
+    <h2>Sites / Portais mais solicitados</h2>
+    <table><thead><tr><th>Site / Portal</th><th class="num">Qtd</th><th class="num">%</th></tr></thead><tbody>
+    ${siteCounts.map((r) => `<tr><td>${esc(r.name)}</td><td class="num">${r.value}</td><td class="num">${kpis.total ? Math.round((r.value / kpis.total) * 100) : 0}%</td></tr>`).join("") || `<tr><td colspan="3" style="color:#94a3b8">Sem dados</td></tr>`}
+    </tbody></table>
+  </div>
+</div>
+
+<div class="grid2">
+  <div>
+    <h2>Equipamentos com mais chamados</h2>
+    <table><thead><tr><th>Equipamento</th><th class="num">Qtd</th></tr></thead><tbody>
+    ${equipmentCounts.map((r) => `<tr><td>${esc(r.name)}</td><td class="num">${r.value}</td></tr>`).join("") || `<tr><td colspan="2" style="color:#94a3b8">Sem dados</td></tr>`}
+    </tbody></table>
+  </div>
+  <div>
+    <h2>Máquinas com mais chamados</h2>
+    <table><thead><tr><th>Máquina</th><th class="num">Qtd</th></tr></thead><tbody>
+    ${machineCounts.slice(0, 20).map((r) => `<tr><td>${esc(r.name)}</td><td class="num">${r.value}</td></tr>`).join("") || `<tr><td colspan="2" style="color:#94a3b8">Sem dados</td></tr>`}
+    </tbody></table>
+  </div>
+</div>
+
 
 <h2>Categoria inicial × Motivo real</h2>
 <table><thead><tr><th>Categoria inicial</th><th>Motivo real (TI)</th><th class="num">Qtd</th></tr></thead><tbody>
@@ -413,6 +486,27 @@ ${perRequester.map((r) => `<tr>
                 <SelectItem value="discarded">Descartado</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={systemFilter} onValueChange={setSystemFilter}>
+              <SelectTrigger className="w-[180px] h-9 text-xs"><SelectValue placeholder="Sistema" /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="all">Todos os sistemas</SelectItem>
+                {systemOptions.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={siteFilter} onValueChange={setSiteFilter}>
+              <SelectTrigger className="w-[180px] h-9 text-xs"><SelectValue placeholder="Site / Portal" /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="all">Todos os sites</SelectItem>
+                {siteOptions.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={equipmentFilter} onValueChange={setEquipmentFilter}>
+              <SelectTrigger className="w-[180px] h-9 text-xs"><SelectValue placeholder="Equipamento" /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="all">Todos equipamentos</SelectItem>
+                {equipmentOptions.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Button onClick={handlePrint} size="sm" className="h-9 ml-auto gap-2">
               <Printer className="h-4 w-4" /> Imprimir relatório
             </Button>
@@ -487,6 +581,39 @@ ${perRequester.map((r) => `<tr>
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Sistemas / Sites / Equipamentos / Máquinas */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {[
+          { title: "Sistemas mais solicitados", icon: MonitorSmartphone, color: "text-blue-500", rows: systemCounts, bar: "hsl(230,80%,60%)" },
+          { title: "Sites / Portais mais solicitados", icon: Globe, color: "text-emerald-500", rows: siteCounts, bar: "hsl(152,69%,40%)" },
+          { title: "Equipamentos com mais chamados", icon: HardDrive, color: "text-amber-500", rows: equipmentCounts, bar: "hsl(38,92%,50%)" },
+          { title: "Máquinas com mais chamados", icon: Laptop, color: "text-indigo-500", rows: machineCounts, bar: "hsl(262,83%,58%)" },
+        ].map((block) => (
+          <Card key={block.title} className="shadow-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <block.icon className={`h-4 w-4 ${block.color}`} />{block.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {block.rows.length === 0 ? (
+                <EmptyState icon={block.icon} title="Sem dados" description="Nenhum registro no período/filtro selecionado." />
+              ) : (
+                <ResponsiveContainer width="100%" height={Math.max(200, Math.min(block.rows.length, 10) * 30)}>
+                  <BarChart data={block.rows.slice(0, 10)} layout="vertical" margin={{ left: 12 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" allowDecimals={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis type="category" dataKey="name" tick={{ fill: "hsl(var(--foreground))", fontSize: 11 }} width={130} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Bar dataKey="value" name="Chamados" fill={block.bar} radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Categoria inicial x Motivo real */}

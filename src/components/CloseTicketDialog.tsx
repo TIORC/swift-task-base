@@ -10,7 +10,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CheckCircle2, X } from "lucide-react";
-import { SUPPORT_REAL_REASONS, SUPPORT_TAGS_BY_REASON, type SupportRealReason } from "@/lib/support-reasons";
+import {
+  SUPPORT_REAL_REASONS, SUPPORT_TAGS_BY_REASON, REASONS_WITH_SYSTEM, REASONS_WITH_SITE,
+  REASONS_WITH_EQUIPMENT, type SupportRealReason,
+} from "@/lib/support-reasons";
+import { CatalogSelect } from "@/components/support/CatalogSelect";
 
 interface CloseTicketDialogProps {
   taskId: string | null;
@@ -26,6 +30,9 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
   const [reason, setReason] = useState<SupportRealReason | "">("");
   const [tags, setTags] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
+  const [system, setSystem] = useState("");
+  const [site, setSite] = useState("");
+  const [equipment, setEquipment] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -33,6 +40,9 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
       setReason("");
       setTags([]);
       setNotes("");
+      setSystem("");
+      setSite("");
+      setEquipment("");
     }
   }, [open, taskId]);
 
@@ -41,6 +51,10 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
     [reason]
   );
 
+  const showSystem = !!reason && REASONS_WITH_SYSTEM.includes(reason);
+  const showSite = !!reason && REASONS_WITH_SITE.includes(reason);
+  const showEquipment = !!reason && REASONS_WITH_EQUIPMENT.includes(reason);
+
   const toggleTag = (t: string) =>
     setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
 
@@ -48,6 +62,14 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
     if (!taskId) return;
     if (!reason) {
       toast.error("Selecione o motivo real do suporte.");
+      return;
+    }
+    if (reason === "Sistema" && !system) {
+      toast.error("Selecione qual sistema recebeu suporte.");
+      return;
+    }
+    if (reason === "Site / Portal" && !site) {
+      toast.error("Selecione qual site/portal recebeu suporte.");
       return;
     }
     setSaving(true);
@@ -60,23 +82,36 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
           support_real_reason: reason,
           support_tags: tags,
           support_technical_notes: notes.trim() || null,
+          support_system: showSystem ? system || null : null,
+          support_site: showSite ? site || null : null,
+          support_equipment: showEquipment ? equipment || null : null,
           closed_by: user?.id ?? null,
           closed_at: now,
-        })
+        } as any)
         .eq("id", taskId);
       if (error) throw error;
+
+      const details = [
+        system && showSystem ? `Sistema: ${system}` : null,
+        site && showSite ? `Site: ${site}` : null,
+        equipment && showEquipment ? `Equipamento: ${equipment}` : null,
+      ].filter(Boolean).join(" • ");
 
       await supabase.from("task_events").insert({
         task_id: taskId,
         user_id: user?.id ?? null,
         event_type: "support_closed",
-        description: `Chamado concluído • Motivo real: ${reason}${tags.length ? ` • Tags: ${tags.join(", ")}` : ""}`,
+        description: `Chamado concluído • Motivo real: ${reason}${details ? ` • ${details}` : ""}${tags.length ? ` • Tags: ${tags.join(", ")}` : ""}`,
         metadata: {
           support_real_reason: reason,
           support_tags: tags,
           support_technical_notes: notes.trim() || null,
+          support_system: showSystem ? system || null : null,
+          support_site: showSite ? site || null : null,
+          support_equipment: showEquipment ? equipment || null : null,
         },
       });
+
 
       toast.success("Chamado concluído com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
@@ -105,20 +140,53 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 max-h-[65vh] overflow-y-auto pr-1">
           <div className="space-y-2">
             <Label>
               Motivo real do suporte <span className="text-destructive">*</span>
             </Label>
-            <Select value={reason} onValueChange={(v) => { setReason(v as SupportRealReason); setTags([]); }}>
+            <Select value={reason} onValueChange={(v) => { setReason(v as SupportRealReason); setTags([]); setSystem(""); setSite(""); setEquipment(""); }}>
               <SelectTrigger><SelectValue placeholder="Selecione o motivo real..." /></SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-72">
                 {SUPPORT_REAL_REASONS.map((r) => (
                   <SelectItem key={r} value={r}>{r}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
+          {showSystem && (
+            <CatalogSelect
+              kind="system"
+              label="Sistema atendido"
+              placeholder="Selecione o sistema..."
+              value={system}
+              onChange={setSystem}
+              required={reason === "Sistema"}
+            />
+          )}
+
+          {showSite && (
+            <CatalogSelect
+              kind="site"
+              label="Site / Portal atendido"
+              placeholder="Selecione o site..."
+              value={site}
+              onChange={setSite}
+              required={reason === "Site / Portal"}
+            />
+          )}
+
+          {showEquipment && (
+            <CatalogSelect
+              kind="equipment"
+              label="Equipamento atendido"
+              placeholder="Selecione o equipamento..."
+              value={equipment}
+              onChange={setEquipment}
+            />
+          )}
+
 
           {reason && (
             <div className="space-y-2">

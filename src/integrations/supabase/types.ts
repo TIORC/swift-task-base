@@ -1874,6 +1874,36 @@ export type Database = {
           },
         ]
       }
+      support_catalog: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       task_attachments: {
         Row: {
           created_at: string
@@ -2024,7 +2054,10 @@ export type Database = {
           recurrence_type: string | null
           recurrence_until: string | null
           status: Database["public"]["Enums"]["task_status"]
+          support_equipment: string | null
           support_real_reason: string | null
+          support_site: string | null
+          support_system: string | null
           support_tags: string[]
           support_technical_notes: string | null
           title: string
@@ -2058,7 +2091,10 @@ export type Database = {
           recurrence_type?: string | null
           recurrence_until?: string | null
           status?: Database["public"]["Enums"]["task_status"]
+          support_equipment?: string | null
           support_real_reason?: string | null
+          support_site?: string | null
+          support_system?: string | null
           support_tags?: string[]
           support_technical_notes?: string | null
           title: string
@@ -2092,7 +2128,10 @@ export type Database = {
           recurrence_type?: string | null
           recurrence_until?: string | null
           status?: Database["public"]["Enums"]["task_status"]
+          support_equipment?: string | null
           support_real_reason?: string | null
+          support_site?: string | null
+          support_system?: string | null
           support_tags?: string[]
           support_technical_notes?: string | null
           title?: string
