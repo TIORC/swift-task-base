@@ -1,11 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.2";
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 
-const SUPPORT_STAFF: Record<string, string> = {
-  angel: "242acd59-00fb-478f-8d78-b25219798aa6",
-  welder: "f7c4a624-0f8f-432d-b7c0-047b36817670",
-};
-
 const CATEGORY_LABELS: Record<string, string> = {
   computador: "💻 Computador",
   sistema: "🧾 Sistema",
@@ -43,7 +38,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { categoria, descricao, usuario_windows, nome_maquina, atribuir_para } = body;
+    const { categoria, descricao, usuario_windows, nome_maquina } = body;
 
     if (!categoria || !CATEGORY_LABELS[categoria]) {
       return new Response(JSON.stringify({ error: "Categoria inválida" }), {
@@ -51,10 +46,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    // Resolve assignee — default to Angel if not specified or invalid
-    const assigneeKey = (atribuir_para || "angel").toLowerCase();
-    const assigneeId = SUPPORT_STAFF[assigneeKey] || SUPPORT_STAFF["angel"];
 
     // Get user display name
     let userName = usuario_windows || "Desconhecido";
@@ -94,10 +85,10 @@ Deno.serve(async (req) => {
       .insert({
         title,
         description,
-        priority: "high",
+        priority: "medium",
         status: "pending",
         created_by: user.id,
-        assigned_to: assigneeId,
+        assigned_to: null,
       })
       .select()
       .single();
@@ -111,28 +102,26 @@ Deno.serve(async (req) => {
       description: `Chamado "${CATEGORY_LABELS[categoria]}" criado via cliente Windows por ${userName}`,
     });
 
-    // Notify the assigned person
-    await supabase.from("notifications").insert({
-      user_id: assigneeId,
-      type: "assigned",
-      task_id: task.id,
-      message: `Novo chamado: ${CATEGORY_LABELS[categoria]} de ${userName} (${nome_maquina || "N/A"})`,
-      created_by: user.id,
-    });
-
-    // Get assignee name for response
-    const { data: assigneeProfile } = await supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", assigneeId)
-      .single();
+    // Notify TI staff (no assignee — ticket goes to the shared queue)
+    const { data: tiIds } = await supabase.rpc("get_ti_assignable_user_ids");
+    if (Array.isArray(tiIds) && tiIds.length > 0) {
+      await supabase.from("notifications").insert(
+        tiIds.map((uid: string) => ({
+          user_id: uid,
+          type: "assigned",
+          task_id: task.id,
+          message: `Novo chamado sem responsável: ${CATEGORY_LABELS[categoria]} de ${userName} (${nome_maquina || "N/A"})`,
+          created_by: user.id,
+        }))
+      );
+    }
 
     return new Response(JSON.stringify({
       success: true,
       task_id: task.id,
       ticket_number: task.id.substring(0, 8).toUpperCase(),
       category: CATEGORY_LABELS[categoria],
-      assigned_to_name: assigneeProfile?.full_name || "Suporte",
+      assigned_to_name: null,
       created_at: task.created_at,
       user_name: userName,
     }), {

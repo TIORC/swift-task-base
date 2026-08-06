@@ -5,7 +5,6 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 let session = null;
 let machineInfo = { username: 'Desconhecido', hostname: 'Desconhecido' };
 let selectedCategory = null;
-let selectedDeadline = null;
 let isSubmitting = false;
 
 const CATEGORY_LABELS = {
@@ -13,15 +12,6 @@ const CATEGORY_LABELS = {
   sistema: 'Sistema',
   impressora: 'Impressora',
   ramal: 'Ramal',
-};
-
-const DEADLINE_LABELS = {
-  urgente: 'Urgente',
-  hoje: 'Hoje',
-  '24h': '24 horas',
-  '2d': '2 dias',
-  '3d': '3 dias',
-  '5d': '5 dias',
 };
 
 // Receive machine info from main process
@@ -125,21 +115,6 @@ function selectCategory(category) {
   }
 }
 
-// ===== STEP 3: select deadline =====
-function selectDeadline(deadline) {
-  selectedDeadline = selectedDeadline === deadline ? null : deadline;
-  document.querySelectorAll('#deadline-chips .chip').forEach(chip => {
-    chip.classList.toggle('selected', chip.dataset.deadline === selectedDeadline);
-  });
-}
-
-// Wire up chips
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('#deadline-chips .chip').forEach(chip => {
-    chip.addEventListener('click', () => selectDeadline(chip.dataset.deadline));
-  });
-});
-
 function updateSubmitState() {
   const btn = document.getElementById('submit-btn');
   if (btn) btn.disabled = !selectedCategory || isSubmitting;
@@ -147,9 +122,7 @@ function updateSubmitState() {
 
 function resetForm() {
   selectedCategory = null;
-  selectedDeadline = null;
   document.querySelectorAll('.ticket-btn').forEach(b => b.classList.remove('selected'));
-  document.querySelectorAll('#deadline-chips .chip').forEach(c => c.classList.remove('selected'));
   const desc = document.getElementById('description');
   if (desc) desc.value = '';
   const status = document.getElementById('status-msg');
@@ -185,13 +158,7 @@ async function submitTicket() {
   statusEl.className = 'status-msg loading';
   statusEl.textContent = '⏳ Criando chamado...';
 
-  // Append deadline to description so backend stays compatible
-  const deadlineLabel = selectedDeadline ? DEADLINE_LABELS[selectedDeadline] : null;
-  const finalDescription = [
-    descricao || null,
-    deadlineLabel ? `\n\n[Prazo solicitado: ${deadlineLabel}]` : null,
-  ].filter(Boolean).join('') || null;
-
+  const finalDescription = descricao || null;
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/support-ticket`, {
       method: 'POST',
@@ -203,8 +170,6 @@ async function submitTicket() {
       body: JSON.stringify({
         categoria: selectedCategory,
         descricao: finalDescription,
-        prazo: selectedDeadline,
-        prazo_label: deadlineLabel,
         usuario_windows: machineInfo.username,
         nome_maquina: machineInfo.hostname,
       }),
@@ -231,8 +196,6 @@ async function submitTicket() {
     showSuccess({
       protocol: data.protocol || data.task_id || data.id,
       categoria: CATEGORY_LABELS[selectedCategory] || selectedCategory,
-      prazoLabel: deadlineLabel,
-      responsavel: data.assignee_name || 'Suporte TI',
     });
   } catch (err) {
     statusEl.className = 'status-msg error';
@@ -244,7 +207,7 @@ async function submitTicket() {
   }
 }
 
-function showSuccess({ protocol, categoria, prazoLabel, responsavel }) {
+function showSuccess({ protocol, categoria }) {
   const submitBtn = document.getElementById('submit-btn');
   const panel = document.getElementById('success-panel');
   const details = document.getElementById('success-details');
@@ -257,8 +220,7 @@ function showSuccess({ protocol, categoria, prazoLabel, responsavel }) {
   details.innerHTML = `
     <div class="row"><span class="k">Protocolo</span><span class="v">${protocolStr}</span></div>
     <div class="row"><span class="k">Categoria</span><span class="v">${categoria}</span></div>
-    ${prazoLabel ? `<div class="row"><span class="k">Prazo solicitado</span><span class="v">${prazoLabel}</span></div>` : ''}
-    <div class="row"><span class="k">Responsável</span><span class="v">${responsavel}</span></div>
+    <div class="row"><span class="k">Responsável</span><span class="v">Aguardando atribuição</span></div>
     <div class="row"><span class="k">Horário</span><span class="v">${horario}</span></div>
   `;
   panel.style.display = 'block';
