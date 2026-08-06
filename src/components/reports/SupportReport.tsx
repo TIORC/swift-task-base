@@ -94,9 +94,14 @@ export function SupportReport() {
       if (tagFilter !== "all" && !(t.support_tags ?? []).includes(tagFilter)) return false;
       if (assigneeFilter !== "all" && t.assigned_to !== assigneeFilter) return false;
       if (statusFilter !== "all" && t.status !== statusFilter) return false;
+      if (systemFilter !== "all" && t.support_system !== systemFilter) return false;
+      if (siteFilter !== "all" && t.support_site !== siteFilter) return false;
+      if (equipmentFilter !== "all" && t.support_equipment !== equipmentFilter) return false;
       return true;
     });
-  }, [data, period, monthFilter, requesterFilter, categoryFilter, reasonFilter, tagFilter, assigneeFilter, statusFilter]);
+  }, [data, period, monthFilter, requesterFilter, categoryFilter, reasonFilter, tagFilter, assigneeFilter, statusFilter, systemFilter, siteFilter, equipmentFilter]);
+
+
 
   const kpis = useMemo(() => {
     const total = filtered.length;
