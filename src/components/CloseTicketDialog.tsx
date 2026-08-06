@@ -140,20 +140,53 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 max-h-[65vh] overflow-y-auto pr-1">
           <div className="space-y-2">
             <Label>
               Motivo real do suporte <span className="text-destructive">*</span>
             </Label>
-            <Select value={reason} onValueChange={(v) => { setReason(v as SupportRealReason); setTags([]); }}>
+            <Select value={reason} onValueChange={(v) => { setReason(v as SupportRealReason); setTags([]); setSystem(""); setSite(""); setEquipment(""); }}>
               <SelectTrigger><SelectValue placeholder="Selecione o motivo real..." /></SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-72">
                 {SUPPORT_REAL_REASONS.map((r) => (
                   <SelectItem key={r} value={r}>{r}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
+          {showSystem && (
+            <CatalogSelect
+              kind="system"
+              label="Sistema atendido"
+              placeholder="Selecione o sistema..."
+              value={system}
+              onChange={setSystem}
+              required={reason === "Sistema"}
+            />
+          )}
+
+          {showSite && (
+            <CatalogSelect
+              kind="site"
+              label="Site / Portal atendido"
+              placeholder="Selecione o site..."
+              value={site}
+              onChange={setSite}
+              required={reason === "Site / Portal"}
+            />
+          )}
+
+          {showEquipment && (
+            <CatalogSelect
+              kind="equipment"
+              label="Equipamento atendido"
+              placeholder="Selecione o equipamento..."
+              value={equipment}
+              onChange={setEquipment}
+            />
+          )}
+
 
           {reason && (
             <div className="space-y-2">
