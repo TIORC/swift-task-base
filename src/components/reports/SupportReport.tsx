@@ -342,6 +342,37 @@ export function SupportReport() {
   </div>
 </div>
 
+<div class="grid2">
+  <div>
+    <h2>Sistemas mais solicitados</h2>
+    <table><thead><tr><th>Sistema</th><th class="num">Qtd</th><th class="num">%</th></tr></thead><tbody>
+    ${systemCounts.map((r) => `<tr><td>${esc(r.name)}</td><td class="num">${r.value}</td><td class="num">${kpis.total ? Math.round((r.value / kpis.total) * 100) : 0}%</td></tr>`).join("") || `<tr><td colspan="3" style="color:#94a3b8">Sem dados</td></tr>`}
+    </tbody></table>
+  </div>
+  <div>
+    <h2>Sites / Portais mais solicitados</h2>
+    <table><thead><tr><th>Site / Portal</th><th class="num">Qtd</th><th class="num">%</th></tr></thead><tbody>
+    ${siteCounts.map((r) => `<tr><td>${esc(r.name)}</td><td class="num">${r.value}</td><td class="num">${kpis.total ? Math.round((r.value / kpis.total) * 100) : 0}%</td></tr>`).join("") || `<tr><td colspan="3" style="color:#94a3b8">Sem dados</td></tr>`}
+    </tbody></table>
+  </div>
+</div>
+
+<div class="grid2">
+  <div>
+    <h2>Equipamentos com mais chamados</h2>
+    <table><thead><tr><th>Equipamento</th><th class="num">Qtd</th></tr></thead><tbody>
+    ${equipmentCounts.map((r) => `<tr><td>${esc(r.name)}</td><td class="num">${r.value}</td></tr>`).join("") || `<tr><td colspan="2" style="color:#94a3b8">Sem dados</td></tr>`}
+    </tbody></table>
+  </div>
+  <div>
+    <h2>Máquinas com mais chamados</h2>
+    <table><thead><tr><th>Máquina</th><th class="num">Qtd</th></tr></thead><tbody>
+    ${machineCounts.slice(0, 20).map((r) => `<tr><td>${esc(r.name)}</td><td class="num">${r.value}</td></tr>`).join("") || `<tr><td colspan="2" style="color:#94a3b8">Sem dados</td></tr>`}
+    </tbody></table>
+  </div>
+</div>
+
+
 <h2>Categoria inicial × Motivo real</h2>
 <table><thead><tr><th>Categoria inicial</th><th>Motivo real (TI)</th><th class="num">Qtd</th></tr></thead><tbody>
 ${comparison.map((r) => `<tr><td style="text-transform:capitalize">${esc(r.initial)}</td><td>${esc(r.reason)}</td><td class="num">${r.count}</td></tr>`).join("") || `<tr><td colspan="3" style="color:#94a3b8">Sem dados</td></tr>`}
