@@ -17,7 +17,7 @@ import {
 import { subDays, subMonths, differenceInMinutes, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  SUPPORT_REAL_REASONS, ALL_SUPPORT_TAGS, INITIAL_CATEGORIES, extractInitialCategory,
+  SUPPORT_REAL_REASONS, ALL_SUPPORT_TAGS, INITIAL_CATEGORIES, extractInitialCategory, extractMachine,
 } from "@/lib/support-reasons";
 
 const PIE_COLORS = [
