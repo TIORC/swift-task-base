@@ -30,6 +30,9 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
   const [reason, setReason] = useState<SupportRealReason | "">("");
   const [tags, setTags] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
+  const [system, setSystem] = useState("");
+  const [site, setSite] = useState("");
+  const [equipment, setEquipment] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -37,6 +40,9 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
       setReason("");
       setTags([]);
       setNotes("");
+      setSystem("");
+      setSite("");
+      setEquipment("");
     }
   }, [open, taskId]);
 
@@ -45,6 +51,10 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
     [reason]
   );
 
+  const showSystem = !!reason && REASONS_WITH_SYSTEM.includes(reason);
+  const showSite = !!reason && REASONS_WITH_SITE.includes(reason);
+  const showEquipment = !!reason && REASONS_WITH_EQUIPMENT.includes(reason);
+
   const toggleTag = (t: string) =>
     setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
 
@@ -52,6 +62,14 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
     if (!taskId) return;
     if (!reason) {
       toast.error("Selecione o motivo real do suporte.");
+      return;
+    }
+    if (reason === "Sistema" && !system) {
+      toast.error("Selecione qual sistema recebeu suporte.");
+      return;
+    }
+    if (reason === "Site / Portal" && !site) {
+      toast.error("Selecione qual site/portal recebeu suporte.");
       return;
     }
     setSaving(true);
@@ -64,23 +82,36 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
           support_real_reason: reason,
           support_tags: tags,
           support_technical_notes: notes.trim() || null,
+          support_system: showSystem ? system || null : null,
+          support_site: showSite ? site || null : null,
+          support_equipment: showEquipment ? equipment || null : null,
           closed_by: user?.id ?? null,
           closed_at: now,
-        })
+        } as any)
         .eq("id", taskId);
       if (error) throw error;
+
+      const details = [
+        system && showSystem ? `Sistema: ${system}` : null,
+        site && showSite ? `Site: ${site}` : null,
+        equipment && showEquipment ? `Equipamento: ${equipment}` : null,
+      ].filter(Boolean).join(" • ");
 
       await supabase.from("task_events").insert({
         task_id: taskId,
         user_id: user?.id ?? null,
         event_type: "support_closed",
-        description: `Chamado concluído • Motivo real: ${reason}${tags.length ? ` • Tags: ${tags.join(", ")}` : ""}`,
+        description: `Chamado concluído • Motivo real: ${reason}${details ? ` • ${details}` : ""}${tags.length ? ` • Tags: ${tags.join(", ")}` : ""}`,
         metadata: {
           support_real_reason: reason,
           support_tags: tags,
           support_technical_notes: notes.trim() || null,
+          support_system: showSystem ? system || null : null,
+          support_site: showSite ? site || null : null,
+          support_equipment: showEquipment ? equipment || null : null,
         },
       });
+
 
       toast.success("Chamado concluído com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
