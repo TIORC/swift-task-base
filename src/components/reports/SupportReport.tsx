@@ -486,6 +486,27 @@ ${perRequester.map((r) => `<tr>
                 <SelectItem value="discarded">Descartado</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={systemFilter} onValueChange={setSystemFilter}>
+              <SelectTrigger className="w-[180px] h-9 text-xs"><SelectValue placeholder="Sistema" /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="all">Todos os sistemas</SelectItem>
+                {systemOptions.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={siteFilter} onValueChange={setSiteFilter}>
+              <SelectTrigger className="w-[180px] h-9 text-xs"><SelectValue placeholder="Site / Portal" /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="all">Todos os sites</SelectItem>
+                {siteOptions.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={equipmentFilter} onValueChange={setEquipmentFilter}>
+              <SelectTrigger className="w-[180px] h-9 text-xs"><SelectValue placeholder="Equipamento" /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="all">Todos equipamentos</SelectItem>
+                {equipmentOptions.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Button onClick={handlePrint} size="sm" className="h-9 ml-auto gap-2">
               <Printer className="h-4 w-4" /> Imprimir relatório
             </Button>
