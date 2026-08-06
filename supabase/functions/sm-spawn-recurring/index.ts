@@ -116,6 +116,7 @@ Deno.serve(async (req) => {
   const { data: taskTpls } = await supabase
     .from("sm_tasks").select("*")
     .eq("is_recurring_template", true)
+    .in("status", ["backlog", "pendente", "em_andamento"])
     .not("recurrence_type", "is", null);
 
   for (const t of taskTpls ?? []) {
@@ -124,11 +125,15 @@ Deno.serve(async (req) => {
     const anchorKey = storedDateKey(t.due_date, localDateKey(new Date(t.created_at)));
     if (!matchesOccurrence(t.recurrence_type, interval, anchorKey, todayKey)) continue;
 
+    // The occurrence identity is its due day, not the day the cron happened to
+    // create it. This also keeps a completed occurrence from returning as a new
+    // backlog item when the function is retried or run late.
+    const occurrenceBounds = brazilDayBounds(todayKey);
     const { count: existing } = await supabase.from("sm_tasks")
       .select("id", { count: "exact", head: true })
       .eq("parent_recurring_task_id", t.id)
-      .gte("created_at", todayBounds.start)
-      .lt("created_at", todayBounds.end);
+      .gte("due_date", occurrenceBounds.start)
+      .lt("due_date", occurrenceBounds.end);
     if ((existing ?? 0) > 0) continue;
 
     const { data: inserted, error: insErr } = await supabase.from("sm_tasks").insert({
