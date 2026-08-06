@@ -116,6 +116,7 @@ Deno.serve(async (req) => {
   const { data: taskTpls } = await supabase
     .from("sm_tasks").select("*")
     .eq("is_recurring_template", true)
+    .in("status", ["backlog", "pendente", "em_andamento"])
     .not("recurrence_type", "is", null);
 
   for (const t of taskTpls ?? []) {
