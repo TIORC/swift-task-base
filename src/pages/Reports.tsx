@@ -223,7 +223,6 @@ const Reports = () => {
         ["Em Validação", String(metrics.review)],
         ["Tarefas Travadas (>2 dias)", String(metrics.stalled)],
         ["Tempo Total Trabalhado", fmtMin(metrics.totalMinutes)],
-        ["Tempo Médio por Tarefa", fmtMin(metrics.avgExecMinutes)],
         ["Taxa de Descarte", `${metrics.discardRate}%`],
       ],
       theme: "striped",
@@ -261,12 +260,11 @@ const Reports = () => {
       complexityLabels[k] || k,
       String(v.count),
       fmtMin(v.minutes),
-      v.count > 0 ? fmtMin(Math.round(v.minutes / v.count)) : "—",
     ]);
     if (complexityRows.length > 0) {
       autoTable(doc, {
         startY: (doc as any).lastAutoTable.finalY + 20,
-        head: [["Complexidade", "Tarefas", "Tempo Total", "Tempo Médio"]],
+        head: [["Complexidade", "Tarefas", "Tempo Total"]],
         body: complexityRows,
         theme: "striped",
         headStyles: { fillColor: [168, 85, 247], textColor: 255, fontSize: 10 },
@@ -368,7 +366,6 @@ const Reports = () => {
       ["Taxa de Conclusão (%)", metrics.completionRate],
       ["Em Andamento", metrics.inProgress],
       ["Em Validação", metrics.review],
-      ["Tempo Médio de Execução (min)", metrics.avgExecMinutes],
       ["Tempo Total (min)", metrics.totalMinutes],
       ["Taxa de Descarte (%)", metrics.discardRate],
       ["Tarefas Travadas", metrics.stalled],
@@ -478,7 +475,6 @@ const Reports = () => {
             { label: "Total Tarefas", value: metrics.total, icon: Activity, color: "text-primary" },
             { label: "Concluídas", value: `${metrics.done} (${metrics.completionRate}%)`, icon: CheckCircle2, color: "text-success" },
             { label: "Em Andamento", value: metrics.inProgress, icon: TrendingUp, color: "text-primary" },
-            { label: "Tempo Médio", value: fmtMin(metrics.avgExecMinutes), icon: Timer, color: "text-warning" },
             { label: "Travadas", value: metrics.stalled, icon: AlertTriangle, color: "text-destructive" },
           ].map(kpi => (
             <Card key={kpi.label} className="shadow-card">
