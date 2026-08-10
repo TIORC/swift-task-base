@@ -738,30 +738,45 @@ ${perRequester.map((r, i) => `<tr>
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="text-xs w-10">#</TableHead>
                     <TableHead className="text-xs">Colaborador</TableHead>
-                    <TableHead className="text-xs text-center">Total</TableHead>
+                    <TableHead className="text-xs text-center w-16">Total</TableHead>
+                    <TableHead className="text-xs text-center w-24">Resolvidos</TableHead>
+                    <TableHead className="text-xs text-center w-24">Em aberto</TableHead>
+                    <TableHead className="text-xs w-32">% Resolução</TableHead>
                     <TableHead className="text-xs">Motivos reais</TableHead>
                     <TableHead className="text-xs">Tags mais frequentes</TableHead>
-                    <TableHead className="text-xs text-right">Tempo médio</TableHead>
-                    <TableHead className="text-xs text-right">Último chamado</TableHead>
+                    <TableHead className="text-xs text-right w-28">Último chamado</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {perRequester.map((r) => (
-                    <TableRow key={r.name}>
-                      <TableCell className="text-sm font-medium">{r.name}</TableCell>
-                      <TableCell className="text-sm text-center">{r.total}</TableCell>
+                  {perRequester.map((r, i) => (
+                    <TableRow key={r.name} className="align-top">
+                      <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
+                      <TableCell className="text-sm font-medium whitespace-nowrap">{r.name}</TableCell>
+                      <TableCell className="text-sm text-center font-semibold">{r.total}</TableCell>
+                      <TableCell className="text-sm text-center text-emerald-600 dark:text-emerald-400">{r.done}</TableCell>
+                      <TableCell className="text-sm text-center text-amber-600 dark:text-amber-400">{r.open}</TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {r.reasons.length === 0
-                            ? <span className="text-xs text-muted-foreground">—</span>
-                            : r.reasons.map(([reason, count]) => (
-                                <Badge key={reason} variant="secondary" className="text-[10px]">{reason}: {count}</Badge>
-                              ))}
+                        <div className="flex items-center gap-2">
+                          <Progress value={r.rate} className="h-1.5 w-16" />
+                          <span className="text-xs font-medium tabular-nums">{r.rate}%</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1 max-w-[240px]">
+                          {r.reasons.length === 0
+                            ? <span className="text-xs text-muted-foreground">—</span>
+                            : r.reasons.slice(0, 4).map(([reason, count]) => (
+                                <Badge key={reason} variant="secondary" className="text-[10px]">{reason}: {count}</Badge>
+                              ))}
+                          {r.reasons.length > 4 && (
+                            <Badge variant="secondary" className="text-[10px]">+{r.reasons.length - 4}</Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1 max-w-[220px]">
                           {r.tags.length === 0
                             ? <span className="text-xs text-muted-foreground">—</span>
                             : r.tags.map(([tag, count]) => (
@@ -769,8 +784,7 @@ ${perRequester.map((r, i) => `<tr>
                               ))}
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs text-right">{r.avg ? fmtMin(r.avg) : "—"}</TableCell>
-                      <TableCell className="text-xs text-right text-muted-foreground">
+                      <TableCell className="text-xs text-right text-muted-foreground whitespace-nowrap">
                         {format(r.last, "dd/MM/yy", { locale: ptBR })}
                       </TableCell>
                     </TableRow>
