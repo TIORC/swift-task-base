@@ -397,15 +397,18 @@ ${comparison.map((r) => `<tr><td style="text-transform:capitalize">${esc(r.initi
 </div>
 
 <h2>Detalhamento por colaborador</h2>
-<table><thead><tr><th>Colaborador</th><th class="num">Total</th><th>Motivos reais</th><th>Tags frequentes</th><th class="num">Tempo médio</th><th class="num">Último</th></tr></thead><tbody>
-${perRequester.map((r) => `<tr>
+<table><thead><tr><th>#</th><th>Colaborador</th><th class="num">Total</th><th class="num">Resolvidos</th><th class="num">Em aberto</th><th class="num">% Resolução</th><th>Motivos reais</th><th>Tags frequentes</th><th class="num">Último</th></tr></thead><tbody>
+${perRequester.map((r, i) => `<tr>
+  <td class="num">${i + 1}</td>
   <td><strong>${esc(r.name)}</strong></td>
   <td class="num">${r.total}</td>
+  <td class="num">${r.done}</td>
+  <td class="num">${r.open}</td>
+  <td class="num">${r.rate}%</td>
   <td>${r.reasons.length ? r.reasons.map(([n, c]) => `<span class="badge">${esc(n)}: ${c}</span>`).join("") : "—"}</td>
   <td>${r.tags.length ? r.tags.map(([n, c]) => `<span class="badge">${esc(n)}: ${c}</span>`).join("") : "—"}</td>
-  <td class="num">${r.avg ? esc(fmtMin(r.avg)) : "—"}</td>
   <td class="num">${esc(format(r.last, "dd/MM/yy", { locale: ptBR }))}</td>
-</tr>`).join("") || `<tr><td colspan="6" style="color:#94a3b8">Sem dados</td></tr>`}
+</tr>`).join("") || `<tr><td colspan="9" style="color:#94a3b8">Sem dados</td></tr>`}
 </tbody></table>
 
 <div class="footer">Orcoma TI Gestão — Relatório de Chamados • ${esc(format(new Date(), "dd/MM/yyyy HH:mm"))}</div>
