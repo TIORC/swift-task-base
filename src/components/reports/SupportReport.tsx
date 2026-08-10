@@ -218,15 +218,16 @@ export function SupportReport() {
 
   // Tabela por colaborador
   const perRequester = useMemo(() => {
-    const map = new Map<string, { name: string; total: number; reasons: Map<string, number>; tags: Map<string, number>; durations: number[]; last: Date }>();
+    const map = new Map<string, { name: string; total: number; done: number; open: number; reasons: Map<string, number>; tags: Map<string, number>; last: Date }>();
     filtered.forEach((t: any) => {
       const name = extractRequester(t.description) || profileName(t.created_by);
       if (!name || name === "—") return;
-      const entry = map.get(name) || { name, total: 0, reasons: new Map(), tags: new Map(), durations: [], last: new Date(t.created_at) };
+      const entry = map.get(name) || { name, total: 0, done: 0, open: 0, reasons: new Map(), tags: new Map(), last: new Date(t.created_at) };
       entry.total++;
+      if (t.status === "done") entry.done++;
+      else if (t.status !== "discarded") entry.open++;
       if (t.support_real_reason) entry.reasons.set(t.support_real_reason, (entry.reasons.get(t.support_real_reason) || 0) + 1);
       (t.support_tags ?? []).forEach((tg: string) => entry.tags.set(tg, (entry.tags.get(tg) || 0) + 1));
-      if (t.status === "done") entry.durations.push(differenceInMinutes(new Date(t.closed_at || t.updated_at), new Date(t.created_at)));
       const createdAt = new Date(t.created_at);
       if (createdAt > entry.last) entry.last = createdAt;
       map.set(name, entry);
@@ -235,9 +236,11 @@ export function SupportReport() {
       .map((e) => ({
         name: e.name,
         total: e.total,
+        done: e.done,
+        open: e.open,
+        rate: e.total ? Math.round((e.done / e.total) * 100) : 0,
         reasons: [...e.reasons.entries()].sort((a, b) => b[1] - a[1]),
         tags: [...e.tags.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4),
-        avg: e.durations.length ? Math.round(e.durations.reduce((s, x) => s + x, 0) / e.durations.length) : 0,
         last: e.last,
       }))
       .sort((a, b) => b.total - a.total);
