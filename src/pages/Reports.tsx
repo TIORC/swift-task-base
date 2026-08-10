@@ -53,8 +53,14 @@ const Reports = () => {
   const [specificMonth, setSpecificMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
   const reportRef = useRef<HTMLDivElement>(null);
 
+  // Relatório de Tarefas ignora chamados ([Chamado] ...) — só tarefas manuais/recorrentes
+  const nonTicketTasks = useMemo(
+    () => (filteredTasks || []).filter(t => !(t.title || "").trim().startsWith("[Chamado]")),
+    [filteredTasks]
+  );
+
   const periodFiltered = useMemo(() => {
-    if (!filteredTasks) return [];
+    if (!nonTicketTasks) return [];
     const now = new Date();
     if (period === "specific") {
       const [y, m] = specificMonth.split("-").map(Number);
