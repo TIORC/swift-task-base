@@ -301,7 +301,7 @@ export function SupportReport() {
   .meta{color:#64748b;font-size:11px;margin-bottom:16px}
   .filters{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;margin-bottom:20px;font-size:11px;color:#475569}
   .filters span{display:inline-block;margin-right:14px}
-  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
   .kpi{border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;background:#fff}
   .kpi .l{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.4px}
   .kpi .v{font-size:18px;font-weight:700;margin-top:4px;color:#0f172a}
@@ -327,7 +327,6 @@ export function SupportReport() {
   <div class="kpi"><div class="l">Resolvidos</div><div class="v">${kpis.done} (${kpis.rate}%)</div></div>
   <div class="kpi"><div class="l">Em andamento</div><div class="v">${kpis.inProgress}</div></div>
   <div class="kpi"><div class="l">Pendentes</div><div class="v">${kpis.pending}</div></div>
-  <div class="kpi"><div class="l">Tempo médio</div><div class="v">${esc(fmtMin(kpis.avg))}</div></div>
 </div>
 
 <div class="grid2">
@@ -521,13 +520,12 @@ ${perRequester.map((r, i) => `<tr>
       </Card>
 
       {/* KPIs */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[
           { label: "Total chamados", value: kpis.total, icon: LifeBuoy, color: "text-primary" },
           { label: "Resolvidos", value: `${kpis.done} (${kpis.rate}%)`, icon: CheckCircle2, color: "text-emerald-500" },
           { label: "Em andamento", value: kpis.inProgress, icon: Clock, color: "text-blue-500" },
           { label: "Pendentes", value: kpis.pending, icon: AlertTriangle, color: "text-amber-500" },
-          { label: "Tempo médio", value: fmtMin(kpis.avg), icon: Clock, color: "text-indigo-500" },
         ].map((k) => (
           <Card key={k.label} className="shadow-card">
             <CardContent className="pt-5 pb-4 px-5">
