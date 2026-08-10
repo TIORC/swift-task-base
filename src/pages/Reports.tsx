@@ -470,7 +470,7 @@ const Reports = () => {
 
       <div ref={reportRef}>
         {/* KPI Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 mb-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
           {[
             { label: "Total Tarefas", value: metrics.total, icon: Activity, color: "text-primary" },
             { label: "Concluídas", value: `${metrics.done} (${metrics.completionRate}%)`, icon: CheckCircle2, color: "text-success" },
