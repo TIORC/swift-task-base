@@ -66,7 +66,7 @@ const Reports = () => {
       const [y, m] = specificMonth.split("-").map(Number);
       const start = new Date(y, m - 1, 1);
       const end = new Date(y, m, 1);
-      return filteredTasks.filter(t => {
+      return nonTicketTasks.filter(t => {
         const d = new Date(t.created_at);
         return d >= start && d < end;
       });
@@ -75,9 +75,9 @@ const Reports = () => {
     if (period === "week") cutoff = subDays(now, 7);
     else if (period === "month") cutoff = subMonths(now, 1);
     else if (period === "quarter") cutoff = subMonths(now, 3);
-    if (cutoff) return filteredTasks.filter(t => new Date(t.created_at) >= cutoff!);
-    return filteredTasks;
-  }, [filteredTasks, period, specificMonth]);
+    if (cutoff) return nonTicketTasks.filter(t => new Date(t.created_at) >= cutoff!);
+    return nonTicketTasks;
+  }, [nonTicketTasks, period, specificMonth]);
 
   const metrics = useMemo(() => {
     const total = periodFiltered.length;
