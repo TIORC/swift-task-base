@@ -218,15 +218,16 @@ export function SupportReport() {
 
   // Tabela por colaborador
   const perRequester = useMemo(() => {
-    const map = new Map<string, { name: string; total: number; reasons: Map<string, number>; tags: Map<string, number>; durations: number[]; last: Date }>();
+    const map = new Map<string, { name: string; total: number; done: number; open: number; reasons: Map<string, number>; tags: Map<string, number>; last: Date }>();
     filtered.forEach((t: any) => {
       const name = extractRequester(t.description) || profileName(t.created_by);
       if (!name || name === "—") return;
-      const entry = map.get(name) || { name, total: 0, reasons: new Map(), tags: new Map(), durations: [], last: new Date(t.created_at) };
+      const entry = map.get(name) || { name, total: 0, done: 0, open: 0, reasons: new Map(), tags: new Map(), last: new Date(t.created_at) };
       entry.total++;
+      if (t.status === "done") entry.done++;
+      else if (t.status !== "discarded") entry.open++;
       if (t.support_real_reason) entry.reasons.set(t.support_real_reason, (entry.reasons.get(t.support_real_reason) || 0) + 1);
       (t.support_tags ?? []).forEach((tg: string) => entry.tags.set(tg, (entry.tags.get(tg) || 0) + 1));
-      if (t.status === "done") entry.durations.push(differenceInMinutes(new Date(t.closed_at || t.updated_at), new Date(t.created_at)));
       const createdAt = new Date(t.created_at);
       if (createdAt > entry.last) entry.last = createdAt;
       map.set(name, entry);
@@ -235,9 +236,11 @@ export function SupportReport() {
       .map((e) => ({
         name: e.name,
         total: e.total,
+        done: e.done,
+        open: e.open,
+        rate: e.total ? Math.round((e.done / e.total) * 100) : 0,
         reasons: [...e.reasons.entries()].sort((a, b) => b[1] - a[1]),
         tags: [...e.tags.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4),
-        avg: e.durations.length ? Math.round(e.durations.reduce((s, x) => s + x, 0) / e.durations.length) : 0,
         last: e.last,
       }))
       .sort((a, b) => b.total - a.total);
@@ -298,7 +301,7 @@ export function SupportReport() {
   .meta{color:#64748b;font-size:11px;margin-bottom:16px}
   .filters{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;margin-bottom:20px;font-size:11px;color:#475569}
   .filters span{display:inline-block;margin-right:14px}
-  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
   .kpi{border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;background:#fff}
   .kpi .l{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.4px}
   .kpi .v{font-size:18px;font-weight:700;margin-top:4px;color:#0f172a}
@@ -324,7 +327,6 @@ export function SupportReport() {
   <div class="kpi"><div class="l">Resolvidos</div><div class="v">${kpis.done} (${kpis.rate}%)</div></div>
   <div class="kpi"><div class="l">Em andamento</div><div class="v">${kpis.inProgress}</div></div>
   <div class="kpi"><div class="l">Pendentes</div><div class="v">${kpis.pending}</div></div>
-  <div class="kpi"><div class="l">Tempo médio</div><div class="v">${esc(fmtMin(kpis.avg))}</div></div>
 </div>
 
 <div class="grid2">
@@ -394,15 +396,18 @@ ${comparison.map((r) => `<tr><td style="text-transform:capitalize">${esc(r.initi
 </div>
 
 <h2>Detalhamento por colaborador</h2>
-<table><thead><tr><th>Colaborador</th><th class="num">Total</th><th>Motivos reais</th><th>Tags frequentes</th><th class="num">Tempo médio</th><th class="num">Último</th></tr></thead><tbody>
-${perRequester.map((r) => `<tr>
+<table><thead><tr><th>#</th><th>Colaborador</th><th class="num">Total</th><th class="num">Resolvidos</th><th class="num">Em aberto</th><th class="num">% Resolução</th><th>Motivos reais</th><th>Tags frequentes</th><th class="num">Último</th></tr></thead><tbody>
+${perRequester.map((r, i) => `<tr>
+  <td class="num">${i + 1}</td>
   <td><strong>${esc(r.name)}</strong></td>
   <td class="num">${r.total}</td>
+  <td class="num">${r.done}</td>
+  <td class="num">${r.open}</td>
+  <td class="num">${r.rate}%</td>
   <td>${r.reasons.length ? r.reasons.map(([n, c]) => `<span class="badge">${esc(n)}: ${c}</span>`).join("") : "—"}</td>
   <td>${r.tags.length ? r.tags.map(([n, c]) => `<span class="badge">${esc(n)}: ${c}</span>`).join("") : "—"}</td>
-  <td class="num">${r.avg ? esc(fmtMin(r.avg)) : "—"}</td>
   <td class="num">${esc(format(r.last, "dd/MM/yy", { locale: ptBR }))}</td>
-</tr>`).join("") || `<tr><td colspan="6" style="color:#94a3b8">Sem dados</td></tr>`}
+</tr>`).join("") || `<tr><td colspan="9" style="color:#94a3b8">Sem dados</td></tr>`}
 </tbody></table>
 
 <div class="footer">Orcoma TI Gestão — Relatório de Chamados • ${esc(format(new Date(), "dd/MM/yyyy HH:mm"))}</div>
@@ -515,13 +520,12 @@ ${perRequester.map((r) => `<tr>
       </Card>
 
       {/* KPIs */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[
           { label: "Total chamados", value: kpis.total, icon: LifeBuoy, color: "text-primary" },
           { label: "Resolvidos", value: `${kpis.done} (${kpis.rate}%)`, icon: CheckCircle2, color: "text-emerald-500" },
           { label: "Em andamento", value: kpis.inProgress, icon: Clock, color: "text-blue-500" },
           { label: "Pendentes", value: kpis.pending, icon: AlertTriangle, color: "text-amber-500" },
-          { label: "Tempo médio", value: fmtMin(kpis.avg), icon: Clock, color: "text-indigo-500" },
         ].map((k) => (
           <Card key={k.label} className="shadow-card">
             <CardContent className="pt-5 pb-4 px-5">
@@ -732,30 +736,45 @@ ${perRequester.map((r) => `<tr>
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="text-xs w-10">#</TableHead>
                     <TableHead className="text-xs">Colaborador</TableHead>
-                    <TableHead className="text-xs text-center">Total</TableHead>
+                    <TableHead className="text-xs text-center w-16">Total</TableHead>
+                    <TableHead className="text-xs text-center w-24">Resolvidos</TableHead>
+                    <TableHead className="text-xs text-center w-24">Em aberto</TableHead>
+                    <TableHead className="text-xs w-32">% Resolução</TableHead>
                     <TableHead className="text-xs">Motivos reais</TableHead>
                     <TableHead className="text-xs">Tags mais frequentes</TableHead>
-                    <TableHead className="text-xs text-right">Tempo médio</TableHead>
-                    <TableHead className="text-xs text-right">Último chamado</TableHead>
+                    <TableHead className="text-xs text-right w-28">Último chamado</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {perRequester.map((r) => (
-                    <TableRow key={r.name}>
-                      <TableCell className="text-sm font-medium">{r.name}</TableCell>
-                      <TableCell className="text-sm text-center">{r.total}</TableCell>
+                  {perRequester.map((r, i) => (
+                    <TableRow key={r.name} className="align-top">
+                      <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
+                      <TableCell className="text-sm font-medium whitespace-nowrap">{r.name}</TableCell>
+                      <TableCell className="text-sm text-center font-semibold">{r.total}</TableCell>
+                      <TableCell className="text-sm text-center text-emerald-600 dark:text-emerald-400">{r.done}</TableCell>
+                      <TableCell className="text-sm text-center text-amber-600 dark:text-amber-400">{r.open}</TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {r.reasons.length === 0
-                            ? <span className="text-xs text-muted-foreground">—</span>
-                            : r.reasons.map(([reason, count]) => (
-                                <Badge key={reason} variant="secondary" className="text-[10px]">{reason}: {count}</Badge>
-                              ))}
+                        <div className="flex items-center gap-2">
+                          <Progress value={r.rate} className="h-1.5 w-16" />
+                          <span className="text-xs font-medium tabular-nums">{r.rate}%</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1 max-w-[240px]">
+                          {r.reasons.length === 0
+                            ? <span className="text-xs text-muted-foreground">—</span>
+                            : r.reasons.slice(0, 4).map(([reason, count]) => (
+                                <Badge key={reason} variant="secondary" className="text-[10px]">{reason}: {count}</Badge>
+                              ))}
+                          {r.reasons.length > 4 && (
+                            <Badge variant="secondary" className="text-[10px]">+{r.reasons.length - 4}</Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1 max-w-[220px]">
                           {r.tags.length === 0
                             ? <span className="text-xs text-muted-foreground">—</span>
                             : r.tags.map(([tag, count]) => (
@@ -763,8 +782,7 @@ ${perRequester.map((r) => `<tr>
                               ))}
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs text-right">{r.avg ? fmtMin(r.avg) : "—"}</TableCell>
-                      <TableCell className="text-xs text-right text-muted-foreground">
+                      <TableCell className="text-xs text-right text-muted-foreground whitespace-nowrap">
                         {format(r.last, "dd/MM/yy", { locale: ptBR })}
                       </TableCell>
                     </TableRow>
