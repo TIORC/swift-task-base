@@ -39,6 +39,8 @@ import SocialDashboard from "./pages/social/SocialDashboard";
 import SocialClients from "./pages/social/SocialClients";
 import SocialCampaigns from "./pages/social/SocialCampaigns";
 import SocialKanban from "./pages/social/SocialKanban";
+import SocialCommercial from "./pages/social/SocialCommercial";
+import SocialWorkflows from "./pages/social/SocialWorkflows";
 import SocialEditorialCalendar from "./pages/social/SocialEditorialCalendar";
 import SocialApprovals from "./pages/social/SocialApprovals";
 import SocialTasks from "./pages/social/SocialTasks";
@@ -189,6 +191,8 @@ const AppRoutes = () => (
     {/* Sistema Social Media */}
     <Route path="/social" element={<ProtectedSocial><SocialDashboard /></ProtectedSocial>} />
     <Route path="/social/painel-gestor" element={<ProtectedSocial><SocialManagerDashboard /></ProtectedSocial>} />
+    <Route path="/social/comercial" element={<ProtectedSocial><SocialCommercial /></ProtectedSocial>} />
+    <Route path="/social/fluxos" element={<ProtectedSocial><SocialWorkflows /></ProtectedSocial>} />
     <Route path="/social/kanban" element={<ProtectedSocial><SocialKanban /></ProtectedSocial>} />
     <Route path="/social/tarefas" element={<ProtectedSocial><SocialTasks /></ProtectedSocial>} />
     <Route path="/social/calendario-editorial" element={<ProtectedSocial><SocialEditorialCalendar /></ProtectedSocial>} />
