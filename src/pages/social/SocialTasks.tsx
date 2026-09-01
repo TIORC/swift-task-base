@@ -280,6 +280,9 @@ export default function SocialTasks() {
                 ))}
               </SelectContent>
             </Select>
+            <Button asChild variant="outline" className="h-9">
+              <Link to="/social/foco"><Target className="h-4 w-4 mr-1"/>Modo Foco</Link>
+            </Button>
             <Button variant="outline" className="h-9" onClick={() => setTemplateManagerOpen(true)}>
               <FileStack className="h-4 w-4 mr-1"/>Modelos
             </Button>

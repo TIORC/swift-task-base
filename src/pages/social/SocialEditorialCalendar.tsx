@@ -131,6 +131,7 @@ export default function SocialEditorialCalendar() {
             <span className="text-sm font-medium capitalize min-w-[140px] text-center">{monthLabel}</span>
             <Button variant="outline" size="icon" onClick={() => setRef(new Date(ref.getFullYear(), ref.getMonth() + 1, 1))}><ChevronRight className="h-4 w-4"/></Button>
             <Button variant="outline" size="sm" onClick={() => setRef(new Date())}>Hoje</Button>
+            <Button variant="outline" size="sm" asChild><a href="/social/banco-de-ideias">Banco de Ideias</a></Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm"><Plus className="h-4 w-4 mr-1"/>Adicionar</Button>

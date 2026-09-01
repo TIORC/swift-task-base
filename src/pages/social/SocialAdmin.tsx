@@ -6,7 +6,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ShieldCheck, Loader2 } from "lucide-react";
+import { ShieldCheck, Loader2, Timer } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useSmSlaConfig } from "@/hooks/useSmDemands";
+import { SM_PRIORITY_LABEL } from "@/types/social";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -34,6 +38,7 @@ export default function SocialAdmin() {
   const [editing, setEditing] = useState<Row | null>(null);
   const [draftRoles, setDraftRoles] = useState<string[]>([]);
   const [draftAccess, setDraftAccess] = useState(false);
+  const sla = useSmSlaConfig();
 
   const load = async () => {
     setLoading(true);
@@ -102,6 +107,27 @@ export default function SocialAdmin() {
   return (
     <div className="space-y-6">
       <PageHeader title="Administração Social" description="Gerencie acesso ao ambiente e papéis do Social Media" icon={<ShieldCheck className="h-5 w-5"/>}/>
+
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Timer className="h-4 w-4 text-muted-foreground"/>
+            <p className="text-sm font-medium">SLA por prioridade (horas)</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {(["urgent","high","medium","low"] as const).map(p => (
+              <div key={p}>
+                <Label className="text-xs">{SM_PRIORITY_LABEL[p]}</Label>
+                <Input
+                  type="number" min={1}
+                  defaultValue={sla.config[p]}
+                  onBlur={(e) => sla.save(p, Number(e.target.value) || 1).then(() => toast.success("SLA atualizado"))}
+                />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
       {loading ? (
         <div className="flex justify-center p-10"><Loader2 className="h-6 w-6 animate-spin"/></div>
       ) : (
