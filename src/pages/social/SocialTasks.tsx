@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, ListTodo, Trash2, Target, CheckSquare, CalendarDays, User, X, Briefcase, Bookmark, FileStack, Clock } from "lucide-react";
+import { Plus, ListTodo, Trash2, Target, CheckSquare, CalendarDays, User, X, Briefcase, Bookmark, FileStack, Clock, Timer, Ban } from "lucide-react";
 import { isOverdue } from "@/lib/dates";
 import { SocialTaskChecklist } from "@/components/social/SocialTaskChecklist";
 import { useSmTasks, useSmClients, useSocialMutations } from "@/hooks/useSocial";
@@ -21,6 +21,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { SM_PRIORITY_LABEL } from "@/types/social";
 import type { SmPriority } from "@/types/social";
 import { EmptyState } from "@/components/EmptyState";
+import { SM_NATURES, SM_NATURE_LABEL, SM_NATURE_CLS, SM_BILLABLE_OPTIONS, SM_DISCARD_REASONS, slaLabel, type SmNature } from "@/lib/sm-demands";
+import { useSmSlaConfig } from "@/hooks/useSmDemands";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -101,11 +103,18 @@ export default function SocialTasks() {
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [clientFilter, setClientFilter] = useState<string>("all");
+  const [natureFilter, setNatureFilter] = useState<string>("all");
+  const [discardFor, setDiscardFor] = useState<string | null>(null);
+  const [discardReason, setDiscardReason] = useState<string>(SM_DISCARD_REASONS[0]);
+  const [discardNote, setDiscardNote] = useState("");
+  const { config: slaConfig } = useSmSlaConfig();
 
   const [form, setForm] = useState({
     title: "", description: "", client_id: "", priority: "medium" as SmPriority,
     due_date: "", status: "backlog",
     assigned_to: "",
+    nature: "avulsa" as SmNature,
+    billable: "cobravel",
     is_recurring_template: false,
     recurrence_type: "" as "" | "daily" | "weekly" | "monthly" | "custom",
     recurrence_interval: 1,
@@ -133,12 +142,13 @@ export default function SocialTasks() {
     let list = data.filter(t => !(t as any).is_recurring_template);
     if (assigneeFilter === "mine") list = list.filter(t => t.assigned_to === user?.id);
     else if (assigneeFilter !== "all") list = list.filter(t => t.assigned_to === assigneeFilter);
+    if (natureFilter !== "all") list = list.filter(t => ((t as any).nature ?? "avulsa") === natureFilter);
     if (clientFilter !== "all") {
       if (clientFilter === "none") list = list.filter(t => !t.client_id);
       else list = list.filter(t => t.client_id === clientFilter);
     }
     return list;
-  }, [data, assigneeFilter, user?.id, clientFilter]);
+  }, [data, assigneeFilter, user?.id, clientFilter, natureFilter]);
 
   const advancedFiltered = useMemo(() => {
     let result = assigneeFiltered;
@@ -182,6 +192,8 @@ export default function SocialTasks() {
       client_id: form.client_id || null, priority: form.priority,
       due_date: dueIso, status: form.status,
       assigned_to: form.assigned_to || null,
+      nature: form.nature,
+      billable: form.nature === "avulsa" ? form.billable : null,
       is_recurring_template: form.is_recurring_template,
       recurrence_type: form.is_recurring_template && form.recurrence_type ? form.recurrence_type : null,
       recurrence_interval: form.is_recurring_template ? form.recurrence_interval || 1 : null,
@@ -210,7 +222,7 @@ export default function SocialTasks() {
     }
     toast.success("Tarefa criada");
     setOpen(false);
-    setForm({ title: "", description: "", client_id: "", priority: "medium", due_date: "", status: "backlog", assigned_to: "", is_recurring_template: false, recurrence_type: "", recurrence_interval: 1, recurrence_until: "", recurrence_weekday: "1" });
+    setForm({ title: "", description: "", client_id: "", priority: "medium", due_date: "", status: "backlog", assigned_to: "", nature: "avulsa", billable: "cobravel", is_recurring_template: false, recurrence_type: "", recurrence_interval: 1, recurrence_until: "", recurrence_weekday: "1" });
     setDraftChecklist([]); setNewChecklistItem("");
     setSaveAsTemplate(false); setTemplateName("");
     refresh();
@@ -268,6 +280,9 @@ export default function SocialTasks() {
                 ))}
               </SelectContent>
             </Select>
+            <Button asChild variant="outline" className="h-9">
+              <Link to="/social/foco"><Target className="h-4 w-4 mr-1"/>Modo Foco</Link>
+            </Button>
             <Button variant="outline" className="h-9" onClick={() => setTemplateManagerOpen(true)}>
               <FileStack className="h-4 w-4 mr-1"/>Modelos
             </Button>
@@ -291,6 +306,14 @@ export default function SocialTasks() {
             className={`inline-flex items-center px-2.5 py-1.5 rounded-full text-[11px] font-medium transition-all duration-150
               ${priorityFilter === p.key ? "bg-accent text-accent-foreground shadow-sm" : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
             {p.label}
+          </button>
+        ))}
+        <div className="h-4 w-px bg-border mx-1"/>
+        {[{ key: "all", label: "Toda natureza" }, ...SM_NATURES.map(n => ({ key: n, label: SM_NATURE_LABEL[n] }))].map(n => (
+          <button key={n.key} onClick={() => setNatureFilter(n.key)}
+            className={`inline-flex items-center px-2.5 py-1.5 rounded-full text-[11px] font-medium transition-all duration-150
+              ${natureFilter === n.key ? "bg-accent text-accent-foreground shadow-sm" : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+            {n.label}
           </button>
         ))}
         <div className="h-4 w-px bg-border mx-1"/>
@@ -351,6 +374,28 @@ export default function SocialTasks() {
                         {isOverdue(t.due_date) && <span className="font-semibold">· atrasada</span>}
                       </Badge>
                     )}
+                    <Badge variant="outline" className={`text-[10px] ${SM_NATURE_CLS[((t as any).nature ?? "avulsa") as SmNature] ?? ""}`}>
+                      {SM_NATURE_LABEL[((t as any).nature ?? "avulsa") as SmNature] ?? "Avulsa"}
+                    </Badge>
+                    {(t as any).billable && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {(t as any).billable === "cobravel" ? "Cobrável" : "Interna"}
+                      </Badge>
+                    )}
+                    {(t as any).is_approval_step && <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/30">Aprovação</Badge>}
+                    {t.status !== "concluido" && t.status !== "descartado" && (() => {
+                      const sla = slaLabel(t.created_at, t.priority, slaConfig);
+                      return (
+                        <Badge variant="outline" className={`text-[10px] gap-1 ${sla.overdue ? "bg-destructive/10 text-destructive border-destructive/30" : "bg-muted/50 text-muted-foreground border-border"}`}>
+                          <Timer className="h-2.5 w-2.5"/>{sla.text}
+                        </Badge>
+                      );
+                    })()}
+                    {(t as any).discard_reason && (
+                      <Badge variant="outline" className="text-[10px] bg-amber-800/10 text-amber-600 border-amber-700/30">
+                        Descarte: {(t as any).discard_reason}
+                      </Badge>
+                    )}
                     {t.description && <p className="text-xs text-muted-foreground truncate">{t.description}</p>}
                   </div>
                 </div>
@@ -372,6 +417,12 @@ export default function SocialTasks() {
                   onClick={(e) => { e.stopPropagation(); setChecklistTaskId(t.id); }} title="Checklist">
                   <CheckSquare className="h-3.5 w-3.5"/>
                 </Button>
+                {t.status !== "descartado" && (
+                  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-amber-600" title="Desconsiderar"
+                    onClick={(e) => { e.stopPropagation(); setDiscardFor(t.id); setDiscardReason(SM_DISCARD_REASONS[0]); setDiscardNote(""); }}>
+                    <Ban className="h-3.5 w-3.5"/>
+                  </Button>
+                )}
                 <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
                   onClick={(e) => { e.stopPropagation(); del(t.id); }}>
                   <Trash2 className="h-3.5 w-3.5"/>
@@ -408,6 +459,24 @@ export default function SocialTasks() {
                   {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Natureza da demanda *</Label>
+                <Select value={form.nature} onValueChange={v => setForm({...form, nature: v as SmNature})}>
+                  <SelectTrigger><SelectValue/></SelectTrigger>
+                  <SelectContent>{SM_NATURES.map(n => <SelectItem key={n} value={n}>{SM_NATURE_LABEL[n]}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              {form.nature === "avulsa" && (
+                <div>
+                  <Label>Cobrança *</Label>
+                  <Select value={form.billable} onValueChange={v => setForm({...form, billable: v})}>
+                    <SelectTrigger><SelectValue/></SelectTrigger>
+                    <SelectContent>{SM_BILLABLE_OPTIONS.map(o => <SelectItem key={o.key} value={o.key}>{o.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -560,6 +629,36 @@ export default function SocialTasks() {
               })}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!discardFor} onOpenChange={(o) => !o && setDiscardFor(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Desconsiderar demanda</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Motivo *</Label>
+              <Select value={discardReason} onValueChange={setDiscardReason}>
+                <SelectTrigger><SelectValue/></SelectTrigger>
+                <SelectContent>{SM_DISCARD_REASONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Observação</Label>
+              <Textarea rows={2} value={discardNote} onChange={e => setDiscardNote(e.target.value)}/>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDiscardFor(null)}>Cancelar</Button>
+            <Button onClick={async () => {
+              if (!discardFor) return;
+              const reason = discardNote.trim() ? `${discardReason} — ${discardNote.trim()}` : discardReason;
+              const { error } = await sb.from("sm_tasks").update({ status: "descartado", discard_reason: reason }).eq("id", discardFor);
+              if (error) return toast.error(error.message);
+              toast.success("Demanda desconsiderada");
+              setDiscardFor(null); refresh();
+            }}>Confirmar</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

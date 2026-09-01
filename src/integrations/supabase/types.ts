@@ -1278,6 +1278,11 @@ export type Database = {
           id: string
           logo_url: string | null
           name: string
+          onboarding_completed_at: string | null
+          onboarding_started_at: string | null
+          plan_formats: string | null
+          plan_notes: string | null
+          plan_posts_per_month: number | null
           primary_color: string | null
           updated_at: string
           useful_links: Json | null
@@ -1291,6 +1296,11 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name: string
+          onboarding_completed_at?: string | null
+          onboarding_started_at?: string | null
+          plan_formats?: string | null
+          plan_notes?: string | null
+          plan_posts_per_month?: number | null
           primary_color?: string | null
           updated_at?: string
           useful_links?: Json | null
@@ -1304,6 +1314,11 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name?: string
+          onboarding_completed_at?: string | null
+          onboarding_started_at?: string | null
+          plan_formats?: string | null
+          plan_notes?: string | null
+          plan_posts_per_month?: number | null
           primary_color?: string | null
           updated_at?: string
           useful_links?: Json | null
@@ -1668,6 +1683,24 @@ export type Database = {
           },
         ]
       }
+      sm_sla_config: {
+        Row: {
+          hours: number
+          priority: string
+          updated_at: string
+        }
+        Insert: {
+          hours: number
+          priority: string
+          updated_at?: string
+        }
+        Update: {
+          hours?: number
+          priority?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sm_social_networks: {
         Row: {
           active: boolean
@@ -1799,63 +1832,84 @@ export type Database = {
       sm_tasks: {
         Row: {
           assigned_to: string | null
+          billable: string | null
           campaign_id: string | null
           client_id: string | null
           created_at: string
           created_by: string
           description: string | null
+          discard_reason: string | null
           due_date: string | null
           id: string
+          is_approval_step: boolean
           is_recurring_template: boolean
           last_spawned_at: string | null
+          nature: string
           parent_recurring_task_id: string | null
           priority: Database["public"]["Enums"]["sm_priority"]
           recurrence_interval: number | null
           recurrence_type: string | null
           recurrence_until: string | null
+          stage: string | null
           status: string
           title: string
           updated_at: string
+          workflow_id: string | null
+          workflow_step_id: string | null
         }
         Insert: {
           assigned_to?: string | null
+          billable?: string | null
           campaign_id?: string | null
           client_id?: string | null
           created_at?: string
           created_by: string
           description?: string | null
+          discard_reason?: string | null
           due_date?: string | null
           id?: string
+          is_approval_step?: boolean
           is_recurring_template?: boolean
           last_spawned_at?: string | null
+          nature?: string
           parent_recurring_task_id?: string | null
           priority?: Database["public"]["Enums"]["sm_priority"]
           recurrence_interval?: number | null
           recurrence_type?: string | null
           recurrence_until?: string | null
+          stage?: string | null
           status?: string
           title: string
           updated_at?: string
+          workflow_id?: string | null
+          workflow_step_id?: string | null
         }
         Update: {
           assigned_to?: string | null
+          billable?: string | null
           campaign_id?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
+          discard_reason?: string | null
           due_date?: string | null
           id?: string
+          is_approval_step?: boolean
           is_recurring_template?: boolean
           last_spawned_at?: string | null
+          nature?: string
           parent_recurring_task_id?: string | null
           priority?: Database["public"]["Enums"]["sm_priority"]
           recurrence_interval?: number | null
           recurrence_type?: string | null
           recurrence_until?: string | null
+          stage?: string | null
           status?: string
           title?: string
           updated_at?: string
+          workflow_id?: string | null
+          workflow_step_id?: string | null
         }
         Relationships: [
           {
@@ -1873,6 +1927,92 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sm_workflow_steps: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          created_by: string
+          days_offset: number
+          description: string | null
+          id: string
+          is_approval: boolean
+          sort_order: number
+          title: string
+          updated_at: string
+          workflow_id: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by: string
+          days_offset?: number
+          description?: string | null
+          id?: string
+          is_approval?: boolean
+          sort_order?: number
+          title: string
+          updated_at?: string
+          workflow_id: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string
+          days_offset?: number
+          description?: string | null
+          id?: string
+          is_approval?: boolean
+          sort_order?: number
+          title?: string
+          updated_at?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sm_workflow_steps_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "sm_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sm_workflows: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_default_operation: boolean
+          name: string
+          service: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          is_default_operation?: boolean
+          name: string
+          service?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_default_operation?: boolean
+          name?: string
+          service?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       support_catalog: {
         Row: {
