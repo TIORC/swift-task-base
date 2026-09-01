@@ -1,101 +1,58 @@
+# Gestor de Demandas M7 — Fase 1
 
-# Almoxarifado TI
+Implementação do que é possível hoje no sistema (sem o CRM externo, que fica preparado para integração futura).
 
-Novo módulo dentro do sistema Gestão TI. Todos os usuários autenticados **visualizam**; apenas membros da TI (admin, gestor, líder, membro com sistema `ti`) podem **cadastrar, editar, movimentar, descartar**.
+## 1. Natureza da demanda
 
-## 1. Banco de dados (migration única)
+Novo campo obrigatório em tarefas M7: **Comercial**, **Onboarding**, **Recorrente**, **Avulsa**.
 
-Tabelas em `public` — todas com `GRANT` para authenticated + service_role, RLS ativo, `updated_at` trigger.
+- Seletor no formulário de criação/edição de tarefa (padrão: Recorrente).
+- Badge colorido no card (Tarefas, Kanban, Modo Foco).
+- Filtro por natureza em Tarefas, Kanban, Painel Gestor e Relatórios.
+- Tarefas existentes são classificadas como Recorrente (as geradas por recorrência) ou Avulsa (as demais).
 
-```text
-inventory_categories        (id, name, description)
-inventory_locations         (id, name, description)
-inventory_items             (id, name, sku, category_id, location_id,
-                             tracked_individually bool,      -- true = por patrimônio
-                             unit_price numeric,
-                             min_stock int, ideal_stock int,
-                             quantity int,                    -- só para não-patrimoniados
-                             status text: active|inactive,
-                             notes, created_by)
-inventory_assets            (id, item_id, patrimony_number unique,
-                             serial_number, value numeric,
-                             status: available|in_use|damaged|discarded|maintenance,
-                             location_id, assigned_to uuid, acquired_at,
-                             notes)
-inventory_movements         (id, item_id, asset_id nullable,
-                             type: in|out|transfer|damage|discard|adjust,
-                             quantity int,                    -- 1 quando asset
-                             reason, notes,
-                             from_location_id, to_location_id,
-                             performed_by uuid, created_at)
-inventory_requests          (id, requester_id, item_id, quantity,
-                             justification, status: pending|approved|rejected|delivered,
-                             reviewed_by, reviewed_at, created_at)
-```
+## 2. Funis de status por natureza
 
-### RLS
-- `SELECT`: `authenticated` → todas as tabelas (visualização global).
-- `INSERT/UPDATE/DELETE`: apenas quando `has_ti_write(auth.uid())` = true.
-  - Função `has_ti_write` = admin OR gestor OR lider OR (tem sistema `ti` habilitado E papel membro).
-- `inventory_requests.INSERT` aberto para qualquer authenticated (solicitar); update só TI.
-- Bloqueio de exclusão de item com movimentação: função `prevent_item_delete_with_movements` como trigger BEFORE DELETE.
-
-### Regras de negócio (triggers/funções)
-- `apply_movement()` trigger AFTER INSERT em `inventory_movements`:
-  - Para item não-patrimoniado: `in`/`adjust+` soma, `out`/`discard`/`damage` subtrai `quantity`.
-  - Para asset: atualiza `status` e `location_id`/`assigned_to` conforme tipo.
-  - Rejeita se `out` deixaria quantidade negativa.
-
-## 2. Frontend
-
-Rota base `/almoxarifado` com sub-rotas via tabs internas para manter simples:
+O board passa a exibir colunas conforme a natureza selecionada:
 
 ```text
-src/pages/almoxarifado/
-  AlmoxarifadoLayout.tsx      (tabs: Dashboard | Itens | Entradas | Saídas |
-                               Patrimônios | Danificados | Descartados |
-                               Reposição | Solicitações | Relatórios | Config)
-  Dashboard.tsx               cards: total itens, valor total, em uso, danificados,
-                               alertas de estoque baixo, últimas movimentações
-  Items.tsx                   CRUD itens + filtros (categoria, local, status, busca)
-  Movements.tsx               reutilizado por Entradas/Saídas com filtro por tipo
-  Assets.tsx                  lista/edita patrimônios, histórico por asset
-  Damaged.tsx / Discarded.tsx views filtradas de assets
-  Restock.tsx                 lista automática: qtd_disponivel <= min_stock,
-                               sugestão = ideal - disponivel, exportar CSV
-  Requests.tsx                solicitações; TI aprova/entrega
-  Reports.tsx                 filtros por período/categoria, exportação CSV + print
-  Settings.tsx                categorias e locais
+Comercial/Onboarding : Diagnóstico > Proposta > Negociação > Contrato > Onboarding > Handoff
+Recorrente           : Roteiro/Ideia > Produção > Edição > Aprovação cliente > Publicado
+Avulsa               : Solicitado > Em execução > Aprovação > Entregue
 ```
 
-Componentes compartilhados:
-```text
-src/components/almoxarifado/
-  ItemFormDialog.tsx
-  MovementDialog.tsx     (validação: saída ≤ disponível)
-  AssetFormDialog.tsx
-  StockBadge.tsx         (crítico/baixo/ok)
-  SummaryCards.tsx
-```
+Um seletor de funil no topo do Kanban troca o conjunto de colunas. Os status internos existentes continuam válidos para relatórios/histórico.
 
-Hook `src/hooks/useInventory.ts` centraliza queries (React Query) — items, assets, movements, low-stock, dashboard KPIs.
+## 3. Onboarding padrão (30 dias)
 
-Permissões: hook `useCanWriteInventory()` combina `useUserRole` + `useUserSystems('ti')` para desabilitar botões de escrita para não-TI.
+- Template fixo de onboarding (checklist): acessos e senhas das redes, dados do cliente, briefing, definição de temas/formatos, gravação inicial.
+- Botão "Iniciar onboarding" na tela de Clientes cria um card único de onboarding para o cliente, com prazo de 30 dias e as subtarefas padrão já preenchidas.
+- Ao concluir o card, um passo de **Handoff** cria o cliente na Agenda de Publicações com o plano contratado (quantidade de posts/mês, formatos, recorrência) definido em um novo bloco "Plano contratado" no cadastro do cliente.
 
-## 3. Navegação e acesso
-- `src/App.tsx`: rota `/almoxarifado` protegida por `ProtectedTI` (todos com sistema TI já entram; visualização é global mas o sistema é TI-only por ora — se quiser abrir a outros sistemas, adiciono depois).
-- `src/components/AppSidebar.tsx`: novo item "Almoxarifado" (ícone `Package`) visível a todos os perfis.
-- `src/hooks/useUserRole.tsx` + `src/lib/menu-access.ts`: registrar `/almoxarifado` liberado para todos os perfis.
+## 4. Demanda avulsa
 
-## 4. UX
-- Layout com `PageHeader`, tabs sticky, tabelas com busca e paginação client-side.
-- Cards de resumo no Dashboard usam design tokens existentes (sem cores hardcoded).
-- Botões de escrita ocultos/`disabled` para usuários fora da TI com tooltip "Somente TI".
-- Exportação CSV nativa; botão "Imprimir" abre janela com HTML formatado (padrão já usado em SupportReport).
+Ao escolher natureza Avulsa, campo obrigatório **Cobrável** (cobrável com orçamento à parte / interna), além de prioridade e prazo. Exibido no card e somado nos relatórios.
 
-## 5. Ordem de execução
-1. Migration (schema + RLS + triggers + função `has_ti_write`).
-2. Após aprovação e regeneração de types: hook `useInventory`, componentes, páginas, rota, sidebar, menu-access.
-3. Smoke test manual via preview.
+## 5. SLA por prioridade
 
-Confirme para eu rodar a migration.
+Prazo-alvo por prioridade (Urgente 4h, Alta 1 dia, Média 3 dias, Baixa 7 dias), configurável no Admin M7. No card aparece o tempo restante ("vence em 3h") e destaque vermelho quando estourado.
+
+## 6. Motivo de descarte obrigatório
+
+Ao mover para "Desconsiderada", abre diálogo pedindo motivo (Cancelado pelo cliente / Duplicidade / Não é mais necessária / Fora de escopo / Outro + texto). Motivo entra nos Relatórios como ranking de descartes.
+
+## 7. Simplificação de módulos
+
+- **Banco de Ideias** deixa de ser item de menu e vira filtro/status dentro do Calendário Editorial (Ideia > Planejado > Publicado). A rota antiga redireciona.
+- **Modo Foco** deixa de ser item de menu e vira botão dentro de Tarefas (rota mantida).
+- Kanban e Tarefas permanecem (visões distintas: fluxo vs. lista/filtros).
+
+## 8. Preparação do handoff com o CRM
+
+Endpoint de entrada (função de backend protegida por chave) que recebe um contrato fechado do CRM e cria o cliente + card de onboarding automaticamente. Documentado para quando o CRM estiver pronto.
+
+## Detalhes técnicos
+
+- Banco: colunas `nature`, `billable`, `discard_reason` em `sm_tasks`; `plan_posts_per_month`, `plan_formats`, `plan_notes` em `sm_clients`; tabela `sm_sla_config`. Migração com GRANTs e políticas RLS no padrão atual do módulo.
+- Frontend: novo `src/lib/sm-demands.ts` com naturezas, funis e SLA; ajustes em `SocialTasks.tsx`, `SocialKanban.tsx`, `SocialClients.tsx`, `SocialEditorialCalendar.tsx`, `SocialReports.tsx`, `SocialManagerDashboard.tsx`, `SocialLayout.tsx`.
+- Edge function `sm-crm-handoff` para a integração futura.
