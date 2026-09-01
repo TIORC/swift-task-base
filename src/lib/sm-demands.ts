@@ -95,3 +95,10 @@ export function slaLabel(createdAt: string, priority: string, config?: Record<st
   const text = h < 24 ? `${Math.max(h, 1)}h` : `${Math.floor(h / 24)}d`;
   return { overdue, text: overdue ? `SLA estourado há ${text}` : `SLA vence em ${text}` };
 }
+
+export const SM_PRIORITY_CLS_FALLBACK: Record<string, string> = {
+  low: "bg-muted text-muted-foreground border-border",
+  medium: "bg-primary/10 text-primary border-primary/30",
+  high: "bg-amber-500/15 text-amber-500 border-amber-500/30",
+  urgent: "bg-destructive/15 text-destructive border-destructive/30",
+};

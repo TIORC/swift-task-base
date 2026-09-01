@@ -12,11 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Briefcase, Plus, Search, Trash2, ArrowRight, CalendarDays } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useSmClients, useSmTasks } from "@/hooks/useSocial";
+import { useSmClients } from "@/hooks/useSocial";
 import { useProfiles, useSocialAssignableProfiles } from "@/hooks/useTasks";
 import {
   SM_COMMERCIAL_STAGES, SM_ONBOARDING_CHECKLIST, SM_PRIORITY_CLS_FALLBACK,
-} from "@/lib/sm-demands-ui";
+} from "@/lib/sm-demands";
 import { generateTasksFromWorkflow, seedOnboardingChecklist, useSmWorkflows, useSmDemands } from "@/hooks/useSmDemands";
 import { SM_PRIORITY_LABEL } from "@/types/social";
 import { toast } from "sonner";
