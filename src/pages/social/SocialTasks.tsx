@@ -628,6 +628,36 @@ export default function SocialTasks() {
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!discardFor} onOpenChange={(o) => !o && setDiscardFor(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Desconsiderar demanda</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Motivo *</Label>
+              <Select value={discardReason} onValueChange={setDiscardReason}>
+                <SelectTrigger><SelectValue/></SelectTrigger>
+                <SelectContent>{SM_DISCARD_REASONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Observação</Label>
+              <Textarea rows={2} value={discardNote} onChange={e => setDiscardNote(e.target.value)}/>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDiscardFor(null)}>Cancelar</Button>
+            <Button onClick={async () => {
+              if (!discardFor) return;
+              const reason = discardNote.trim() ? `${discardReason} — ${discardNote.trim()}` : discardReason;
+              const { error } = await sb.from("sm_tasks").update({ status: "descartado", discard_reason: reason }).eq("id", discardFor);
+              if (error) return toast.error(error.message);
+              toast.success("Demanda desconsiderada");
+              setDiscardFor(null); refresh();
+            }}>Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
