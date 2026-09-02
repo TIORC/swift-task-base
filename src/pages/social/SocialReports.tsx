@@ -80,6 +80,77 @@ export default function SocialReports() {
     [filtered, clients]
   );
 
+  // ---- Tarefas: por colaborador, por cliente e por natureza (com horas) ----
+  const tasksFiltered = useMemo(() => {
+    const now = new Date();
+    let cutoff: Date | null = null;
+    let start: Date | null = null;
+    let end: Date | null = null;
+    if (period === "week") cutoff = new Date(now.getTime() - 7 * 86400000);
+    else if (period === "month") cutoff = new Date(now.getTime() - 30 * 86400000);
+    else if (period === "quarter") cutoff = new Date(now.getTime() - 90 * 86400000);
+    else if (period === "specific") {
+      const [y, mm] = specificMonth.split("-").map(Number);
+      start = new Date(y, mm - 1, 1);
+      end = new Date(y, mm, 1);
+    }
+    return (tasks ?? []).filter((t: any) => {
+      if (t.is_recurring_template) return false;
+      const created = new Date(t.created_at);
+      if (start && end && (created < start || created >= end)) return false;
+      if (cutoff && created < cutoff) return false;
+      if (clientId !== "all" && t.client_id !== clientId) return false;
+      return true;
+    });
+  }, [tasks, period, specificMonth, clientId]);
+
+  const minutesOf = (t: any) => minutesByTask[t.id] ?? 0;
+
+  const byCollaborator = useMemo(() => {
+    const map: Record<string, { name: string; total: number; done: number; minutes: number }> = {};
+    tasksFiltered.forEach((t: any) => {
+      const key = t.assigned_to ?? "none";
+      const name = key === "none"
+        ? "Sem responsável"
+        : (profiles?.find((p: any) => p.id === key)?.full_name || "Usuário");
+      const e = map[key] ?? { name, total: 0, done: 0, minutes: 0 };
+      e.total++;
+      if (t.status === "concluido") e.done++;
+      e.minutes += minutesOf(t);
+      map[key] = e;
+    });
+    return Object.values(map).sort((a, b) => b.total - a.total);
+  }, [tasksFiltered, profiles, minutesByTask]);
+
+  const byTaskClient = useMemo(() => {
+    const map: Record<string, { name: string; total: number; done: number; minutes: number }> = {};
+    tasksFiltered.forEach((t: any) => {
+      const key = t.client_id ?? "none";
+      const name = key === "none" ? "Sem cliente" : (clients.find((c) => c.id === key)?.name ?? "Cliente");
+      const e = map[key] ?? { name, total: 0, done: 0, minutes: 0 };
+      e.total++;
+      if (t.status === "concluido") e.done++;
+      e.minutes += minutesOf(t);
+      map[key] = e;
+    });
+    return Object.values(map).sort((a, b) => b.total - a.total);
+  }, [tasksFiltered, clients, minutesByTask]);
+
+  const byNature = useMemo(() => {
+    const map: Record<string, { name: string; total: number; minutes: number }> = {};
+    tasksFiltered.forEach((t: any) => {
+      const key = (t.nature ?? "avulsa") as SmNature;
+      const e = map[key] ?? { name: SM_NATURE_LABEL[key] ?? key, total: 0, minutes: 0 };
+      e.total++;
+      e.minutes += minutesOf(t);
+      map[key] = e;
+    });
+    return Object.values(map).sort((a, b) => b.total - a.total);
+  }, [tasksFiltered, minutesByTask]);
+
+  const totalMinutes = tasksFiltered.reduce((s: number, t: any) => s + minutesOf(t), 0);
+
+
   const exportCSV = () => {
     const header = "Título,Cliente,Status,Prioridade,Agendado em,Criado em\n";
     const rows = filtered.map((p) => {
