@@ -282,6 +282,97 @@ export default function SocialReports() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            Tarefas por colaborador · {formatMinutes(totalMinutes)} no período
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
+                <th className="px-4 py-2 font-medium">Colaborador</th>
+                <th className="px-4 py-2 font-medium">Tarefas</th>
+                <th className="px-4 py-2 font-medium">Concluídas</th>
+                <th className="px-4 py-2 font-medium">Horas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byCollaborator.length === 0 && (
+                <tr><td colSpan={4} className="px-4 py-4 text-muted-foreground">Sem dados no período.</td></tr>
+              )}
+              {byCollaborator.map((r) => (
+                <tr key={r.name} className="border-b border-border/50 last:border-0">
+                  <td className="px-4 py-2">{r.name}</td>
+                  <td className="px-4 py-2">{r.total}</td>
+                  <td className="px-4 py-2">{r.done}</td>
+                  <td className="px-4 py-2">{formatMinutes(r.minutes)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle className="text-base">Tarefas por cliente</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
+                  <th className="px-4 py-2 font-medium">Cliente</th>
+                  <th className="px-4 py-2 font-medium">Tarefas</th>
+                  <th className="px-4 py-2 font-medium">Concluídas</th>
+                  <th className="px-4 py-2 font-medium">Horas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {byTaskClient.length === 0 && (
+                  <tr><td colSpan={4} className="px-4 py-4 text-muted-foreground">Sem dados no período.</td></tr>
+                )}
+                {byTaskClient.map((r) => (
+                  <tr key={r.name} className="border-b border-border/50 last:border-0">
+                    <td className="px-4 py-2">{r.name}</td>
+                    <td className="px-4 py-2">{r.total}</td>
+                    <td className="px-4 py-2">{r.done}</td>
+                    <td className="px-4 py-2">{formatMinutes(r.minutes)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-base">Tarefas por natureza</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
+                  <th className="px-4 py-2 font-medium">Natureza</th>
+                  <th className="px-4 py-2 font-medium">Tarefas</th>
+                  <th className="px-4 py-2 font-medium">Horas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {byNature.length === 0 && (
+                  <tr><td colSpan={3} className="px-4 py-4 text-muted-foreground">Sem dados no período.</td></tr>
+                )}
+                {byNature.map((r) => (
+                  <tr key={r.name} className="border-b border-border/50 last:border-0">
+                    <td className="px-4 py-2">{r.name}</td>
+                    <td className="px-4 py-2">{r.total}</td>
+                    <td className="px-4 py-2">{formatMinutes(r.minutes)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
