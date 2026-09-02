@@ -35,6 +35,8 @@ export default function SocialReports() {
   const { data: posts } = useSmPosts();
   const { data: clients } = useSmClients();
   const { data: tasks } = useSmTasks();
+  const { byTask: minutesByTask } = useSmTimeTotals();
+  const { data: profiles } = useSocialAssignableProfiles();
   const [period, setPeriod] = useState<PeriodFilter>("month");
   const [specificMonth, setSpecificMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
   const [clientId, setClientId] = useState<string>("all");
