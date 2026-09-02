@@ -46,6 +46,15 @@ export default function SocialWorkflows() {
 
   const personName = (id: string | null) => profiles?.find((p: any) => p.id === id)?.full_name ?? "equipe";
 
+  // quantidade de itens de checklist por etapa
+  const loadStepItems = async () => {
+    const { data } = await (supabase as any).from("sm_workflow_step_items").select("step_id");
+    const m: Record<string, number> = {};
+    (data ?? []).forEach((r: any) => { m[r.step_id] = (m[r.step_id] ?? 0) + 1; });
+    setItemsByStep(m);
+  };
+  useEffect(() => { loadStepItems(); }, [wf.steps.length]);
+
   const createWorkflow = async () => {
     if (!wfForm.name.trim()) return toast.error("Informe o nome do fluxo");
     const res: any = await wf.createWorkflow({
