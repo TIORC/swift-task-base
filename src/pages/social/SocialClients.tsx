@@ -26,13 +26,14 @@ export default function SocialClients() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<SmClient | null>(null);
-  const [form, setForm] = useState({ name: "", brand_identity: "", general_briefing: "", primary_color: "", active: true, plan_posts_per_month: "", plan_formats: "", plan_notes: "" });
+  const emptyForm = { name: "", brand_identity: "", general_briefing: "", primary_color: "", active: true, plan_posts_per_month: "", plan_formats: "", plan_notes: "", account_owner_id: "" };
+  const [form, setForm] = useState(emptyForm);
 
-  const reset = () => { setEditing(null); setForm({ name: "", brand_identity: "", general_briefing: "", primary_color: "", active: true, plan_posts_per_month: "", plan_formats: "", plan_notes: "" }); };
+  const reset = () => { setEditing(null); setForm(emptyForm); };
   const openNew = () => { reset(); setOpen(true); };
   const openEdit = (c: SmClient) => {
     setEditing(c);
-    setForm({ name: c.name, brand_identity: c.brand_identity ?? "", general_briefing: c.general_briefing ?? "", primary_color: c.primary_color ?? "", active: c.active, plan_posts_per_month: (c as any).plan_posts_per_month?.toString() ?? "", plan_formats: (c as any).plan_formats ?? "", plan_notes: (c as any).plan_notes ?? "" });
+    setForm({ name: c.name, brand_identity: c.brand_identity ?? "", general_briefing: c.general_briefing ?? "", primary_color: c.primary_color ?? "", active: c.active, plan_posts_per_month: (c as any).plan_posts_per_month?.toString() ?? "", plan_formats: (c as any).plan_formats ?? "", plan_notes: (c as any).plan_notes ?? "", account_owner_id: (c as any).account_owner_id ?? "" });
     setOpen(true);
   };
 
@@ -43,6 +44,7 @@ export default function SocialClients() {
       plan_posts_per_month: form.plan_posts_per_month ? Number(form.plan_posts_per_month) : null,
       plan_formats: form.plan_formats || null,
       plan_notes: form.plan_notes || null,
+      account_owner_id: form.account_owner_id || null,
     };
     const { error } = editing ? await m.updateClient(editing.id, payload) : await m.createClient(payload);
     if (error) return toast.error(error.message);
