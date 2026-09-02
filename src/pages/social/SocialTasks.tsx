@@ -603,6 +603,12 @@ export default function SocialTasks() {
         </DialogContent>
       </Dialog>
 
+      <SocialTaskDetailDialog
+        task={detailTaskId ? (data?.find(t => t.id === detailTaskId) ?? null) : null}
+        onOpenChange={(o) => { if (!o) setDetailTaskId(null); }}
+        onChanged={refresh}
+      />
+
       <Dialog open={templateManagerOpen} onOpenChange={setTemplateManagerOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Modelos de tarefa</DialogTitle></DialogHeader>
