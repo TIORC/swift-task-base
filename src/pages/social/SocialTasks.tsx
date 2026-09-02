@@ -201,7 +201,7 @@ export default function SocialTasks() {
       is_recurring_template: form.is_recurring_template,
       recurrence_type: form.is_recurring_template && form.recurrence_type ? form.recurrence_type : null,
       recurrence_interval: form.is_recurring_template ? form.recurrence_interval || 1 : null,
-      recurrence_until: form.is_recurring_template && form.recurrence_until ? new Date(form.recurrence_until).toISOString() : null,
+      recurrence_until: form.is_recurring_template && form.recurrence_until ? new Date(form.recurrence_until + "T12:00:00").toISOString() : null,
     };
     const { data: created, error } = await m.createTask(payload);
     if (error) return toast.error(error.message);
