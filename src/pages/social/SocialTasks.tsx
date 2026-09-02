@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Plus, ListTodo, Trash2, Target, CheckSquare, CalendarDays, User, X, Briefcase, Bookmark, FileStack, Clock, Timer, Ban } from "lucide-react";
 import { isOverdue } from "@/lib/dates";
 import { SocialTaskChecklist } from "@/components/social/SocialTaskChecklist";
+import { SocialTaskDetailDialog } from "@/components/social/SocialTaskDetailDialog";
 import { useSmTasks, useSmClients, useSocialMutations } from "@/hooks/useSocial";
 import { useSocialAssignableProfiles } from "@/hooks/useTasks";
 import { useAuth } from "@/hooks/useAuth";
@@ -76,6 +77,7 @@ export default function SocialTasks() {
   const m = useSocialMutations();
   const [open, setOpen] = useState(false);
   const [checklistTaskId, setChecklistTaskId] = useState<string | null>(null);
+  const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   const [draftChecklist, setDraftChecklist] = useState<string[]>([]);
   const [newChecklistItem, setNewChecklistItem] = useState("");
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
@@ -183,7 +185,9 @@ export default function SocialTasks() {
   const save = async () => {
     if (!form.title.trim()) return toast.error("Título obrigatório");
     if (saveAsTemplate && !templateName.trim()) return toast.error("Informe o nome do modelo");
-    let dueIso: string | null = form.due_date ? new Date(form.due_date).toISOString() : null;
+    // "YYYY-MM-DD" é interpretado como UTC pelo Date(); fixamos meio-dia local
+    // para o prazo não voltar um dia no fuso do Brasil.
+    let dueIso: string | null = form.due_date ? new Date(form.due_date + "T12:00:00").toISOString() : null;
     if (form.is_recurring_template && form.recurrence_type === "weekly" && !form.due_date) {
       dueIso = nextWeekdayDate(Number(form.recurrence_weekday)).toISOString();
     }
