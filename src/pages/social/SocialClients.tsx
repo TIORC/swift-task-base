@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSocialAssignableProfiles } from "@/hooks/useTasks";
 import { Plus, Users, Edit2, Trash2, Rocket } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { seedOnboardingChecklist } from "@/hooks/useSmDemands";
