@@ -163,6 +163,7 @@ export default function SocialWorkflows() {
                         <p className="text-sm truncate">{s.title}</p>
                         <p className="text-[10px] text-muted-foreground">
                           D+{s.days_offset} · {s.is_approval ? "aprovação do gestor" : personName(s.assigned_to)}
+                          {itemsByStep[s.id] ? ` · ${itemsByStep[s.id]} item(ns) de checklist` : ""}
                         </p>
                       </div>
                       {s.is_approval
