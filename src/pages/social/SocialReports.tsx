@@ -4,6 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useSmPosts, useSmClients, useSmTasks } from "@/hooks/useSocial";
+import { useSmTimeTotals, formatMinutes } from "@/hooks/useSmTaskExtras";
+import { useSocialAssignableProfiles } from "@/hooks/useTasks";
+import { SM_NATURE_LABEL, type SmNature } from "@/lib/sm-demands";
 import { SM_POST_STATUS_LABEL, SM_POST_STATUS_ORDER } from "@/types/social";
 import { BarChart3, FileDown, FileSpreadsheet } from "lucide-react";
 import {
