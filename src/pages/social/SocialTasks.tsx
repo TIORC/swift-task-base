@@ -358,7 +358,7 @@ export default function SocialTasks() {
             const cName = clientName(t.client_id);
             return (
               <div key={t.id}
-                onClick={() => setChecklistTaskId(t.id)}
+                onClick={() => setDetailTaskId(t.id)}
                 className="flex items-center gap-4 rounded-xl border border-border bg-card p-3.5 cursor-pointer shadow-card hover:shadow-card-hover hover:border-primary/20 transition-all duration-150">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate flex items-center gap-2">
