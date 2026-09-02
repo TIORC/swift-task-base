@@ -83,8 +83,16 @@ export default function SocialWorkflows() {
       sort_order: order,
     });
     if (res?.error) return toast.error(res.error.message);
+    const stepId = res?.data?.id;
+    if (stepId && stepItems.length && user) {
+      await (supabase as any).from("sm_workflow_step_items").insert(
+        stepItems.map((title, i) => ({ step_id: stepId, title, sort_order: i, created_by: user.id }))
+      );
+    }
     setStepForm({ title: "", description: "", days_offset: 0, assigned_to: "", is_approval: false });
+    setStepItems([]); setNewStepItem("");
     wf.refresh();
+    loadStepItems();
   };
 
   const runNow = async () => {
