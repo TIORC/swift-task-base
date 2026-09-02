@@ -25,6 +25,7 @@ export default function SocialClients() {
   const { data, loading, refresh } = useSmClients();
   const m = useSocialMutations();
   const { user } = useAuth();
+  const { data: assignables } = useSocialAssignableProfiles();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<SmClient | null>(null);
