@@ -126,6 +126,16 @@ export default function SocialClients() {
             <div><Label>Identidade da marca</Label><Textarea rows={2} value={form.brand_identity} onChange={e => setForm({...form, brand_identity: e.target.value})} /></div>
             <div><Label>Briefing geral</Label><Textarea rows={4} value={form.general_briefing} onChange={e => setForm({...form, general_briefing: e.target.value})} /></div>
             <div><Label>Cor primária</Label><Input type="color" value={form.primary_color || "#3B82F6"} onChange={e => setForm({...form, primary_color: e.target.value})} className="h-10 w-20" /></div>
+            <div>
+              <Label>Responsável pela conta</Label>
+              <Select value={form.account_owner_id || "none"} onValueChange={v => setForm({...form, account_owner_id: v === "none" ? "" : v})}>
+                <SelectTrigger><SelectValue placeholder="Sem responsável" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem responsável</SelectItem>
+                  {assignables?.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="rounded-lg border border-border p-3 space-y-3">
               <p className="text-sm font-medium">Plano contratado</p>
               <div className="grid grid-cols-2 gap-3">
