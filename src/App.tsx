@@ -193,12 +193,12 @@ const AppRoutes = () => (
     <Route path="/social/painel-gestor" element={<ProtectedSocial><SocialManagerDashboard /></ProtectedSocial>} />
     <Route path="/social/comercial" element={<ProtectedSocial><SocialCommercial /></ProtectedSocial>} />
     <Route path="/social/fluxos" element={<ProtectedSocial><SocialWorkflows /></ProtectedSocial>} />
-    <Route path="/social/kanban" element={<ProtectedSocial><SocialKanban /></ProtectedSocial>} />
+    <Route path="/social/kanban" element={<Navigate to="/social/tarefas" replace />} />
     <Route path="/social/tarefas" element={<ProtectedSocial><SocialTasks /></ProtectedSocial>} />
     <Route path="/social/calendario-editorial" element={<ProtectedSocial><SocialEditorialCalendar /></ProtectedSocial>} />
     <Route path="/social/aprovacoes" element={<ProtectedSocial><SocialApprovals /></ProtectedSocial>} />
     <Route path="/social/clientes" element={<ProtectedSocial><SocialClients /></ProtectedSocial>} />
-    <Route path="/social/campanhas" element={<ProtectedSocial><SocialCampaigns /></ProtectedSocial>} />
+    <Route path="/social/campanhas" element={<Navigate to="/social/clientes" replace />} />
     <Route path="/social/banco-de-ideias" element={<ProtectedSocial><SocialIdeaBank /></ProtectedSocial>} />
     <Route path="/social/agenda-publicacoes" element={<ProtectedSocial><SocialPublishingSchedule /></ProtectedSocial>} />
     <Route path="/social/metricas" element={<ProtectedSocial><SocialMetrics /></ProtectedSocial>} />
