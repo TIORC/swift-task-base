@@ -238,6 +238,41 @@ export default function SocialWorkflows() {
               </div>
               <Switch checked={stepForm.is_approval} onCheckedChange={(v) => setStepForm({ ...stepForm, is_approval: v })} />
             </div>
+
+            <div className="rounded-lg border border-border p-3 space-y-2">
+              <p className="text-sm font-medium">Checklist da etapa</p>
+              <p className="text-xs text-muted-foreground">
+                Estes itens são criados automaticamente dentro da tarefa quando o fluxo roda.
+              </p>
+              {stepItems.length > 0 && (
+                <ul className="space-y-1">
+                  {stepItems.map((it, idx) => (
+                    <li key={idx} className="flex items-center gap-2 text-sm bg-muted/40 rounded px-2 py-1">
+                      <span className="flex-1">{it}</span>
+                      <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive"
+                        onClick={() => setStepItems((p) => p.filter((_, i) => i !== idx))}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="flex gap-2">
+                <Input placeholder="Novo item..." value={newStepItem}
+                  onChange={(e) => setNewStepItem(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const t = newStepItem.trim();
+                      if (t) { setStepItems((p) => [...p, t]); setNewStepItem(""); }
+                    }
+                  }} />
+                <Button type="button" size="sm" onClick={() => {
+                  const t = newStepItem.trim();
+                  if (t) { setStepItems((p) => [...p, t]); setNewStepItem(""); }
+                }}><Plus className="h-4 w-4" /></Button>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setStepFor(null)}>Fechar</Button>
