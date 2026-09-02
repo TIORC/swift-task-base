@@ -15,3 +15,14 @@
 - [x] Construtor de fluxos de demanda (por serviço) — etapas configuráveis
 - [x] Ao concluir onboarding: gerar automaticamente as tarefas da operação a partir do fluxo
 - [x] Última etapa do fluxo cai como aprovação para o gestor
+
+## Fase 2 M7 (melhorias do documento)
+- [x] Detalhe da tarefa com edição, transferência, checklist, tempo e comentários
+- [x] Cronômetro e registro de horas por tarefa (sm_task_time_logs)
+- [x] Comentários com menção + notificação
+- [x] Envio de tarefa para aprovação do gestor + aba de aprovações de tarefas
+- [x] Checklist configurável por etapa do fluxo (replicado nas tarefas geradas)
+- [x] Responsável pela conta no cadastro de cliente
+- [x] Correção do prazo que voltava um dia
+- [x] Relatórios por colaborador, cliente e natureza com horas
+- [x] Remoção dos módulos Kanban de Conteúdo e Campanhas
