@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,6 +30,9 @@ export default function SocialWorkflows() {
 
   const [stepFor, setStepFor] = useState<string | null>(null);
   const [stepForm, setStepForm] = useState({ title: "", description: "", days_offset: 0, assigned_to: "", is_approval: false });
+  const [stepItems, setStepItems] = useState<string[]>([]);
+  const [newStepItem, setNewStepItem] = useState("");
+  const [itemsByStep, setItemsByStep] = useState<Record<string, number>>({});
 
   const [runFor, setRunFor] = useState<string | null>(null);
   const [runClient, setRunClient] = useState("");
