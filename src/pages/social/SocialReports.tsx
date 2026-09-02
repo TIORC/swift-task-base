@@ -4,6 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useSmPosts, useSmClients, useSmTasks } from "@/hooks/useSocial";
+import { useSmTimeTotals, formatMinutes } from "@/hooks/useSmTaskExtras";
+import { useSocialAssignableProfiles } from "@/hooks/useTasks";
+import { SM_NATURE_LABEL, type SmNature } from "@/lib/sm-demands";
 import { SM_POST_STATUS_LABEL, SM_POST_STATUS_ORDER } from "@/types/social";
 import { BarChart3, FileDown, FileSpreadsheet } from "lucide-react";
 import {
@@ -32,6 +35,8 @@ export default function SocialReports() {
   const { data: posts } = useSmPosts();
   const { data: clients } = useSmClients();
   const { data: tasks } = useSmTasks();
+  const { byTask: minutesByTask } = useSmTimeTotals();
+  const { data: profiles } = useSocialAssignableProfiles();
   const [period, setPeriod] = useState<PeriodFilter>("month");
   const [specificMonth, setSpecificMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
   const [clientId, setClientId] = useState<string>("all");
@@ -74,6 +79,77 @@ export default function SocialReports() {
     })).filter((x) => x.total > 0),
     [filtered, clients]
   );
+
+  // ---- Tarefas: por colaborador, por cliente e por natureza (com horas) ----
+  const tasksFiltered = useMemo(() => {
+    const now = new Date();
+    let cutoff: Date | null = null;
+    let start: Date | null = null;
+    let end: Date | null = null;
+    if (period === "week") cutoff = new Date(now.getTime() - 7 * 86400000);
+    else if (period === "month") cutoff = new Date(now.getTime() - 30 * 86400000);
+    else if (period === "quarter") cutoff = new Date(now.getTime() - 90 * 86400000);
+    else if (period === "specific") {
+      const [y, mm] = specificMonth.split("-").map(Number);
+      start = new Date(y, mm - 1, 1);
+      end = new Date(y, mm, 1);
+    }
+    return (tasks ?? []).filter((t: any) => {
+      if (t.is_recurring_template) return false;
+      const created = new Date(t.created_at);
+      if (start && end && (created < start || created >= end)) return false;
+      if (cutoff && created < cutoff) return false;
+      if (clientId !== "all" && t.client_id !== clientId) return false;
+      return true;
+    });
+  }, [tasks, period, specificMonth, clientId]);
+
+  const minutesOf = (t: any) => minutesByTask[t.id] ?? 0;
+
+  const byCollaborator = useMemo(() => {
+    const map: Record<string, { name: string; total: number; done: number; minutes: number }> = {};
+    tasksFiltered.forEach((t: any) => {
+      const key = t.assigned_to ?? "none";
+      const name = key === "none"
+        ? "Sem responsável"
+        : (profiles?.find((p: any) => p.id === key)?.full_name || "Usuário");
+      const e = map[key] ?? { name, total: 0, done: 0, minutes: 0 };
+      e.total++;
+      if (t.status === "concluido") e.done++;
+      e.minutes += minutesOf(t);
+      map[key] = e;
+    });
+    return Object.values(map).sort((a, b) => b.total - a.total);
+  }, [tasksFiltered, profiles, minutesByTask]);
+
+  const byTaskClient = useMemo(() => {
+    const map: Record<string, { name: string; total: number; done: number; minutes: number }> = {};
+    tasksFiltered.forEach((t: any) => {
+      const key = t.client_id ?? "none";
+      const name = key === "none" ? "Sem cliente" : (clients.find((c) => c.id === key)?.name ?? "Cliente");
+      const e = map[key] ?? { name, total: 0, done: 0, minutes: 0 };
+      e.total++;
+      if (t.status === "concluido") e.done++;
+      e.minutes += minutesOf(t);
+      map[key] = e;
+    });
+    return Object.values(map).sort((a, b) => b.total - a.total);
+  }, [tasksFiltered, clients, minutesByTask]);
+
+  const byNature = useMemo(() => {
+    const map: Record<string, { name: string; total: number; minutes: number }> = {};
+    tasksFiltered.forEach((t: any) => {
+      const key = (t.nature ?? "avulsa") as SmNature;
+      const e = map[key] ?? { name: SM_NATURE_LABEL[key] ?? key, total: 0, minutes: 0 };
+      e.total++;
+      e.minutes += minutesOf(t);
+      map[key] = e;
+    });
+    return Object.values(map).sort((a, b) => b.total - a.total);
+  }, [tasksFiltered, minutesByTask]);
+
+  const totalMinutes = tasksFiltered.reduce((s: number, t: any) => s + minutesOf(t), 0);
+
 
   const exportCSV = () => {
     const header = "Título,Cliente,Status,Prioridade,Agendado em,Criado em\n";
@@ -203,6 +279,97 @@ export default function SocialReports() {
                 </BarChart>
               </ResponsiveContainer>
             )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            Tarefas por colaborador · {formatMinutes(totalMinutes)} no período
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
+                <th className="px-4 py-2 font-medium">Colaborador</th>
+                <th className="px-4 py-2 font-medium">Tarefas</th>
+                <th className="px-4 py-2 font-medium">Concluídas</th>
+                <th className="px-4 py-2 font-medium">Horas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byCollaborator.length === 0 && (
+                <tr><td colSpan={4} className="px-4 py-4 text-muted-foreground">Sem dados no período.</td></tr>
+              )}
+              {byCollaborator.map((r) => (
+                <tr key={r.name} className="border-b border-border/50 last:border-0">
+                  <td className="px-4 py-2">{r.name}</td>
+                  <td className="px-4 py-2">{r.total}</td>
+                  <td className="px-4 py-2">{r.done}</td>
+                  <td className="px-4 py-2">{formatMinutes(r.minutes)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle className="text-base">Tarefas por cliente</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
+                  <th className="px-4 py-2 font-medium">Cliente</th>
+                  <th className="px-4 py-2 font-medium">Tarefas</th>
+                  <th className="px-4 py-2 font-medium">Concluídas</th>
+                  <th className="px-4 py-2 font-medium">Horas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {byTaskClient.length === 0 && (
+                  <tr><td colSpan={4} className="px-4 py-4 text-muted-foreground">Sem dados no período.</td></tr>
+                )}
+                {byTaskClient.map((r) => (
+                  <tr key={r.name} className="border-b border-border/50 last:border-0">
+                    <td className="px-4 py-2">{r.name}</td>
+                    <td className="px-4 py-2">{r.total}</td>
+                    <td className="px-4 py-2">{r.done}</td>
+                    <td className="px-4 py-2">{formatMinutes(r.minutes)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-base">Tarefas por natureza</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
+                  <th className="px-4 py-2 font-medium">Natureza</th>
+                  <th className="px-4 py-2 font-medium">Tarefas</th>
+                  <th className="px-4 py-2 font-medium">Horas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {byNature.length === 0 && (
+                  <tr><td colSpan={3} className="px-4 py-4 text-muted-foreground">Sem dados no período.</td></tr>
+                )}
+                {byNature.map((r) => (
+                  <tr key={r.name} className="border-b border-border/50 last:border-0">
+                    <td className="px-4 py-2">{r.name}</td>
+                    <td className="px-4 py-2">{r.total}</td>
+                    <td className="px-4 py-2">{formatMinutes(r.minutes)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </CardContent>
         </Card>
       </div>

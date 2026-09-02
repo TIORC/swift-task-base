@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,6 +30,9 @@ export default function SocialWorkflows() {
 
   const [stepFor, setStepFor] = useState<string | null>(null);
   const [stepForm, setStepForm] = useState({ title: "", description: "", days_offset: 0, assigned_to: "", is_approval: false });
+  const [stepItems, setStepItems] = useState<string[]>([]);
+  const [newStepItem, setNewStepItem] = useState("");
+  const [itemsByStep, setItemsByStep] = useState<Record<string, number>>({});
 
   const [runFor, setRunFor] = useState<string | null>(null);
   const [runClient, setRunClient] = useState("");
@@ -41,6 +45,15 @@ export default function SocialWorkflows() {
   }, [wf.steps]);
 
   const personName = (id: string | null) => profiles?.find((p: any) => p.id === id)?.full_name ?? "equipe";
+
+  // quantidade de itens de checklist por etapa
+  const loadStepItems = async () => {
+    const { data } = await (supabase as any).from("sm_workflow_step_items").select("step_id");
+    const m: Record<string, number> = {};
+    (data ?? []).forEach((r: any) => { m[r.step_id] = (m[r.step_id] ?? 0) + 1; });
+    setItemsByStep(m);
+  };
+  useEffect(() => { loadStepItems(); }, [wf.steps.length]);
 
   const createWorkflow = async () => {
     if (!wfForm.name.trim()) return toast.error("Informe o nome do fluxo");
@@ -70,8 +83,16 @@ export default function SocialWorkflows() {
       sort_order: order,
     });
     if (res?.error) return toast.error(res.error.message);
+    const stepId = res?.data?.id;
+    if (stepId && stepItems.length && user) {
+      await (supabase as any).from("sm_workflow_step_items").insert(
+        stepItems.map((title, i) => ({ step_id: stepId, title, sort_order: i, created_by: user.id }))
+      );
+    }
     setStepForm({ title: "", description: "", days_offset: 0, assigned_to: "", is_approval: false });
+    setStepItems([]); setNewStepItem("");
     wf.refresh();
+    loadStepItems();
   };
 
   const runNow = async () => {
@@ -142,6 +163,7 @@ export default function SocialWorkflows() {
                         <p className="text-sm truncate">{s.title}</p>
                         <p className="text-[10px] text-muted-foreground">
                           D+{s.days_offset} · {s.is_approval ? "aprovação do gestor" : personName(s.assigned_to)}
+                          {itemsByStep[s.id] ? ` · ${itemsByStep[s.id]} item(ns) de checklist` : ""}
                         </p>
                       </div>
                       {s.is_approval
@@ -215,6 +237,41 @@ export default function SocialWorkflows() {
                 <p className="text-xs text-muted-foreground">Cai para o gestor aprovar no fim do fluxo.</p>
               </div>
               <Switch checked={stepForm.is_approval} onCheckedChange={(v) => setStepForm({ ...stepForm, is_approval: v })} />
+            </div>
+
+            <div className="rounded-lg border border-border p-3 space-y-2">
+              <p className="text-sm font-medium">Checklist da etapa</p>
+              <p className="text-xs text-muted-foreground">
+                Estes itens são criados automaticamente dentro da tarefa quando o fluxo roda.
+              </p>
+              {stepItems.length > 0 && (
+                <ul className="space-y-1">
+                  {stepItems.map((it, idx) => (
+                    <li key={idx} className="flex items-center gap-2 text-sm bg-muted/40 rounded px-2 py-1">
+                      <span className="flex-1">{it}</span>
+                      <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive"
+                        onClick={() => setStepItems((p) => p.filter((_, i) => i !== idx))}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="flex gap-2">
+                <Input placeholder="Novo item..." value={newStepItem}
+                  onChange={(e) => setNewStepItem(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const t = newStepItem.trim();
+                      if (t) { setStepItems((p) => [...p, t]); setNewStepItem(""); }
+                    }
+                  }} />
+                <Button type="button" size="sm" onClick={() => {
+                  const t = newStepItem.trim();
+                  if (t) { setStepItems((p) => [...p, t]); setNewStepItem(""); }
+                }}><Plus className="h-4 w-4" /></Button>
+              </div>
             </div>
           </div>
           <DialogFooter>

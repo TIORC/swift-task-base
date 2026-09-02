@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSocialAssignableProfiles } from "@/hooks/useTasks";
 import { Plus, Users, Edit2, Trash2, Rocket } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { seedOnboardingChecklist } from "@/hooks/useSmDemands";
@@ -23,16 +25,18 @@ export default function SocialClients() {
   const { data, loading, refresh } = useSmClients();
   const m = useSocialMutations();
   const { user } = useAuth();
+  const { data: assignables } = useSocialAssignableProfiles();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<SmClient | null>(null);
-  const [form, setForm] = useState({ name: "", brand_identity: "", general_briefing: "", primary_color: "", active: true, plan_posts_per_month: "", plan_formats: "", plan_notes: "" });
+  const emptyForm = { name: "", brand_identity: "", general_briefing: "", primary_color: "", active: true, plan_posts_per_month: "", plan_formats: "", plan_notes: "", account_owner_id: "" };
+  const [form, setForm] = useState(emptyForm);
 
-  const reset = () => { setEditing(null); setForm({ name: "", brand_identity: "", general_briefing: "", primary_color: "", active: true, plan_posts_per_month: "", plan_formats: "", plan_notes: "" }); };
+  const reset = () => { setEditing(null); setForm(emptyForm); };
   const openNew = () => { reset(); setOpen(true); };
   const openEdit = (c: SmClient) => {
     setEditing(c);
-    setForm({ name: c.name, brand_identity: c.brand_identity ?? "", general_briefing: c.general_briefing ?? "", primary_color: c.primary_color ?? "", active: c.active, plan_posts_per_month: (c as any).plan_posts_per_month?.toString() ?? "", plan_formats: (c as any).plan_formats ?? "", plan_notes: (c as any).plan_notes ?? "" });
+    setForm({ name: c.name, brand_identity: c.brand_identity ?? "", general_briefing: c.general_briefing ?? "", primary_color: c.primary_color ?? "", active: c.active, plan_posts_per_month: (c as any).plan_posts_per_month?.toString() ?? "", plan_formats: (c as any).plan_formats ?? "", plan_notes: (c as any).plan_notes ?? "", account_owner_id: (c as any).account_owner_id ?? "" });
     setOpen(true);
   };
 
@@ -43,6 +47,7 @@ export default function SocialClients() {
       plan_posts_per_month: form.plan_posts_per_month ? Number(form.plan_posts_per_month) : null,
       plan_formats: form.plan_formats || null,
       plan_notes: form.plan_notes || null,
+      account_owner_id: form.account_owner_id || null,
     };
     const { error } = editing ? await m.updateClient(editing.id, payload) : await m.createClient(payload);
     if (error) return toast.error(error.message);
@@ -124,6 +129,16 @@ export default function SocialClients() {
             <div><Label>Identidade da marca</Label><Textarea rows={2} value={form.brand_identity} onChange={e => setForm({...form, brand_identity: e.target.value})} /></div>
             <div><Label>Briefing geral</Label><Textarea rows={4} value={form.general_briefing} onChange={e => setForm({...form, general_briefing: e.target.value})} /></div>
             <div><Label>Cor primária</Label><Input type="color" value={form.primary_color || "#3B82F6"} onChange={e => setForm({...form, primary_color: e.target.value})} className="h-10 w-20" /></div>
+            <div>
+              <Label>Responsável pela conta</Label>
+              <Select value={form.account_owner_id || "none"} onValueChange={v => setForm({...form, account_owner_id: v === "none" ? "" : v})}>
+                <SelectTrigger><SelectValue placeholder="Sem responsável" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem responsável</SelectItem>
+                  {assignables?.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="rounded-lg border border-border p-3 space-y-3">
               <p className="text-sm font-medium">Plano contratado</p>
               <div className="grid grid-cols-2 gap-3">

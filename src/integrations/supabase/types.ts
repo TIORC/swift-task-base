@@ -1270,6 +1270,7 @@ export type Database = {
       }
       sm_clients: {
         Row: {
+          account_owner_id: string | null
           active: boolean
           brand_identity: string | null
           created_at: string
@@ -1288,6 +1289,7 @@ export type Database = {
           useful_links: Json | null
         }
         Insert: {
+          account_owner_id?: string | null
           active?: boolean
           brand_identity?: string | null
           created_at?: string
@@ -1306,6 +1308,7 @@ export type Database = {
           useful_links?: Json | null
         }
         Update: {
+          account_owner_id?: string | null
           active?: boolean
           brand_identity?: string | null
           created_at?: string
@@ -1758,6 +1761,41 @@ export type Database = {
         }
         Relationships: []
       }
+      sm_task_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          mentions: string[]
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          mentions?: string[]
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          mentions?: string[]
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sm_task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "sm_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sm_task_template_items: {
         Row: {
           created_at: string
@@ -1829,8 +1867,56 @@ export type Database = {
         }
         Relationships: []
       }
+      sm_task_time_logs: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_minutes: number | null
+          ended_at: string | null
+          id: string
+          started_at: string
+          task_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          task_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          task_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sm_task_time_logs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "sm_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sm_tasks: {
         Row: {
+          approval_link: string | null
+          approval_notes: string | null
+          approval_status: string | null
+          approver_id: string | null
           assigned_to: string | null
           billable: string | null
           campaign_id: string | null
@@ -1850,6 +1936,7 @@ export type Database = {
           recurrence_interval: number | null
           recurrence_type: string | null
           recurrence_until: string | null
+          requires_approval: boolean
           stage: string | null
           status: string
           title: string
@@ -1858,6 +1945,10 @@ export type Database = {
           workflow_step_id: string | null
         }
         Insert: {
+          approval_link?: string | null
+          approval_notes?: string | null
+          approval_status?: string | null
+          approver_id?: string | null
           assigned_to?: string | null
           billable?: string | null
           campaign_id?: string | null
@@ -1877,6 +1968,7 @@ export type Database = {
           recurrence_interval?: number | null
           recurrence_type?: string | null
           recurrence_until?: string | null
+          requires_approval?: boolean
           stage?: string | null
           status?: string
           title: string
@@ -1885,6 +1977,10 @@ export type Database = {
           workflow_step_id?: string | null
         }
         Update: {
+          approval_link?: string | null
+          approval_notes?: string | null
+          approval_status?: string | null
+          approver_id?: string | null
           assigned_to?: string | null
           billable?: string | null
           campaign_id?: string | null
@@ -1904,6 +2000,7 @@ export type Database = {
           recurrence_interval?: number | null
           recurrence_type?: string | null
           recurrence_until?: string | null
+          requires_approval?: boolean
           stage?: string | null
           status?: string
           title?: string
@@ -1924,6 +2021,41 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "sm_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sm_workflow_step_items: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          sort_order: number
+          step_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          sort_order?: number
+          step_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          sort_order?: number
+          step_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sm_workflow_step_items_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "sm_workflow_steps"
             referencedColumns: ["id"]
           },
         ]
@@ -2618,12 +2750,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2647,11 +2779,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2672,11 +2804,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2697,11 +2829,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2714,11 +2846,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
