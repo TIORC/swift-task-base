@@ -223,16 +223,32 @@ export default function Almoxarifado() {
               <Input className="pl-8" placeholder="Buscar item, marca ou modelo..." value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas categorias</SelectItem>
                 {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={collabFilter} onValueChange={setCollabFilter}>
+              <SelectTrigger className="w-[190px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos colaboradores</SelectItem>
+                <SelectItem value="none">Sem responsável</SelectItem>
+                {collaborators.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={deptFilter} onValueChange={setDeptFilter}>
+              <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos setores</SelectItem>
+                {SECTORS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm" onClick={() => downloadCsv(filteredItems, "itens.csv")}>
               <Download className="mr-2 h-4 w-4" /> CSV
             </Button>
           </div>
+
           <p className="text-xs text-muted-foreground">Itens são criados apenas pela tela de Entradas.</p>
           <Card>
             <CardContent className="p-0 overflow-x-auto">
