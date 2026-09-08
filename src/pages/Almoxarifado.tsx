@@ -283,18 +283,19 @@ export default function Almoxarifado() {
                         <TableCell className="font-mono text-xs">{itemPatrimonies(i.id)}</TableCell>
                         <TableCell>{locName(i.location_id)}</TableCell>
                         <TableCell className="text-right whitespace-nowrap">
-                          <div className="flex justify-end gap-1">
-                            <Button size="sm" variant="ghost" onClick={() => setDetail(i)}>Detalhes</Button>
+                          <div className="flex justify-end gap-1.5">
+                            <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs rounded-md border-border/70 bg-background shadow-sm hover:bg-accent" onClick={() => setDetail(i)}>Detalhes</Button>
                             {canWrite && (
                               <>
-                                <Button size="sm" variant="ghost" onClick={() => setExitDlg({ open: true, item: i })}>Saída</Button>
-                                <Button size="sm" variant="ghost" onClick={() => setStatusDlg({ open: true, item: i, mode: "damage" })}>Danificado</Button>
-                                <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setStatusDlg({ open: true, item: i, mode: "discard" })}>Descartar</Button>
-                                <Button size="sm" variant="ghost" onClick={() => setItemDlg({ open: true, item: i })}>Editar</Button>
+                                <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs rounded-md border-border/70 bg-background shadow-sm hover:bg-accent" onClick={() => setExitDlg({ open: true, item: i })}>Saída</Button>
+                                <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs rounded-md border-border/70 bg-background shadow-sm hover:bg-accent" onClick={() => setStatusDlg({ open: true, item: i, mode: "damage" })}>Danificado</Button>
+                                <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs rounded-md border-destructive/40 bg-background text-destructive shadow-sm hover:bg-destructive/10 hover:text-destructive" onClick={() => setStatusDlg({ open: true, item: i, mode: "discard" })}>Descartar</Button>
+                                <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs rounded-md border-border/70 bg-background shadow-sm hover:bg-accent" onClick={() => setItemDlg({ open: true, item: i })}>Editar</Button>
                               </>
                             )}
                           </div>
                         </TableCell>
+
                       </TableRow>
                     );
                   })}
