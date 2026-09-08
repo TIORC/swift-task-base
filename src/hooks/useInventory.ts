@@ -18,15 +18,23 @@ export interface InventoryItem {
   name: string;
   sku: string | null;
   category_id: string | null;
+  subcategory: string | null;
+  brand: string | null;
+  model: string | null;
+  description: string | null;
   location_id: string | null;
   tracked_individually: boolean;
   unit_price: number;
   min_stock: number;
   ideal_stock: number;
   quantity: number;
+  in_use_quantity: number;
+  damaged_quantity: number;
+  discarded_quantity: number;
   status: "active" | "inactive";
   notes: string | null;
   responsible_id: string | null;
+  responsible_collaborator_id: string | null;
 
   created_by: string | null;
   created_at: string;
@@ -42,6 +50,10 @@ export interface InventoryAsset {
   status: AssetStatus;
   location_id: string | null;
   assigned_to: string | null;
+  collaborator_id: string | null;
+  department: string | null;
+  supplier: string | null;
+  invoice_number: string | null;
   acquired_at: string | null;
   notes: string | null;
   created_at: string;
@@ -59,7 +71,28 @@ export interface InventoryMovement {
   from_location_id: string | null;
   to_location_id: string | null;
   assigned_to: string | null;
+  collaborator_id: string | null;
+  department: string | null;
+  supplier: string | null;
+  invoice_number: string | null;
+  unit_price: number;
+  patrimony_number: string | null;
+  serial_number: string | null;
+  occurred_at: string;
+  status_from: string | null;
+  status_to: string | null;
   performed_by: string;
+  created_at: string;
+}
+
+export interface InventoryCollaborator {
+  id: string;
+  full_name: string;
+  department: string;
+  job_title: string | null;
+  email: string | null;
+  phone: string | null;
+  active: boolean;
   created_at: string;
 }
 
@@ -76,6 +109,7 @@ export interface InventoryRequest {
   created_at: string;
   updated_at: string;
 }
+
 
 export function useCanWriteInventory() {
   const { profile } = useUserRole();
