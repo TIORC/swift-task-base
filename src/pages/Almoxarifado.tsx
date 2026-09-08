@@ -26,6 +26,7 @@ import { AssetFormDialog } from "@/components/almoxarifado/AssetFormDialog";
 import { CollaboratorsPanel } from "@/components/almoxarifado/CollaboratorsPanel";
 import { StockBadge, StatusTag, ItemStatusTags } from "@/components/almoxarifado/StockBadge";
 import type { InventoryItem, InventoryAsset, MovementType } from "@/hooks/useInventory";
+import { SECTORS } from "@/types/sectors";
 
 const currency = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const dateFmt = (s: string) => new Date(s).toLocaleString("pt-BR");
