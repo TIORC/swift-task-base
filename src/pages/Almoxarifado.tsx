@@ -290,10 +290,8 @@ export default function Almoxarifado() {
         <TabsContent value="in" className="space-y-3">
           <div className="flex justify-between items-center">
             <h2 className="text-sm text-muted-foreground">Histórico de entradas</h2>
-            {canWrite && (
-              <Button size="sm" onClick={() => setEntryOpen(true)}><Plus className="mr-2 h-4 w-4" /> Nova entrada</Button>
-            )}
           </div>
+
           {lastCreatedItem && canWrite && (
             <Card className="border-primary/40">
               <CardContent className="p-3 flex items-center justify-between gap-3">
