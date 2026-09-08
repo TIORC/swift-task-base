@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   useCreateItem, useUpdateItem, useInventoryCategories, useInventoryLocations,
@@ -27,8 +26,9 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
   const updateItem = useUpdateItem();
 
   const [form, setForm] = useState({
-    name: "", sku: "", category_id: "", location_id: "",
-    tracked_individually: false, unit_price: 0, min_stock: 0,
+    name: "", sku: "", category_id: "", subcategory: "", brand: "", model: "",
+    description: "", location_id: "",
+    tracked_individually: false, unit_price: 0, min_stock: 2,
     ideal_stock: 0, quantity: 0, status: "active" as "active" | "inactive", notes: "",
     responsible_id: "",
   });
@@ -37,7 +37,10 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
     if (item) {
       setForm({
         name: item.name, sku: item.sku ?? "",
-        category_id: item.category_id ?? "", location_id: item.location_id ?? "",
+        category_id: item.category_id ?? "",
+        subcategory: item.subcategory ?? "", brand: item.brand ?? "", model: item.model ?? "",
+        description: item.description ?? "",
+        location_id: item.location_id ?? "",
         tracked_individually: item.tracked_individually,
         unit_price: item.unit_price, min_stock: item.min_stock,
         ideal_stock: item.ideal_stock, quantity: item.quantity,
@@ -45,16 +48,23 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
         responsible_id: item.responsible_id ?? "",
       });
     } else {
-      setForm({ name: "", sku: "", category_id: "", location_id: "",
-        tracked_individually: false, unit_price: 0, min_stock: 0,
+      setForm({ name: "", sku: "", category_id: "", subcategory: "", brand: "", model: "",
+        description: "", location_id: "",
+        tracked_individually: false, unit_price: 0, min_stock: 2,
         ideal_stock: 0, quantity: 0, status: "active", notes: "", responsible_id: "" });
     }
   }, [item, open]);
 
 
+
   const submit = async () => {
+    const { quantity, ideal_stock, tracked_individually, ...rest } = form;
     const payload: any = {
-      ...form,
+      ...rest,
+      subcategory: form.subcategory || null,
+      brand: form.brand || null,
+      model: form.model || null,
+      description: form.description || null,
       category_id: form.category_id || null,
       location_id: form.location_id || null,
       responsible_id: form.responsible_id || null,
@@ -64,6 +74,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
     else await createItem.mutateAsync(payload);
     onOpenChange(false);
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -90,23 +101,21 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
               </Select>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-lg border p-3">
-            <Switch checked={form.tracked_individually} onCheckedChange={(v) => setForm({ ...form, tracked_individually: v })} />
+          <div className="grid grid-cols-3 gap-3">
+            <div><Label>Subcategoria</Label><Input value={form.subcategory} onChange={(e) => setForm({ ...form, subcategory: e.target.value })} /></div>
+            <div><Label>Marca</Label><Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} /></div>
+            <div><Label>Modelo</Label><Input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} /></div>
+          </div>
+          <div><Label>Descrição</Label><Textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Valor unitário (R$)</Label><Input type="number" step="0.01" value={form.unit_price} onChange={(e) => setForm({ ...form, unit_price: Number(e.target.value) })} /></div>
             <div>
-              <p className="text-sm font-medium">Controlar por patrimônio</p>
-              <p className="text-xs text-muted-foreground">Cada unidade terá número de patrimônio, série e valor próprios.</p>
+              <Label>Estoque mínimo</Label>
+              <Input type="number" min={0} value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: Number(e.target.value) })} />
+              <p className="mt-1 text-xs text-muted-foreground">Quantidades são atualizadas por entradas e saídas.</p>
             </div>
           </div>
-          <div className="grid grid-cols-4 gap-3">
-            <div><Label>Preço unit. (R$)</Label><Input type="number" step="0.01" value={form.unit_price} onChange={(e) => setForm({ ...form, unit_price: Number(e.target.value) })} /></div>
-            <div><Label>Estoque mín.</Label><Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: Number(e.target.value) })} /></div>
-            <div><Label>Estoque ideal</Label><Input type="number" value={form.ideal_stock} onChange={(e) => setForm({ ...form, ideal_stock: Number(e.target.value) })} /></div>
-            <div>
-              <Label>{form.tracked_individually ? "Qtd inicial" : "Qtd disponível"}</Label>
-              <Input type="number" value={form.quantity} disabled={form.tracked_individually}
-                onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} />
-            </div>
-          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Status</Label>
