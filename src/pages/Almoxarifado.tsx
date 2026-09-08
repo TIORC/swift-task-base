@@ -26,6 +26,7 @@ import { AssetFormDialog } from "@/components/almoxarifado/AssetFormDialog";
 import { CollaboratorsPanel } from "@/components/almoxarifado/CollaboratorsPanel";
 import { StockBadge, StatusTag, ItemStatusTags } from "@/components/almoxarifado/StockBadge";
 import type { InventoryItem, InventoryAsset, MovementType } from "@/hooks/useInventory";
+import { SECTORS } from "@/types/sectors";
 
 const currency = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const dateFmt = (s: string) => new Date(s).toLocaleString("pt-BR");
@@ -63,6 +64,8 @@ export default function Almoxarifado() {
   const [tab, setTab] = useState("dashboard");
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [collabFilter, setCollabFilter] = useState("all");
+  const [deptFilter, setDeptFilter] = useState("all");
 
   const [entryOpen, setEntryOpen] = useState(false);
   const [lastCreatedItem, setLastCreatedItem] = useState<string | null>(null);
@@ -76,9 +79,15 @@ export default function Almoxarifado() {
 
   const filteredItems = useMemo(() => items.filter((i) => {
     if (categoryFilter !== "all" && i.category_id !== categoryFilter) return false;
+    if (collabFilter !== "all" && i.responsible_collaborator_id !== (collabFilter === "none" ? null : collabFilter)) return false;
+    if (deptFilter !== "all") {
+      const dept = collaborators.find((c) => c.id === i.responsible_collaborator_id)?.department ?? null;
+      if (dept !== deptFilter) return false;
+    }
     if (search && !`${i.name} ${i.sku ?? ""} ${i.brand ?? ""} ${i.model ?? ""}`.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
-  }), [items, search, categoryFilter]);
+  }), [items, search, categoryFilter, collabFilter, deptFilter, collaborators]);
+
 
   const catName = (id: string | null) => categories.find((c) => c.id === id)?.name ?? "—";
   const locName = (id: string | null) => locations.find((l) => l.id === id)?.name ?? "—";
@@ -215,16 +224,32 @@ export default function Almoxarifado() {
               <Input className="pl-8" placeholder="Buscar item, marca ou modelo..." value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas categorias</SelectItem>
                 {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={collabFilter} onValueChange={setCollabFilter}>
+              <SelectTrigger className="w-[190px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos colaboradores</SelectItem>
+                <SelectItem value="none">Sem responsável</SelectItem>
+                {collaborators.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={deptFilter} onValueChange={setDeptFilter}>
+              <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos setores</SelectItem>
+                {SECTORS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm" onClick={() => downloadCsv(filteredItems, "itens.csv")}>
               <Download className="mr-2 h-4 w-4" /> CSV
             </Button>
           </div>
+
           <p className="text-xs text-muted-foreground">Itens são criados apenas pela tela de Entradas.</p>
           <Card>
             <CardContent className="p-0 overflow-x-auto">
