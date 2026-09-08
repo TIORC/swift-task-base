@@ -129,12 +129,8 @@ export default function Almoxarifado() {
             <Button size="sm" variant="outline" onClick={() => setTab("settings")}>
               <Settings className="mr-2 h-4 w-4" /> Configurações
             </Button>
-            {canWrite && (
-              <Button size="sm" onClick={() => { setTab("in"); setEntryOpen(true); }}>
-                <Plus className="mr-2 h-4 w-4" /> Nova entrada
-              </Button>
-            )}
           </>
+
         }
       />
 
