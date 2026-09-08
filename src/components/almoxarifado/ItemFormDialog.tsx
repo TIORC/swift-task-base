@@ -27,8 +27,9 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
   const updateItem = useUpdateItem();
 
   const [form, setForm] = useState({
-    name: "", sku: "", category_id: "", location_id: "",
-    tracked_individually: false, unit_price: 0, min_stock: 0,
+    name: "", sku: "", category_id: "", subcategory: "", brand: "", model: "",
+    description: "", location_id: "",
+    tracked_individually: false, unit_price: 0, min_stock: 2,
     ideal_stock: 0, quantity: 0, status: "active" as "active" | "inactive", notes: "",
     responsible_id: "",
   });
@@ -37,7 +38,10 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
     if (item) {
       setForm({
         name: item.name, sku: item.sku ?? "",
-        category_id: item.category_id ?? "", location_id: item.location_id ?? "",
+        category_id: item.category_id ?? "",
+        subcategory: item.subcategory ?? "", brand: item.brand ?? "", model: item.model ?? "",
+        description: item.description ?? "",
+        location_id: item.location_id ?? "",
         tracked_individually: item.tracked_individually,
         unit_price: item.unit_price, min_stock: item.min_stock,
         ideal_stock: item.ideal_stock, quantity: item.quantity,
@@ -45,11 +49,13 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
         responsible_id: item.responsible_id ?? "",
       });
     } else {
-      setForm({ name: "", sku: "", category_id: "", location_id: "",
-        tracked_individually: false, unit_price: 0, min_stock: 0,
+      setForm({ name: "", sku: "", category_id: "", subcategory: "", brand: "", model: "",
+        description: "", location_id: "",
+        tracked_individually: false, unit_price: 0, min_stock: 2,
         ideal_stock: 0, quantity: 0, status: "active", notes: "", responsible_id: "" });
     }
   }, [item, open]);
+
 
 
   const submit = async () => {
