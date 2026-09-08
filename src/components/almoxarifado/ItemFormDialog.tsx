@@ -96,23 +96,21 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
               </Select>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-lg border p-3">
-            <Switch checked={form.tracked_individually} onCheckedChange={(v) => setForm({ ...form, tracked_individually: v })} />
+          <div className="grid grid-cols-3 gap-3">
+            <div><Label>Subcategoria</Label><Input value={form.subcategory} onChange={(e) => setForm({ ...form, subcategory: e.target.value })} /></div>
+            <div><Label>Marca</Label><Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} /></div>
+            <div><Label>Modelo</Label><Input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} /></div>
+          </div>
+          <div><Label>Descrição</Label><Textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Valor unitário (R$)</Label><Input type="number" step="0.01" value={form.unit_price} onChange={(e) => setForm({ ...form, unit_price: Number(e.target.value) })} /></div>
             <div>
-              <p className="text-sm font-medium">Controlar por patrimônio</p>
-              <p className="text-xs text-muted-foreground">Cada unidade terá número de patrimônio, série e valor próprios.</p>
+              <Label>Estoque mínimo</Label>
+              <Input type="number" min={0} value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: Number(e.target.value) })} />
+              <p className="mt-1 text-xs text-muted-foreground">Quantidades são atualizadas por entradas e saídas.</p>
             </div>
           </div>
-          <div className="grid grid-cols-4 gap-3">
-            <div><Label>Preço unit. (R$)</Label><Input type="number" step="0.01" value={form.unit_price} onChange={(e) => setForm({ ...form, unit_price: Number(e.target.value) })} /></div>
-            <div><Label>Estoque mín.</Label><Input type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: Number(e.target.value) })} /></div>
-            <div><Label>Estoque ideal</Label><Input type="number" value={form.ideal_stock} onChange={(e) => setForm({ ...form, ideal_stock: Number(e.target.value) })} /></div>
-            <div>
-              <Label>{form.tracked_individually ? "Qtd inicial" : "Qtd disponível"}</Label>
-              <Input type="number" value={form.quantity} disabled={form.tracked_individually}
-                onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} />
-            </div>
-          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Status</Label>
