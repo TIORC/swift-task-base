@@ -59,8 +59,13 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
 
 
   const submit = async () => {
+    const { quantity, ideal_stock, tracked_individually, ...rest } = form;
     const payload: any = {
-      ...form,
+      ...rest,
+      subcategory: form.subcategory || null,
+      brand: form.brand || null,
+      model: form.model || null,
+      description: form.description || null,
       category_id: form.category_id || null,
       location_id: form.location_id || null,
       responsible_id: form.responsible_id || null,
@@ -70,6 +75,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
     else await createItem.mutateAsync(payload);
     onOpenChange(false);
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
