@@ -652,46 +652,65 @@ export type Database = {
         Row: {
           acquired_at: string | null
           assigned_to: string | null
+          collaborator_id: string | null
           created_at: string
+          department: string | null
           id: string
+          invoice_number: string | null
           item_id: string
           location_id: string | null
           notes: string | null
           patrimony_number: string
           serial_number: string | null
           status: string
+          supplier: string | null
           updated_at: string
           value: number
         }
         Insert: {
           acquired_at?: string | null
           assigned_to?: string | null
+          collaborator_id?: string | null
           created_at?: string
+          department?: string | null
           id?: string
+          invoice_number?: string | null
           item_id: string
           location_id?: string | null
           notes?: string | null
           patrimony_number: string
           serial_number?: string | null
           status?: string
+          supplier?: string | null
           updated_at?: string
           value?: number
         }
         Update: {
           acquired_at?: string | null
           assigned_to?: string | null
+          collaborator_id?: string | null
           created_at?: string
+          department?: string | null
           id?: string
+          invoice_number?: string | null
           item_id?: string
           location_id?: string | null
           notes?: string | null
           patrimony_number?: string
           serial_number?: string | null
           status?: string
+          supplier?: string | null
           updated_at?: string
           value?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "inventory_assets_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_collaborators"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inventory_assets_item_id_fkey"
             columns: ["item_id"]
@@ -732,57 +751,120 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_collaborators: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          department: string
+          email: string | null
+          full_name: string
+          id: string
+          job_title: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          department: string
+          email?: string | null
+          full_name: string
+          id?: string
+          job_title?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          department?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          job_title?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory_items: {
         Row: {
+          brand: string | null
           category_id: string | null
           created_at: string
           created_by: string | null
+          damaged_quantity: number
+          description: string | null
+          discarded_quantity: number
           id: string
           ideal_stock: number
+          in_use_quantity: number
           location_id: string | null
           min_stock: number
+          model: string | null
           name: string
           notes: string | null
           quantity: number
+          responsible_collaborator_id: string | null
           responsible_id: string | null
           sku: string | null
           status: string
+          subcategory: string | null
           tracked_individually: boolean
           unit_price: number
           updated_at: string
         }
         Insert: {
+          brand?: string | null
           category_id?: string | null
           created_at?: string
           created_by?: string | null
+          damaged_quantity?: number
+          description?: string | null
+          discarded_quantity?: number
           id?: string
           ideal_stock?: number
+          in_use_quantity?: number
           location_id?: string | null
           min_stock?: number
+          model?: string | null
           name: string
           notes?: string | null
           quantity?: number
+          responsible_collaborator_id?: string | null
           responsible_id?: string | null
           sku?: string | null
           status?: string
+          subcategory?: string | null
           tracked_individually?: boolean
           unit_price?: number
           updated_at?: string
         }
         Update: {
+          brand?: string | null
           category_id?: string | null
           created_at?: string
           created_by?: string | null
+          damaged_quantity?: number
+          description?: string | null
+          discarded_quantity?: number
           id?: string
           ideal_stock?: number
+          in_use_quantity?: number
           location_id?: string | null
           min_stock?: number
+          model?: string | null
           name?: string
           notes?: string | null
           quantity?: number
+          responsible_collaborator_id?: string | null
           responsible_id?: string | null
           sku?: string | null
           status?: string
+          subcategory?: string | null
           tracked_individually?: boolean
           unit_price?: number
           updated_at?: string
@@ -800,6 +882,13 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "inventory_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_responsible_collaborator_id_fkey"
+            columns: ["responsible_collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_collaborators"
             referencedColumns: ["id"]
           },
         ]
@@ -832,44 +921,74 @@ export type Database = {
         Row: {
           asset_id: string | null
           assigned_to: string | null
+          collaborator_id: string | null
           created_at: string
+          department: string | null
           from_location_id: string | null
           id: string
+          invoice_number: string | null
           item_id: string
           notes: string | null
+          occurred_at: string
+          patrimony_number: string | null
           performed_by: string
           quantity: number
           reason: string | null
+          serial_number: string | null
+          status_from: string | null
+          status_to: string | null
+          supplier: string | null
           to_location_id: string | null
           type: string
+          unit_price: number
         }
         Insert: {
           asset_id?: string | null
           assigned_to?: string | null
+          collaborator_id?: string | null
           created_at?: string
+          department?: string | null
           from_location_id?: string | null
           id?: string
+          invoice_number?: string | null
           item_id: string
           notes?: string | null
+          occurred_at?: string
+          patrimony_number?: string | null
           performed_by?: string
           quantity?: number
           reason?: string | null
+          serial_number?: string | null
+          status_from?: string | null
+          status_to?: string | null
+          supplier?: string | null
           to_location_id?: string | null
           type: string
+          unit_price?: number
         }
         Update: {
           asset_id?: string | null
           assigned_to?: string | null
+          collaborator_id?: string | null
           created_at?: string
+          department?: string | null
           from_location_id?: string | null
           id?: string
+          invoice_number?: string | null
           item_id?: string
           notes?: string | null
+          occurred_at?: string
+          patrimony_number?: string | null
           performed_by?: string
           quantity?: number
           reason?: string | null
+          serial_number?: string | null
+          status_from?: string | null
+          status_to?: string | null
+          supplier?: string | null
           to_location_id?: string | null
           type?: string
+          unit_price?: number
         }
         Relationships: [
           {
@@ -877,6 +996,13 @@ export type Database = {
             columns: ["asset_id"]
             isOneToOne: false
             referencedRelation: "inventory_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_collaborators"
             referencedColumns: ["id"]
           },
           {
@@ -951,6 +1077,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      inventory_settings: {
+        Row: {
+          id: boolean
+          include_damaged_in_value: boolean
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          include_damaged_in_value?: boolean
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          include_damaged_in_value?: boolean
+          updated_at?: string
+        }
+        Relationships: []
       }
       notifications: {
         Row: {
