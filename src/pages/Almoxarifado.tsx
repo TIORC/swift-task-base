@@ -63,6 +63,8 @@ export default function Almoxarifado() {
   const [tab, setTab] = useState("dashboard");
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [collabFilter, setCollabFilter] = useState("all");
+  const [deptFilter, setDeptFilter] = useState("all");
 
   const [entryOpen, setEntryOpen] = useState(false);
   const [lastCreatedItem, setLastCreatedItem] = useState<string | null>(null);
@@ -76,9 +78,15 @@ export default function Almoxarifado() {
 
   const filteredItems = useMemo(() => items.filter((i) => {
     if (categoryFilter !== "all" && i.category_id !== categoryFilter) return false;
+    if (collabFilter !== "all" && i.responsible_collaborator_id !== (collabFilter === "none" ? null : collabFilter)) return false;
+    if (deptFilter !== "all") {
+      const dept = collaborators.find((c) => c.id === i.responsible_collaborator_id)?.department ?? null;
+      if (dept !== deptFilter) return false;
+    }
     if (search && !`${i.name} ${i.sku ?? ""} ${i.brand ?? ""} ${i.model ?? ""}`.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
-  }), [items, search, categoryFilter]);
+  }), [items, search, categoryFilter, collabFilter, deptFilter, collaborators]);
+
 
   const catName = (id: string | null) => categories.find((c) => c.id === id)?.name ?? "—";
   const locName = (id: string | null) => locations.find((l) => l.id === id)?.name ?? "—";
