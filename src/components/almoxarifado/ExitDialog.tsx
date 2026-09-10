@@ -45,7 +45,21 @@ export function ExitDialog({ open, onOpenChange, item }: Props) {
   const availableAssets = assets.filter((a) => a.item_id === item?.id && a.status === "available");
 
   const exceeds = !!item && form.quantity > item.quantity;
-  const valid = !!item && !!form.collaborator_id && form.quantity > 0 && !exceeds;
+  const needsPatrimony = availableAssets.length > 0;
+  const valid = !!item && !!form.collaborator_id && form.quantity > 0 && !exceeds
+    && (!needsPatrimony || !!form.patrimony_number);
+
+  useEffect(() => {
+    if (open && needsPatrimony) {
+      setForm((f) => (f.patrimony_number ? f : {
+        ...f,
+        has_patrimony: true,
+        patrimony_number: availableAssets[0].patrimony_number,
+        serial_number: availableAssets[0].serial_number ?? "",
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, needsPatrimony, availableAssets.length]);
 
   const submit = async () => {
     if (!item) return;
