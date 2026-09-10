@@ -222,7 +222,8 @@ export default function SocialTasks() {
     }
     toast.success("Tarefa criada");
     setOpen(false);
-    setForm({ title: "", description: "", client_id: "", priority: "medium", due_date: "", status: "backlog", assigned_to: "", nature: "avulsa", billable: "cobravel", is_recurring_template: false, recurrence_type: "", recurrence_interval: 1, recurrence_until: "", recurrence_weekday: "1" });
+    setForm({ title: "", description: "", client_id: "", priority: "medium", due_date: "", status: "backlog", assigned_to: "", nature: "avulsa", billable: "cobravel", is_recurring_template: false });
+    setRecurrence(emptySmRecurrence());
     setDraftChecklist([]); setNewChecklistItem("");
     setSaveAsTemplate(false); setTemplateName("");
     refresh();
