@@ -123,18 +123,6 @@ export default function SocialTasks() {
   const [recurrence, setRecurrence] = useState<SmRecurrenceState>(emptySmRecurrence());
 
 
-  const WEEKDAYS = [
-    { v: "0", l: "Domingo" }, { v: "1", l: "Segunda" }, { v: "2", l: "Terça" },
-    { v: "3", l: "Quarta" }, { v: "4", l: "Quinta" }, { v: "5", l: "Sexta" }, { v: "6", l: "Sábado" },
-  ];
-
-  const nextWeekdayDate = (weekday: number): Date => {
-    const d = new Date();
-    d.setHours(9, 0, 0, 0);
-    const diff = (weekday - d.getDay() + 7) % 7 || 7;
-    d.setDate(d.getDate() + diff);
-    return d;
-  };
 
   const assigneeFiltered = useMemo(() => {
     if (!data) return [];
