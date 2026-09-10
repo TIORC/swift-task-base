@@ -616,6 +616,26 @@ export function useRegisterExit() {
       if (!user) throw new Error("Não autenticado");
       if (!p.collaborator_id) throw new Error("Selecione o responsável pelo item");
 
+      if (!p.patrimony_number) {
+        // Sem patrimônio informado: vincula automaticamente os patrimônios disponíveis do item
+        const { data: freeAssets } = await supabase
+          .from("inventory_assets")
+          .select("id")
+          .eq("item_id", p.item_id)
+          .eq("status", "available")
+          .order("created_at", { ascending: true })
+          .limit(Math.max(1, p.quantity));
+        if (freeAssets && freeAssets.length > 0) {
+          const { error: assignErr } = await supabase.from("inventory_assets").update({
+            status: "in_use",
+            collaborator_id: p.collaborator_id,
+            department: p.department || null,
+            location_id: p.location_id || null,
+          }).in("id", freeAssets.map((a) => a.id));
+          if (assignErr) throw assignErr;
+        }
+      }
+
       if (p.patrimony_number) {
         const { data: existing, error: findErr } = await supabase
           .from("inventory_assets").select("id").eq("patrimony_number", p.patrimony_number).maybeSingle();
