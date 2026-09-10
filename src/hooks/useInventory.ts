@@ -343,6 +343,41 @@ export function useCreateLocation() {
   });
 }
 
+export interface InventoryDepartment {
+  id: string;
+  name: string;
+  active: boolean;
+}
+
+export function useInventoryDepartments() {
+  return useQuery({
+    queryKey: ["inventory", "departments"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("inventory_departments").select("*").order("name");
+      if (error) throw error;
+      return (data ?? []) as InventoryDepartment[];
+    },
+  });
+}
+
+export function useSaveDepartment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { id?: string; name: string; active?: boolean }) => {
+      const body = { name: payload.name.trim(), active: payload.active ?? true };
+      if (payload.id) {
+        const { error } = await supabase.from("inventory_departments").update(body).eq("id", payload.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("inventory_departments").insert(body);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Setor salvo"); },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao salvar setor"),
+  });
+}
+
 export function useCreateRequest() {
   const qc = useQueryClient();
   const { user } = useAuth();
