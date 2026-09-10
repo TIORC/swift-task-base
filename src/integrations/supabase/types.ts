@@ -790,6 +790,30 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_departments: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory_items: {
         Row: {
           brand: string | null
