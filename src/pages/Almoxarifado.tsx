@@ -16,6 +16,7 @@ import {
   useInventoryItems, useInventoryAssets, useInventoryMovements, useInventoryRequests,
   useInventoryCategories, useInventoryLocations, useCanWriteInventory,
   useCreateCategory, useCreateLocation, useCreateRequest, useUpdateRequest,
+  useInventoryDepartments, useSaveDepartment,
   useInventoryCollaborators, useInventorySettings, useUpdateInventorySettings, useRecoverDamaged,
 } from "@/hooks/useInventory";
 import { ItemFormDialog } from "@/components/almoxarifado/ItemFormDialog";
@@ -738,8 +739,12 @@ function SettingsPanel({ canWrite }: { canWrite: boolean }) {
   const updateSettings = useUpdateInventorySettings();
   const createCat = useCreateCategory();
   const createLoc = useCreateLocation();
+  const { data: departments = [] } = useInventoryDepartments();
+  const saveDept = useSaveDepartment();
   const [cat, setCat] = useState("");
   const [loc, setLoc] = useState("");
+  const [dept, setDept] = useState("");
+  const [editDept, setEditDept] = useState<{ id: string; name: string } | null>(null);
 
   return (
     <div className="space-y-4">
@@ -784,6 +789,43 @@ function SettingsPanel({ canWrite }: { canWrite: boolean }) {
             )}
             <ul className="text-sm space-y-1">
               {locations.map((l) => <li key={l.id}><Badge variant="outline" className="font-normal">{l.name}</Badge></li>)}
+            </ul>
+          </CardContent>
+        </Card>
+        <Card className="md:col-span-2">
+          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Settings className="h-4 w-4" /> Setores</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {canWrite && (
+              <div className="flex gap-2">
+                <Input placeholder="Novo setor" value={dept} onChange={(e) => setDept(e.target.value)} />
+                <Button size="sm" onClick={async () => { if (dept.trim()) { await saveDept.mutateAsync({ name: dept }); setDept(""); } }}>Adicionar</Button>
+              </div>
+            )}
+            <ul className="grid sm:grid-cols-2 gap-2 text-sm">
+              {departments.map((d) => (
+                <li key={d.id} className="flex items-center gap-2 rounded-md border border-border px-3 py-2">
+                  {editDept?.id === d.id ? (
+                    <>
+                      <Input value={editDept.name} onChange={(e) => setEditDept({ id: d.id, name: e.target.value })} className="h-8" />
+                      <Button size="sm" variant="ghost" onClick={async () => { await saveDept.mutateAsync({ id: d.id, name: editDept.name, active: d.active }); setEditDept(null); }}>Salvar</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditDept(null)}>Cancelar</Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className={d.active ? "flex-1" : "flex-1 text-muted-foreground line-through"}>{d.name}</span>
+                      {canWrite && (
+                        <>
+                          <Button size="sm" variant="outline" onClick={() => setEditDept({ id: d.id, name: d.name })}>Editar</Button>
+                          <Button size="sm" variant="outline" onClick={() => saveDept.mutate({ id: d.id, name: d.name, active: !d.active })}>
+                            {d.active ? "Desativar" : "Ativar"}
+                          </Button>
+                        </>
+                      )}
+                    </>
+                  )}
+                </li>
+              ))}
+              {departments.length === 0 && <li className="text-muted-foreground">Nenhum setor cadastrado.</li>}
             </ul>
           </CardContent>
         </Card>

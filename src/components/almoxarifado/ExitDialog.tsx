@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  useRegisterExit, useInventoryCollaborators, useInventoryAssets,
+  useRegisterExit, useInventoryCollaborators, useInventoryAssets, useInventoryLocations,
   type InventoryItem,
 } from "@/hooks/useInventory";
 
@@ -19,21 +19,22 @@ interface Props {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+const emptyForm = {
+  quantity: 1, collaborator_id: "", department: "", location_id: "", has_patrimony: false,
+  patrimony_number: "", serial_number: "", reason: "", exit_date: today(), notes: "",
+};
+
 export function ExitDialog({ open, onOpenChange, item }: Props) {
   const { data: collaborators = [] } = useInventoryCollaborators();
   const { data: assets = [] } = useInventoryAssets();
+  const { data: locations = [] } = useInventoryLocations();
   const registerExit = useRegisterExit();
 
-  const [form, setForm] = useState({
-    quantity: 1, collaborator_id: "", department: "", has_patrimony: false,
-    patrimony_number: "", serial_number: "", reason: "", exit_date: today(), notes: "",
-  });
+  const [form, setForm] = useState(emptyForm);
 
   useEffect(() => {
-    if (open) setForm({
-      quantity: 1, collaborator_id: "", department: "", has_patrimony: false,
-      patrimony_number: "", serial_number: "", reason: "", exit_date: today(), notes: "",
-    });
+    if (open) setForm({ ...emptyForm, location_id: item?.location_id ?? "" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, item?.id]);
 
   const activeCollabs = collaborators.filter((c) => c.active);
@@ -53,6 +54,7 @@ export function ExitDialog({ open, onOpenChange, item }: Props) {
       quantity: form.quantity,
       collaborator_id: form.collaborator_id,
       department: form.department || selectedCollab?.department || "",
+      location_id: form.location_id || null,
       patrimony_number: form.has_patrimony ? (form.patrimony_number || null) : null,
       serial_number: form.serial_number || null,
       reason: form.reason || null,
@@ -99,7 +101,18 @@ export function ExitDialog({ open, onOpenChange, item }: Props) {
               <p className="mt-1 text-xs text-muted-foreground">Cadastre colaboradores em Configurações → Colaboradores.</p>
             )}
           </div>
-          <div><Label>Departamento</Label><Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Setor</Label><Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} /></div>
+            <div>
+              <Label>Local de destino</Label>
+              <Select value={form.location_id} onValueChange={(v) => setForm({ ...form, location_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione o local" /></SelectTrigger>
+                <SelectContent>
+                  {locations.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           <div className="rounded-lg border p-3 space-y-3">
             <div className="flex items-center gap-3">

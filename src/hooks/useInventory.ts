@@ -343,6 +343,41 @@ export function useCreateLocation() {
   });
 }
 
+export interface InventoryDepartment {
+  id: string;
+  name: string;
+  active: boolean;
+}
+
+export function useInventoryDepartments() {
+  return useQuery({
+    queryKey: ["inventory", "departments"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("inventory_departments").select("*").order("name");
+      if (error) throw error;
+      return (data ?? []) as InventoryDepartment[];
+    },
+  });
+}
+
+export function useSaveDepartment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { id?: string; name: string; active?: boolean }) => {
+      const body = { name: payload.name.trim(), active: payload.active ?? true };
+      if (payload.id) {
+        const { error } = await supabase.from("inventory_departments").update(body).eq("id", payload.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("inventory_departments").insert(body);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Setor salvo"); },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao salvar setor"),
+  });
+}
+
 export function useCreateRequest() {
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -564,6 +599,7 @@ export interface ExitPayload {
   quantity: number;
   collaborator_id: string;
   department: string;
+  location_id?: string | null;
   patrimony_number?: string | null;
   serial_number?: string | null;
   reason?: string | null;
@@ -585,15 +621,17 @@ export function useRegisterExit() {
           .from("inventory_assets").select("id").eq("patrimony_number", p.patrimony_number).maybeSingle();
         if (findErr) throw findErr;
         if (existing) {
-          const { error } = await supabase.from("inventory_assets").update({
+          const { data: updated, error } = await supabase.from("inventory_assets").update({
             status: "in_use",
             collaborator_id: p.collaborator_id,
             department: p.department || null,
+            location_id: p.location_id || null,
             serial_number: p.serial_number || null,
-          }).eq("id", existing.id);
+          }).eq("id", existing.id).select("id");
           if (error) throw error;
+          if (!updated || updated.length === 0) throw new Error("Sem permissão para atualizar o patrimônio");
         } else {
-          const { error } = await supabase.from("inventory_assets").insert({
+          const { data: created, error } = await supabase.from("inventory_assets").insert({
             item_id: p.item_id,
             patrimony_number: p.patrimony_number,
             serial_number: p.serial_number || null,
@@ -601,10 +639,13 @@ export function useRegisterExit() {
             status: "in_use",
             collaborator_id: p.collaborator_id,
             department: p.department || null,
-          });
+            location_id: p.location_id || null,
+          }).select("id");
           if (error) throw error;
+          if (!created || created.length === 0) throw new Error("Sem permissão para cadastrar o patrimônio");
         }
       }
+
 
       const { error } = await supabase.from("inventory_movements").insert({
         item_id: p.item_id,
@@ -613,6 +654,7 @@ export function useRegisterExit() {
         unit_price: p.unit_price,
         collaborator_id: p.collaborator_id,
         department: p.department || null,
+        to_location_id: p.location_id || null,
         patrimony_number: p.patrimony_number || null,
         serial_number: p.serial_number || null,
         reason: p.reason || "Saída para responsável",
