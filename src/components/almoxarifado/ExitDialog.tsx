@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  useRegisterExit, useInventoryCollaborators, useInventoryAssets,
+  useRegisterExit, useInventoryCollaborators, useInventoryAssets, useInventoryLocations,
   type InventoryItem,
 } from "@/hooks/useInventory";
 
