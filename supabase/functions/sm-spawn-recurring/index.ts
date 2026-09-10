@@ -113,22 +113,101 @@ Deno.serve(async (req) => {
   }
 
   // ---------- sm_tasks ----------
+  // Mesma lógica do sistema de Gestão de TI: dias da semana, somente dias úteis,
+  // horário de início, dia do mês (ajustado para dia útil), meses da ocorrência
+  // e prazo em dias após a abertura.
+  const DOW_CODES = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"];
+  const MONTH_BASED = ["monthly", "bimonthly", "quarterly", "semiannual", "annual"];
+
+  const weekdayOf = (key: string) => new Date(`${key}T12:00:00Z`).getUTCDay();
+
+  const isWeekendDay = (year: number, month1: number, day: number) => {
+    const w = new Date(Date.UTC(year, month1 - 1, day, 12)).getUTCDay();
+    return w === 0 || w === 6;
+  };
+
+  const adjustToBusinessDayInMonth = (year: number, month1: number, day: number, direction: string) => {
+    const lastDay = new Date(Date.UTC(year, month1, 0)).getUTCDate();
+    const base = Math.min(Math.max(1, day), lastDay);
+    const step = direction === "previous" ? -1 : 1;
+    let cur = base;
+    while (isWeekendDay(year, month1, cur)) {
+      cur += step;
+      if (cur < 1 || cur > lastDay) {
+        cur = base;
+        const back = -step;
+        while (isWeekendDay(year, month1, cur)) cur += back;
+        break;
+      }
+    }
+    return cur;
+  };
+
+  const minGapDays = (type: string, intervalN: number) => {
+    const i = Math.max(1, intervalN || 1);
+    switch (type) {
+      case "daily": return i;
+      case "weekly": return (i - 1) * 7 + 1;
+      case "decendial": return (i - 1) * 10 + 1;
+      case "custom": return i;
+      default: return 1;
+    }
+  };
+
+  const addDaysToKey = (key: string, days: number) => {
+    const d = new Date(`${key}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+  };
+
   const { data: taskTpls } = await supabase
     .from("sm_tasks").select("*")
     .eq("is_recurring_template", true)
     .in("status", ["backlog", "pendente", "em_andamento"])
     .not("recurrence_type", "is", null);
 
+  const today = calendarParts(todayKey);
+  const nowLocalHm = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit", hour12: false,
+  }).format(now);
+
   for (const t of taskTpls ?? []) {
     const interval = t.recurrence_interval || 1;
     if (t.recurrence_until && now > new Date(t.recurrence_until)) continue;
-    const anchorKey = storedDateKey(t.due_date, localDateKey(new Date(t.created_at)));
-    if (!matchesOccurrence(t.recurrence_type, interval, anchorKey, todayKey)) continue;
 
-    // The occurrence identity is its due day, not the day the cron happened to
-    // create it. This also keeps a completed occurrence from returning as a new
-    // backlog item when the function is retried or run late.
-    const occurrenceBounds = brazilDayBounds(todayKey);
+    const startTime: string = t.recurrence_start_time || "09:00";
+    if (nowLocalHm < startTime.slice(0, 5)) continue;
+
+    const days: string[] = Array.isArray(t.recurrence_days) ? t.recurrence_days : [];
+    const onlyBusiness = !!t.recurrence_only_business_days;
+    const monthBased = MONTH_BASED.includes(t.recurrence_type) && !!t.recurrence_day_of_month;
+
+    let dueKey = todayKey;
+
+    if (monthBased) {
+      const months: number[] = Array.isArray(t.recurrence_months) ? t.recurrence_months : [];
+      if (months.length > 0 && !months.includes(today.month)) continue;
+      const targetDay = adjustToBusinessDayInMonth(
+        today.year, today.month, t.recurrence_day_of_month,
+        t.recurrence_business_day_direction || "next",
+      );
+      if (today.day !== targetDay) continue;
+      const deadlineDays = t.recurrence_deadline_days;
+      if (typeof deadlineDays === "number" && deadlineDays > 0) dueKey = addDaysToKey(todayKey, deadlineDays);
+    } else {
+      const dow = weekdayOf(todayKey);
+      if (onlyBusiness && (dow === 0 || dow === 6)) continue;
+      if (days.length > 0 && !days.includes(DOW_CODES[dow])) continue;
+
+      if (t.last_spawned_at) {
+        const lastKey = localDateKey(new Date(t.last_spawned_at));
+        const gap = Math.floor((dateNumber(todayKey) - dateNumber(lastKey)) / 86400000);
+        if (gap < minGapDays(t.recurrence_type, interval)) continue;
+      }
+    }
+
+    // A identidade da ocorrência é o dia do prazo, não o dia em que o cron rodou.
+    const occurrenceBounds = brazilDayBounds(dueKey);
     const { count: existing } = await supabase.from("sm_tasks")
       .select("id", { count: "exact", head: true })
       .eq("parent_recurring_task_id", t.id)
@@ -140,8 +219,9 @@ Deno.serve(async (req) => {
       client_id: t.client_id, campaign_id: t.campaign_id, title: t.title,
       description: t.description, status: "backlog", priority: t.priority,
       assigned_to: t.assigned_to, created_by: t.created_by,
-      // The task becomes visible at midnight, but is only overdue after its local day ends.
-      due_date: occurrenceTime(todayKey, t.due_date, true),
+      nature: t.nature, billable: t.billable,
+      // A tarefa aparece no início do dia, mas só fica atrasada após o fim do dia local.
+      due_date: occurrenceTime(dueKey, null, true),
       parent_recurring_task_id: t.id, is_recurring_template: false,
     }).select().single();
     if (!insErr && inserted) {
