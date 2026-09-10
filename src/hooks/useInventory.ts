@@ -654,6 +654,7 @@ export function useRegisterExit() {
         unit_price: p.unit_price,
         collaborator_id: p.collaborator_id,
         department: p.department || null,
+        to_location_id: p.location_id || null,
         patrimony_number: p.patrimony_number || null,
         serial_number: p.serial_number || null,
         reason: p.reason || "Saída para responsável",
