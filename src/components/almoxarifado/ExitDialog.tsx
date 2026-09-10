@@ -19,21 +19,22 @@ interface Props {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+const emptyForm = {
+  quantity: 1, collaborator_id: "", department: "", location_id: "", has_patrimony: false,
+  patrimony_number: "", serial_number: "", reason: "", exit_date: today(), notes: "",
+};
+
 export function ExitDialog({ open, onOpenChange, item }: Props) {
   const { data: collaborators = [] } = useInventoryCollaborators();
   const { data: assets = [] } = useInventoryAssets();
+  const { data: locations = [] } = useInventoryLocations();
   const registerExit = useRegisterExit();
 
-  const [form, setForm] = useState({
-    quantity: 1, collaborator_id: "", department: "", has_patrimony: false,
-    patrimony_number: "", serial_number: "", reason: "", exit_date: today(), notes: "",
-  });
+  const [form, setForm] = useState(emptyForm);
 
   useEffect(() => {
-    if (open) setForm({
-      quantity: 1, collaborator_id: "", department: "", has_patrimony: false,
-      patrimony_number: "", serial_number: "", reason: "", exit_date: today(), notes: "",
-    });
+    if (open) setForm({ ...emptyForm, location_id: item?.location_id ?? "" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, item?.id]);
 
   const activeCollabs = collaborators.filter((c) => c.active);
