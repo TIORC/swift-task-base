@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import { SmRecurrenceFields, emptySmRecurrence, smRecurrencePayload, type SmRecurrenceState } from "@/components/social/SmRecurrenceFields";
 
 const sb = supabase as any;
 
@@ -118,11 +119,9 @@ export default function SocialTasks() {
     nature: "avulsa" as SmNature,
     billable: "cobravel",
     is_recurring_template: false,
-    recurrence_type: "" as "" | "daily" | "weekly" | "monthly" | "custom",
-    recurrence_interval: 1,
-    recurrence_until: "",
-    recurrence_weekday: "1",
   });
+  const [recurrence, setRecurrence] = useState<SmRecurrenceState>(emptySmRecurrence());
+
 
   const WEEKDAYS = [
     { v: "0", l: "Domingo" }, { v: "1", l: "Segunda" }, { v: "2", l: "Terça" },
