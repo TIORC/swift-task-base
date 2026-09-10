@@ -54,6 +54,7 @@ export function ExitDialog({ open, onOpenChange, item }: Props) {
       quantity: form.quantity,
       collaborator_id: form.collaborator_id,
       department: form.department || selectedCollab?.department || "",
+      location_id: form.location_id || null,
       patrimony_number: form.has_patrimony ? (form.patrimony_number || null) : null,
       serial_number: form.serial_number || null,
       reason: form.reason || null,
