@@ -186,10 +186,7 @@ export default function SocialTasks() {
     if (saveAsTemplate && !templateName.trim()) return toast.error("Informe o nome do modelo");
     // "YYYY-MM-DD" é interpretado como UTC pelo Date(); fixamos meio-dia local
     // para o prazo não voltar um dia no fuso do Brasil.
-    let dueIso: string | null = form.due_date ? new Date(form.due_date + "T12:00:00").toISOString() : null;
-    if (form.is_recurring_template && form.recurrence_type === "weekly" && !form.due_date) {
-      dueIso = nextWeekdayDate(Number(form.recurrence_weekday)).toISOString();
-    }
+    const dueIso: string | null = form.due_date ? new Date(form.due_date + "T12:00:00").toISOString() : null;
     const payload: any = {
       title: form.title, description: form.description || null,
       client_id: form.client_id || null, priority: form.priority,
@@ -198,9 +195,9 @@ export default function SocialTasks() {
       nature: form.nature,
       billable: form.nature === "avulsa" ? form.billable : null,
       is_recurring_template: form.is_recurring_template,
-      recurrence_type: form.is_recurring_template && form.recurrence_type ? form.recurrence_type : null,
-      recurrence_interval: form.is_recurring_template ? form.recurrence_interval || 1 : null,
-      recurrence_until: form.is_recurring_template && form.recurrence_until ? new Date(form.recurrence_until + "T12:00:00").toISOString() : null,
+      ...(form.is_recurring_template
+        ? smRecurrencePayload(recurrence)
+        : { recurrence_type: null, recurrence_interval: null, recurrence_until: null }),
     };
     const { data: created, error } = await m.createTask(payload);
     if (error) return toast.error(error.message);
