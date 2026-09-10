@@ -47,7 +47,7 @@ const navItems: { title: string; url: string; icon: any; end?: boolean; visibili
   { title: "Comercial & Onboarding", url: "/social/comercial", icon: Briefcase },
   { title: "Fluxos de Demanda", url: "/social/fluxos", icon: Workflow },
   { title: "Tarefas", url: "/social/tarefas", icon: ListTodo },
-  { title: "Tarefas Recorrentes", url: "/social/recorrentes", icon: Repeat },
+  
   { title: "Calendário Editorial", url: "/social/calendario-editorial", icon: Calendar },
   { title: "Aprovações", url: "/social/aprovacoes", icon: CheckCircle2 },
   { title: "Clientes/Marcas", url: "/social/clientes", icon: Users },
