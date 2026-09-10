@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, ListTodo, Trash2, Target, CheckSquare, CalendarDays, User, X, Briefcase, Bookmark, FileStack, Clock, Timer, Ban } from "lucide-react";
+import { Plus, ListTodo, Trash2, Target, CheckSquare, CalendarDays, User, X, Briefcase, Bookmark, FileStack, Clock, Timer, Ban, Repeat } from "lucide-react";
 import { isOverdue } from "@/lib/dates";
 import { SocialTaskChecklist } from "@/components/social/SocialTaskChecklist";
 import { SocialTaskDetailDialog } from "@/components/social/SocialTaskDetailDialog";
@@ -274,6 +274,9 @@ export default function SocialTasks() {
             </Button>
             <Button variant="outline" className="h-9" onClick={() => setTemplateManagerOpen(true)}>
               <FileStack className="h-4 w-4 mr-1"/>Modelos
+            </Button>
+            <Button asChild variant="outline" className="h-9">
+              <Link to="/social/recorrentes"><Repeat className="h-4 w-4 mr-1"/>Tarefas Recorrentes</Link>
             </Button>
             <Button onClick={() => setOpen(true)} className="h-9"><Plus className="h-4 w-4 mr-1"/>Nova Tarefa</Button>
           </div>
