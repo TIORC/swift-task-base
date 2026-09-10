@@ -9,13 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Users, Plus } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SECTORS } from "@/types/sectors";
-import { useInventoryCollaborators, useSaveCollaborator, type InventoryCollaborator } from "@/hooks/useInventory";
+import { useInventoryCollaborators, useSaveCollaborator, useInventoryDepartments, type InventoryCollaborator } from "@/hooks/useInventory";
 
 const empty = { full_name: "", department: "", active: true };
 
 export function CollaboratorsPanel({ canWrite }: { canWrite: boolean }) {
   const { data: collaborators = [] } = useInventoryCollaborators();
+  const { data: departments = [] } = useInventoryDepartments();
   const save = useSaveCollaborator();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<InventoryCollaborator | null>(null);
@@ -83,7 +83,9 @@ export function CollaboratorsPanel({ canWrite }: { canWrite: boolean }) {
               <Select value={form.department} onValueChange={(v) => setForm({ ...form, department: v })}>
                 <SelectTrigger><SelectValue placeholder="Selecione o setor" /></SelectTrigger>
                 <SelectContent>
-                  {SECTORS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  {departments.filter((d) => d.active || d.name === form.department).map((d) => (
+                    <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
