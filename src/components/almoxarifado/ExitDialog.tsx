@@ -101,7 +101,18 @@ export function ExitDialog({ open, onOpenChange, item }: Props) {
               <p className="mt-1 text-xs text-muted-foreground">Cadastre colaboradores em Configurações → Colaboradores.</p>
             )}
           </div>
-          <div><Label>Departamento</Label><Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Setor</Label><Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} /></div>
+            <div>
+              <Label>Local de destino</Label>
+              <Select value={form.location_id} onValueChange={(v) => setForm({ ...form, location_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione o local" /></SelectTrigger>
+                <SelectContent>
+                  {locations.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           <div className="rounded-lg border p-3 space-y-3">
             <div className="flex items-center gap-3">
