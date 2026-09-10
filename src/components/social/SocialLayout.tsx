@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Columns3, ListTodo, Calendar, Users, Megaphone, CheckCircle2, Lightbulb, FileText, BarChart3, Trophy, Target, ShieldCheck, LogOut, ArrowLeftRight, Sparkles, Library, ImageIcon, LineChart, KeyRound, Briefcase, Workflow } from "lucide-react";
+import { LayoutDashboard, Columns3, ListTodo, Calendar, Users, Megaphone, CheckCircle2, Lightbulb, FileText, BarChart3, Trophy, Target, ShieldCheck, LogOut, ArrowLeftRight, Sparkles, Library, ImageIcon, LineChart, KeyRound, Briefcase, Workflow, Repeat } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocialRole } from "@/hooks/useSocialRole";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -47,6 +47,7 @@ const navItems: { title: string; url: string; icon: any; end?: boolean; visibili
   { title: "Comercial & Onboarding", url: "/social/comercial", icon: Briefcase },
   { title: "Fluxos de Demanda", url: "/social/fluxos", icon: Workflow },
   { title: "Tarefas", url: "/social/tarefas", icon: ListTodo },
+  { title: "Tarefas Recorrentes", url: "/social/recorrentes", icon: Repeat },
   { title: "Calendário Editorial", url: "/social/calendario-editorial", icon: Calendar },
   { title: "Aprovações", url: "/social/aprovacoes", icon: CheckCircle2 },
   { title: "Clientes/Marcas", url: "/social/clientes", icon: Users },

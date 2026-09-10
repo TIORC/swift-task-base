@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.log_sm_recurring_task_changes() FROM PUBLIC, anon, authenticated;

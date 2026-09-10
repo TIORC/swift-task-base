@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import { SmRecurrenceFields, emptySmRecurrence, smRecurrencePayload, type SmRecurrenceState } from "@/components/social/SmRecurrenceFields";
 
 const sb = supabase as any;
 
@@ -118,24 +119,10 @@ export default function SocialTasks() {
     nature: "avulsa" as SmNature,
     billable: "cobravel",
     is_recurring_template: false,
-    recurrence_type: "" as "" | "daily" | "weekly" | "monthly" | "custom",
-    recurrence_interval: 1,
-    recurrence_until: "",
-    recurrence_weekday: "1",
   });
+  const [recurrence, setRecurrence] = useState<SmRecurrenceState>(emptySmRecurrence());
 
-  const WEEKDAYS = [
-    { v: "0", l: "Domingo" }, { v: "1", l: "Segunda" }, { v: "2", l: "Terça" },
-    { v: "3", l: "Quarta" }, { v: "4", l: "Quinta" }, { v: "5", l: "Sexta" }, { v: "6", l: "Sábado" },
-  ];
 
-  const nextWeekdayDate = (weekday: number): Date => {
-    const d = new Date();
-    d.setHours(9, 0, 0, 0);
-    const diff = (weekday - d.getDay() + 7) % 7 || 7;
-    d.setDate(d.getDate() + diff);
-    return d;
-  };
 
   const assigneeFiltered = useMemo(() => {
     if (!data) return [];
@@ -187,10 +174,7 @@ export default function SocialTasks() {
     if (saveAsTemplate && !templateName.trim()) return toast.error("Informe o nome do modelo");
     // "YYYY-MM-DD" é interpretado como UTC pelo Date(); fixamos meio-dia local
     // para o prazo não voltar um dia no fuso do Brasil.
-    let dueIso: string | null = form.due_date ? new Date(form.due_date + "T12:00:00").toISOString() : null;
-    if (form.is_recurring_template && form.recurrence_type === "weekly" && !form.due_date) {
-      dueIso = nextWeekdayDate(Number(form.recurrence_weekday)).toISOString();
-    }
+    const dueIso: string | null = form.due_date ? new Date(form.due_date + "T12:00:00").toISOString() : null;
     const payload: any = {
       title: form.title, description: form.description || null,
       client_id: form.client_id || null, priority: form.priority,
@@ -199,9 +183,9 @@ export default function SocialTasks() {
       nature: form.nature,
       billable: form.nature === "avulsa" ? form.billable : null,
       is_recurring_template: form.is_recurring_template,
-      recurrence_type: form.is_recurring_template && form.recurrence_type ? form.recurrence_type : null,
-      recurrence_interval: form.is_recurring_template ? form.recurrence_interval || 1 : null,
-      recurrence_until: form.is_recurring_template && form.recurrence_until ? new Date(form.recurrence_until + "T12:00:00").toISOString() : null,
+      ...(form.is_recurring_template
+        ? smRecurrencePayload(recurrence)
+        : { recurrence_type: null, recurrence_interval: null, recurrence_until: null }),
     };
     const { data: created, error } = await m.createTask(payload);
     if (error) return toast.error(error.message);
@@ -226,7 +210,8 @@ export default function SocialTasks() {
     }
     toast.success("Tarefa criada");
     setOpen(false);
-    setForm({ title: "", description: "", client_id: "", priority: "medium", due_date: "", status: "backlog", assigned_to: "", nature: "avulsa", billable: "cobravel", is_recurring_template: false, recurrence_type: "", recurrence_interval: 1, recurrence_until: "", recurrence_weekday: "1" });
+    setForm({ title: "", description: "", client_id: "", priority: "medium", due_date: "", status: "backlog", assigned_to: "", nature: "avulsa", billable: "cobravel", is_recurring_template: false });
+    setRecurrence(emptySmRecurrence());
     setDraftChecklist([]); setNewChecklistItem("");
     setSaveAsTemplate(false); setTemplateName("");
     refresh();
@@ -509,33 +494,7 @@ export default function SocialTasks() {
                 Tarefa recorrente
               </label>
               {form.is_recurring_template && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label className="text-xs">Frequência</Label>
-                    <Select value={form.recurrence_type || "daily"} onValueChange={(v) => setForm({ ...form, recurrence_type: v as any })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="daily">Diária</SelectItem>
-                        <SelectItem value="weekly">Semanal</SelectItem>
-                        <SelectItem value="monthly">Mensal</SelectItem>
-                        <SelectItem value="custom">A cada N dias</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {form.recurrence_type === "weekly" && (
-                    <div>
-                      <Label className="text-xs">Dia da semana</Label>
-                      <Select value={form.recurrence_weekday} onValueChange={(v) => setForm({ ...form, recurrence_weekday: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>{WEEKDAYS.map(w => <SelectItem key={w.v} value={w.v}>{w.l}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  <div className="col-span-2">
-                    <Label className="text-xs">Repetir até (opcional)</Label>
-                    <Input type="date" value={form.recurrence_until} onChange={(e) => setForm({ ...form, recurrence_until: e.target.value })} />
-                  </div>
-                </div>
+                <SmRecurrenceFields value={recurrence} onChange={setRecurrence} />
               )}
             </div>
 

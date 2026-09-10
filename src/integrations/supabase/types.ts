@@ -1854,6 +1854,44 @@ export type Database = {
           },
         ]
       }
+      sm_recurring_task_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          field: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+          task_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          field: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          task_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          field?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sm_recurring_task_history_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "sm_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sm_sla_config: {
         Row: {
           hours: number
@@ -2101,7 +2139,14 @@ export type Database = {
           nature: string
           parent_recurring_task_id: string | null
           priority: Database["public"]["Enums"]["sm_priority"]
+          recurrence_business_day_direction: string
+          recurrence_day_of_month: number | null
+          recurrence_days: string[]
+          recurrence_deadline_days: number | null
           recurrence_interval: number | null
+          recurrence_months: number[]
+          recurrence_only_business_days: boolean
+          recurrence_start_time: string
           recurrence_type: string | null
           recurrence_until: string | null
           requires_approval: boolean
@@ -2133,7 +2178,14 @@ export type Database = {
           nature?: string
           parent_recurring_task_id?: string | null
           priority?: Database["public"]["Enums"]["sm_priority"]
+          recurrence_business_day_direction?: string
+          recurrence_day_of_month?: number | null
+          recurrence_days?: string[]
+          recurrence_deadline_days?: number | null
           recurrence_interval?: number | null
+          recurrence_months?: number[]
+          recurrence_only_business_days?: boolean
+          recurrence_start_time?: string
           recurrence_type?: string | null
           recurrence_until?: string | null
           requires_approval?: boolean
@@ -2165,7 +2217,14 @@ export type Database = {
           nature?: string
           parent_recurring_task_id?: string | null
           priority?: Database["public"]["Enums"]["sm_priority"]
+          recurrence_business_day_direction?: string
+          recurrence_day_of_month?: number | null
+          recurrence_days?: string[]
+          recurrence_deadline_days?: number | null
           recurrence_interval?: number | null
+          recurrence_months?: number[]
+          recurrence_only_business_days?: boolean
+          recurrence_start_time?: string
           recurrence_type?: string | null
           recurrence_until?: string | null
           requires_approval?: boolean
