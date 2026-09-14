@@ -216,12 +216,14 @@ Deno.serve(async (req) => {
       if (onlyBusiness && (dow === 0 || dow === 6)) continue;
       if (days.length > 0 && !days.includes(DOW_CODES[dow])) continue;
 
-      if (t.last_spawned_at) {
+      // Com dias da semana escolhidos, cada dia marcado é uma ocorrência válida.
+      const useGap = !(days.length > 0 && (t.recurrence_type === "weekly" || t.recurrence_type === "daily"));
+      if (useGap && t.last_spawned_at) {
         const lastKey = localDateKey(new Date(t.last_spawned_at));
-
         const gap = Math.floor((dateNumber(todayKey) - dateNumber(lastKey)) / 86400000);
         if (gap < minGapDays(t.recurrence_type, interval)) continue;
       }
+
     }
 
     // A identidade da ocorrência é o dia do prazo, não o dia em que o cron rodou.
