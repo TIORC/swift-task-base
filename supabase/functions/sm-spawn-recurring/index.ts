@@ -187,15 +187,25 @@ Deno.serve(async (req) => {
 
     const days: string[] = Array.isArray(t.recurrence_days) ? t.recurrence_days : [];
     const onlyBusiness = !!t.recurrence_only_business_days;
-    const monthBased = MONTH_BASED.includes(t.recurrence_type) && !!t.recurrence_day_of_month;
+    // Tipos mensais/anuais sempre usam a regra de mês. Sem dia definido,
+    // o dia do cadastro do modelo vira a âncora (evita cair todo dia).
+    const monthBased = MONTH_BASED.includes(t.recurrence_type);
 
     let dueKey = todayKey;
 
     if (monthBased) {
+      const anchor = calendarParts(localDateKey(new Date(t.created_at)));
+      const dayOfMonth = t.recurrence_day_of_month || anchor.day;
       const months: number[] = Array.isArray(t.recurrence_months) ? t.recurrence_months : [];
-      if (months.length > 0 && !months.includes(today.month)) continue;
+      if (months.length > 0) {
+        if (!months.includes(today.month)) continue;
+      } else {
+        const step = (MONTH_STEP[t.recurrence_type] || 1) * Math.max(1, interval);
+        const monthDelta = (today.year - anchor.year) * 12 + today.month - anchor.month;
+        if (monthDelta < 0 || monthDelta % step !== 0) continue;
+      }
       const targetDay = adjustToBusinessDayInMonth(
-        today.year, today.month, t.recurrence_day_of_month,
+        today.year, today.month, dayOfMonth,
         t.recurrence_business_day_direction || "next",
       );
       if (today.day !== targetDay) continue;
@@ -208,6 +218,7 @@ Deno.serve(async (req) => {
 
       if (t.last_spawned_at) {
         const lastKey = localDateKey(new Date(t.last_spawned_at));
+
         const gap = Math.floor((dateNumber(todayKey) - dateNumber(lastKey)) / 86400000);
         if (gap < minGapDays(t.recurrence_type, interval)) continue;
       }
