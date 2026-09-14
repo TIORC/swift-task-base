@@ -147,12 +147,19 @@ Deno.serve(async (req) => {
     const i = Math.max(1, intervalN || 1);
     switch (type) {
       case "daily": return i;
-      case "weekly": return (i - 1) * 7 + 1;
-      case "decendial": return (i - 1) * 10 + 1;
+      case "weekly": return 7 * i;
+      case "biweekly": return 14 * i;
+      case "decendial": return 10 * i;
       case "custom": return i;
       default: return 1;
     }
   };
+
+  // Meses entre ocorrências para os tipos baseados em mês.
+  const MONTH_STEP: Record<string, number> = {
+    monthly: 1, bimonthly: 2, quarterly: 3, semiannual: 6, annual: 12,
+  };
+
 
   const addDaysToKey = (key: string, days: number) => {
     const d = new Date(`${key}T00:00:00Z`);
