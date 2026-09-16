@@ -144,6 +144,7 @@ const AdminPanel = () => {
   const [sectorsOpen, setSectorsOpen] = useState(false);
   const [sectorsUserId, setSectorsUserId] = useState("");
   const [sectorsUserEmail, setSectorsUserEmail] = useState("");
+  const { data: sectorInfo } = useAllUserSectors();
 
   const loadUsers = useCallback(async () => {
     try {
