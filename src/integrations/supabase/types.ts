@@ -2767,6 +2767,24 @@ export type Database = {
           },
         ]
       }
+      user_global_sector_access: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_medals: {
         Row: {
           awarded_at: string
@@ -2826,6 +2844,33 @@ export type Database = {
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_sector_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          id: string
+          new_sectors: string[]
+          old_sectors: string[]
+          user_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_sectors?: string[]
+          old_sectors?: string[]
+          user_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_sectors?: string[]
+          old_sectors?: string[]
           user_id?: string
         }
         Relationships: []
@@ -3070,6 +3115,7 @@ export type Database = {
         Args: { _user: string }
         Returns: boolean
       }
+      has_global_sector_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

@@ -29,6 +29,13 @@
       "when": 1789565078150,
       "tag": "0003_guard_allow_ti_creator",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789570338940,
+      "tag": "0004_user_sector_binding_and_global_access",
+      "breakpoints": true
     }
   ]
 }
