@@ -186,6 +186,8 @@ export interface Automation {
   deploy_status: string;
   documentation_done: boolean;
   sector: string | null;
+  requester_id: string | null;
+  xp_bonus_awarded: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -194,11 +196,26 @@ export interface AutomationSubtask {
   id: string;
   automation_id: string;
   title: string;
+  description: string | null;
+  status: string;
   completed: boolean;
   assigned_to: string | null;
   deadline: string | null;
+  completed_at: string | null;
+  completed_by: string | null;
   notes: string | null;
   sort_order: number;
+  created_at: string;
+}
+
+export interface AutomationAttachment {
+  id: string;
+  automation_id: string;
+  user_id: string;
+  file_name: string;
+  file_path: string;
+  file_size: number;
+  mime_type: string;
   created_at: string;
 }
 
