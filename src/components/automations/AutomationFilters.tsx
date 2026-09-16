@@ -89,13 +89,17 @@ export function AutomationFilters({
           </SelectContent>
         </Select>
         {onSectorFilterChange && (
-          <Select value={sectorFilter || "all"} onValueChange={onSectorFilterChange}>
+          <Select
+            value={sectorFilter || "all"}
+            onValueChange={onSectorFilterChange}
+            disabled={lockSector && sectorOptions.length <= 1}
+          >
             <SelectTrigger className="w-[140px] h-9">
               <SelectValue placeholder="Setor" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos setores</SelectItem>
-              <SelectItem value="none">Sem setor</SelectItem>
+              {!lockSector && <SelectItem value="all">Todos setores</SelectItem>}
+              {!lockSector && <SelectItem value="none">Sem setor</SelectItem>}
               {sectorOptions.map((s) => (
                 <SelectItem key={s} value={s}>{s}</SelectItem>
               ))}
