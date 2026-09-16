@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { invalidateGamification } from "@/hooks/useGamification";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -142,6 +143,7 @@ export function useCreateTask() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      invalidateGamification(queryClient);
       toast.success("Tarefa criada com sucesso!");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -232,6 +234,7 @@ export function useUpdateTask() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      invalidateGamification(queryClient);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -247,6 +250,7 @@ export function useDeleteTask() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      invalidateGamification(queryClient);
       toast.success("Tarefa excluída!");
     },
     onError: (e: Error) => toast.error(e.message),

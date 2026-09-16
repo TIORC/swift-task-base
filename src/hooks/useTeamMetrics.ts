@@ -30,8 +30,8 @@ export function useTeamMetrics() {
     queryKey: ["team-metrics"],
     queryFn: async () => {
       const [tasksRes, autosRes, timeRes, autoTimeRes, profilesRes, commentsRes] = await Promise.all([
-        supabase.from("tasks").select("id, assignee_id, status, updated_at, title"),
-        supabase.from("automations").select("id, owner_id, sector, status, updated_at, completed_at"),
+        supabase.from("tasks").select("id, assigned_to, status, updated_at, title"),
+        supabase.from("automations").select("id, assigned_to, sector, status, updated_at, completed_at"),
         supabase.from("time_logs").select("user_id, duration_minutes"),
         supabase.from("automation_time_logs").select("user_id, duration_minutes"),
         supabase.from("profiles").select("id, full_name"),
@@ -104,7 +104,7 @@ export function useTeamMetrics() {
       const monthAutosByUser = new Map<string, number>();
 
       (tasksRes.data || []).forEach((t: any) => {
-        const u = ensureUser(t.assignee_id);
+        const u = ensureUser(t.assigned_to);
         if (!u) return;
         u.tasks_total += 1;
         if (t.status === "done") {
@@ -112,13 +112,13 @@ export function useTeamMetrics() {
           const ts = taskFirst.get(t.id) || t.updated_at;
           const d = new Date(ts);
           if (d.getFullYear() === curY && d.getMonth() === curM) {
-            monthTasksByUser.set(t.assignee_id, (monthTasksByUser.get(t.assignee_id) || 0) + 1);
+            monthTasksByUser.set(t.assigned_to, (monthTasksByUser.get(t.assigned_to) || 0) + 1);
           }
         }
       });
 
       (autosRes.data || []).forEach((a: any) => {
-        const u = ensureUser(a.owner_id);
+        const u = ensureUser(a.assigned_to);
         if (!u) return;
         u.automations_total += 1;
         if (a.status === "completed") {
@@ -126,7 +126,7 @@ export function useTeamMetrics() {
           const ts = autoFirst.get(a.id) || a.completed_at || a.updated_at;
           const d = new Date(ts);
           if (d.getFullYear() === curY && d.getMonth() === curM) {
-            monthAutosByUser.set(a.owner_id, (monthAutosByUser.get(a.owner_id) || 0) + 1);
+            monthAutosByUser.set(a.assigned_to, (monthAutosByUser.get(a.assigned_to) || 0) + 1);
           }
         }
       });

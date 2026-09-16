@@ -1,9 +1,13 @@
 export const AUTOMATION_STATUSES = [
+  "requested",
   "backlog",
   "analysis",
+  "waiting_info",
+  "approved",
   "development",
   "internal_testing",
   "homologation",
+  "change_requested",
   "waiting_user",
   "completed",
   "blocked",
@@ -13,15 +17,19 @@ export const AUTOMATION_STATUSES = [
 export type AutomationStatus = (typeof AUTOMATION_STATUSES)[number];
 
 export const STATUS_LABELS: Record<AutomationStatus, string> = {
+  requested: "Solicitada",
   backlog: "Backlog",
-  analysis: "Análise",
-  development: "Desenvolvimento",
-  internal_testing: "Testes Internos",
-  homologation: "Pendente",
+  analysis: "Em análise",
+  waiting_info: "Aguardando informações",
+  approved: "Aprovada",
+  development: "Em desenvolvimento",
+  internal_testing: "Em testes",
+  homologation: "Aguardando validação",
+  change_requested: "Alteração solicitada",
   waiting_user: "Aguardando Usuário",
-  completed: "Concluído",
+  completed: "Concluída",
   blocked: "Bloqueado",
-  cancelled: "Cancelado",
+  cancelled: "Cancelada",
 };
 
 // Pending reasons shown when an automation moves to "Pendente"
@@ -37,6 +45,10 @@ export const PENDING_REASON_LABELS: Record<PendingReason, string> = {
 export const STATUS_COLORS: Record<AutomationStatus, string> = {
   backlog: "bg-muted text-muted-foreground",
   analysis: "bg-blue-500/10 text-blue-500",
+  requested: "bg-sky-500/10 text-sky-500",
+  waiting_info: "bg-yellow-500/10 text-yellow-600",
+  approved: "bg-teal-500/10 text-teal-500",
+  change_requested: "bg-rose-500/10 text-rose-500",
   development: "bg-indigo-500/10 text-indigo-500",
   internal_testing: "bg-amber-500/10 text-amber-500",
   homologation: "bg-purple-500/10 text-purple-500",
@@ -47,11 +59,15 @@ export const STATUS_COLORS: Record<AutomationStatus, string> = {
 };
 
 export const BOARD_COLUMNS: AutomationStatus[] = [
+  "requested",
   "backlog",
   "analysis",
+  "waiting_info",
+  "approved",
   "development",
   "internal_testing",
   "homologation",
+  "change_requested",
   "waiting_user",
   "completed",
   "blocked",
@@ -78,12 +94,29 @@ export const RISK_LABELS: Record<string, string> = {
   critical: "Crítico",
 };
 
-export const COMPLEXITY_OPTIONS = ["low", "medium", "high"] as const;
+export const COMPLEXITY_OPTIONS = ["low", "medium", "high", "strategic"] as const;
 export const COMPLEXITY_LABELS: Record<string, string> = {
-  low: "Baixa",
+  low: "Simples",
   medium: "Média",
-  high: "Alta",
+  high: "Complexa",
+  strategic: "Estratégica",
 };
+
+/** Chaves de configuração do bônus de XP (valores vivem em public.xp_settings). */
+export const COMPLEXITY_BONUS_KEYS: Record<string, string> = {
+  low: "bonus_low",
+  medium: "bonus_medium",
+  high: "bonus_high",
+  strategic: "bonus_strategic",
+};
+
+/** Status em que a solicitação ainda está sob avaliação da TI. */
+export const REQUEST_STATUSES: AutomationStatus[] = [
+  "requested",
+  "analysis",
+  "waiting_info",
+  "change_requested",
+];
 
 export const BLOCKER_TYPES = [
   "approval",
@@ -153,6 +186,8 @@ export interface Automation {
   deploy_status: string;
   documentation_done: boolean;
   sector: string | null;
+  requester_id: string | null;
+  xp_bonus_awarded: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -161,11 +196,26 @@ export interface AutomationSubtask {
   id: string;
   automation_id: string;
   title: string;
+  description: string | null;
+  status: string;
   completed: boolean;
   assigned_to: string | null;
   deadline: string | null;
+  completed_at: string | null;
+  completed_by: string | null;
   notes: string | null;
   sort_order: number;
+  created_at: string;
+}
+
+export interface AutomationAttachment {
+  id: string;
+  automation_id: string;
+  user_id: string;
+  file_name: string;
+  file_path: string;
+  file_size: number;
+  mime_type: string;
   created_at: string;
 }
 

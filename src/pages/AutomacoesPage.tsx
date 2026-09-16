@@ -12,6 +12,7 @@ import { AutomationBoard } from "@/components/automations/AutomationBoard";
 import { AutomationDetailPanel } from "@/components/automations/AutomationDetailPanel";
 import { AutomationMetrics } from "@/components/automations/AutomationMetrics";
 import { CreateAutomationDialog } from "@/components/automations/CreateAutomationDialog";
+import { RequestAutomationDialog } from "@/components/automations/RequestAutomationDialog";
 import { AutomationExport } from "@/components/automations/AutomationExport";
 import { WipControl } from "@/components/automations/WipControl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,8 +51,15 @@ export default function AutomacoesPage() {
   const visibleAutomations = useMemo(() => {
     if (canSeeAll) return automations;
     const whitelist = new Set(allowedAutomationIds);
-    return automations.filter((a) => (a.sector && allowedSectors.includes(a.sector)) || whitelist.has(a.id));
-  }, [automations, canSeeAll, allowedSectors, allowedAutomationIds]);
+    return automations.filter(
+      (a) =>
+        (a.sector && allowedSectors.includes(a.sector)) ||
+        whitelist.has(a.id) ||
+        a.created_by === user?.id ||
+        (a as any).requester_id === user?.id ||
+        a.assigned_to === user?.id,
+    );
+  }, [automations, canSeeAll, allowedSectors, allowedAutomationIds, user?.id]);
 
   const filtered = useMemo(() => {
     return visibleAutomations.filter(a => {
@@ -108,6 +116,7 @@ export default function AutomacoesPage() {
         actions={
           <div className="flex items-center gap-2">
             <AutomationExport automations={filtered} profileMap={profileMap} blockerCounts={blockerCounts} />
+            <RequestAutomationDialog />
             {!isReadOnly && <CreateAutomationDialog profiles={profiles} />}
           </div>
         }

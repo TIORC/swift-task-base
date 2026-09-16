@@ -52,6 +52,47 @@ export type Database = {
           },
         ]
       }
+      automation_attachments: {
+        Row: {
+          automation_id: string
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          mime_type: string
+          user_id: string
+        }
+        Insert: {
+          automation_id: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id?: string
+          mime_type: string
+          user_id: string
+        }
+        Update: {
+          automation_id?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          mime_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_attachments_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       automation_blockers: {
         Row: {
           automation_id: string
@@ -250,33 +291,45 @@ export type Database = {
           assigned_to: string | null
           automation_id: string
           completed: boolean | null
+          completed_at: string | null
+          completed_by: string | null
           created_at: string
           deadline: string | null
+          description: string | null
           id: string
           notes: string | null
           sort_order: number | null
+          status: string
           title: string
         }
         Insert: {
           assigned_to?: string | null
           automation_id: string
           completed?: boolean | null
+          completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           deadline?: string | null
+          description?: string | null
           id?: string
           notes?: string | null
           sort_order?: number | null
+          status?: string
           title: string
         }
         Update: {
           assigned_to?: string | null
           automation_id?: string
           completed?: boolean | null
+          completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           deadline?: string | null
+          description?: string | null
           id?: string
           notes?: string | null
           sort_order?: number | null
+          status?: string
           title?: string
         }
         Relationships: [
@@ -356,6 +409,7 @@ export type Database = {
           progress_percent: number | null
           requester: string | null
           requester_department: string | null
+          requester_id: string | null
           risk_level: string | null
           sector: string
           spent_hours: number | null
@@ -364,6 +418,7 @@ export type Database = {
           system_process: string | null
           title: string
           updated_at: string
+          xp_bonus_awarded: number | null
         }
         Insert: {
           assigned_to?: string | null
@@ -390,6 +445,7 @@ export type Database = {
           progress_percent?: number | null
           requester?: string | null
           requester_department?: string | null
+          requester_id?: string | null
           risk_level?: string | null
           sector: string
           spent_hours?: number | null
@@ -398,6 +454,7 @@ export type Database = {
           system_process?: string | null
           title: string
           updated_at?: string
+          xp_bonus_awarded?: number | null
         }
         Update: {
           assigned_to?: string | null
@@ -424,6 +481,7 @@ export type Database = {
           progress_percent?: number | null
           requester?: string | null
           requester_department?: string | null
+          requester_id?: string | null
           risk_level?: string | null
           sector?: string
           spent_hours?: number | null
@@ -432,6 +490,7 @@ export type Database = {
           system_process?: string | null
           title?: string
           updated_at?: string
+          xp_bonus_awarded?: number | null
         }
         Relationships: []
       }
@@ -2858,6 +2917,39 @@ export type Database = {
         }
         Relationships: []
       }
+      xp_ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          reason: string | null
+          ref_id: string | null
+          source: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string | null
+          ref_id?: string | null
+          source: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string | null
+          ref_id?: string | null
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       xp_logs: {
         Row: {
           action: string
@@ -2893,6 +2985,48 @@ export type Database = {
           },
         ]
       }
+      xp_seeds: {
+        Row: {
+          created_at: string
+          note: string | null
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          created_at?: string
+          note?: string | null
+          user_id: string
+          xp?: number
+        }
+        Update: {
+          created_at?: string
+          note?: string | null
+          user_id?: string
+          xp?: number
+        }
+        Relationships: []
+      }
+      xp_settings: {
+        Row: {
+          description: string | null
+          key: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          description?: string | null
+          key: string
+          updated_at?: string
+          value: number
+        }
+        Update: {
+          description?: string | null
+          key?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -2902,11 +3036,40 @@ export type Database = {
         Args: { _action: string; _task_id: string; _user_id: string }
         Returns: undefined
       }
+      can_manage_automation: {
+        Args: { _automation_id: string; _user: string }
+        Returns: boolean
+      }
+      can_view_automation: {
+        Args: { _automation_id: string; _user: string }
+        Returns: boolean
+      }
+      gamification_stats: {
+        Args: never
+        Returns: {
+          automations_done: number
+          avatar_url: string
+          chamados_done: number
+          full_name: string
+          ledger_xp: number
+          medal_months: Json
+          medals_month: number
+          medals_year: number
+          seed_xp: number
+          tasks_done: number
+          total_xp: number
+          user_id: string
+        }[]
+      }
       get_admin_user_ids: { Args: never; Returns: string[] }
       get_gestor_user_ids: { Args: never; Returns: string[] }
       get_or_create_direct_chat: { Args: { _other: string }; Returns: string }
       get_social_assignable_user_ids: { Args: never; Returns: string[] }
       get_ti_assignable_user_ids: { Args: never; Returns: string[] }
+      has_global_automation_access: {
+        Args: { _user: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
