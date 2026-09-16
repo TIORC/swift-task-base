@@ -45,6 +45,10 @@ export const PENDING_REASON_LABELS: Record<PendingReason, string> = {
 export const STATUS_COLORS: Record<AutomationStatus, string> = {
   backlog: "bg-muted text-muted-foreground",
   analysis: "bg-blue-500/10 text-blue-500",
+  requested: "bg-sky-500/10 text-sky-500",
+  waiting_info: "bg-yellow-500/10 text-yellow-600",
+  approved: "bg-teal-500/10 text-teal-500",
+  change_requested: "bg-rose-500/10 text-rose-500",
   development: "bg-indigo-500/10 text-indigo-500",
   internal_testing: "bg-amber-500/10 text-amber-500",
   homologation: "bg-purple-500/10 text-purple-500",
@@ -55,11 +59,15 @@ export const STATUS_COLORS: Record<AutomationStatus, string> = {
 };
 
 export const BOARD_COLUMNS: AutomationStatus[] = [
+  "requested",
   "backlog",
   "analysis",
+  "waiting_info",
+  "approved",
   "development",
   "internal_testing",
   "homologation",
+  "change_requested",
   "waiting_user",
   "completed",
   "blocked",
@@ -86,12 +94,29 @@ export const RISK_LABELS: Record<string, string> = {
   critical: "Crítico",
 };
 
-export const COMPLEXITY_OPTIONS = ["low", "medium", "high"] as const;
+export const COMPLEXITY_OPTIONS = ["low", "medium", "high", "strategic"] as const;
 export const COMPLEXITY_LABELS: Record<string, string> = {
-  low: "Baixa",
+  low: "Simples",
   medium: "Média",
-  high: "Alta",
+  high: "Complexa",
+  strategic: "Estratégica",
 };
+
+/** Chaves de configuração do bônus de XP (valores vivem em public.xp_settings). */
+export const COMPLEXITY_BONUS_KEYS: Record<string, string> = {
+  low: "bonus_low",
+  medium: "bonus_medium",
+  high: "bonus_high",
+  strategic: "bonus_strategic",
+};
+
+/** Status em que a solicitação ainda está sob avaliação da TI. */
+export const REQUEST_STATUSES: AutomationStatus[] = [
+  "requested",
+  "analysis",
+  "waiting_info",
+  "change_requested",
+];
 
 export const BLOCKER_TYPES = [
   "approval",
