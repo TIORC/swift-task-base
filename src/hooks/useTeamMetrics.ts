@@ -30,8 +30,8 @@ export function useTeamMetrics() {
     queryKey: ["team-metrics"],
     queryFn: async () => {
       const [tasksRes, autosRes, timeRes, autoTimeRes, profilesRes, commentsRes] = await Promise.all([
-        supabase.from("tasks").select("id, assignee_id, status, updated_at, title"),
-        supabase.from("automations").select("id, owner_id, sector, status, updated_at, completed_at"),
+        supabase.from("tasks").select("id, assigned_to, status, updated_at, title"),
+        supabase.from("automations").select("id, assigned_to, sector, status, updated_at, completed_at"),
         supabase.from("time_logs").select("user_id, duration_minutes"),
         supabase.from("automation_time_logs").select("user_id, duration_minutes"),
         supabase.from("profiles").select("id, full_name"),
