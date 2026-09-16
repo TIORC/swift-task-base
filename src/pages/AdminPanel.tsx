@@ -372,6 +372,19 @@ const AdminPanel = () => {
                       <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                      {sectorInfo?.globalSet.has(u.id) ? (
+                        <Badge className="text-[10px] bg-primary/10 text-primary border-primary/20">
+                          Todos os setores
+                        </Badge>
+                      ) : (sectorInfo?.map[u.id]?.length ?? 0) > 0 ? (
+                        sectorInfo!.map[u.id].map((s) => (
+                          <Badge key={s} variant="outline" className="text-[10px]">{s}</Badge>
+                        ))
+                      ) : (
+                        <Badge className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/20">
+                          Setor não definido
+                        </Badge>
+                      )}
                       {u.roles.length > 0 ? u.roles.map(r => (
                         <Badge key={r} className={`text-[10px] ${ROLE_COLORS[r] || ROLE_COLORS.member}`}>
                           {ALL_ROLES.find(ar => ar.value === r)?.label || r}
