@@ -57,7 +57,7 @@ export function CreateAutomationDialog({ profiles }: Props) {
       automation_type: form.automation_type || null,
       estimated_hours: parseFloat(form.estimated_hours) || 0,
       final_deadline: form.final_deadline ? new Date(form.final_deadline).toISOString() : null,
-      sector: form.sector,
+      sector: effectiveSector,
     } as any, {
       onSuccess: () => {
         setOpen(false);
