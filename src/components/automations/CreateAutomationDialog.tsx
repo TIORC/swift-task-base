@@ -9,6 +9,7 @@ import { Plus } from "lucide-react";
 import { useCreateAutomation } from "@/hooks/useAutomationsData";
 import { PRIORITY_OPTIONS, PRIORITY_LABELS, COMPLEXITY_OPTIONS, COMPLEXITY_LABELS } from "@/types/automation";
 import { SECTORS } from "@/types/sectors";
+import { useSectorVisibility } from "@/hooks/useUserSectors";
 
 interface Props {
   profiles: { id: string; full_name: string | null }[];
@@ -17,6 +18,9 @@ interface Props {
 export function CreateAutomationDialog({ profiles }: Props) {
   const [open, setOpen] = useState(false);
   const createAutomation = useCreateAutomation();
+  const { canSeeAll, allowedSectors } = useSectorVisibility();
+  const lockedSector = !canSeeAll && allowedSectors.length === 1 ? allowedSectors[0] : null;
+  const sectorOptions = canSeeAll ? [...SECTORS] : allowedSectors;
 
   const [form, setForm] = useState({
     title: "",
