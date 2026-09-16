@@ -149,15 +149,19 @@ export function CreateAutomationDialog({ profiles }: Props) {
           </div>
           <div>
             <Label className="text-xs">Setor Vinculado *</Label>
-            <Select value={form.sector} onValueChange={v => set("sector", v)}>
+            <Select value={effectiveSector} onValueChange={v => set("sector", v)} disabled={!!lockedSector}>
               <SelectTrigger className="h-9 mt-1"><SelectValue placeholder="Selecionar setor" /></SelectTrigger>
               <SelectContent>
-                {SECTORS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                {sectorOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
-            <p className="text-[10px] text-muted-foreground mt-1">Define quais usuários podem visualizar esta automação.</p>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              {lockedSector
+                ? "Definido automaticamente pelo seu setor."
+                : "Define quais usuários podem visualizar esta automação."}
+            </p>
           </div>
-          <Button onClick={handleSubmit} className="w-full" disabled={!form.title.trim() || !form.sector || createAutomation.isPending}>
+          <Button onClick={handleSubmit} className="w-full" disabled={!form.title.trim() || !effectiveSector || createAutomation.isPending}>
             Criar Automação
           </Button>
         </div>
