@@ -17,6 +17,7 @@ interface Props {
   sectorFilter?: string;
   onSectorFilterChange?: (v: string) => void;
   availableSectors?: string[];
+  lockSector?: boolean;
   profiles: { id: string; full_name: string | null }[];
 }
 
@@ -25,7 +26,7 @@ export function AutomationFilters({
   statusFilter, onStatusFilterChange,
   priorityFilter, onPriorityFilterChange,
   assigneeFilter, onAssigneeFilterChange,
-  sectorFilter, onSectorFilterChange, availableSectors,
+  sectorFilter, onSectorFilterChange, availableSectors, lockSector,
   profiles,
 }: Props) {
   const sectorOptions = availableSectors && availableSectors.length > 0 ? availableSectors : SECTORS;
