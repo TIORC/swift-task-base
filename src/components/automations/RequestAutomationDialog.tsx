@@ -28,7 +28,10 @@ export function RequestAutomationDialog() {
   const [description, setDescription] = useState("");
   const [objective, setObjective] = useState("");
   const [priority, setPriority] = useState("medium");
-  const [sector, setSector] = useState<string>(mySectors[0] ?? "TI");
+  const [sector, setSector] = useState<string>("");
+  const lockedSector = !canSeeAll && mySectors.length === 1 ? mySectors[0] : null;
+  const sectorOptions = canSeeAll ? [...SECTORS] : mySectors;
+  const effectiveSector = lockedSector ?? sector || sectorOptions[0] || "";
 
   const create = useMutation({
     mutationFn: async () => {
