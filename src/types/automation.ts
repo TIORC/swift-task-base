@@ -1,9 +1,13 @@
 export const AUTOMATION_STATUSES = [
+  "requested",
   "backlog",
   "analysis",
+  "waiting_info",
+  "approved",
   "development",
   "internal_testing",
   "homologation",
+  "change_requested",
   "waiting_user",
   "completed",
   "blocked",
@@ -13,15 +17,19 @@ export const AUTOMATION_STATUSES = [
 export type AutomationStatus = (typeof AUTOMATION_STATUSES)[number];
 
 export const STATUS_LABELS: Record<AutomationStatus, string> = {
+  requested: "Solicitada",
   backlog: "Backlog",
-  analysis: "Análise",
-  development: "Desenvolvimento",
-  internal_testing: "Testes Internos",
-  homologation: "Pendente",
+  analysis: "Em análise",
+  waiting_info: "Aguardando informações",
+  approved: "Aprovada",
+  development: "Em desenvolvimento",
+  internal_testing: "Em testes",
+  homologation: "Aguardando validação",
+  change_requested: "Alteração solicitada",
   waiting_user: "Aguardando Usuário",
-  completed: "Concluído",
+  completed: "Concluída",
   blocked: "Bloqueado",
-  cancelled: "Cancelado",
+  cancelled: "Cancelada",
 };
 
 // Pending reasons shown when an automation moves to "Pendente"
