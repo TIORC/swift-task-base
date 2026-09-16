@@ -361,7 +361,28 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                       disabled={readOnly}
                       onCheckedChange={v => updateSubtask.mutate({ id: st.id, completed: !!v, automation_id: st.automation_id })}
                     />
-                    <span className={`text-sm flex-1 ${st.completed ? "line-through text-muted-foreground" : ""}`}>{st.title}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className={`text-sm ${st.completed ? "line-through text-muted-foreground" : ""}`}>{st.title}</span>
+                      {st.completed && st.completed_at && (
+                        <span className="block text-[10px] text-muted-foreground">
+                          Concluída em {format(new Date(st.completed_at), "dd/MM/yy HH:mm", { locale: ptBR })}
+                          {st.completed_by ? ` • ${profileMap[st.completed_by] || ""}` : ""}
+                        </span>
+                      )}
+                    </div>
+                    {!readOnly && (
+                      <Input
+                        type="date"
+                        value={st.deadline ? st.deadline.substring(0, 10) : ""}
+                        onChange={e => updateSubtask.mutate({
+                          id: st.id,
+                          automation_id: st.automation_id,
+                          deadline: e.target.value ? new Date(e.target.value).toISOString() : null,
+                        })}
+                        className="h-7 w-[130px] text-xs"
+                        aria-label={`Prazo de ${st.title}`}
+                      />
+                    )}
                     {!readOnly && (
                       <button onClick={() => deleteSubtask.mutate(st.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity">
                         <X className="h-3 w-3" />
