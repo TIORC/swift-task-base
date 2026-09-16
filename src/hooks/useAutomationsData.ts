@@ -126,6 +126,7 @@ export function useUpdateAutomation() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automations"] });
+      invalidateGamification(qc);
       toast.success("Automação atualizada!");
     },
     onError: (e: Error) => toast.error(e.message),
