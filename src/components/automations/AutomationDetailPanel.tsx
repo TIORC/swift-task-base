@@ -15,6 +15,7 @@ import {
   Automation, AutomationSubtask, AutomationBlocker, AutomationEvent,
   STATUS_LABELS, STATUS_COLORS, AUTOMATION_STATUSES, PRIORITY_LABELS, PRIORITY_OPTIONS,
   RISK_LABELS, BLOCKER_TYPES, BLOCKER_TYPE_LABELS, DEFAULT_SUBTASKS,
+  COMPLEXITY_OPTIONS, COMPLEXITY_LABELS,
   computeHealthScore, computePrediction, AutomationStatus,
 } from "@/types/automation";
 import { SECTORS } from "@/types/sectors";
@@ -31,7 +32,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   AlertTriangle, CheckCircle2, Clock, Code2, FileText, History,
-  ListChecks, Lock, MessageSquare, Play, Plus, Save, Square, Timer, Trash2, X,
+  ListChecks, Lock, MessageSquare, Paperclip, Play, Plus, Save, Square, Timer, Trash2, X,
   Sparkles, RefreshCcw, Unlock,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -46,6 +47,9 @@ const TIMELINE_META: Record<string, { label: string; color: string; Icon: Lucide
   subtask_completed: { label: "concluiu uma etapa", color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", Icon: CheckCircle2 },
 };
 import { AutomationComments } from "@/components/automations/AutomationComments";
+import { AutomationAttachments } from "@/components/automations/AutomationAttachments";
+import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface Props {
   automation: Automation | null;
@@ -58,6 +62,8 @@ interface Props {
 
 export function AutomationDetailPanel({ automation, open, onClose, profileMap, profiles, isReadOnly }: Props) {
   const updateAutomation = useUpdateAutomation();
+  const { user } = useAuth();
+  const { profile } = useUserRole();
   const { data: subtasks = [] } = useAutomationSubtasks(automation?.id ?? null);
   const createSubtask = useCreateSubtask();
   const updateSubtask = useUpdateSubtask();
@@ -78,6 +84,11 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
   if (!automation) return null;
 
   const a = automation;
+  // Somente TI/gestão ou o responsável técnico administram a automação.
+  // O solicitante acompanha, comenta e anexa arquivos, mas não edita campos administrativos.
+  const isTechTeam = ["admin", "gestor", "lider", "dev"].includes(profile || "");
+  const canManage = isTechTeam || a.assigned_to === user?.id || a.created_by === user?.id;
+  const readOnly = !!isReadOnly || !canManage;
   const health = computeHealthScore(a);
   const prediction = computePrediction(a);
 
@@ -147,10 +158,11 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
         <Separator />
 
         <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="mx-4 mt-2 grid grid-cols-6 h-8">
+          <TabsList className="mx-4 mt-2 grid grid-cols-7 h-8">
             <TabsTrigger value="details" className="text-xs"><FileText className="h-3 w-3 mr-1" />Dados</TabsTrigger>
             <TabsTrigger value="checklist" className="text-xs"><ListChecks className="h-3 w-3 mr-1" />Check</TabsTrigger>
             <TabsTrigger value="comments" className="text-xs"><MessageSquare className="h-3 w-3 mr-1" />Chat</TabsTrigger>
+            <TabsTrigger value="files" className="text-xs"><Paperclip className="h-3 w-3 mr-1" />Anexos</TabsTrigger>
             <TabsTrigger value="blockers" className="text-xs"><Lock className="h-3 w-3 mr-1" />Bloq.</TabsTrigger>
             <TabsTrigger value="timeline" className="text-xs"><History className="h-3 w-3 mr-1" />Timeline</TabsTrigger>
             <TabsTrigger value="time" className="text-xs"><Timer className="h-3 w-3 mr-1" />Tempo</TabsTrigger>
@@ -172,7 +184,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                 </div>
               )}
 
-              {!isReadOnly && (
+              {!readOnly && (
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -218,6 +230,17 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                         <SelectContent>
                           {profiles.map(p => (
                             <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Complexidade (bônus de XP)</label>
+                      <Select value={a.complexity || "medium"} onValueChange={v => handleUpdate({ complexity: v })}>
+                        <SelectTrigger className="h-8 mt-1"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {COMPLEXITY_OPTIONS.map(c => (
+                            <SelectItem key={c} value={c}>{COMPLEXITY_LABELS[c]}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -324,7 +347,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
 
             {/* ─── Checklist Tab ─── */}
             <TabsContent value="checklist" className="mt-3 space-y-3">
-              {subtasks.length === 0 && !isReadOnly && (
+              {subtasks.length === 0 && !readOnly && (
                 <Button variant="outline" size="sm" onClick={handleAddDefaultSubtasks} className="w-full">
                   <Plus className="h-3 w-3 mr-1" /> Adicionar checklist padrão
                 </Button>
@@ -335,11 +358,11 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                   <div key={st.id} className="flex items-center gap-2 group">
                     <Checkbox
                       checked={st.completed}
-                      disabled={isReadOnly}
+                      disabled={readOnly}
                       onCheckedChange={v => updateSubtask.mutate({ id: st.id, completed: !!v, automation_id: st.automation_id })}
                     />
                     <span className={`text-sm flex-1 ${st.completed ? "line-through text-muted-foreground" : ""}`}>{st.title}</span>
-                    {!isReadOnly && (
+                    {!readOnly && (
                       <button onClick={() => deleteSubtask.mutate(st.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity">
                         <X className="h-3 w-3" />
                       </button>
@@ -348,7 +371,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                 ))}
               </div>
 
-              {!isReadOnly && (
+              {!readOnly && (
                 <div className="flex gap-2">
                   <Input value={newSubtask} onChange={e => setNewSubtask(e.target.value)} placeholder="Nova subtarefa..." className="h-8" onKeyDown={e => e.key === "Enter" && handleAddSubtask()} />
                   <Button size="sm" onClick={handleAddSubtask} className="h-8"><Plus className="h-3 w-3" /></Button>
@@ -367,6 +390,11 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
               <AutomationComments automationId={a.id} />
             </TabsContent>
 
+            {/* ─── Attachments Tab ─── */}
+            <TabsContent value="files" className="mt-3">
+              <AutomationAttachments automationId={a.id} canDelete={canManage} />
+            </TabsContent>
+
             {/* ─── Blockers Tab ─── */}
             <TabsContent value="blockers" className="mt-3 space-y-3">
               {blockers.map(b => (
@@ -380,7 +408,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                         {b.resolved_at && ` • Resolvido em ${format(new Date(b.resolved_at), "dd/MM/yy", { locale: ptBR })}`}
                       </p>
                     </div>
-                    {!b.resolved_at && !isReadOnly && (
+                    {!b.resolved_at && !readOnly && (
                       <Button size="sm" variant="outline" onClick={() => resolveBlocker.mutate(b.id)} className="h-7 text-xs">
                         <CheckCircle2 className="h-3 w-3 mr-1" /> Resolver
                       </Button>
@@ -389,7 +417,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                 </div>
               ))}
 
-              {!isReadOnly && (
+              {!readOnly && (
                 <div className="space-y-2">
                   <Select value={newBlockerType} onValueChange={setNewBlockerType}>
                     <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
@@ -464,7 +492,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
             {/* ─── Time Tab ─── */}
             <TabsContent value="time" className="mt-3 space-y-3">
               {/* Live Timer */}
-              {!isReadOnly && <AutomationLiveTimer automationId={a.id} />}
+              {!readOnly && <AutomationLiveTimer automationId={a.id} />}
 
               <div className="flex items-center gap-4 text-sm">
                 <div>
@@ -477,7 +505,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                 </div>
               </div>
 
-              {!isReadOnly && (
+              {!readOnly && (
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <Input type="number" value={timeMinutes} onChange={e => setTimeMinutes(e.target.value)} placeholder="Minutos" className="h-8 w-24" />
