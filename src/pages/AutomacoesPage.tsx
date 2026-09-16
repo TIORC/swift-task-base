@@ -37,7 +37,9 @@ export default function AutomacoesPage() {
   const [sectorFilter, setSectorFilter] = useState("all");
   const [selectedAutomation, setSelectedAutomation] = useState<Automation | null>(null);
 
-  const { canSeeAll, allowedSectors } = useSectorVisibility();
+  const { canSeeAll, allowedSectors, hasSector, ready: sectorsReady } = useSectorVisibility();
+  const lockSector = !canSeeAll;
+  const effectiveSectorFilter = lockSector && allowedSectors.length === 1 ? allowedSectors[0] : sectorFilter;
   const { allowedAutomationIds } = useMyAutomationVisibility();
 
   const profileMap = useMemo(() => {
