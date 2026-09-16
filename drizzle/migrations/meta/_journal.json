@@ -15,6 +15,13 @@
       "when": 1789564926282,
       "tag": "0001_automation_requests_access",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789564950725,
+      "tag": "0002_automations_global_read",
+      "breakpoints": true
     }
   ]
 }
