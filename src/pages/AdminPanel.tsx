@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { UserPermissionsDialog } from "@/components/UserPermissionsDialog";
 import { UserSectorsDialog } from "@/components/UserSectorsDialog";
+import { useAllUserSectors } from "@/hooks/useUserSectors";
 
 const SUPPORT_USERS_EMAILS = [
   "adalgiza.argolo@orcoma.com.br","adeir@orcoma.com.br","aelica.sampaio@orcoma.com.br","anderson.rocha@orcoma.com.br",
