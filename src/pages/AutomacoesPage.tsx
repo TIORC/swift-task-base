@@ -69,13 +69,13 @@ export default function AutomacoesPage() {
       if (statusFilter !== "all" && a.status !== statusFilter) return false;
       if (priorityFilter !== "all" && a.priority !== priorityFilter) return false;
       if (assigneeFilter !== "all" && a.assigned_to !== assigneeFilter) return false;
-      if (sectorFilter !== "all") {
-        if (sectorFilter === "none" && a.sector) return false;
-        if (sectorFilter !== "none" && a.sector !== sectorFilter) return false;
+      if (effectiveSectorFilter !== "all") {
+        if (effectiveSectorFilter === "none" && a.sector) return false;
+        if (effectiveSectorFilter !== "none" && a.sector !== effectiveSectorFilter) return false;
       }
       return true;
     });
-  }, [visibleAutomations, search, statusFilter, priorityFilter, assigneeFilter, sectorFilter]);
+  }, [visibleAutomations, search, statusFilter, priorityFilter, assigneeFilter, effectiveSectorFilter]);
 
   // Alerts (somente bloqueios; atrasos/sem atualização foram removidos)
   const alerts = useMemo(() => {
@@ -161,9 +161,10 @@ export default function AutomacoesPage() {
             onPriorityFilterChange={setPriorityFilter}
             assigneeFilter={assigneeFilter}
             onAssigneeFilterChange={setAssigneeFilter}
-            sectorFilter={sectorFilter}
+            sectorFilter={effectiveSectorFilter}
             onSectorFilterChange={setSectorFilter}
             availableSectors={canSeeAll ? undefined : allowedSectors}
+            lockSector={lockSector}
             profiles={profiles}
           />
 
