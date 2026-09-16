@@ -8,6 +8,13 @@
       "when": 1789564633376,
       "tag": "0000_gamification_source_of_truth_and_automation_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789564926282,
+      "tag": "0001_automation_requests_access",
+      "breakpoints": true
     }
   ]
 }
