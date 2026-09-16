@@ -40,8 +40,10 @@ export function CreateAutomationDialog({ profiles }: Props) {
 
   const set = (key: string, value: string) => setForm(prev => ({ ...prev, [key]: value }));
 
+  const effectiveSector = lockedSector ?? form.sector;
+
   const handleSubmit = () => {
-    if (!form.title.trim() || !form.sector) return;
+    if (!form.title.trim() || !effectiveSector) return;
     createAutomation.mutate({
       title: form.title,
       description: form.description || null,
