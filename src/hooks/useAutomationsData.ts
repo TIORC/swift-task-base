@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { invalidateGamification } from "@/hooks/useGamification";
 import type {
   Automation,
   AutomationSubtask,
@@ -180,13 +181,26 @@ export function useCreateSubtask() {
 
 export function useUpdateSubtask() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   return useMutation({
     mutationFn: async ({ id, ...values }: Partial<AutomationSubtask> & { id: string }) => {
-      const { error } = await supabase.from("automation_subtasks").update(values as any).eq("id", id);
+      const payload: Record<string, unknown> = { ...values };
+      // Conclusão registra quem concluiu e quando (o XP é concedido pelo banco,
+      // apenas na primeira conclusão).
+      if (values.completed === true) {
+        payload.completed_at = new Date().toISOString();
+        payload.completed_by = user?.id ?? null;
+        payload.status = values.status ?? "done";
+      } else if (values.completed === false) {
+        payload.completed_at = null;
+        payload.status = values.status ?? "todo";
+      }
+      const { error } = await supabase.from("automation_subtasks").update(payload as any).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automation_subtasks"] });
+      invalidateGamification(qc);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -201,6 +215,7 @@ export function useDeleteSubtask() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automation_subtasks"] });
+      invalidateGamification(qc);
     },
     onError: (e: Error) => toast.error(e.message),
   });
