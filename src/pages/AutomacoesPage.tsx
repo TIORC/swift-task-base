@@ -37,7 +37,9 @@ export default function AutomacoesPage() {
   const [sectorFilter, setSectorFilter] = useState("all");
   const [selectedAutomation, setSelectedAutomation] = useState<Automation | null>(null);
 
-  const { canSeeAll, allowedSectors } = useSectorVisibility();
+  const { canSeeAll, allowedSectors, hasSector, ready: sectorsReady } = useSectorVisibility();
+  const lockSector = !canSeeAll;
+  const effectiveSectorFilter = lockSector && allowedSectors.length === 1 ? allowedSectors[0] : sectorFilter;
   const { allowedAutomationIds } = useMyAutomationVisibility();
 
   const profileMap = useMemo(() => {
@@ -67,13 +69,13 @@ export default function AutomacoesPage() {
       if (statusFilter !== "all" && a.status !== statusFilter) return false;
       if (priorityFilter !== "all" && a.priority !== priorityFilter) return false;
       if (assigneeFilter !== "all" && a.assigned_to !== assigneeFilter) return false;
-      if (sectorFilter !== "all") {
-        if (sectorFilter === "none" && a.sector) return false;
-        if (sectorFilter !== "none" && a.sector !== sectorFilter) return false;
+      if (effectiveSectorFilter !== "all") {
+        if (effectiveSectorFilter === "none" && a.sector) return false;
+        if (effectiveSectorFilter !== "none" && a.sector !== effectiveSectorFilter) return false;
       }
       return true;
     });
-  }, [visibleAutomations, search, statusFilter, priorityFilter, assigneeFilter, sectorFilter]);
+  }, [visibleAutomations, search, statusFilter, priorityFilter, assigneeFilter, effectiveSectorFilter]);
 
   // Alerts (somente bloqueios; atrasos/sem atualização foram removidos)
   const alerts = useMemo(() => {
@@ -98,10 +100,34 @@ export default function AutomacoesPage() {
 
   const isReadOnly = profile === "gestor";
 
-  if (isLoading) {
+  if (isLoading || !sectorsReady) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!canSeeAll && !hasSector) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Gestão de Automações"
+          description="Controle técnico e acompanhamento gerencial"
+          icon={<Zap className="h-6 w-6" />}
+        />
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardContent className="flex items-start gap-3 py-6">
+            <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium">Setor não definido</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Seu usuário ainda não está vinculado a um setor, por isso nenhuma automação pode ser
+                exibida. Peça a um administrador que defina seu setor na Administração de usuários.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -159,9 +185,10 @@ export default function AutomacoesPage() {
             onPriorityFilterChange={setPriorityFilter}
             assigneeFilter={assigneeFilter}
             onAssigneeFilterChange={setAssigneeFilter}
-            sectorFilter={sectorFilter}
+            sectorFilter={effectiveSectorFilter}
             onSectorFilterChange={setSectorFilter}
             availableSectors={canSeeAll ? undefined : allowedSectors}
+            lockSector={lockSector}
             profiles={profiles}
           />
 

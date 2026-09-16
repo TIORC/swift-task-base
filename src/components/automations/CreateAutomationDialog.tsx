@@ -9,6 +9,7 @@ import { Plus } from "lucide-react";
 import { useCreateAutomation } from "@/hooks/useAutomationsData";
 import { PRIORITY_OPTIONS, PRIORITY_LABELS, COMPLEXITY_OPTIONS, COMPLEXITY_LABELS } from "@/types/automation";
 import { SECTORS } from "@/types/sectors";
+import { useSectorVisibility } from "@/hooks/useUserSectors";
 
 interface Props {
   profiles: { id: string; full_name: string | null }[];
@@ -17,6 +18,9 @@ interface Props {
 export function CreateAutomationDialog({ profiles }: Props) {
   const [open, setOpen] = useState(false);
   const createAutomation = useCreateAutomation();
+  const { canSeeAll, allowedSectors } = useSectorVisibility();
+  const lockedSector = !canSeeAll && allowedSectors.length === 1 ? allowedSectors[0] : null;
+  const sectorOptions = canSeeAll ? [...SECTORS] : allowedSectors;
 
   const [form, setForm] = useState({
     title: "",
@@ -36,8 +40,10 @@ export function CreateAutomationDialog({ profiles }: Props) {
 
   const set = (key: string, value: string) => setForm(prev => ({ ...prev, [key]: value }));
 
+  const effectiveSector = lockedSector ?? form.sector;
+
   const handleSubmit = () => {
-    if (!form.title.trim() || !form.sector) return;
+    if (!form.title.trim() || !effectiveSector) return;
     createAutomation.mutate({
       title: form.title,
       description: form.description || null,
@@ -51,7 +57,7 @@ export function CreateAutomationDialog({ profiles }: Props) {
       automation_type: form.automation_type || null,
       estimated_hours: parseFloat(form.estimated_hours) || 0,
       final_deadline: form.final_deadline ? new Date(form.final_deadline).toISOString() : null,
-      sector: form.sector,
+      sector: effectiveSector,
     } as any, {
       onSuccess: () => {
         setOpen(false);
@@ -143,15 +149,19 @@ export function CreateAutomationDialog({ profiles }: Props) {
           </div>
           <div>
             <Label className="text-xs">Setor Vinculado *</Label>
-            <Select value={form.sector} onValueChange={v => set("sector", v)}>
+            <Select value={effectiveSector} onValueChange={v => set("sector", v)} disabled={!!lockedSector}>
               <SelectTrigger className="h-9 mt-1"><SelectValue placeholder="Selecionar setor" /></SelectTrigger>
               <SelectContent>
-                {SECTORS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                {sectorOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
-            <p className="text-[10px] text-muted-foreground mt-1">Define quais usuários podem visualizar esta automação.</p>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              {lockedSector
+                ? "Definido automaticamente pelo seu setor."
+                : "Define quais usuários podem visualizar esta automação."}
+            </p>
           </div>
-          <Button onClick={handleSubmit} className="w-full" disabled={!form.title.trim() || !form.sector || createAutomation.isPending}>
+          <Button onClick={handleSubmit} className="w-full" disabled={!form.title.trim() || !effectiveSector || createAutomation.isPending}>
             Criar Automação
           </Button>
         </div>

@@ -4,10 +4,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Loader2, Building2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Loader2, Building2, Globe } from "lucide-react";
 import { SECTORS } from "@/types/sectors";
-import { useUserSectors, useSetUserSectors } from "@/hooks/useUserSectors";
+import {
+  useUserSectors,
+  useSetUserSectors,
+  useUserGlobalSectorAccess,
+} from "@/hooks/useUserSectors";
 
 interface Props {
   open: boolean;
@@ -18,21 +22,30 @@ interface Props {
 
 export function UserSectorsDialog({ open, onOpenChange, userId, userEmail }: Props) {
   const { data: current = [], isLoading } = useUserSectors(open ? userId : null);
+  const { data: currentGlobal = false, isLoading: loadingGlobal } =
+    useUserGlobalSectorAccess(open ? userId : null);
   const setSectors = useSetUserSectors();
   const [selected, setSelected] = useState<string[]>([]);
+  const [globalAccess, setGlobalAccess] = useState(false);
 
   useEffect(() => {
     if (open) setSelected(current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, current.join("|")]);
 
+  useEffect(() => {
+    if (open) setGlobalAccess(currentGlobal);
+  }, [open, currentGlobal]);
+
   const toggle = (s: string) => {
     setSelected((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
   };
 
+  const invalid = !globalAccess && selected.length === 0;
+
   const handleSave = () => {
     setSectors.mutate(
-      { userId, sectors: selected },
+      { userId, sectors: selected, globalAccess, previousSectors: current },
       { onSuccess: () => onOpenChange(false) }
     );
   };
@@ -43,12 +56,23 @@ export function UserSectorsDialog({ open, onOpenChange, userId, userEmail }: Pro
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-primary" />
-            Setores Permitidos
+            Setor do usuário
           </DialogTitle>
           <DialogDescription>{userEmail}</DialogDescription>
         </DialogHeader>
 
-        {isLoading ? (
+        <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-3">
+          <Globe className="h-4 w-4 text-primary mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Ver automações de todos os setores</p>
+            <p className="text-[11px] text-muted-foreground">
+              Permissão global explícita (Diretoria, Qualidade/QA, TI).
+            </p>
+          </div>
+          <Switch checked={globalAccess} onCheckedChange={setGlobalAccess} />
+        </div>
+
+        {isLoading || loadingGlobal ? (
           <div className="flex justify-center py-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
@@ -69,14 +93,19 @@ export function UserSectorsDialog({ open, onOpenChange, userId, userEmail }: Pro
           </div>
         )}
 
+        {invalid && (
+          <p className="text-[11px] text-amber-500">
+            Selecione ao menos um setor ou habilite o acesso global.
+          </p>
+        )}
+
         <p className="text-[11px] text-muted-foreground">
           O usuário visualizará apenas automações dos setores marcados acima.
-          <strong> Admin</strong> e <strong>Gestor</strong> visualizam todas.
         </p>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={setSectors.isPending}>
+          <Button onClick={handleSave} disabled={setSectors.isPending || invalid}>
             {setSectors.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
             Salvar
           </Button>

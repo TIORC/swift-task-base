@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-import { useMySectors } from "@/hooks/useUserSectors";
+import { useSectorVisibility } from "@/hooks/useUserSectors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,7 +20,7 @@ import { toast } from "sonner";
 export function RequestAutomationDialog() {
   const { user } = useAuth();
   const { profile } = useProfile();
-  const { data: mySectors = [] } = useMySectors();
+  const { canSeeAll, allowedSectors: mySectors } = useSectorVisibility();
   const qc = useQueryClient();
 
   const [open, setOpen] = useState(false);
@@ -28,7 +28,10 @@ export function RequestAutomationDialog() {
   const [description, setDescription] = useState("");
   const [objective, setObjective] = useState("");
   const [priority, setPriority] = useState("medium");
-  const [sector, setSector] = useState<string>(mySectors[0] ?? "TI");
+  const [sector, setSector] = useState<string>("");
+  const lockedSector = !canSeeAll && mySectors.length === 1 ? mySectors[0] : null;
+  const sectorOptions = canSeeAll ? [...SECTORS] : mySectors;
+  const effectiveSector = lockedSector ?? (sector || sectorOptions[0] || "");
 
   const create = useMutation({
     mutationFn: async () => {
@@ -44,11 +47,11 @@ export function RequestAutomationDialog() {
           objective: objective.trim() || null,
           priority,
           status: "requested",
-          sector,
+          sector: effectiveSector,
           created_by: user.id,
           requester_id: user.id,
           requester: profile?.full_name || null,
-          requester_department: sector,
+          requester_department: effectiveSector,
         } as any)
         .select("id")
         .single();
@@ -101,10 +104,10 @@ export function RequestAutomationDialog() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Setor</Label>
-              <Select value={sector} onValueChange={setSector}>
+              <Select value={effectiveSector} onValueChange={setSector} disabled={!!lockedSector}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {SECTORS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  {sectorOptions.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
