@@ -47,11 +47,11 @@ export function RequestAutomationDialog() {
           objective: objective.trim() || null,
           priority,
           status: "requested",
-          sector,
+          sector: effectiveSector,
           created_by: user.id,
           requester_id: user.id,
           requester: profile?.full_name || null,
-          requester_department: sector,
+          requester_department: effectiveSector,
         } as any)
         .select("id")
         .single();
@@ -104,10 +104,10 @@ export function RequestAutomationDialog() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Setor</Label>
-              <Select value={sector} onValueChange={setSector}>
+              <Select value={effectiveSector} onValueChange={setSector} disabled={!!lockedSector}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {SECTORS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  {sectorOptions.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
