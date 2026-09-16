@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-import { useMySectors } from "@/hooks/useUserSectors";
+import { useSectorVisibility } from "@/hooks/useUserSectors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,7 +20,7 @@ import { toast } from "sonner";
 export function RequestAutomationDialog() {
   const { user } = useAuth();
   const { profile } = useProfile();
-  const { data: mySectors = [] } = useMySectors();
+  const { canSeeAll, allowedSectors: mySectors } = useSectorVisibility();
   const qc = useQueryClient();
 
   const [open, setOpen] = useState(false);
