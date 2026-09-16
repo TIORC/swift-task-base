@@ -100,10 +100,34 @@ export default function AutomacoesPage() {
 
   const isReadOnly = profile === "gestor";
 
-  if (isLoading) {
+  if (isLoading || !sectorsReady) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!canSeeAll && !hasSector) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Gestão de Automações"
+          description="Controle técnico e acompanhamento gerencial"
+          icon={<Zap className="h-6 w-6" />}
+        />
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardContent className="flex items-start gap-3 py-6">
+            <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium">Setor não definido</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Seu usuário ainda não está vinculado a um setor, por isso nenhuma automação pode ser
+                exibida. Peça a um administrador que defina seu setor na Administração de usuários.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
