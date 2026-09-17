@@ -129,7 +129,14 @@ export default function SocialTasks() {
     if (!data) return [];
     // Recurring templates are configuration records, not operational tasks.
     // Showing them here makes a completed occurrence look like it returned.
-    let list = data.filter(t => !(t as any).is_recurring_template);
+    // Protege contra registros repetidos vindos do backend/atualizações simultâneas
+    const seen = new Set<string>();
+    let list = data.filter(t => {
+      if ((t as any).is_recurring_template) return false;
+      if (seen.has(t.id)) return false;
+      seen.add(t.id);
+      return true;
+    });
     if (assigneeFilter === "mine") list = list.filter(t => t.assigned_to === user?.id);
     else if (assigneeFilter !== "all") list = list.filter(t => t.assigned_to === assigneeFilter);
     if (natureFilter !== "all") list = list.filter(t => ((t as any).nature ?? "avulsa") === natureFilter);
