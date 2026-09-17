@@ -170,8 +170,11 @@ export default function SocialTasks() {
   };
 
   const save = async () => {
+    if (saving) return;
     if (!form.title.trim()) return toast.error("Título obrigatório");
     if (saveAsTemplate && !templateName.trim()) return toast.error("Informe o nome do modelo");
+    setSaving(true);
+    try {
     // "YYYY-MM-DD" é interpretado como UTC pelo Date(); fixamos meio-dia local
     // para o prazo não voltar um dia no fuso do Brasil.
     const dueIso: string | null = form.due_date ? new Date(form.due_date + "T12:00:00").toISOString() : null;
@@ -553,7 +556,7 @@ export default function SocialTasks() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={save}>Criar</Button>
+            <Button onClick={save} disabled={saving}>{saving ? "Criando..." : "Criar"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
