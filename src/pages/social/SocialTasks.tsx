@@ -83,6 +83,7 @@ export default function SocialTasks() {
   const [newChecklistItem, setNewChecklistItem] = useState("");
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [templateName, setTemplateName] = useState("");
+  const [saving, setSaving] = useState(false);
 
   // Templates
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -218,6 +219,9 @@ export default function SocialTasks() {
     setDraftChecklist([]); setNewChecklistItem("");
     setSaveAsTemplate(false); setTemplateName("");
     refresh();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const del = async (id: string) => {
