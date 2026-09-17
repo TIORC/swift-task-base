@@ -83,6 +83,7 @@ export default function SocialTasks() {
   const [newChecklistItem, setNewChecklistItem] = useState("");
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [templateName, setTemplateName] = useState("");
+  const [saving, setSaving] = useState(false);
 
   // Templates
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -128,7 +129,14 @@ export default function SocialTasks() {
     if (!data) return [];
     // Recurring templates are configuration records, not operational tasks.
     // Showing them here makes a completed occurrence look like it returned.
-    let list = data.filter(t => !(t as any).is_recurring_template);
+    // Protege contra registros repetidos vindos do backend/atualizações simultâneas
+    const seen = new Set<string>();
+    let list = data.filter(t => {
+      if ((t as any).is_recurring_template) return false;
+      if (seen.has(t.id)) return false;
+      seen.add(t.id);
+      return true;
+    });
     if (assigneeFilter === "mine") list = list.filter(t => t.assigned_to === user?.id);
     else if (assigneeFilter !== "all") list = list.filter(t => t.assigned_to === assigneeFilter);
     if (natureFilter !== "all") list = list.filter(t => ((t as any).nature ?? "avulsa") === natureFilter);
@@ -170,8 +178,11 @@ export default function SocialTasks() {
   };
 
   const save = async () => {
+    if (saving) return;
     if (!form.title.trim()) return toast.error("Título obrigatório");
     if (saveAsTemplate && !templateName.trim()) return toast.error("Informe o nome do modelo");
+    setSaving(true);
+    try {
     // "YYYY-MM-DD" é interpretado como UTC pelo Date(); fixamos meio-dia local
     // para o prazo não voltar um dia no fuso do Brasil.
     const dueIso: string | null = form.due_date ? new Date(form.due_date + "T12:00:00").toISOString() : null;
@@ -215,6 +226,9 @@ export default function SocialTasks() {
     setDraftChecklist([]); setNewChecklistItem("");
     setSaveAsTemplate(false); setTemplateName("");
     refresh();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const del = async (id: string) => {
@@ -553,7 +567,7 @@ export default function SocialTasks() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={save}>Criar</Button>
+            <Button onClick={save} disabled={saving}>{saving ? "Criando..." : "Criar"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
