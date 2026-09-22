@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BLOCKER_TYPE_LABELS, computeHealthScore } from "@/types/automation";
 import { useSectorVisibility } from "@/hooks/useUserSectors";
 import { useMyAutomationVisibility } from "@/hooks/usePermissions";
+import { useIsAutomationRequester } from "@/hooks/useAutomationRequesters";
 
 export default function AutomacoesPage() {
   const { data: automations = [], isLoading } = useAutomations();
@@ -38,6 +39,7 @@ export default function AutomacoesPage() {
   const [selectedAutomation, setSelectedAutomation] = useState<Automation | null>(null);
 
   const { canSeeAll, allowedSectors, hasSector, ready: sectorsReady } = useSectorVisibility();
+  const { canRequest, isLoadingRequester } = useIsAutomationRequester();
   const lockSector = !canSeeAll;
   const effectiveSectorFilter = lockSector && allowedSectors.length === 1 ? allowedSectors[0] : sectorFilter;
   const { allowedAutomationIds } = useMyAutomationVisibility();
@@ -104,7 +106,7 @@ export default function AutomacoesPage() {
   const isTech = profile === "admin" || profile === "gestor" || profile === "lider" || roles.includes("dev");
   const isReadOnly = !isTech;
 
-  if (isLoading || !sectorsReady) {
+  if (isLoading || !sectorsReady || isLoadingRequester) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -146,7 +148,7 @@ export default function AutomacoesPage() {
         actions={
           <div className="flex items-center gap-2">
             <AutomationExport automations={filtered} profileMap={profileMap} blockerCounts={blockerCounts} />
-            <RequestAutomationDialog />
+            {canRequest && <RequestAutomationDialog />}
             {!isReadOnly && <CreateAutomationDialog profiles={profiles} />}
           </div>
         }

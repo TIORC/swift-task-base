@@ -61,10 +61,10 @@ BEGIN
     RAISE EXCEPTION 'Automação não encontrada';
   END IF;
 
-  UPDATE public.automations
+  UPDATE public.automations AS a
   SET title = _clean
   WHERE id = _automation_id
-  RETURNING to_jsonb(public.automations) INTO _result;
+  RETURNING to_jsonb(a) INTO _result;
 
   IF _result IS NULL THEN
     RAISE EXCEPTION 'Automação não encontrada';

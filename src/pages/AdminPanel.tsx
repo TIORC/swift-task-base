@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/PageHeader";
@@ -25,6 +25,7 @@ import {
 import { UserPermissionsDialog } from "@/components/UserPermissionsDialog";
 import { UserSectorsDialog } from "@/components/UserSectorsDialog";
 import { useAllUserSectors } from "@/hooks/useUserSectors";
+import { useAutomationRequesters } from "@/hooks/useAutomationRequesters";
 
 const SUPPORT_USERS_EMAILS = [
   "adalgiza.argolo@orcoma.com.br","adeir@orcoma.com.br","aelica.sampaio@orcoma.com.br","anderson.rocha@orcoma.com.br",
@@ -146,6 +147,11 @@ const AdminPanel = () => {
   const [sectorsUserId, setSectorsUserId] = useState("");
   const [sectorsUserEmail, setSectorsUserEmail] = useState("");
   const { data: sectorInfo } = useAllUserSectors();
+  const { data: requesterUsers = [] } = useAutomationRequesters();
+  const requesterIds = useMemo(
+    () => new Set(requesterUsers.map((r) => r.user_id)),
+    [requesterUsers],
+  );
 
   const loadUsers = useCallback(async () => {
     try {
@@ -393,6 +399,11 @@ const AdminPanel = () => {
                         </Badge>
                       )) : (
                         <Badge variant="outline" className="text-[10px]">Sem papel</Badge>
+                      )}
+                      {requesterIds.has(u.id) && (
+                        <Badge className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" title="Pode solicitar automações">
+                          Solicitante de automação
+                        </Badge>
                       )}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
