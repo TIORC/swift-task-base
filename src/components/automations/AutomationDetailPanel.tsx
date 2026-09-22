@@ -21,6 +21,7 @@ import {
 import { SECTORS } from "@/types/sectors";
 import { useUpdateAutomation } from "@/hooks/useAutomationsData";
 import { useAutomationSubtasks, useCreateSubtask, useUpdateSubtask, useDeleteSubtask } from "@/hooks/useAutomationsData";
+import { useAutomationScopeItems, useCreateScopeItem, useUpdateScopeItem, useDeleteScopeItem } from "@/hooks/useAutomationsData";
 import { useAutomationBlockers, useCreateBlocker, useResolveBlocker } from "@/hooks/useAutomationsData";
 import { useAutomationEvents } from "@/hooks/useAutomationsData";
 import { useAutomationTimeLogs, useCreateTimeLog } from "@/hooks/useAutomationsData";
@@ -33,7 +34,7 @@ import { ptBR } from "date-fns/locale";
 import {
   AlertTriangle, CheckCircle2, Clock, Code2, FileText, History,
   ListChecks, Lock, MessageSquare, Paperclip, Play, Plus, Save, Square, Timer, Trash2, X,
-  Sparkles, RefreshCcw, Unlock,
+  Sparkles, RefreshCcw, Unlock, Pencil, Link2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -63,11 +64,15 @@ interface Props {
 export function AutomationDetailPanel({ automation, open, onClose, profileMap, profiles, isReadOnly }: Props) {
   const updateAutomation = useUpdateAutomation();
   const { user } = useAuth();
-  const { profile } = useUserRole();
+  const { profile, roles } = useUserRole();
   const { data: subtasks = [] } = useAutomationSubtasks(automation?.id ?? null);
   const createSubtask = useCreateSubtask();
   const updateSubtask = useUpdateSubtask();
   const deleteSubtask = useDeleteSubtask();
+  const { data: scopeItems = [] } = useAutomationScopeItems(automation?.id ?? null);
+  const createScopeItem = useCreateScopeItem();
+  const updateScopeItem = useUpdateScopeItem();
+  const deleteScopeItem = useDeleteScopeItem();
   const { data: blockers = [] } = useAutomationBlockers(automation?.id ?? null);
   const createBlocker = useCreateBlocker();
   const resolveBlocker = useResolveBlocker();
@@ -76,6 +81,9 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
   const createTimeLog = useCreateTimeLog();
 
   const [newSubtask, setNewSubtask] = useState("");
+  const [newScopeItem, setNewScopeItem] = useState("");
+  const [editingScopeId, setEditingScopeId] = useState<string | null>(null);
+  const [editingScopeDraft, setEditingScopeDraft] = useState("");
   const [newBlockerType, setNewBlockerType] = useState("other");
   const [newBlockerDesc, setNewBlockerDesc] = useState("");
   const [timeMinutes, setTimeMinutes] = useState("");
@@ -84,10 +92,20 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
   if (!automation) return null;
 
   const a = automation;
-  // Somente TI/gestão ou o responsável técnico administram a automação.
-  // O solicitante acompanha, comenta e anexa arquivos, mas não edita campos administrativos.
-  const isTechTeam = ["admin", "gestor", "lider", "dev"].includes(profile || "");
-  const canManage = isTechTeam || a.assigned_to === user?.id || a.created_by === user?.id;
+
+  // ── Papéis ──
+  // Equipe técnica (dev) pode mudar status, tarefas, horas etc.
+  // Solicitante acompanha, comenta e gerencia o escopo (enquanto aberto).
+  const isTech = profile === "admin" || profile === "gestor" || profile === "lider" || roles.includes("dev");
+  // Somente admin/gestor reatribui o responsável da automação.
+  const canReassign = profile === "admin" || profile === "gestor";
+  const isSolicitante = !isTech;
+  // Itens de escopo: solicitante edita só quando status em Solicitação/Backlog;
+  // a equipe técnica também pode administrar o checklist.
+  const scopeOpenStatuses = ["requested", "backlog"] as AutomationStatus[];
+  const canEditScope = isSolicitante ? scopeOpenStatuses.includes(a.status) : isTech;
+
+  const canManage = isTech || a.assigned_to === user?.id || a.created_by === user?.id;
   const readOnly = !!isReadOnly || !canManage;
   const health = computeHealthScore(a);
   const prediction = computePrediction(a);
@@ -95,6 +113,14 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
   const handleUpdate = (values: Partial<Automation>) => {
     updateAutomation.mutate({ id: a.id, ...values });
   };
+
+  // ── Barras de progresso (separadas) ──
+  const scopeTotal = scopeItems.length;
+  const scopeDone = scopeItems.filter((i) => i.concluded).length;
+  const scopePct = scopeTotal ? Math.round((scopeDone / scopeTotal) * 100) : 0;
+  const execTotal = subtasks.length;
+  const execDone = subtasks.filter((t) => t.completed).length;
+  const execPct = execTotal ? Math.round((execDone / execTotal) * 100) : 0;
 
   const handleAddSubtask = () => {
     if (!newSubtask.trim()) return;
@@ -106,6 +132,24 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
     DEFAULT_SUBTASKS.forEach((title, i) => {
       createSubtask.mutate({ automation_id: a.id, title, sort_order: i });
     });
+  };
+
+  const handleAddScopeItem = () => {
+    if (!newScopeItem.trim()) return;
+    createScopeItem.mutate({ automation_id: a.id, description: newScopeItem.trim() });
+    setNewScopeItem("");
+  };
+
+  const startEditScope = (id: string, current: string) => {
+    setEditingScopeId(id);
+    setEditingScopeDraft(current);
+  };
+
+  const commitEditScope = (id: string) => {
+    const description = editingScopeDraft.trim();
+    if (!description) return;
+    updateScopeItem.mutate({ id, description });
+    setEditingScopeId(null);
   };
 
   const handleAddBlocker = () => {
@@ -150,17 +194,37 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
           <div className="flex items-center gap-3 mt-2 flex-wrap">
             <Badge className={STATUS_COLORS[a.status as AutomationStatus]}>{STATUS_LABELS[a.status as AutomationStatus]}</Badge>
             <span className={`text-xs font-medium ${prediction.color}`}>{prediction.label}</span>
-            <span className="text-xs text-muted-foreground">{a.progress_percent}%</span>
+            {a.assigned_to && (
+              <span className="text-xs text-muted-foreground">Responsável: {profileMap[a.assigned_to] || "—"}</span>
+            )}
           </div>
-          <Progress value={a.progress_percent} className="h-2 mt-2" />
+
+          {/* Duas barras separadas: Escopo e Execução */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+            <div>
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+                <span className="flex items-center gap-1"><ListChecks className="h-3 w-3" /> Escopo</span>
+                <span className="tabular-nums">{scopeDone}/{scopeTotal} • {scopePct}%</span>
+              </div>
+              <Progress value={scopePct} className="h-2" />
+            </div>
+            <div>
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+                <span className="flex items-center gap-1"><Code2 className="h-3 w-3" /> Execução</span>
+                <span className="tabular-nums">{execDone}/{execTotal} • {execPct}%</span>
+              </div>
+              <Progress value={execPct} className="h-2" />
+            </div>
+          </div>
         </DialogHeader>
 
         <Separator />
 
         <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="mx-4 mt-2 grid grid-cols-7 h-8">
+          <TabsList className="mx-4 mt-2 grid grid-cols-8 h-8">
             <TabsTrigger value="details" className="text-xs"><FileText className="h-3 w-3 mr-1" />Dados</TabsTrigger>
-            <TabsTrigger value="checklist" className="text-xs"><ListChecks className="h-3 w-3 mr-1" />Check</TabsTrigger>
+            <TabsTrigger value="escopo" className="text-xs"><ListChecks className="h-3 w-3 mr-1" />Escopo</TabsTrigger>
+            <TabsTrigger value="tarefas" className="text-xs"><Code2 className="h-3 w-3 mr-1" />Tarefas</TabsTrigger>
             <TabsTrigger value="comments" className="text-xs"><MessageSquare className="h-3 w-3 mr-1" />Chat</TabsTrigger>
             <TabsTrigger value="files" className="text-xs"><Paperclip className="h-3 w-3 mr-1" />Anexos</TabsTrigger>
             <TabsTrigger value="blockers" className="text-xs"><Lock className="h-3 w-3 mr-1" />Bloq.</TabsTrigger>
@@ -184,7 +248,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                 </div>
               )}
 
-              {!readOnly && (
+              {!readOnly && !isReadOnly && (
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -225,14 +289,19 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                     </div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground">Responsável</label>
-                      <Select value={a.assigned_to || ""} onValueChange={v => handleUpdate({ assigned_to: v || null })}>
-                        <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                        <SelectContent>
-                          {profiles.map(p => (
-                            <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {canReassign && !isReadOnly ? (
+                        <Select value={a.assigned_to || ""} onValueChange={v => handleUpdate({ assigned_to: v || null })}>
+                          <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                          <SelectContent>
+                            {profiles.map(p => (
+                              <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-sm mt-1.5 text-foreground">{a.assigned_to ? (profileMap[a.assigned_to] || "—") : "Não atribuído"}</p>
+                      )}
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Apenas admin/gestor reatribui responsável.</p>
                     </div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground">Complexidade (bônus de XP)</label>
@@ -264,7 +333,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
 
 
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">Progresso: {a.progress_percent}%</label>
+                    <label className="text-xs font-medium text-muted-foreground">Progresso manual da automação: {a.progress_percent}%</label>
                     <Slider
                       value={[a.progress_percent]}
                       onValueCommit={v => handleUpdate({ progress_percent: v[0] })}
@@ -345,11 +414,120 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
               </div>
             </TabsContent>
 
-            {/* ─── Checklist Tab ─── */}
-            <TabsContent value="checklist" className="mt-3 space-y-3">
-              {subtasks.length === 0 && !readOnly && (
+            {/* ─── Escopo Tab (checklist do solicitante) ─── */}
+            <TabsContent value="escopo" className="mt-3 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs text-muted-foreground">
+                  Barra de Escopo: <span className="tabular-nums text-foreground">{scopeDone}/{scopeTotal}</span> itens concluídos
+                </div>
+                <Progress value={scopePct} className="h-2 w-40" />
+              </div>
+
+              {isSolicitante && !canEditScope && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 rounded-lg bg-amber-500/10 px-3 py-2">
+                  O escopo só pode ser alterado enquanto a automação estiver em <b>Solicitada</b> ou <b>Backlog</b>.
+                </p>
+              )}
+              {!isSolicitante && (
+                <p className="text-[11px] text-muted-foreground rounded-lg bg-muted/40 px-3 py-2">
+                  Itens de escopo refletem o que o solicitante pediu. Um item só é concluído quando a tarefa técnica vinculada
+                  for finalizada pelo desenvolvedor.
+                </p>
+              )}
+
+              <div className="space-y-1.5">
+                {scopeItems.map(item => (
+                  <div key={item.id} className="flex items-center gap-2 group">
+                    <Checkbox
+                      checked={item.concluded}
+                      disabled
+                      title={item.concluded ? "Concluído pela tarefa técnica" : "Concluído automaticamente pela tarefa técnica"}
+                    />
+                    <div className="flex-1 min-w-0">
+                      {editingScopeId === item.id ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            autoFocus
+                            value={editingScopeDraft}
+                            onChange={(e) => setEditingScopeDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") commitEditScope(item.id);
+                              if (e.key === "Escape") setEditingScopeId(null);
+                            }}
+                            className="h-7 text-sm"
+                          />
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" onClick={() => commitEditScope(item.id)}>
+                            <Save className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" onClick={() => setEditingScopeId(null)}>
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className={`text-sm ${item.concluded ? "line-through text-muted-foreground" : ""}`}>{item.description}</span>
+                      )}
+                      <span className="block text-[10px] text-muted-foreground">
+                        Criado por {profileMap[item.created_by] || "Solicitante"}
+                        {item.concluded && " • Atendido"}
+                      </span>
+                    </div>
+                    {canEditScope && editingScopeId !== item.id && (
+                      <>
+                        <button
+                          onClick={() => startEditScope(item.id, item.description)}
+                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-opacity"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={() => deleteScopeItem.mutate(item.id)}
+                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+                {scopeItems.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-3">Nenhum item de escopo cadastrado.</p>
+                )}
+              </div>
+
+              {canEditScope && (
+                <div className="flex gap-2">
+                  <Input
+                    value={newScopeItem}
+                    onChange={e => setNewScopeItem(e.target.value)}
+                    placeholder="Novo item de escopo (o que você espera que seja entregue)..."
+                    className="h-8"
+                    onKeyDown={e => e.key === "Enter" && handleAddScopeItem()}
+                  />
+                  <Button size="sm" onClick={handleAddScopeItem} className="h-8" disabled={!newScopeItem.trim()}>
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* ─── Tarefas Tab (do desenvolvedor) ─── */}
+            <TabsContent value="tarefas" className="mt-3 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs text-muted-foreground">
+                  Barra de Execução: <span className="tabular-nums text-foreground">{execDone}/{execTotal}</span> tarefas concluídas
+                </div>
+                <Progress value={execPct} className="h-2 w-40" />
+              </div>
+
+              {isSolicitante && (
+                <p className="text-[11px] text-muted-foreground rounded-lg bg-muted/40 px-3 py-2">
+                  Acompanhe aqui as tarefas técnicas. Só o desenvolvedor cria e conclui tarefas.
+                </p>
+              )}
+
+              {!readOnly && execTotal === 0 && (
                 <Button variant="outline" size="sm" onClick={handleAddDefaultSubtasks} className="w-full">
-                  <Plus className="h-3 w-3 mr-1" /> Adicionar checklist padrão
+                  <Plus className="h-3 w-3 mr-1" /> Adicionar checklist padrão de tarefas
                 </Button>
               )}
 
@@ -358,7 +536,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                   <div key={st.id} className="flex items-center gap-2 group">
                     <Checkbox
                       checked={st.completed}
-                      disabled={readOnly}
+                      disabled={readOnly || isSolicitante}
                       onCheckedChange={v => updateSubtask.mutate({ id: st.id, completed: !!v, automation_id: st.automation_id })}
                     />
                     <div className="flex-1 min-w-0">
@@ -370,6 +548,27 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                         </span>
                       )}
                     </div>
+                    {!readOnly && (
+                      <Select
+                        value={st.item_escopo_id || "none"}
+                        onValueChange={v => updateSubtask.mutate({ id: st.id, automation_id: st.automation_id, item_escopo_id: v === "none" ? null : v })}
+                      >
+                        <SelectTrigger className="h-7 w-[150px] text-[10px]" title="Vincular item de escopo">
+                          <SelectValue placeholder="Sem escopo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sem escopo</SelectItem>
+                          {scopeItems.map(si => (
+                            <SelectItem key={si.id} value={si.id}>{si.description}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    {st.item_escopo_id && readOnly && (
+                      <Badge variant="outline" className="text-[10px] gap-1 max-w-[150px] truncate">
+                        <Link2 className="h-2.5 w-2.5 shrink-0" />{scopeItems.find(si => si.id === st.item_escopo_id)?.description || "Escopo"}
+                      </Badge>
+                    )}
                     {!readOnly && (
                       <Input
                         type="date"
@@ -394,15 +593,9 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
 
               {!readOnly && (
                 <div className="flex gap-2">
-                  <Input value={newSubtask} onChange={e => setNewSubtask(e.target.value)} placeholder="Nova subtarefa..." className="h-8" onKeyDown={e => e.key === "Enter" && handleAddSubtask()} />
-                  <Button size="sm" onClick={handleAddSubtask} className="h-8"><Plus className="h-3 w-3" /></Button>
+                  <Input value={newSubtask} onChange={e => setNewSubtask(e.target.value)} placeholder="Nova tarefa técnica..." className="h-8" onKeyDown={e => e.key === "Enter" && handleAddSubtask()} />
+                  <Button size="sm" onClick={handleAddSubtask} className="h-8" disabled={!newSubtask.trim()}><Plus className="h-3 w-3" /></Button>
                 </div>
-              )}
-
-              {subtasks.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {subtasks.filter(s => s.completed).length}/{subtasks.length} concluídas
-                </p>
               )}
             </TabsContent>
 

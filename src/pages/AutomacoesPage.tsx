@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Loader2, Zap, AlertTriangle } from "lucide-react";
-import { useAutomations, useAllBlockers, useUpdateAutomation } from "@/hooks/useAutomationsData";
+import { useAutomations, useAllBlockers, useUpdateAutomation, useCanRenameAutomation } from "@/hooks/useAutomationsData";
 import { useAssignableProfiles } from "@/hooks/useTasks";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,7 +14,6 @@ import { AutomationMetrics } from "@/components/automations/AutomationMetrics";
 import { CreateAutomationDialog } from "@/components/automations/CreateAutomationDialog";
 import { RequestAutomationDialog } from "@/components/automations/RequestAutomationDialog";
 import { AutomationExport } from "@/components/automations/AutomationExport";
-import { WipControl } from "@/components/automations/WipControl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,8 +26,9 @@ export default function AutomacoesPage() {
   const { data: profiles = [] } = useAssignableProfiles();
   const { data: activeBlockers = [] } = useAllBlockers();
   const updateAutomation = useUpdateAutomation();
-  const { profile } = useUserRole();
+  const { profile, roles } = useUserRole();
   const { user } = useAuth();
+  const canEditTitle = useCanRenameAutomation();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -68,7 +68,8 @@ export default function AutomacoesPage() {
       if (search && !a.title.toLowerCase().includes(search.toLowerCase())) return false;
       if (statusFilter !== "all" && a.status !== statusFilter) return false;
       if (priorityFilter !== "all" && a.priority !== priorityFilter) return false;
-      if (assigneeFilter !== "all" && a.assigned_to !== assigneeFilter) return false;
+      if (assigneeFilter === "none" && a.assigned_to) return false;
+      if (assigneeFilter !== "all" && assigneeFilter !== "none" && a.assigned_to !== assigneeFilter) return false;
       if (effectiveSectorFilter !== "all") {
         if (effectiveSectorFilter === "none" && a.sector) return false;
         if (effectiveSectorFilter !== "none" && a.sector !== effectiveSectorFilter) return false;
@@ -98,7 +99,10 @@ export default function AutomacoesPage() {
     updateAutomation.mutate({ id, status: newStatus } as any);
   };
 
-  const isReadOnly = profile === "gestor";
+  // Equipe técnica = admin/gestor/líder ou papel "dev".
+  // Voluntários de nível "membro" (solicitantes) acompanham sem editar o kanban.
+  const isTech = profile === "admin" || profile === "gestor" || profile === "lider" || roles.includes("dev");
+  const isReadOnly = !isTech;
 
   if (isLoading || !sectorsReady) {
     return (
@@ -163,9 +167,6 @@ export default function AutomacoesPage() {
       {/* Summary Cards */}
       <AutomationSummaryCards automations={visibleAutomations} />
 
-      {/* WIP Control */}
-      <WipControl automations={visibleAutomations} profileMap={profileMap} wipLimit={3} />
-
       {/* Main Content with Tabs */}
       <Tabs defaultValue="board" className="space-y-4">
         <TabsList>
@@ -200,6 +201,7 @@ export default function AutomacoesPage() {
             blockerCounts={blockerCounts}
             onStatusChange={isReadOnly ? undefined : handleStatusChange}
             isReadOnly={isReadOnly}
+            canEditTitle={canEditTitle}
           />
         </TabsContent>
 

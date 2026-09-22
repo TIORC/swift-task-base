@@ -1,11 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useProfile } from "@/hooks/useProfile";
 import { toast } from "sonner";
 import { invalidateGamification } from "@/hooks/useGamification";
+import { STATUS_LABELS } from "@/types/automation";
 import type {
   Automation,
   AutomationSubtask,
+  AutomationScopeItem,
   AutomationBlocker,
   AutomationEvent,
   AutomationTimeLog,
@@ -40,6 +44,43 @@ async function notifyGestors(automationTitle: string, action: string, actorId: s
     }
   } catch (err) {
     console.error("Erro ao notificar gestores:", err);
+  }
+}
+
+// Notifica o solicitante (requester_id) da automação sobre uma mudança relevante.
+async function notifyRequester(automationId: string, message: string, actorId: string) {
+  try {
+    const { data: auto } = await supabase
+      .from("automations")
+      .select("requester_id")
+      .eq("id", automationId)
+      .single();
+
+    if (!auto?.requester_id || auto.requester_id === actorId) return;
+
+    await supabase.from("notifications").insert({
+      user_id: auto.requester_id,
+      type: "automation_update",
+      message,
+      created_by: actorId,
+    });
+  } catch (err) {
+    console.error("Erro ao notificar solicitante:", err);
+  }
+}
+
+// Notifica o desenvolvedor designado quando a automação é atribuída a ele.
+async function notifyAssignedDev(automationTitle: string, assigneeId: string, actorId: string) {
+  try {
+    if (!assigneeId || assigneeId === actorId) return;
+    await supabase.from("notifications").insert({
+      user_id: assigneeId,
+      type: "automation_assigned",
+      message: `A automação "${automationTitle}" foi atribuída a você.`,
+      created_by: actorId,
+    });
+  } catch (err) {
+    console.error("Erro ao notificar responsável:", err);
   }
 }
 
@@ -98,7 +139,7 @@ export function useUpdateAutomation() {
   return useMutation({
     mutationFn: async ({ id, ...values }: Partial<Automation> & { id: string }) => {
       // Fetch current automation for notification context
-      const { data: current } = await supabase.from("automations").select("title, status, assigned_to").eq("id", id).single();
+      const { data: current } = await supabase.from("automations").select("title, status, assigned_to, requester_id").eq("id", id).single();
 
       const { error } = await supabase.from("automations").update(values as any).eq("id", id);
       if (error) throw error;
@@ -114,10 +155,24 @@ export function useUpdateAutomation() {
           metadata: { new_status: values.status },
         } as any);
         changes.push(`movida para ${values.status}`);
+
+        // Notifica o solicitante sobre a mudança de status.
+        if (current?.requester_id && user) {
+          await notifyRequester(
+            id,
+            `A automação "${current.title || "Sua solicitação"}" mudou de status para "${STATUS_LABELS[values.status as keyof typeof STATUS_LABELS] || values.status}".`,
+            user.id,
+          );
+        }
       }
 
       if (values.assigned_to !== undefined && values.assigned_to !== current?.assigned_to) {
         changes.push("teve o responsável alterado");
+
+        // Notifica o dev designado (se for uma reatribuição feita por terceiros).
+        if (user && values.assigned_to) {
+          await notifyAssignedDev(current?.title || "Automação", values.assigned_to, user.id);
+        }
       }
 
       const title = current?.title || "Automação";
@@ -143,6 +198,46 @@ export function useDeleteAutomation() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automations"] });
       toast.success("Automação removida!");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// ─── Rename title ───
+
+const AUTOMATION_TITLE_EDITORS = ["timaracas", "gabriel anacleto", "welder"];
+
+export function canRenameAutomationName(fullName: string | null | undefined): boolean {
+  if (!fullName) return false;
+  const name = fullName.toLowerCase();
+  return AUTOMATION_TITLE_EDITORS.some((editor) => name === editor || name.startsWith(editor + " "));
+}
+
+export function useCanRenameAutomation(): boolean {
+  const { user } = useAuth();
+  const { profile } = useUserRole();
+  const { profile: userProfile } = useProfile();
+
+  if (!user) return false;
+  if (profile === "admin" || profile === "gestor" || profile === "lider") return true;
+  return canRenameAutomationName(userProfile?.full_name);
+}
+
+export function useRenameAutomation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, title }: { id: string; title: string }) => {
+      const { data, error } = await supabase.rpc("rename_automation", {
+        _automation_id: id,
+        _new_title: title,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["automations"] });
+      qc.invalidateQueries({ queryKey: ["automation_events"] });
+      toast.success("Título atualizado com sucesso!");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -186,6 +281,24 @@ export function useUpdateSubtask() {
   return useMutation({
     mutationFn: async ({ id, ...values }: Partial<AutomationSubtask> & { id: string }) => {
       const payload: Record<string, unknown> = { ...values };
+
+      let wasNewlyCompleted = false;
+      let linkedEscopoId: string | null = null;
+      let automationId: string | null = null;
+      let taskTitle = "";
+
+      if (values.completed !== undefined) {
+        const { data: prev } = await supabase
+          .from("automation_subtasks")
+          .select("completed, item_escopo_id, automation_id, title")
+          .eq("id", id)
+          .single();
+        linkedEscopoId = (prev?.item_escopo_id as string) ?? null;
+        automationId = (prev?.automation_id as string) ?? null;
+        taskTitle = (prev?.title as string) ?? "";
+        wasNewlyCompleted = values.completed === true && prev?.completed === false;
+      }
+
       // Conclusão registra quem concluiu e quando (o XP é concedido pelo banco,
       // apenas na primeira conclusão).
       if (values.completed === true) {
@@ -198,9 +311,36 @@ export function useUpdateSubtask() {
       }
       const { error } = await supabase.from("automation_subtasks").update(payload as any).eq("id", id);
       if (error) throw error;
+
+      // Primeira conclusão: conclui o item de escopo vinculado, registra
+      // timeline e notifica o solicitante.
+      if (wasNewlyCompleted && automationId) {
+        if (linkedEscopoId) {
+          await (supabase as any)
+            .from("automation_scope_items")
+            .update({ concluded: true })
+            .eq("id", linkedEscopoId);
+        }
+
+        await supabase.from("automation_events").insert({
+          automation_id: automationId,
+          event_type: "subtask_completed",
+          description: `Tarefa concluída: ${taskTitle || "etapa"}`,
+          user_id: user!.id,
+        } as any);
+
+        if (user) {
+          await notifyRequester(
+            automationId,
+            `A tarefa "${taskTitle || "etapa"}" foi concluída na automação.`,
+            user.id,
+          );
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automation_subtasks"] });
+      qc.invalidateQueries({ queryKey: ["automation_scope_items"] });
       invalidateGamification(qc);
     },
     onError: (e: Error) => toast.error(e.message),
@@ -219,6 +359,104 @@ export function useDeleteSubtask() {
       invalidateGamification(qc);
     },
     onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// ─── Scope Items (checklist do solicitante) ───
+
+export function useAutomationScopeItems(automationId: string | null) {
+  return useQuery({
+    queryKey: ["automation_scope_items", automationId],
+    enabled: !!automationId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("automation_scope_items")
+        .select("*")
+        .eq("automation_id", automationId!)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data || []) as AutomationScopeItem[];
+    },
+  });
+}
+
+export function useCreateScopeItem() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (values: Partial<AutomationScopeItem>) => {
+      const { error } = await (supabase as any)
+        .from("automation_scope_items")
+        .insert({ ...values, created_by: user!.id });
+      if (error) throw error;
+    },
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ["automation_scope_items", v.automation_id] });
+      qc.invalidateQueries({ queryKey: ["automation_scope_items", "all-counts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useUpdateScopeItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...values }: Partial<AutomationScopeItem> & { id: string }) => {
+      const { error } = await (supabase as any)
+        .from("automation_scope_items")
+        .update(values)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["automation_scope_items"] });
+      qc.invalidateQueries({ queryKey: ["automation_scope_items", "all-counts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useDeleteScopeItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from("automation_scope_items")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["automation_scope_items"] });
+      qc.invalidateQueries({ queryKey: ["automation_scope_items", "all-counts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export interface ScopeCountsInfo {
+  total: number;
+  done: number;
+}
+
+/** Itens de escopo concluídos por automação (Barra de Escopo nos cards). */
+export function useAllAutomationScopeCounts() {
+  return useQuery({
+    queryKey: ["automation_scope_items", "all-counts"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("automation_scope_items")
+        .select("automation_id, concluded");
+      if (error) throw error;
+      const map: Record<string, ScopeCountsInfo> = {};
+      ((data || []) as { automation_id: string; concluded: boolean }[]).forEach((s) => {
+        if (!map[s.automation_id]) map[s.automation_id] = { total: 0, done: 0 };
+        map[s.automation_id].total += 1;
+        if (s.concluded) map[s.automation_id].done += 1;
+      });
+      return map;
+    },
+    staleTime: 30_000,
   });
 }
 

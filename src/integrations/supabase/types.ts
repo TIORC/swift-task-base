@@ -3085,6 +3085,10 @@ export type Database = {
         Args: { _automation_id: string; _user: string }
         Returns: boolean
       }
+      can_edit_automation_title: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       can_view_automation: {
         Args: { _automation_id: string; _user: string }
         Returns: boolean
@@ -3141,6 +3145,10 @@ export type Database = {
         Returns: boolean
       }
       user_client_ids: { Args: { _user_id: string }; Returns: string[] }
+      rename_automation: {
+        Args: { _automation_id: string; _new_title: string }
+        Returns: Json
+      }
       user_sector_codes: { Args: { _user_id: string }; Returns: string[] }
     }
     Enums: {

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Automation,
   STATUS_LABELS, STATUS_COLORS,
@@ -9,9 +10,10 @@ import { SECTOR_COLORS } from "@/types/sectors";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Clock, Lock, User, Timer, Play, Square, Building2,
-  ListTodo, MessageSquare, Activity, CalendarClock,
+  ListChecks, Code2, MessageSquare, Activity, CalendarClock, Pencil, Check, X,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -20,6 +22,8 @@ import {
   useLatestAutomationEvents,
   useLatestAutomationComments,
   useAllAutomationSteps,
+  useAllAutomationScopeCounts,
+  useRenameAutomation,
 } from "@/hooks/useAutomationsData";
 import { useGlobalTimer } from "@/hooks/useGlobalTimer";
 import { formatMinutes, formatTime } from "@/hooks/useTimeTracker";
@@ -30,6 +34,7 @@ interface Props {
   profileName?: string;
   profileMap?: Record<string, string>;
   pendingCount?: number;
+  canEditTitle?: boolean;
 }
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -46,12 +51,17 @@ function eventLabel(t: string) {
   return EVENT_TYPE_LABELS[t] || t.replace(/_/g, " ");
 }
 
-export function AutomationCard({ automation: a, onClick, profileName, profileMap, pendingCount = 0 }: Props) {
+export function AutomationCard({ automation: a, onClick, profileName, profileMap, pendingCount = 0, canEditTitle }: Props) {
   const { data: totals } = useAutomationTotalMinutes();
   const { data: latestEvents } = useLatestAutomationEvents();
   const { data: latestComments } = useLatestAutomationComments();
   const { data: steps } = useAllAutomationSteps();
+  const { data: scopeCounts } = useAllAutomationScopeCounts();
   const { activeAutomationId, isRunning, elapsed, startAutomation, stop } = useGlobalTimer();
+  const renameAutomation = useRenameAutomation();
+
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(a.title);
 
   const isTimerOnThis = isRunning && activeAutomationId === a.id;
   const baseMinutes = totals?.[a.id] || 0;
@@ -63,6 +73,9 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
   const lastEvent = latestEvents?.[a.id];
   const lastComment = latestComments?.[a.id];
   const step = steps?.[a.id];
+  const scope = scopeCounts?.[a.id];
+  const scopePct = scope && scope.total ? Math.round((scope.done / scope.total) * 100) : 0;
+  const execPct = step && step.total ? Math.round((step.done / step.total) * 100) : 0;
   const prediction = computePrediction(a);
 
   const lastEventAuthor = lastEvent ? profileMap?.[lastEvent.user_id] : null;
@@ -79,6 +92,23 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
     return candidates[0];
   })();
 
+  const cancelTitleEdit = () => {
+    setEditingTitle(false);
+    setDraftTitle(a.title);
+  };
+
+  const commitTitle = () => {
+    const title = draftTitle.trim();
+    if (!title || title === a.title) {
+      cancelTitleEdit();
+      return;
+    }
+    renameAutomation.mutate(
+      { id: a.id, title },
+      { onSuccess: () => setEditingTitle(false), onError: () => cancelTitleEdit() },
+    );
+  };
+
   return (
     <div
       onClick={onClick}
@@ -91,9 +121,55 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
     >
       {/* Title */}
       <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
-        <h4 className="text-sm font-medium text-foreground leading-snug flex-1 min-w-0 break-words whitespace-normal">
-          {a.title}
-        </h4>
+        {canEditTitle && editingTitle ? (
+          <div
+            className="flex items-center gap-1 flex-1 min-w-0"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <Input
+              autoFocus
+              value={draftTitle}
+              onChange={(e) => setDraftTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitTitle();
+                if (e.key === "Escape") cancelTitleEdit();
+              }}
+              className="h-7 text-sm"
+            />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 w-7 p-0 shrink-0"
+              onClick={commitTitle}
+              disabled={renameAutomation.isPending || !draftTitle.trim()}
+            >
+              <Check className="h-3.5 w-3.5" />
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" onClick={cancelTitleEdit}>
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <>
+            <h4 className="text-sm font-medium text-foreground leading-snug flex-1 min-w-0 break-words whitespace-normal">
+              {a.title}
+            </h4>
+            {canEditTitle && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDraftTitle(a.title);
+                  setEditingTitle(true);
+                }}
+                className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0 mt-0.5 transition-colors"
+                title="Renomear automação"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            )}
+          </>
+        )}
         {isBlocked && <Lock className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />}
       </div>
 
@@ -123,20 +199,32 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
         )}
       </div>
 
-      {/* Etapa atual + progresso */}
-      <div className="mb-2">
-        <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1 gap-2">
-          <div className="flex items-center gap-1 min-w-0">
-            <ListTodo className="h-3 w-3 shrink-0" />
-            <span className="break-words whitespace-normal">
-              {step ? step.title : "Sem etapas"}
+      {/* Barras separadas: Escopo e Execução */}
+      <div className="space-y-1.5 mb-2">
+        <div>
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1 gap-2">
+            <div className="flex items-center gap-1 min-w-0">
+              <ListChecks className="h-3 w-3 shrink-0" />
+              <span className="truncate">Escopo</span>
+            </div>
+            <span className="tabular-nums shrink-0">
+              {scope ? `${scope.done}/${scope.total}` : "0/0"}
             </span>
           </div>
-          <span className="tabular-nums shrink-0">
-            {step ? `${step.done}/${step.total}` : `${a.progress_percent}%`}
-          </span>
+          <Progress value={scopePct} className="h-1.5" />
         </div>
-        <Progress value={a.progress_percent} className="h-1.5" />
+        <div>
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1 gap-2">
+            <div className="flex items-center gap-1 min-w-0">
+              <Code2 className="h-3 w-3 shrink-0" />
+              <span className="truncate">Execução</span>
+            </div>
+            <span className="tabular-nums shrink-0">
+              {step ? `${step.done}/${step.total}` : "0/0"}
+            </span>
+          </div>
+          <Progress value={execPct} className="h-1.5" />
+        </div>
       </div>
 
       {/* Tempo trabalhado */}

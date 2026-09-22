@@ -60,9 +60,30 @@ export function useCreateAutomationComment() {
       // Get automation title for notification
       const { data: auto } = await supabase
         .from("automations")
-        .select("title")
+        .select("title, requester_id, assigned_to")
         .eq("id", automationId)
         .single();
+
+      // Notifica a outra parte (dev ⇄ solicitante):
+      // - se quem comentou é o solicitante, avisa o dev responsável;
+      // - se quem comentou é o dev/equipe, avisa o solicitante.
+      const isRequesterAuthor = auto?.requester_id === user.id;
+      const targetUserId = isRequesterAuthor ? auto?.assigned_to : auto?.requester_id;
+
+      if (targetUserId && targetUserId !== user.id) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", user.id)
+          .single();
+        const senderName = profile?.full_name || user.email || "Alguém";
+        await supabase.from("notifications").insert({
+          user_id: targetUserId,
+          type: "automation_comment",
+          message: `${senderName} comentou em "${auto?.title || "uma automação"}"`,
+          created_by: user.id,
+        });
+      }
 
       if (mentions.length > 0) {
         const { data: profile } = await supabase

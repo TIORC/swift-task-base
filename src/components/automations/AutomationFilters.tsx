@@ -1,8 +1,7 @@
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search } from "lucide-react";
-import { AUTOMATION_STATUSES, STATUS_LABELS, STATUS_COLORS, PRIORITY_OPTIONS, PRIORITY_LABELS, AutomationStatus } from "@/types/automation";
+import { PRIORITY_OPTIONS, PRIORITY_LABELS } from "@/types/automation";
 import { SECTORS } from "@/types/sectors";
 
 interface Props {
@@ -32,26 +31,6 @@ export function AutomationFilters({
   const sectorOptions = availableSectors && availableSectors.length > 0 ? availableSectors : SECTORS;
   return (
     <div className="space-y-3">
-      {/* Quick status chips */}
-      <div className="flex flex-wrap gap-1.5">
-        <Badge
-          variant={statusFilter === "all" ? "default" : "outline"}
-          className="cursor-pointer text-xs"
-          onClick={() => onStatusFilterChange("all")}
-        >
-          Todas
-        </Badge>
-        {AUTOMATION_STATUSES.filter(s => s !== "cancelled").map(s => (
-          <Badge
-            key={s}
-            variant={statusFilter === s ? "default" : "outline"}
-            className={`cursor-pointer text-xs ${statusFilter === s ? "" : STATUS_COLORS[s]}`}
-            onClick={() => onStatusFilterChange(s)}
-          >
-            {STATUS_LABELS[s]}
-          </Badge>
-        ))}
-      </div>
 
       {/* Search + dropdowns */}
       <div className="flex flex-wrap gap-2">
@@ -83,6 +62,7 @@ export function AutomationFilters({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="none">Sem responsável</SelectItem>
             {profiles.map(p => (
               <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>
             ))}

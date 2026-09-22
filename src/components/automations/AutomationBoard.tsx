@@ -21,9 +21,10 @@ interface Props {
   blockerCounts?: Record<string, number>;
   onStatusChange?: (id: string, newStatus: AutomationStatus) => void;
   isReadOnly?: boolean;
+  canEditTitle?: boolean;
 }
 
-export function AutomationBoard({ automations, onSelect, profileMap, blockerCounts, onStatusChange, isReadOnly }: Props) {
+export function AutomationBoard({ automations, onSelect, profileMap, blockerCounts, onStatusChange, isReadOnly, canEditTitle }: Props) {
   const [viewMode, setViewMode] = useState<"board" | "list">("board");
   const [pendingMove, setPendingMove] = useState<{ id: string; status: AutomationStatus } | null>(null);
   const [reason, setReason] = useState<PendingReason>("approval");
@@ -77,56 +78,63 @@ export function AutomationBoard({ automations, onSelect, profileMap, blockerCoun
 
       {viewMode === "board" ? (
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="overflow-x-auto pb-8">
-            <div className="grid grid-flow-col auto-cols-[min(86vw,340px)] sm:auto-cols-[320px] lg:auto-cols-[300px] xl:auto-cols-[280px] items-start gap-3 min-w-max">
-              {BOARD_COLUMNS.map(col => {
-                const items = automations.filter(a => a.status === col);
-                return (
-                  <Droppable key={col} droppableId={col} isDropDisabled={isReadOnly}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={`min-w-0 rounded-lg transition-colors ${snapshot.isDraggingOver ? "bg-primary/5" : ""}`}
-                      >
-                        <div className="flex items-center justify-between mb-2 px-1 gap-1">
-                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider break-words">
-                            {STATUS_LABELS[col]}
-                          </span>
-                          <Badge variant="secondary" className="text-[10px] h-5 shrink-0">{items.length}</Badge>
+          <div className="relative">
+            <div className="scrollbar-thin overflow-x-auto pb-4">
+              <div className="flex gap-3 items-start w-max">
+                {BOARD_COLUMNS.map(col => {
+                  const items = automations.filter(a => a.status === col);
+                  return (
+                    <Droppable key={col} droppableId={col} isDropDisabled={isReadOnly}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className={`w-[300px] shrink-0 max-h-[620px] flex flex-col overflow-hidden rounded-lg border transition-colors ${snapshot.isDraggingOver ? "bg-primary/5 border-primary/20" : "border-border/60 bg-card/30"}`}
+                        >
+                          {/* Cabeçalho fixo da coluna */}
+                          <div className="flex items-center justify-between px-1 pb-2 gap-1 flex-shrink-0 sticky top-0 z-10 bg-inherit">
+                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider break-words">
+                              {STATUS_LABELS[col]}
+                            </span>
+                            <Badge variant="secondary" className="text-[10px] h-5 shrink-0">{items.length}</Badge>
+                          </div>
+                          {/* Cards com scroll vertical independente */}
+                          <div className="scrollbar-thin flex-1 overflow-y-auto min-h-[140px] space-y-2 pr-1">
+                            {items.map((a, index) => (
+                              <Draggable key={a.id} draggableId={a.id} index={index} isDragDisabled={isReadOnly}>
+                                {(dragProvided, dragSnapshot) => (
+                                  <div
+                                    ref={dragProvided.innerRef}
+                                    {...dragProvided.draggableProps}
+                                    {...dragProvided.dragHandleProps}
+                                    className={`mx-0.5 ${dragSnapshot.isDragging ? "opacity-80" : ""}`}
+                                  >
+                                    <AutomationCard
+                                      automation={a}
+                                      onClick={() => onSelect(a)}
+                                      profileName={a.assigned_to ? profileMap[a.assigned_to] : undefined}
+                                      profileMap={profileMap}
+                                      pendingCount={blockerCounts?.[a.id] || 0}
+                                      canEditTitle={canEditTitle}
+                                    />
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                            {items.length === 0 && (
+                              <div className="text-center py-8 text-xs text-muted-foreground">Nenhuma</div>
+                            )}
+                          </div>
                         </div>
-                        <div className="space-y-2 pb-6">
-                          {items.map((a, index) => (
-                            <Draggable key={a.id} draggableId={a.id} index={index} isDragDisabled={isReadOnly}>
-                              {(dragProvided, dragSnapshot) => (
-                                <div
-                                  ref={dragProvided.innerRef}
-                                  {...dragProvided.draggableProps}
-                                  {...dragProvided.dragHandleProps}
-                                  className={dragSnapshot.isDragging ? "opacity-80" : ""}
-                                >
-                                  <AutomationCard
-                                    automation={a}
-                                    onClick={() => onSelect(a)}
-                                    profileName={a.assigned_to ? profileMap[a.assigned_to] : undefined}
-                                    profileMap={profileMap}
-                                    pendingCount={blockerCounts?.[a.id] || 0}
-                                  />
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                          {items.length === 0 && (
-                            <div className="text-center py-8 text-xs text-muted-foreground">Nenhuma</div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </Droppable>
-                );
-              })}
+                      )}
+                    </Droppable>
+                  );
+                })}
+              </div>
             </div>
+            {/* Indicador sutil de mais colunas à direita */}
+            <div className="pointer-events-none absolute right-0 top-0 bottom-4 w-6 bg-gradient-to-l from-background/70 to-transparent z-[5]" />
           </div>
         </DragDropContext>
       ) : (
