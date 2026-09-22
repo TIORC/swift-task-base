@@ -89,7 +89,7 @@ export function AutomationBoard({ automations, onSelect, profileMap, blockerCoun
                         <div
                           ref={provided.innerRef}
                           {...provided.droppableProps}
-                          className={`w-[300px] shrink-0 max-h-[620px] flex flex-col overflow-hidden rounded-lg border transition-colors ${snapshot.isDraggingOver ? "bg-primary/5 border-primary/20" : "border-border/60 bg-card/30"}`}
+                          className={`w-[360px] shrink-0 max-h-[620px] flex flex-col overflow-hidden rounded-lg border transition-colors ${snapshot.isDraggingOver ? "bg-primary/5 border-primary/20" : "border-border/60 bg-card/30"}`}
                         >
                           {/* Cabeçalho fixo da coluna */}
                           <div className="flex items-center justify-between px-1 pb-2 gap-1 flex-shrink-0 sticky top-0 z-10 bg-inherit">

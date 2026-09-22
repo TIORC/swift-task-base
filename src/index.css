@@ -178,6 +178,30 @@
   }
 }
 
+/* Indicador de pulso do status de saúde (modal de automação). */
+.m-pulse {
+  animation: m-pulse 2s infinite;
+}
+@keyframes m-pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--pulse-color, rgb(34 197 94 / 0.35));
+  }
+  100% {
+    box-shadow: 0 0 0 7px transparent;
+  }
+}
+
+/* Abas compactas do modal: em telas pequenas, esconde o rótulo das abas
+   inativas e mantém apenas o ícone (o texto completo fica na aba ativa). */
+@media (max-width: 640px) {
+  .m-tab-bar [data-state="inactive"] .m-tab-label {
+    display: none;
+  }
+  .m-tab-bar [data-state="active"] .m-tab-label {
+    font-weight: 700;
+  }
+}
+
 @media print {
   body {
     background: white !important;

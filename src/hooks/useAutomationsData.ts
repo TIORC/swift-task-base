@@ -748,3 +748,23 @@ export function useAllAutomationSteps() {
   });
 }
 
+/**
+ * Configuração de XP (public.xp_settings). Usada para exibir o XP gerado
+ * por tarefa técnica de automação e o bônus de conclusão por complexidade.
+ */
+export function useXpSettings() {
+  return useQuery({
+    queryKey: ["xp_settings"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("xp_settings").select("key, value");
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      (data || []).forEach((r: { key: string; value: unknown }) => {
+        map[r.key] = Number(r.value) || 0;
+      });
+      return map;
+    },
+  });
+}
+

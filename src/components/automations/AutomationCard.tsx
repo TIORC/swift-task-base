@@ -1,19 +1,19 @@
 import { useState } from "react";
 import {
   Automation,
-  STATUS_LABELS, STATUS_COLORS,
+  STATUS_LABELS,
   PRIORITY_LABELS, PRIORITY_COLORS,
+  RISK_LABELS,
   AutomationStatus,
   computePrediction,
 } from "@/types/automation";
 import { SECTOR_COLORS } from "@/types/sectors";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Clock, Lock, User, Timer, Play, Square, Building2,
-  ListChecks, Code2, MessageSquare, Activity, CalendarClock, Pencil, Check, X,
+  Lock, User, Play, Square, Building2,
+  ListChecks, Code2, MessageSquare, Activity, Pencil, Check, X, ArrowRight,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -26,7 +26,7 @@ import {
   useRenameAutomation,
 } from "@/hooks/useAutomationsData";
 import { useGlobalTimer } from "@/hooks/useGlobalTimer";
-import { formatMinutes, formatTime } from "@/hooks/useTimeTracker";
+import { formatMinutes } from "@/hooks/useTimeTracker";
 
 interface Props {
   automation: Automation;
@@ -39,7 +39,7 @@ interface Props {
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   created: "criou a automação",
-  status_changed: "mudou o status",
+  status_changed: "alterou o status",
   blocker_added: "registrou um bloqueio",
   blocker_resolved: "resolveu um bloqueio",
   comment: "comentou",
@@ -47,8 +47,33 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   subtask_completed: "concluiu etapa",
 };
 
+// Pill sólido com a cor do status (versão "cheia" do badge)
+const STATUS_FILL: Record<string, string> = {
+  backlog: "bg-slate-500",
+  analysis: "bg-blue-500",
+  requested: "bg-sky-500",
+  waiting_info: "bg-yellow-500",
+  approved: "bg-teal-500",
+  change_requested: "bg-rose-500",
+  development: "bg-indigo-500",
+  internal_testing: "bg-amber-500",
+  homologation: "bg-purple-500",
+  waiting_user: "bg-orange-500",
+  completed: "bg-emerald-500",
+  blocked: "bg-red-500",
+  cancelled: "bg-slate-400",
+};
+
 function eventLabel(t: string) {
   return EVENT_TYPE_LABELS[t] || t.replace(/_/g, " ");
+}
+
+function initials(name?: string | null) {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const first = (parts[0]?.[0] || "").toUpperCase();
+  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] || "").toUpperCase() : "";
+  return (first + last) || "?";
 }
 
 export function AutomationCard({ automation: a, onClick, profileName, profileMap, pendingCount = 0, canEditTitle }: Props) {
@@ -92,6 +117,8 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
     return candidates[0];
   })();
 
+  const isRecent = !isFinished && Date.now() - new Date(lastActivity.ts).getTime() < 24 * 60 * 60 * 1000;
+
   const cancelTitleEdit = () => {
     setEditingTitle(false);
     setDraftTitle(a.title);
@@ -113,71 +140,29 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
     <div
       onClick={onClick}
       className={`
-        group h-auto p-3 pb-4 rounded-lg border cursor-pointer transition-all hover:shadow-md overflow-visible
-        ${isBlocked ? "border-red-500/40 bg-red-500/5"
-          : isTimerOnThis ? "border-primary/40 bg-primary/5"
-          : "border-border hover:border-primary/30 bg-card"}
+        group relative h-auto px-4 pt-4 pb-3.5 rounded-lg border cursor-pointer
+        transition-all duration-200 hover:shadow-md hover:border-primary/40
+        bg-gradient-to-b from-card to-card/60
+        shadow-[0_8px_24px_-16px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,255,255,0.03)]
+        overflow-visible
+        ${isBlocked ? "border-red-500/40 from-red-500/10 to-card/60"
+          : isTimerOnThis ? "border-primary/40 from-primary/5 to-card/60 ring-1 ring-primary/10"
+          : "border-border"}
       `}
     >
-      {/* Title */}
-      <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
-        {canEditTitle && editingTitle ? (
-          <div
-            className="flex items-center gap-1 flex-1 min-w-0"
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <Input
-              autoFocus
-              value={draftTitle}
-              onChange={(e) => setDraftTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") commitTitle();
-                if (e.key === "Escape") cancelTitleEdit();
-              }}
-              className="h-7 text-sm"
-            />
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 w-7 p-0 shrink-0"
-              onClick={commitTitle}
-              disabled={renameAutomation.isPending || !draftTitle.trim()}
-            >
-              <Check className="h-3.5 w-3.5" />
-            </Button>
-            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" onClick={cancelTitleEdit}>
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        ) : (
-          <>
-            <h4 className="text-sm font-medium text-foreground leading-snug flex-1 min-w-0 break-words whitespace-normal">
-              {a.title}
-            </h4>
-            {canEditTitle && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDraftTitle(a.title);
-                  setEditingTitle(true);
-                }}
-                className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0 mt-0.5 transition-colors"
-                title="Renomear automação"
-              >
-                <Pencil className="h-3 w-3" />
-              </button>
-            )}
-          </>
-        )}
-        {isBlocked && <Lock className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />}
-      </div>
+      {/* Ponto azul indicando atualização recente */}
+      {isRecent && (
+        <span
+          className="absolute top-3 right-3 h-[7px] w-[7px] rounded-full bg-primary shadow-[0_0_0_2px_rgba(59,130,246,0.25)]"
+          title="Atualizado recentemente"
+        />
+      )}
 
       {/* Badges row */}
-      <div className="flex items-center gap-1.5 flex-wrap mb-2">
-        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${STATUS_COLORS[a.status as AutomationStatus] || ""}`}>
+      <div className="flex items-center gap-1 flex-wrap pr-4 mb-0">
+        <span className={`inline-flex items-center rounded-full px-[7px] py-1 text-[10px] font-bold leading-none text-white ${STATUS_FILL[a.status as AutomationStatus] || "bg-primary"}`}>
           {STATUS_LABELS[a.status as AutomationStatus] || a.status}
-        </Badge>
+        </span>
         <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${PRIORITY_COLORS[a.priority]}`}>
           {PRIORITY_LABELS[a.priority] || a.priority}
         </Badge>
@@ -199,76 +184,153 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
         )}
       </div>
 
-      {/* Barras separadas: Escopo e Execução */}
-      <div className="space-y-1.5 mb-2">
+      {/* Title */}
+      <div className="flex items-start justify-between gap-2 mt-2.5 mb-2 min-w-0">
+        {canEditTitle && editingTitle ? (
+          <div
+            className="flex items-center gap-1 flex-1 min-w-0"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <Input
+              autoFocus
+              value={draftTitle}
+              onChange={(e) => setDraftTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitTitle();
+                if (e.key === "Escape") cancelTitleEdit();
+              }}
+              className="h-7 text-xs"
+            />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 w-7 p-0 shrink-0"
+              onClick={commitTitle}
+              disabled={renameAutomation.isPending || !draftTitle.trim()}
+            >
+              <Check className="h-3.5 w-3.5" />
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" onClick={cancelTitleEdit}>
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <>
+            <h4 className="text-[14px] font-bold text-foreground leading-snug flex-1 min-w-0 break-words whitespace-normal">
+              {a.title}
+            </h4>
+            {canEditTitle && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDraftTitle(a.title);
+                  setEditingTitle(true);
+                }}
+                className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0 mt-0.5 transition-colors"
+                title="Renomear automação"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            )}
+          </>
+        )}
+        {isBlocked && <Lock className="h-3 w-3 text-red-500 shrink-0 mt-1" />}
+      </div>
+
+      {/* Meta line: prioridade · risco · prazo */}
+      <div className="flex items-center gap-1 flex-wrap text-[10px] text-muted-foreground mb-3">
+        <span>
+          Prioridade <b className="font-semibold text-foreground">{PRIORITY_LABELS[a.priority] || a.priority}</b>
+        </span>
+        <span className="opacity-50">•</span>
+        <span>
+          Risco <b className="font-semibold text-foreground">{RISK_LABELS[a.risk_level] || a.risk_level}</b>
+        </span>
+        <span className="opacity-50">•</span>
+        <b className={`font-semibold ${a.final_deadline ? "text-foreground" : "text-muted-foreground"}`}>
+          {a.final_deadline ? `Prazo ${format(new Date(a.final_deadline), "dd/MM/yy", { locale: ptBR })}` : "Sem prazo definido"}
+        </b>
+      </div>
+
+      {/* Bloco das 2 barras de progresso */}
+      <div className="rounded-lg border border-border/70 bg-primary/[0.05] p-3 mb-3 space-y-3">
         <div>
           <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1 gap-2">
-            <div className="flex items-center gap-1 min-w-0">
-              <ListChecks className="h-3 w-3 shrink-0" />
+            <span className="flex items-center gap-1 min-w-0">
+              <ListChecks className="h-2.5 w-2.5 shrink-0" />
               <span className="truncate">Escopo</span>
-            </div>
-            <span className="tabular-nums shrink-0">
-              {scope ? `${scope.done}/${scope.total}` : "0/0"}
             </span>
+            <b className="font-semibold text-foreground tabular-nums shrink-0">{scopePct}%</b>
           </div>
-          <Progress value={scopePct} className="h-1.5" />
+          <div className="h-[7px] rounded-full bg-secondary overflow-hidden">
+            <div
+              className={`h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all ${scopePct >= 100 ? "from-emerald-500 to-emerald-400" : ""}`}
+              style={{ width: `${scopePct}%` }}
+            />
+          </div>
         </div>
         <div>
           <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1 gap-2">
-            <div className="flex items-center gap-1 min-w-0">
-              <Code2 className="h-3 w-3 shrink-0" />
+            <span className="flex items-center gap-1 min-w-0">
+              <Code2 className="h-2.5 w-2.5 shrink-0" />
               <span className="truncate">Execução</span>
-            </div>
-            <span className="tabular-nums shrink-0">
-              {step ? `${step.done}/${step.total}` : "0/0"}
             </span>
+            <b className="font-semibold text-foreground tabular-nums shrink-0">{execPct}%</b>
           </div>
-          <Progress value={execPct} className="h-1.5" />
+          <div className="h-[7px] rounded-full bg-secondary overflow-hidden">
+            <div
+              className={`h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-400 transition-all ${execPct >= 100 ? "from-emerald-500 to-emerald-400" : ""}`}
+              style={{ width: `${execPct}%` }}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Tempo trabalhado */}
-      <div className={`flex items-center justify-between gap-2 mb-2 px-2 py-1 rounded-md ${isTimerOnThis ? "bg-primary/10" : "bg-muted/50"}`}>
-        <div className={`flex items-center gap-1.5 text-xs ${isTimerOnThis ? "text-primary font-semibold" : "text-foreground"}`}>
-          <Timer className="h-3.5 w-3.5" />
-          <span className="tabular-nums">
-            {formatMinutes(totalWorked)}
-          </span>
-          <span className="text-[10px] text-muted-foreground font-normal">trabalhadas</span>
+      {/* Bloco de tempo trabalhado + botão iniciar */}
+      <div className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5 mb-3 ${isTimerOnThis ? "border-primary/30 bg-primary/10" : "border-border/70 bg-secondary/40"}`}>
+        <div>
+          <div className={`text-[11px] font-semibold leading-tight tabular-nums ${isTimerOnThis ? "text-primary" : "text-foreground"}`}>
+            {formatMinutes(totalWorked)} trabalhadas
+          </div>
+          <div className="text-[9px] text-muted-foreground mt-0.5">
+            {a.estimated_hours > 0 ? `de ${a.estimated_hours}h estimadas` : "sem estimativa de horas"}
+          </div>
         </div>
         {!isFinished && (
           <Button
             size="sm"
-            variant={isTimerOnThis ? "destructive" : "ghost"}
-            className="h-6 px-2 text-[10px] rounded-md gap-1"
-            onClick={(e) => { e.stopPropagation(); isTimerOnThis ? stop() : startAutomation(a.id); }}
+            variant={isTimerOnThis ? "destructive" : "default"}
+            className="h-auto px-3 py-[7px] text-[11px] rounded-md gap-1 shrink-0"
+            onClick={(e) => { e.stopPropagation(); if (isTimerOnThis) stop(); else startAutomation(a.id); }}
           >
             {isTimerOnThis ? <><Square className="h-2.5 w-2.5" />Parar</> : <><Play className="h-2.5 w-2.5" />Iniciar</>}
           </Button>
         )}
       </div>
 
-      {/* Linha do tempo curta — última atividade */}
-      <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground mb-1.5 px-1">
-        <Activity className="h-3 w-3 shrink-0 mt-0.5 text-primary/70" />
-        <div className="flex-1 min-w-0">
-          <span className="text-foreground/80">
-            {formatDistanceToNow(new Date(lastActivity.ts), { addSuffix: true, locale: ptBR })}
-          </span>
-          {lastEvent && lastEventAuthor && (
-            <span className="block break-words whitespace-normal">
-              <span className="font-medium text-foreground/70">{lastEventAuthor}</span>{" "}
-              {eventLabel(lastEvent.event_type)}
-              {lastEvent.description ? `: ${lastEvent.description}` : ""}
+      {/* Linha de última atualização relevante */}
+      <div className="flex items-start gap-2 rounded-r-[8px] border-l-2 border-l-primary bg-primary/5 px-2.5 py-2.5 mb-3">
+        <Activity className="h-2.5 w-2.5 shrink-0 mt-0.5 text-primary/70" />
+        <div className="flex-1 min-w-0 text-[10px] text-muted-foreground">
+          {lastEvent && lastEventAuthor ? (
+            <span className="break-words whitespace-normal">
+              <b className="font-semibold text-foreground">{lastEventAuthor}</b> {eventLabel(lastEvent.event_type)}
             </span>
+          ) : (
+            <span>{eventLabel(lastEvent?.event_type || lastActivity.label)}</span>
+          )}
+          <span className="text-muted-foreground/70"> · {formatDistanceToNow(new Date(lastActivity.ts), { addSuffix: true, locale: ptBR })}</span>
+          {lastEvent?.description && (
+            <span className="block mt-0.5 text-muted-foreground/80 truncate">{lastEvent.description}</span>
           )}
         </div>
       </div>
 
       {/* Comentário recente */}
       {lastComment && (
-        <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground mb-1.5 px-1">
-          <MessageSquare className="h-3 w-3 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2 text-[10px] text-muted-foreground mb-2 px-1">
+          <MessageSquare className="h-2.5 w-2.5 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             {lastCommentAuthor && (
               <span className="font-medium text-foreground/70">{lastCommentAuthor}: </span>
@@ -278,18 +340,30 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
         </div>
       )}
 
-      {/* Footer: responsável + previsão de entrega */}
-      <div className="flex flex-wrap items-start justify-between text-[10px] text-muted-foreground gap-2 pt-1.5 border-t border-border/40">
-        <div className="flex items-start gap-1 min-w-0 flex-1">
-          <User className="h-3 w-3 shrink-0" />
-          <span className="break-words whitespace-normal">{profileName || "Não atribuído"}</span>
-        </div>
-        {a.final_deadline && (
-          <div className="flex items-center gap-1 shrink-0">
-            <CalendarClock className="h-3 w-3" />
-            <span>{format(new Date(a.final_deadline), "dd/MM/yy", { locale: ptBR })}</span>
+      {/* Rodapé: avatar + responsável + ver detalhes */}
+      <div className="flex items-center justify-between gap-2 pt-2.5 mt-1.5 border-t border-border/60">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="h-[21px] w-[21px] shrink-0 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center text-[10px] font-bold text-white">
+            {initials(profileName)}
           </div>
-        )}
+          <div className="min-w-0">
+            <div className="text-[11px] font-medium text-foreground truncate">
+              {profileName ? (
+                <span className="flex items-center gap-1">
+                  <User className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{profileName}</span>
+                </span>
+              ) : (
+                "Não atribuído"
+              )}
+            </div>
+            <div className="text-[9px] text-muted-foreground truncate">Responsável</div>
+          </div>
+        </div>
+        <span className="flex items-center gap-1 shrink-0 text-[10px] font-semibold text-primary cursor-pointer">
+          Ver detalhes
+          <ArrowRight className="h-2.5 w-2.5" />
+        </span>
       </div>
     </div>
   );

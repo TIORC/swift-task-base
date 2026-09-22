@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -6,17 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import {
   Automation, AutomationSubtask, AutomationBlocker, AutomationEvent,
   STATUS_LABELS, STATUS_COLORS, AUTOMATION_STATUSES, PRIORITY_LABELS, PRIORITY_OPTIONS,
   RISK_LABELS, BLOCKER_TYPES, BLOCKER_TYPE_LABELS,
-  COMPLEXITY_OPTIONS, COMPLEXITY_LABELS,
-  computeHealthScore, computePrediction, AutomationStatus,
+  COMPLEXITY_OPTIONS, COMPLEXITY_LABELS, COMPLEXITY_BONUS_KEYS,
+  computeHealthScore, AutomationStatus,
 } from "@/types/automation";
 import { SECTORS } from "@/types/sectors";
 import { useUpdateAutomation } from "@/hooks/useAutomationsData";
@@ -24,7 +22,7 @@ import { useAutomationSubtasks, useCreateSubtask, useUpdateSubtask, useDeleteSub
 import { useAutomationScopeItems, useCreateScopeItem, useUpdateScopeItem, useDeleteScopeItem } from "@/hooks/useAutomationsData";
 import { useAutomationBlockers, useCreateBlocker, useResolveBlocker } from "@/hooks/useAutomationsData";
 import { useAutomationEvents } from "@/hooks/useAutomationsData";
-import { useAutomationTimeLogs, useCreateTimeLog } from "@/hooks/useAutomationsData";
+import { useAutomationTimeLogs, useCreateTimeLog, useXpSettings } from "@/hooks/useAutomationsData";
 import { TimeLogsEditor } from "@/components/TimeLogsEditor";
 
 import { useGlobalTimer } from "@/hooks/useGlobalTimer";
@@ -32,9 +30,9 @@ import { formatTime, formatMinutes } from "@/hooks/useTimeTracker";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  AlertTriangle, CheckCircle2, Clock, Code2, FileText, History,
+  CheckCircle2, Clock, Code2, FileText, History,
   ListChecks, Lock, MessageSquare, Paperclip, Play, Plus, Save, Square, Timer, Trash2, X,
-  Sparkles, RefreshCcw, Unlock, Pencil,
+  Sparkles, RefreshCcw, Unlock, Pencil, CalendarClock, Check, User,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -47,6 +45,18 @@ const TIMELINE_META: Record<string, { label: string; color: string; Icon: Lucide
   subtask_added: { label: "adicionou uma etapa", color: "bg-amber-500/15 text-amber-600 dark:text-amber-400", Icon: Plus },
   subtask_completed: { label: "concluiu uma etapa", color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", Icon: CheckCircle2 },
 };
+
+const MODAL_TABS: { value: string; label: string; Icon: LucideIcon }[] = [
+  { value: "details", label: "Dados", Icon: FileText },
+  { value: "escopo", label: "Escopo", Icon: ListChecks },
+  { value: "tarefas", label: "Tarefas", Icon: Code2 },
+  { value: "comments", label: "Chat", Icon: MessageSquare },
+  { value: "files", label: "Anexos", Icon: Paperclip },
+  { value: "blockers", label: "Bloq.", Icon: Lock },
+  { value: "timeline", label: "Timeline", Icon: History },
+  { value: "time", label: "Tempo", Icon: Timer },
+];
+
 import { AutomationComments } from "@/components/automations/AutomationComments";
 import { AutomationAttachments } from "@/components/automations/AutomationAttachments";
 import { useAuth } from "@/hooks/useAuth";
@@ -79,8 +89,10 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
   const { data: events = [] } = useAutomationEvents(automation?.id ?? null);
   const { data: timeLogs = [] } = useAutomationTimeLogs(automation?.id ?? null);
   const createTimeLog = useCreateTimeLog();
+  const { data: xpSettings } = useXpSettings();
 
   const [newSubtask, setNewSubtask] = useState("");
+  const [newSubtaskScope, setNewSubtaskScope] = useState("none");
   const [newScopeItem, setNewScopeItem] = useState("");
   const [editingScopeId, setEditingScopeId] = useState<string | null>(null);
   const [editingScopeDraft, setEditingScopeDraft] = useState("");
@@ -108,7 +120,6 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
   const canManage = isTech || a.assigned_to === user?.id || a.created_by === user?.id;
   const readOnly = !!isReadOnly || !canManage;
   const health = computeHealthScore(a);
-  const prediction = computePrediction(a);
 
   const handleUpdate = (values: Partial<Automation>) => {
     updateAutomation.mutate({ id: a.id, ...values });
@@ -128,10 +139,30 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
     if (l.subtask_id) subtaskMinutes[l.subtask_id] = (subtaskMinutes[l.subtask_id] || 0) + (l.duration_minutes || 0);
   });
 
+  // XP por tarefa técnica + bônus de conclusão por complexidade (public.xp_settings).
+  const perTaskXp = xpSettings?.["xp_per_automation_task"] ?? 1;
+  const complexityName = COMPLEXITY_LABELS[a.complexity || "medium"] || "Média";
+  const complexityBonus = xpSettings?.[COMPLEXITY_BONUS_KEYS[a.complexity || "medium"]] ?? 0;
+  const xpBadgeTitle = complexityBonus > 0
+    ? `+${perTaskXp} XP por tarefa concluída · Bônus de conclusão (${complexityName}): +${complexityBonus} XP`
+    : `+${perTaskXp} XP por tarefa concluída`;
+
+  // Indicadores visuais do status de saúde.
+  const healthDot = health.score >= 70 ? "#22c55e" : health.score >= 40 ? "#f5b942" : "#ef4444";
+  const healthPulse = health.score >= 70 ? "rgb(34 197 94 / .35)" : health.score >= 40 ? "rgb(245 185 66 / .4)" : "rgb(239 68 68 / .4)";
+  const healthStyle = { background: healthDot, "--pulse-color": healthPulse } as CSSProperties;
+
   const handleAddSubtask = () => {
     if (!newSubtask.trim()) return;
-    createSubtask.mutate({ automation_id: a.id, title: newSubtask, deadline: new Date().toISOString(), sort_order: subtasks.length });
+    createSubtask.mutate({
+      automation_id: a.id,
+      title: newSubtask,
+      deadline: new Date().toISOString(),
+      sort_order: subtasks.length,
+      item_escopo_id: newSubtaskScope !== "none" ? newSubtaskScope : null,
+    });
     setNewSubtask("");
+    setNewSubtaskScope("none");
   };
 
   const handleAddScopeItem = () => {
@@ -175,66 +206,104 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="w-[95vw] sm:max-w-3xl max-h-[90vh] p-0 flex flex-col gap-0">
-        <DialogHeader className="p-4 pb-2">
-          <div className="flex items-start justify-between gap-2 pr-6">
+      <DialogContent className="w-[95vw] sm:max-w-[820px] max-h-[90vh] p-0 flex flex-col gap-0 rounded-2xl [&>button]:hidden">
+        {/* ═══ HEADER ═══ */}
+        <DialogHeader className="border-b border-border px-6 pt-5 pb-5">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <DialogTitle className="text-lg leading-snug">{a.title}</DialogTitle>
-              {a.requester_department && (
-                <p className="text-xs text-muted-foreground mt-0.5">{a.requester} • {a.requester_department}</p>
-              )}
+              <DialogTitle className="text-xl leading-snug font-bold">{a.title}</DialogTitle>
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                <span className="text-foreground/80 font-medium">{a.requester || "Solicitante não informado"}</span>
+                <span className="mx-1 text-muted-foreground/60">·</span>
+                {a.requester_department || a.sector || "Setor não informado"}
+              </p>
             </div>
-            <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${health.score >= 70 ? "bg-emerald-500" : health.score >= 40 ? "bg-amber-500" : "bg-red-500"}`} />
-              <span className={`text-xs font-medium ${health.color}`}>{health.label}</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className={`flex items-center gap-2 rounded-full bg-secondary/60 px-2.5 py-[5px] text-xs font-semibold ${health.color}`}>
+                <span className="m-pulse h-[7px] w-[7px] rounded-full" style={healthStyle} />
+                {health.label}
+              </span>
+              <button
+                onClick={onClose}
+                aria-label="Fechar"
+                className="ml-1 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           </div>
 
-          {/* Quick stats */}
-          <div className="flex items-center gap-3 mt-2 flex-wrap">
-            <Badge className={STATUS_COLORS[a.status as AutomationStatus]}>{STATUS_LABELS[a.status as AutomationStatus]}</Badge>
-            <span className={`text-xs font-medium ${prediction.color}`}>{prediction.label}</span>
-            {a.assigned_to && (
-              <span className="text-xs text-muted-foreground">Responsável: {profileMap[a.assigned_to] || "—"}</span>
-            )}
+          {/* Badges: status · prazo · responsável */}
+          <div className="mt-3.5 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-secondary-foreground">
+              {STATUS_LABELS[a.status as AutomationStatus] || a.status}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+              <CalendarClock className="h-3 w-3" />
+              {a.final_deadline ? format(new Date(a.final_deadline), "dd/MM/yy", { locale: ptBR }) : "Sem prazo definido"}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+              <User className="h-3 w-3" />
+              {a.assigned_to ? (profileMap[a.assigned_to] || "—") : "Não atribuído"}
+            </span>
           </div>
 
-          {/* Duas barras separadas: Escopo e Execução */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-            <div>
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
-                <span className="flex items-center gap-1"><ListChecks className="h-3 w-3" /> Escopo</span>
-                <span className="tabular-nums">{scopeDone}/{scopeTotal} • {scopePct}%</span>
+          {/* Duas barras de progresso em cards próprios */}
+          <div className="mt-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+            <div className="rounded-[10px] border border-border/70 bg-primary/[0.04] px-3.5 py-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <ListChecks className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                  Escopo
+                </span>
+                <b className="text-sm font-semibold tabular-nums">{scopePct}%</b>
               </div>
-              <Progress value={scopePct} className="h-2" />
+              <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                <div
+                  className={`h-full rounded-full bg-gradient-to-r from-blue-500 to-sky-400 transition-all ${scopePct >= 100 ? "from-emerald-500 to-emerald-400" : ""}`}
+                  style={{ width: `${scopePct}%` }}
+                />
+              </div>
+              <div className="mt-1.5 text-[11px] text-muted-foreground tabular-nums">{scopeDone}/{scopeTotal} itens concluídos</div>
             </div>
-            <div>
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
-                <span className="flex items-center gap-1"><Code2 className="h-3 w-3" /> Execução</span>
-                <span className="tabular-nums">{execDone}/{execTotal} • {execPct}%</span>
+            <div className="rounded-[10px] border border-border/70 bg-primary/[0.04] px-3.5 py-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <Code2 className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                  Execução
+                </span>
+                <b className="text-sm font-semibold tabular-nums">{execPct}%</b>
               </div>
-              <Progress value={execPct} className="h-2" />
+              <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                <div
+                  className={`h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-400 transition-all ${execPct >= 100 ? "from-emerald-500 to-emerald-400" : ""}`}
+                  style={{ width: `${execPct}%` }}
+                />
+              </div>
+              <div className="mt-1.5 text-[11px] text-muted-foreground tabular-nums">{execDone}/{execTotal} tarefas concluídas</div>
             </div>
           </div>
         </DialogHeader>
 
-        <Separator />
-
+        {/* ═══ ABAS — versão compacta ═══ */}
         <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="mx-4 mt-2 grid grid-cols-8 h-8">
-            <TabsTrigger value="details" className="text-xs"><FileText className="h-3 w-3 mr-1" />Dados</TabsTrigger>
-            <TabsTrigger value="escopo" className="text-xs"><ListChecks className="h-3 w-3 mr-1" />Escopo</TabsTrigger>
-            <TabsTrigger value="tarefas" className="text-xs"><Code2 className="h-3 w-3 mr-1" />Tarefas</TabsTrigger>
-            <TabsTrigger value="comments" className="text-xs"><MessageSquare className="h-3 w-3 mr-1" />Chat</TabsTrigger>
-            <TabsTrigger value="files" className="text-xs"><Paperclip className="h-3 w-3 mr-1" />Anexos</TabsTrigger>
-            <TabsTrigger value="blockers" className="text-xs"><Lock className="h-3 w-3 mr-1" />Bloq.</TabsTrigger>
-            <TabsTrigger value="timeline" className="text-xs"><History className="h-3 w-3 mr-1" />Timeline</TabsTrigger>
-            <TabsTrigger value="time" className="text-xs"><Timer className="h-3 w-3 mr-1" />Tempo</TabsTrigger>
+          <TabsList className="m-tab-bar flex h-auto w-full items-stretch justify-start gap-1 overflow-x-auto rounded-none border-b border-border bg-background px-4 pt-2 scrollbar-thin">
+            {MODAL_TABS.map(({ value, label, Icon }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                title={label}
+                className="flex items-center gap-1.5 whitespace-nowrap rounded-t-lg border border-b-0 border-transparent px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-border data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[inset_0_-2px_0_0_hsl(var(--primary))]"
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span className="m-tab-label">{label}</span>
+              </TabsTrigger>
+            ))}
           </TabsList>
 
-          <ScrollArea className="flex-1 px-4 pb-4">
+          <ScrollArea className="flex-1 px-5 pb-5">
             {/* ─── Details Tab ─── */}
-            <TabsContent value="details" className="mt-3 space-y-4">
+            <TabsContent value="details" className="mt-4 space-y-4">
               {a.description && (
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Descrição</label>
@@ -318,7 +387,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                       <label className="text-xs font-medium text-muted-foreground">Setor Vinculado</label>
                       <Select
                         value={a.sector || "none"}
-                        onValueChange={(v) => handleUpdate({ sector: v === "none" ? null : v } as any)}
+                        onValueChange={(v) => handleUpdate({ sector: v === "none" ? null : v })}
                       >
                         <SelectTrigger className="h-8 mt-1"><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -415,7 +484,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
             </TabsContent>
 
             {/* ─── Escopo Tab (checklist do solicitante) ─── */}
-            <TabsContent value="escopo" className="mt-3 space-y-3">
+            <TabsContent value="escopo" className="mt-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-xs text-muted-foreground">
                   Barra de Escopo: <span className="tabular-nums text-foreground">{scopeDone}/{scopeTotal}</span> itens concluídos
@@ -511,13 +580,84 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
             </TabsContent>
 
             {/* ─── Tarefas Tab (do desenvolvedor) ─── */}
-            <TabsContent value="tarefas" className="mt-3 space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-xs text-muted-foreground">
-                  Barra de Execução: <span className="tabular-nums text-foreground">{execDone}/{execTotal}</span> tarefas concluídas
-                </div>
-                <Progress value={execPct} className="h-2 w-40" />
+            <TabsContent value="tarefas" className="mt-4 space-y-3">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <div className="text-[13px] font-bold text-foreground">Tarefas técnicas</div>
+                <div className="text-xs text-muted-foreground tabular-nums">{execDone}/{execTotal} concluídas</div>
               </div>
+
+              {subtasks.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-7 text-center">
+                  <b className="mb-1 block text-sm text-foreground">
+                    {!readOnly ? "Crie a primeira tarefa técnica" : "Nenhuma tarefa criada ainda"}
+                  </b>
+                  <span className="text-[13px] text-muted-foreground">
+                    {!readOnly
+                      ? "Quebre a execução em etapas (ex: levantamento, desenvolvimento, testes). Cada tarefa concluída gera XP."
+                      : "A equipe técnica ainda não criou tarefas para esta automação."}
+                  </span>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {subtasks.map(st => {
+                    const linkedScope = st.item_escopo_id ? scopeItems.find(i => i.id === st.item_escopo_id) : null;
+                    return (
+                      <div key={st.id} className="group flex items-center gap-3 rounded-[10px] border border-border bg-card/60 px-3 py-2.5">
+                        <button
+                          disabled={readOnly}
+                          onClick={() => updateSubtask.mutate({ id: st.id, completed: !st.completed, automation_id: st.automation_id })}
+                          aria-label={st.completed ? "Desmarcar tarefa" : "Concluir tarefa"}
+                          className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border-2 border-primary transition-colors ${st.completed ? "bg-primary" : "bg-transparent"} ${readOnly ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-primary/20"}`}
+                        >
+                          {st.completed && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                        </button>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-[13px] leading-snug ${st.completed ? "line-through text-muted-foreground" : ""}`}>{st.title}</p>
+                          {linkedScope && (
+                            <p className="mt-0.5 truncate text-[10px] text-primary/80">
+                              {linkedScope.description}
+                            </p>
+                          )}
+                          {st.completed && st.completed_at && (
+                            <p className="mt-0.5 text-[10px] text-muted-foreground">
+                              Concluída em {format(new Date(st.completed_at), "dd/MM/yy HH:mm", { locale: ptBR })}
+                              {st.completed_by ? ` • ${profileMap[st.completed_by] || ""}` : ""}
+                            </p>
+                          )}
+                        </div>
+                        <span
+                          className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary"
+                          title={xpBadgeTitle}
+                        >
+                          +{perTaskXp} XP
+                        </span>
+                        <SubtaskTimerButton automationId={a.id} subtaskId={st.id} baseMinutes={subtaskMinutes[st.id] || 0} enabled={!readOnly} />
+                        {!readOnly && (
+                          <>
+                            <Input
+                              type="date"
+                              value={st.deadline ? st.deadline.substring(0, 10) : ""}
+                              onChange={e => updateSubtask.mutate({
+                                id: st.id,
+                                automation_id: st.automation_id,
+                                deadline: e.target.value ? new Date(e.target.value).toISOString() : null,
+                              })}
+                              className="h-7 w-[122px] text-xs"
+                              aria-label={`Prazo de ${st.title}`}
+                            />
+                            <button
+                              onClick={() => deleteSubtask.mutate(st.id)}
+                              className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {isSolicitante && (
                 <p className="text-[11px] text-muted-foreground rounded-lg bg-muted/40 px-3 py-2">
@@ -525,68 +665,51 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                 </p>
               )}
 
-              
-
-              <div className="space-y-1.5">
-                {subtasks.map(st => (
-                  <div key={st.id} className="flex items-center gap-2 group">
-                    <Checkbox
-                      checked={st.completed}
-                      disabled={readOnly || isSolicitante}
-                      onCheckedChange={v => updateSubtask.mutate({ id: st.id, completed: !!v, automation_id: st.automation_id })}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <span className={`text-sm ${st.completed ? "line-through text-muted-foreground" : ""}`}>{st.title}</span>
-                      {st.completed && st.completed_at && (
-                        <span className="block text-[10px] text-muted-foreground">
-                          Concluída em {format(new Date(st.completed_at), "dd/MM/yy HH:mm", { locale: ptBR })}
-                          {st.completed_by ? ` • ${profileMap[st.completed_by] || ""}` : ""}
-                        </span>
-                      )}
-                    </div>
-                    <SubtaskTimerButton automationId={a.id} subtaskId={st.id} baseMinutes={subtaskMinutes[st.id] || 0} enabled={!readOnly} />
-                    {!readOnly && (
-                      <Input
-                        type="date"
-                        value={st.deadline ? st.deadline.substring(0, 10) : ""}
-                        onChange={e => updateSubtask.mutate({
-                          id: st.id,
-                          automation_id: st.automation_id,
-                          deadline: e.target.value ? new Date(e.target.value).toISOString() : null,
-                        })}
-                        className="h-7 w-[130px] text-xs"
-                        aria-label={`Prazo de ${st.title}`}
-                      />
-                    )}
-                    {!readOnly && (
-                      <button onClick={() => deleteSubtask.mutate(st.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity">
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-
               {!readOnly && (
-                <div className="flex gap-2">
-                  <Input value={newSubtask} onChange={e => setNewSubtask(e.target.value)} placeholder="Nova tarefa técnica..." className="h-8" onKeyDown={e => e.key === "Enter" && handleAddSubtask()} />
-                  <Button size="sm" onClick={handleAddSubtask} className="h-8" disabled={!newSubtask.trim()}><Plus className="h-3 w-3" /></Button>
+                <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2">
+                  <Input
+                    value={newSubtask}
+                    onChange={e => setNewSubtask(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && handleAddSubtask()}
+                    placeholder="Nova tarefa técnica..."
+                    className="h-9 flex-1 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0"
+                  />
+                  <Select value={newSubtaskScope} onValueChange={setNewSubtaskScope}>
+                    <SelectTrigger className="h-9 w-[210px] shrink-0 text-[11px]">
+                      <SelectValue placeholder={scopeItems.length ? "Vincular a item de escopo" : "Sem itens de escopo"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sem vínculo</SelectItem>
+                      {scopeItems.map(si => (
+                        <SelectItem key={si.id} value={si.id}>{si.description}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    onClick={handleAddSubtask}
+                    disabled={!newSubtask.trim()}
+                    className="h-9 w-9 shrink-0 p-0"
+                    aria-label="Adicionar tarefa"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </div>
               )}
             </TabsContent>
 
             {/* ─── Comments Tab ─── */}
-            <TabsContent value="comments" className="mt-3">
+            <TabsContent value="comments" className="mt-4">
               <AutomationComments automationId={a.id} />
             </TabsContent>
 
             {/* ─── Attachments Tab ─── */}
-            <TabsContent value="files" className="mt-3">
+            <TabsContent value="files" className="mt-4">
               <AutomationAttachments automationId={a.id} canDelete={canManage} />
             </TabsContent>
 
             {/* ─── Blockers Tab ─── */}
-            <TabsContent value="blockers" className="mt-3 space-y-3">
+            <TabsContent value="blockers" className="mt-4 space-y-3">
               {blockers.map(b => (
                 <div key={b.id} className={`p-3 rounded-lg border text-sm ${b.resolved_at ? "bg-muted/30 border-border" : "bg-red-500/5 border-red-500/30"}`}>
                   <div className="flex items-start justify-between">
@@ -628,7 +751,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
             </TabsContent>
 
             {/* ─── Timeline Tab ─── */}
-            <TabsContent value="timeline" className="mt-3">
+            <TabsContent value="timeline" className="mt-4">
               {events.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-4">Nenhuma atualização registrada ainda.</p>
               ) : (
@@ -643,7 +766,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                         Icon: History,
                       };
                       const Icon = meta.Icon;
-                      const newStatus = (ev.metadata as any)?.new_status as string | undefined;
+                      const newStatus = ev.metadata?.new_status as string | undefined;
                       return (
                         <div key={ev.id} className="relative">
                           {/* dot */}
@@ -680,7 +803,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
             </TabsContent>
 
             {/* ─── Time Tab ─── */}
-            <TabsContent value="time" className="mt-3 space-y-3">
+            <TabsContent value="time" className="mt-4 space-y-3">
               {/* Live Timer */}
               {!readOnly && <AutomationLiveTimer automationId={a.id} />}
 
