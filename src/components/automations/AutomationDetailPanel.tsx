@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   Automation, AutomationSubtask, AutomationBlocker, AutomationEvent,
   STATUS_LABELS, STATUS_COLORS, AUTOMATION_STATUSES, PRIORITY_LABELS, PRIORITY_OPTIONS,
-  RISK_LABELS, BLOCKER_TYPES, BLOCKER_TYPE_LABELS, DEFAULT_SUBTASKS,
+  RISK_LABELS, BLOCKER_TYPES, BLOCKER_TYPE_LABELS,
   COMPLEXITY_OPTIONS, COMPLEXITY_LABELS,
   computeHealthScore, computePrediction, AutomationStatus,
 } from "@/types/automation";
@@ -34,7 +34,7 @@ import { ptBR } from "date-fns/locale";
 import {
   AlertTriangle, CheckCircle2, Clock, Code2, FileText, History,
   ListChecks, Lock, MessageSquare, Paperclip, Play, Plus, Save, Square, Timer, Trash2, X,
-  Sparkles, RefreshCcw, Unlock, Pencil, Link2,
+  Sparkles, RefreshCcw, Unlock, Pencil,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -122,16 +122,16 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
   const execDone = subtasks.filter((t) => t.completed).length;
   const execPct = execTotal ? Math.round((execDone / execTotal) * 100) : 0;
 
+  // Tempo trabalhado acumulado por tarefa técnica (logs com subtask_id).
+  const subtaskMinutes: Record<string, number> = {};
+  (timeLogs || []).forEach((l) => {
+    if (l.subtask_id) subtaskMinutes[l.subtask_id] = (subtaskMinutes[l.subtask_id] || 0) + (l.duration_minutes || 0);
+  });
+
   const handleAddSubtask = () => {
     if (!newSubtask.trim()) return;
-    createSubtask.mutate({ automation_id: a.id, title: newSubtask, sort_order: subtasks.length });
+    createSubtask.mutate({ automation_id: a.id, title: newSubtask, deadline: new Date().toISOString(), sort_order: subtasks.length });
     setNewSubtask("");
-  };
-
-  const handleAddDefaultSubtasks = () => {
-    DEFAULT_SUBTASKS.forEach((title, i) => {
-      createSubtask.mutate({ automation_id: a.id, title, sort_order: i });
-    });
   };
 
   const handleAddScopeItem = () => {
@@ -525,11 +525,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                 </p>
               )}
 
-              {!readOnly && execTotal === 0 && (
-                <Button variant="outline" size="sm" onClick={handleAddDefaultSubtasks} className="w-full">
-                  <Plus className="h-3 w-3 mr-1" /> Adicionar checklist padrão de tarefas
-                </Button>
-              )}
+              
 
               <div className="space-y-1.5">
                 {subtasks.map(st => (
@@ -548,27 +544,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                         </span>
                       )}
                     </div>
-                    {!readOnly && (
-                      <Select
-                        value={st.item_escopo_id || "none"}
-                        onValueChange={v => updateSubtask.mutate({ id: st.id, automation_id: st.automation_id, item_escopo_id: v === "none" ? null : v })}
-                      >
-                        <SelectTrigger className="h-7 w-[150px] text-[10px]" title="Vincular item de escopo">
-                          <SelectValue placeholder="Sem escopo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Sem escopo</SelectItem>
-                          {scopeItems.map(si => (
-                            <SelectItem key={si.id} value={si.id}>{si.description}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                    {st.item_escopo_id && readOnly && (
-                      <Badge variant="outline" className="text-[10px] gap-1 max-w-[150px] truncate">
-                        <Link2 className="h-2.5 w-2.5 shrink-0" />{scopeItems.find(si => si.id === st.item_escopo_id)?.description || "Escopo"}
-                      </Badge>
-                    )}
+                    <SubtaskTimerButton automationId={a.id} subtaskId={st.id} baseMinutes={subtaskMinutes[st.id] || 0} enabled={!readOnly} />
                     {!readOnly && (
                       <Input
                         type="date"
@@ -768,6 +744,44 @@ function AutomationLiveTimer({ automationId }: { automationId: string }) {
       {isRunning && !isActive && activeAutomationId && (
         <p className="text-[10px] text-amber-500 mt-1">⚠️ Timer ativo em outra automação. Iniciar aqui irá parar a anterior.</p>
       )}
+    </div>
+  );
+}
+
+function SubtaskTimerButton({ automationId, subtaskId, baseMinutes, enabled }: { automationId: string; subtaskId: string | null; baseMinutes: number; enabled: boolean }) {
+  const { activeAutomationId, isRunning, elapsed, startAutomation, stop } = useGlobalTimer();
+  const isActive = isRunning && activeAutomationId === automationId;
+
+  if (!enabled) return null;
+
+  const totalMinutes = baseMinutes + (isActive ? Math.floor(elapsed / 60) : 0);
+
+  return (
+    <div className="flex items-center gap-1.5 shrink-0">
+      <span
+        className={`text-[10px] tabular-nums whitespace-nowrap ${isActive ? "text-primary font-semibold" : "text-muted-foreground"}`}
+        title="Tempo registrado nessa tarefa"
+      >
+        {formatMinutes(totalMinutes)}
+      </span>
+      <Button
+        size="sm"
+        variant={isActive ? "destructive" : "ghost"}
+        className="h-7 px-2 text-[10px] rounded-md gap-1 shrink-0"
+        onClick={() => (isActive ? stop() : startAutomation(automationId, subtaskId))}
+        title={isActive ? "Parar e registrar as horas trabalhadas" : "Iniciar contagem de horas trabalhadas"}
+      >
+        {isActive ? (
+          <>
+            <Square className="h-2.5 w-2.5" />
+            <span className="font-mono tabular-nums">{formatTime(elapsed)}</span>
+          </>
+        ) : (
+          <>
+            <Play className="h-2.5 w-2.5" />Iniciar
+          </>
+        )}
+      </Button>
     </div>
   );
 }

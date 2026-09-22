@@ -257,6 +257,7 @@ export interface AutomationEvent {
 export interface AutomationTimeLog {
   id: string;
   automation_id: string;
+  subtask_id: string | null;
   user_id: string;
   started_at: string;
   ended_at: string | null;

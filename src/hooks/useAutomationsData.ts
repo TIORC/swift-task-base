@@ -265,7 +265,21 @@ export function useCreateSubtask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (values: Partial<AutomationSubtask>) => {
-      const { error } = await supabase.from("automation_subtasks").insert(values as any);
+      const title = (values.title ?? "").trim();
+      if (values.automation_id && title) {
+        const { data: existing, error: qErr } = await supabase
+          .from("automation_subtasks")
+          .select("id")
+          .eq("automation_id", values.automation_id)
+          .eq("title", title)
+          .limit(1);
+        if (qErr) throw qErr;
+        if (existing && existing.length > 0) {
+          toast.info("Já existe uma tarefa com esse título na automação.");
+          return;
+        }
+      }
+      const { error } = await supabase.from("automation_subtasks").insert({ ...values, title } as any);
       if (error) throw error;
     },
     onSuccess: (_, v) => {

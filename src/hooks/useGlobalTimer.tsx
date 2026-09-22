@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 
-type TimerTarget = { type: "task"; id: string } | { type: "automation"; id: string };
+type TimerTarget = { type: "task"; id: string } | { type: "automation"; id: string; subtaskId?: string | null };
 
 interface GlobalTimerContextType {
   activeTaskId: string | null;
@@ -12,7 +12,7 @@ interface GlobalTimerContextType {
   isRunning: boolean;
   elapsed: number;
   start: (taskId: string) => Promise<void>;
-  startAutomation: (automationId: string) => Promise<void>;
+  startAutomation: (automationId: string, subtaskId?: string | null) => Promise<void>;
   stop: () => Promise<void>;
 }
 
@@ -67,16 +67,16 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
     setIsRunning(true);
   }, [user, isRunning, stopCurrent]);
 
-  const startAutomation = useCallback(async (automationId: string) => {
+  const startAutomation = useCallback(async (automationId: string, subtaskId?: string | null) => {
     if (!user) return;
     if (isRunning) await stopCurrent();
     const now = new Date().toISOString();
     const { data, error } = await supabase
       .from("automation_time_logs")
-      .insert({ automation_id: automationId, user_id: user.id, started_at: now, duration_minutes: 0 })
+      .insert({ automation_id: automationId, subtask_id: subtaskId ?? null, user_id: user.id, started_at: now, duration_minutes: 0 })
       .select().single();
     if (error || !data) return;
-    setActiveTarget({ type: "automation", id: automationId });
+    setActiveTarget({ type: "automation", id: automationId, subtaskId: subtaskId ?? null });
     setActiveLogId(data.id);
     startTimeRef.current = new Date(now);
     setElapsed(0);

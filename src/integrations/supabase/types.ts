@@ -351,6 +351,7 @@ export type Database = {
           ended_at: string | null
           id: string
           started_at: string
+          subtask_id: string | null
           user_id: string
         }
         Insert: {
@@ -361,6 +362,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           started_at?: string
+          subtask_id?: string | null
           user_id: string
         }
         Update: {
@@ -371,6 +373,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           started_at?: string
+          subtask_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -379,6 +382,13 @@ export type Database = {
             columns: ["automation_id"]
             isOneToOne: false
             referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_time_logs_subtask_id_fkey"
+            columns: ["subtask_id"]
+            isOneToOne: false
+            referencedRelation: "automation_subtasks"
             referencedColumns: ["id"]
           },
         ]
