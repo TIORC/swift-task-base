@@ -109,7 +109,7 @@ export function TimeLogsEditor({ scope, targetId }: Props) {
   const startEdit = (l: Row) => {
     setEditingId(l.id);
     setH(Math.floor(l.duration_minutes / 60));
-    setM(l.duration_minutes % 60);
+    setM(Math.round(l.duration_minutes % 60));
   };
 
   const total = logs.reduce((s, l) => s + l.duration_minutes, 0);

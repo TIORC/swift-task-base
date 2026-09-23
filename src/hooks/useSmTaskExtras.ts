@@ -99,7 +99,7 @@ export function useSmTaskTime(taskId: string | null) {
   const stop = useCallback(async () => {
     if (!running) return;
     const ended = new Date();
-    const minutes = Math.max(1, Math.round((ended.getTime() - new Date(running.started_at).getTime()) / 60000));
+    const minutes = Math.round(((ended.getTime() - new Date(running.started_at).getTime()) / 60000) * 100) / 100;
     await sb.from("sm_task_time_logs")
       .update({ ended_at: ended.toISOString(), duration_minutes: minutes })
       .eq("id", running.id);
@@ -150,7 +150,8 @@ export function useSmTimeTotals() {
 }
 
 export function formatMinutes(min: number) {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
+  const total = Math.round(min);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
   return h > 0 ? `${h}h${m ? ` ${m}min` : ""}` : `${m}min`;
 }

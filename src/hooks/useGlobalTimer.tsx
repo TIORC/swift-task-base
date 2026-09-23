@@ -46,7 +46,7 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
     if (!activeLogIdRef.current || !startTimeRef.current || !activeTargetRef.current) return;
     const now = new Date();
     const diffMs = now.getTime() - startTimeRef.current.getTime();
-    const durationMinutes = Math.max(1, Math.round(diffMs / 60000));
+    const durationMinutes = Math.round((diffMs / 60000) * 100) / 100;
     const table = activeTargetRef.current.type === "task" ? "time_logs" : "automation_time_logs";
     await supabase.from(table).update({ ended_at: now.toISOString(), duration_minutes: durationMinutes }).eq("id", activeLogIdRef.current);
   }, []);
@@ -115,7 +115,7 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
       if (activeLogIdRef.current && startTimeRef.current && activeTargetRef.current) {
         const now = new Date();
         const diffMs = now.getTime() - startTimeRef.current.getTime();
-        const durationMinutes = Math.max(1, Math.round(diffMs / 60000));
+        const durationMinutes = Math.round((diffMs / 60000) * 100) / 100;
         const table = activeTargetRef.current.type === "task" ? "time_logs" : "automation_time_logs";
         supabase.from(table).update({ ended_at: now.toISOString(), duration_minutes: durationMinutes })
           .eq("id", activeLogIdRef.current)

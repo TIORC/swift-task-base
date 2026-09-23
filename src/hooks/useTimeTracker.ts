@@ -58,7 +58,7 @@ export function useTimeTracker(taskId: string | null) {
 
     const now = new Date();
     const diffMs = now.getTime() - startTimeRef.current.getTime();
-    const durationMinutes = Math.max(1, Math.round(diffMs / 60000));
+    const durationMinutes = Math.round((diffMs / 60000) * 100) / 100;
 
     await supabase
       .from("time_logs")
@@ -96,7 +96,7 @@ export function useTimeTracker(taskId: string | null) {
       if (activeLogId && startTimeRef.current) {
         const now = new Date();
         const diffMs = now.getTime() - startTimeRef.current.getTime();
-        const durationMinutes = Math.max(1, Math.round(diffMs / 60000));
+        const durationMinutes = Math.round((diffMs / 60000) * 100) / 100;
         supabase
           .from("time_logs")
           .update({ ended_at: now.toISOString(), duration_minutes: durationMinutes })
@@ -182,7 +182,8 @@ export function formatTime(seconds: number): string {
 }
 
 export function formatMinutes(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
+  const total = Math.round(minutes);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }

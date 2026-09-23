@@ -503,7 +503,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                         >
                           +{perTaskXp} XP
                         </span>
-                        <SubtaskTimerButton automationId={a.id} subtaskId={st.id} baseMinutes={subtaskMinutes[st.id] || 0} enabled={!readOnly} />
+                        <SubtaskTimerButton automationId={a.id} subtaskId={st.id} baseMinutes={subtaskMinutes[st.id] || 0} enabled={!readOnly} completed={st.completed} />
                         {!readOnly && (
                           <>
                             <Input
@@ -733,11 +733,23 @@ function AutomationLiveTimer({ automationId }: { automationId: string }) {
   );
 }
 
-function SubtaskTimerButton({ automationId, subtaskId, baseMinutes, enabled }: { automationId: string; subtaskId: string | null; baseMinutes: number; enabled: boolean }) {
-  const { activeAutomationId, isRunning, elapsed, startAutomation, stop } = useGlobalTimer();
-  const isActive = isRunning && activeAutomationId === automationId;
+function SubtaskTimerButton({ automationId, subtaskId, baseMinutes, enabled, completed }: { automationId: string; subtaskId: string | null; baseMinutes: number; enabled: boolean; completed: boolean }) {
+  const { activeTarget, activeAutomationId, isRunning, elapsed, startAutomation, stop } = useGlobalTimer();
+  const isActive = isRunning && activeTarget?.type === "automation" && activeTarget.id === automationId && activeTarget.subtaskId === subtaskId;
 
   if (!enabled) return null;
+  if (completed && !isActive) {
+    return (
+      <div className="flex items-center gap-1.5 shrink-0">
+        <span
+          className="text-[10px] tabular-nums whitespace-nowrap text-muted-foreground"
+          title="Tempo registrado nessa tarefa"
+        >
+          {formatMinutes(baseMinutes)}
+        </span>
+      </div>
+    );
+  }
 
   const totalMinutes = baseMinutes + (isActive ? Math.floor(elapsed / 60) : 0);
 
