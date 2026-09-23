@@ -318,3 +318,61 @@ export function computePrediction(a: Automation): { label: string; color: string
   if (daysLeft < 3 && a.progress_percent < 80) return { label: "Tende a atrasar", color: "text-amber-500" };
   return { label: "Dentro do prazo", color: "text-emerald-500" };
 }
+
+/** Normaliza qualquer entrada em um inteiro de 0 a 100 (aceita null/undefined/NaN). */
+export function clampPercent(value: number | null | undefined): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(100, Math.max(0, Math.round(n)));
+}
+
+/**
+ * Porcentagem de conclusão exibida na barra de "Execução".
+ * É sempre MANUAL (progress_percent, informada pela equipe em 0/25/50/75/100),
+ * mesmo quando a automação já tem tarefas técnicas — assim o solicitante
+ * acompanha exatamente o percentual informado pela equipe, e não um número
+ * calculado automaticamente pela quantidade de tarefas concluídas.
+ */
+export function computeExecutionPercent(automation: Pick<Automation, "progress_percent">): number {
+  return clampPercent(automation?.progress_percent);
+}
+
+/** Valores aceitos no ajuste manual da porcentagem de conclusão. */
+export const MANUAL_PROGRESS_STEPS = [0, 25, 50, 75, 100] as const;
+
+/** Faixas de cor da porcentagem de conclusão (barra de Execução). */
+export type ProgressBand = "low" | "medium" | "high";
+
+/**
+ * Regra de cores combinada para a porcentagem de conclusão:
+ * 0% e 25% → vermelho · 50% → amarelo · 75% e 100% → verde forte.
+ * Valores automáticos intermediários caem na faixa correspondente
+ * (ex.: 33% vermelho, 66% amarelo, 80% verde).
+ */
+export function progressBand(percent: number | null | undefined): ProgressBand {
+  const p = clampPercent(percent);
+  if (p < 50) return "low";
+  if (p < 75) return "medium";
+  return "high";
+}
+
+/** Fundo do preenchimento (e do botão ativo) por faixa — gradiente com brilho. */
+export const PROGRESS_BAND_BAR: Record<ProgressBand, string> = {
+  low: "bg-gradient-to-r from-red-700 via-red-500 to-red-400",
+  medium: "bg-gradient-to-r from-yellow-600 via-yellow-500 to-amber-300",
+  high: "bg-gradient-to-r from-emerald-700 via-emerald-500 to-green-400",
+};
+
+/** Tinta do trilho (parte vazia da barra) por faixa — reforça a cor atual. */
+export const PROGRESS_BAND_TRACK: Record<ProgressBand, string> = {
+  low: "bg-red-500/10",
+  medium: "bg-yellow-500/10",
+  high: "bg-emerald-500/10",
+};
+
+/** Cor do texto/percentual por faixa, com halo luminoso para dar destaque. */
+export const PROGRESS_BAND_TEXT: Record<ProgressBand, string> = {
+  low: "text-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.45)]",
+  medium: "text-amber-500 drop-shadow-[0_0_6px_rgba(245,158,11,0.45)]",
+  high: "text-emerald-500 drop-shadow-[0_0_6px_rgba(16,185,129,0.45)]",
+};

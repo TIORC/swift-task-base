@@ -3,10 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -14,7 +12,8 @@ import {
   STATUS_LABELS, STATUS_COLORS, AUTOMATION_STATUSES, PRIORITY_LABELS, PRIORITY_OPTIONS,
   RISK_LABELS, BLOCKER_TYPES, BLOCKER_TYPE_LABELS,
   COMPLEXITY_OPTIONS, COMPLEXITY_LABELS, COMPLEXITY_BONUS_KEYS,
-  computeHealthScore, AutomationStatus,
+  computeHealthScore, computeExecutionPercent,
+  progressBand, PROGRESS_BAND_BAR, PROGRESS_BAND_TEXT, PROGRESS_BAND_TRACK, MANUAL_PROGRESS_STEPS, clampPercent, AutomationStatus,
 } from "@/types/automation";
 import { SECTORS } from "@/types/sectors";
 import { useUpdateAutomation } from "@/hooks/useAutomationsData";
@@ -125,13 +124,19 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
     updateAutomation.mutate({ id: a.id, ...values });
   };
 
-  // ── Barras de progresso (separadas) ──
-  const scopeTotal = scopeItems.length;
-  const scopeDone = scopeItems.filter((i) => i.concluded).length;
-  const scopePct = scopeTotal ? Math.round((scopeDone / scopeTotal) * 100) : 0;
+  // ── Porcentagem de conclusão (barra única de Execução) ──
+  // Automática quando existem tarefas técnicas; manual (progress_percent)
+  // enquanto o desenvolvedor ainda não criou tarefas.
   const execTotal = subtasks.length;
   const execDone = subtasks.filter((t) => t.completed).length;
-  const execPct = execTotal ? Math.round((execDone / execTotal) * 100) : 0;
+  // O percentual é sempre informado pela equipe (manual), mesmo com tarefas
+  // técnicas já criadas — o contador de tarefas fica só como referência.
+  const execPct = computeExecutionPercent(a);
+  // Cores: até 25% vermelho · 50% amarelo · 75% ou mais verde forte.
+  const execBand = progressBand(execPct);
+  // Itens de escopo (checklist do solicitante) — contagem exibida na aba Escopo.
+  const scopeTotal = scopeItems.length;
+  const scopeDone = scopeItems.filter((i) => i.concluded).length;
 
   // Tempo trabalhado acumulado por tarefa técnica (logs com subtask_id).
   const subtaskMinutes: Record<string, number> = {};
@@ -248,39 +253,27 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
             </span>
           </div>
 
-          {/* Duas barras de progresso em cards próprios */}
-          <div className="mt-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-            <div className="rounded-[10px] border border-border/70 bg-primary/[0.04] px-3.5 py-3">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                  <ListChecks className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-                  Escopo
-                </span>
-                <b className="text-sm font-semibold tabular-nums">{scopePct}%</b>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                <div
-                  className={`h-full rounded-full bg-gradient-to-r from-blue-500 to-sky-400 transition-all ${scopePct >= 100 ? "from-emerald-500 to-emerald-400" : ""}`}
-                  style={{ width: `${scopePct}%` }}
-                />
-              </div>
-              <div className="mt-1.5 text-[11px] text-muted-foreground tabular-nums">{scopeDone}/{scopeTotal} itens concluídos</div>
-            </div>
+          {/* Barra única de conclusão (Execução) */}
+          <div className="mt-5">
             <div className="rounded-[10px] border border-border/70 bg-primary/[0.04] px-3.5 py-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <Code2 className="h-3.5 w-3.5 shrink-0 text-primary/70" />
                   Execução
                 </span>
-                <b className="text-sm font-semibold tabular-nums">{execPct}%</b>
+                <b className={`text-sm font-semibold tabular-nums ${PROGRESS_BAND_TEXT[execBand]}`}>{execPct}%</b>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-secondary">
+              <div className={`h-2.5 overflow-hidden rounded-full m-progress-track ${PROGRESS_BAND_TRACK[execBand]}`}>
                 <div
-                  className={`h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-400 transition-all ${execPct >= 100 ? "from-emerald-500 to-emerald-400" : ""}`}
+                  className={`m-progress-fill h-full rounded-full ${PROGRESS_BAND_BAR[execBand]}`}
                   style={{ width: `${execPct}%` }}
                 />
               </div>
-              <div className="mt-1.5 text-[11px] text-muted-foreground tabular-nums">{execDone}/{execTotal} tarefas concluídas</div>
+              <div className="mt-1.5 text-[11px] text-muted-foreground tabular-nums">
+                {execTotal > 0
+                  ? `${execDone}/${execTotal} tarefas técnicas concluídas · percentual informado pela equipe`
+                  : "Sem tarefas técnicas — percentual informado pela equipe"}
+              </div>
             </div>
           </div>
         </DialogHeader>
@@ -402,14 +395,34 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
 
 
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">Progresso manual da automação: {a.progress_percent}%</label>
-                    <Slider
-                      value={[a.progress_percent]}
-                      onValueCommit={v => handleUpdate({ progress_percent: v[0] })}
-                      max={100}
-                      step={5}
-                      className="mt-2"
-                    />
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Porcentagem de conclusão manual: {a.progress_percent}%
+                    </label>
+                    <div className="mt-2 flex items-center gap-1.5">
+                      {MANUAL_PROGRESS_STEPS.map((step) => {
+                        const active = clampPercent(a.progress_percent) === step;
+                        return (
+                          <button
+                            key={step}
+                            type="button"
+                            aria-pressed={active}
+                            onClick={() => handleUpdate({ progress_percent: step })}
+                            className={`flex-1 rounded-md border px-1.5 py-1 text-xs font-bold tabular-nums transition-colors ${
+                              active
+                                ? "border-transparent bg-primary text-primary-foreground"
+                                : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground"
+                            }`}
+                          >
+                            {step}%
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-1 text-[10px] text-muted-foreground">
+                      {execTotal > 0
+                        ? `Este valor é o que o solicitante vê. Referência: ${execDone}/${execTotal} tarefas técnicas concluídas.`
+                        : "Este valor é o que o solicitante vê na barra de Execução."}
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -485,11 +498,8 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
 
             {/* ─── Escopo Tab (checklist do solicitante) ─── */}
             <TabsContent value="escopo" className="mt-4 space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-xs text-muted-foreground">
-                  Barra de Escopo: <span className="tabular-nums text-foreground">{scopeDone}/{scopeTotal}</span> itens concluídos
-                </div>
-                <Progress value={scopePct} className="h-2 w-40" />
+              <div className="text-xs text-muted-foreground">
+                Checklist do solicitante: <span className="tabular-nums text-foreground">{scopeDone}/{scopeTotal}</span> itens atendidos
               </div>
 
               {isSolicitante && !canEditScope && (
@@ -661,7 +671,8 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
 
               {isSolicitante && (
                 <p className="text-[11px] text-muted-foreground rounded-lg bg-muted/40 px-3 py-2">
-                  Acompanhe aqui as tarefas técnicas. Só o desenvolvedor cria e conclui tarefas.
+                  Acompanhe aqui as tarefas técnicas. Só o desenvolvedor cria e conclui tarefas — a
+                  porcentagem de conclusão exibida acima é informada pela equipe técnica.
                 </p>
               )}
 

@@ -406,7 +406,6 @@ export function useCreateScopeItem() {
     },
     onSuccess: (_, v) => {
       qc.invalidateQueries({ queryKey: ["automation_scope_items", v.automation_id] });
-      qc.invalidateQueries({ queryKey: ["automation_scope_items", "all-counts"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -424,7 +423,6 @@ export function useUpdateScopeItem() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automation_scope_items"] });
-      qc.invalidateQueries({ queryKey: ["automation_scope_items", "all-counts"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -442,35 +440,8 @@ export function useDeleteScopeItem() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automation_scope_items"] });
-      qc.invalidateQueries({ queryKey: ["automation_scope_items", "all-counts"] });
     },
     onError: (e: Error) => toast.error(e.message),
-  });
-}
-
-export interface ScopeCountsInfo {
-  total: number;
-  done: number;
-}
-
-/** Itens de escopo concluídos por automação (Barra de Escopo nos cards). */
-export function useAllAutomationScopeCounts() {
-  return useQuery({
-    queryKey: ["automation_scope_items", "all-counts"],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("automation_scope_items")
-        .select("automation_id, concluded");
-      if (error) throw error;
-      const map: Record<string, ScopeCountsInfo> = {};
-      ((data || []) as { automation_id: string; concluded: boolean }[]).forEach((s) => {
-        if (!map[s.automation_id]) map[s.automation_id] = { total: 0, done: 0 };
-        map[s.automation_id].total += 1;
-        if (s.concluded) map[s.automation_id].done += 1;
-      });
-      return map;
-    },
-    staleTime: 30_000,
   });
 }
 

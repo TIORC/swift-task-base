@@ -1,10 +1,9 @@
-import { Automation, BOARD_COLUMNS, STATUS_LABELS, AutomationStatus, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, computeHealthScore, PENDING_REASONS, PENDING_REASON_LABELS, PendingReason } from "@/types/automation";
+import { Automation, BOARD_COLUMNS, STATUS_LABELS, AutomationStatus, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, computeHealthScore, computeExecutionPercent, progressBand, PROGRESS_BAND_BAR, PROGRESS_BAND_TEXT, PROGRESS_BAND_TRACK, PENDING_REASONS, PENDING_REASON_LABELS, PendingReason } from "@/types/automation";
 import { AutomationCard } from "./AutomationCard";
 import { useState } from "react";
 import { List, Columns3 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
@@ -145,7 +144,7 @@ export function AutomationBoard({ automations, onSelect, profileMap, blockerCoun
                 <TableHead className="w-[30%]">Automação</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Prioridade</TableHead>
-                <TableHead>Progresso</TableHead>
+                <TableHead>Execução</TableHead>
                 <TableHead>Responsável</TableHead>
                 <TableHead>Prazo</TableHead>
                 <TableHead>Saúde</TableHead>
@@ -154,6 +153,10 @@ export function AutomationBoard({ automations, onSelect, profileMap, blockerCoun
             <TableBody>
               {automations.map(a => {
                 const health = computeHealthScore(a);
+                // Mesma porcentagem dos cards: sempre informada pela equipe (manual).
+                const execPct = computeExecutionPercent(a);
+                // Cores: até 25% vermelho · 50% amarelo · 75% ou mais verde forte.
+                const execBand = progressBand(execPct);
                 return (
                   <TableRow key={a.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onSelect(a)}>
                     <TableCell className="font-medium">{a.title}</TableCell>
@@ -169,8 +172,13 @@ export function AutomationBoard({ automations, onSelect, profileMap, blockerCoun
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Progress value={a.progress_percent} className="h-1.5 w-16" />
-                        <span className="text-xs text-muted-foreground">{a.progress_percent}%</span>
+                        <div className={`h-2 w-20 overflow-hidden rounded-full m-progress-track ${PROGRESS_BAND_TRACK[execBand]}`}>
+                          <div
+                            className={`m-progress-fill h-full rounded-full ${PROGRESS_BAND_BAR[execBand]}`}
+                            style={{ width: `${execPct}%` }}
+                          />
+                        </div>
+                        <span className={`text-xs font-medium tabular-nums ${PROGRESS_BAND_TEXT[execBand]}`}>{execPct}%</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-xs">{a.assigned_to ? profileMap[a.assigned_to] || "—" : "—"}</TableCell>

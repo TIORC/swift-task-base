@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Automation, computeHealthScore } from "@/types/automation";
+import { Automation, computeHealthScore, computeExecutionPercent, progressBand, PROGRESS_BAND_TEXT } from "@/types/automation";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
 interface Props {
@@ -44,7 +44,7 @@ export function AutomationMetrics({ automations, profileMap }: Props) {
   const completed = automations.filter(a => a.status === "completed");
   const blocked = automations.filter(a => a.status === "blocked").length;
   const late = automations.filter(a => !!a.final_deadline && new Date(a.final_deadline) < new Date() && !["completed", "cancelled"].includes(a.status)).length;
-  const avgProgress = active.length ? Math.round(active.reduce((s, a) => s + a.progress_percent, 0) / active.length) : 0;
+  const avgProgress = active.length ? Math.round(active.reduce((s, a) => s + computeExecutionPercent(a), 0) / active.length) : 0;
   const completionRate = automations.length ? Math.round((completed.length / automations.length) * 100) : 0;
 
   return (
@@ -57,7 +57,7 @@ export function AutomationMetrics({ automations, profileMap }: Props) {
           <div className="flex justify-between"><span className="text-muted-foreground">Concluídas</span><span className="font-semibold text-emerald-500">{completed.length}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Bloqueadas</span><span className="font-semibold text-red-500">{blocked}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Atrasadas</span><span className="font-semibold text-amber-500">{late}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Progresso médio</span><span className="font-semibold">{avgProgress}%</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Progresso médio (Execução)</span><span className={`font-semibold ${PROGRESS_BAND_TEXT[progressBand(avgProgress)]}`}>{avgProgress}%</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Taxa de conclusão</span><span className="font-semibold">{completionRate}%</span></div>
         </CardContent>
       </Card>

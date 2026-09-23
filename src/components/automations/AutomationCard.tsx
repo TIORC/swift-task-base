@@ -6,6 +6,11 @@ import {
   RISK_LABELS,
   AutomationStatus,
   computePrediction,
+  computeExecutionPercent,
+  progressBand,
+  PROGRESS_BAND_BAR,
+  PROGRESS_BAND_TEXT,
+  PROGRESS_BAND_TRACK,
 } from "@/types/automation";
 import { SECTOR_COLORS } from "@/types/sectors";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Lock, User, Play, Square, Building2,
-  ListChecks, Code2, MessageSquare, Activity, Pencil, Check, X, ArrowRight,
+  Code2, MessageSquare, Activity, Pencil, Check, X, ArrowRight,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -22,7 +27,6 @@ import {
   useLatestAutomationEvents,
   useLatestAutomationComments,
   useAllAutomationSteps,
-  useAllAutomationScopeCounts,
   useRenameAutomation,
 } from "@/hooks/useAutomationsData";
 import { useGlobalTimer } from "@/hooks/useGlobalTimer";
@@ -81,7 +85,6 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
   const { data: latestEvents } = useLatestAutomationEvents();
   const { data: latestComments } = useLatestAutomationComments();
   const { data: steps } = useAllAutomationSteps();
-  const { data: scopeCounts } = useAllAutomationScopeCounts();
   const { activeAutomationId, isRunning, elapsed, startAutomation, stop } = useGlobalTimer();
   const renameAutomation = useRenameAutomation();
 
@@ -98,9 +101,13 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
   const lastEvent = latestEvents?.[a.id];
   const lastComment = latestComments?.[a.id];
   const step = steps?.[a.id];
-  const scope = scopeCounts?.[a.id];
-  const scopePct = scope && scope.total ? Math.round((scope.done / scope.total) * 100) : 0;
-  const execPct = step && step.total ? Math.round((step.done / step.total) * 100) : 0;
+  // Barra única de Execução: o percentual é sempre informado pela equipe (manual),
+  // mesmo quando existem tarefas técnicas — o contador abaixo é apenas referência.
+  const execTotal = step?.total ?? 0;
+  const execDone = step?.done ?? 0;
+  const execPct = computeExecutionPercent(a);
+  // Cores: até 25% vermelho · 50% amarelo · 75% ou mais verde forte.
+  const execBand = progressBand(execPct);
   const prediction = computePrediction(a);
 
   const lastEventAuthor = lastEvent ? profileMap?.[lastEvent.user_id] : null;
@@ -253,37 +260,26 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
         </b>
       </div>
 
-      {/* Bloco das 2 barras de progresso */}
-      <div className="rounded-lg border border-border/70 bg-primary/[0.05] p-3 mb-3 space-y-3">
-        <div>
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1 gap-2">
-            <span className="flex items-center gap-1 min-w-0">
-              <ListChecks className="h-2.5 w-2.5 shrink-0" />
-              <span className="truncate">Escopo</span>
-            </span>
-            <b className="font-semibold text-foreground tabular-nums shrink-0">{scopePct}%</b>
-          </div>
-          <div className="h-[7px] rounded-full bg-secondary overflow-hidden">
-            <div
-              className={`h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all ${scopePct >= 100 ? "from-emerald-500 to-emerald-400" : ""}`}
-              style={{ width: `${scopePct}%` }}
-            />
-          </div>
+      {/* Barra única de conclusão (Execução) — percentual informado pela equipe,
+          independente da quantidade de tarefas técnicas. */}
+      <div className="rounded-lg border border-border/70 bg-primary/[0.05] p-3 mb-3">
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1 gap-2">
+          <span className="flex items-center gap-1 min-w-0">
+            <Code2 className="h-2.5 w-2.5 shrink-0" />
+            <span className="truncate">Execução</span>
+          </span>
+          <b className={`font-semibold tabular-nums shrink-0 ${PROGRESS_BAND_TEXT[execBand]}`}>{execPct}%</b>
         </div>
-        <div>
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1 gap-2">
-            <span className="flex items-center gap-1 min-w-0">
-              <Code2 className="h-2.5 w-2.5 shrink-0" />
-              <span className="truncate">Execução</span>
-            </span>
-            <b className="font-semibold text-foreground tabular-nums shrink-0">{execPct}%</b>
-          </div>
-          <div className="h-[7px] rounded-full bg-secondary overflow-hidden">
-            <div
-              className={`h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-400 transition-all ${execPct >= 100 ? "from-emerald-500 to-emerald-400" : ""}`}
-              style={{ width: `${execPct}%` }}
-            />
-          </div>
+        <div className={`h-2 overflow-hidden rounded-full m-progress-track ${PROGRESS_BAND_TRACK[execBand]}`}>
+          <div
+            className={`m-progress-fill h-full rounded-full ${PROGRESS_BAND_BAR[execBand]}`}
+            style={{ width: `${execPct}%` }}
+          />
+        </div>
+        <div className="mt-1 text-[9px] text-muted-foreground tabular-nums truncate">
+          {execTotal > 0
+            ? `${execDone}/${execTotal} tarefas técnicas concluídas`
+            : "Percentual informado pela equipe"}
         </div>
       </div>
 

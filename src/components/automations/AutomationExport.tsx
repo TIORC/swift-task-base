@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Download, FileSpreadsheet, FileText } from "lucide-react";
-import { Automation, STATUS_LABELS, PRIORITY_LABELS, RISK_LABELS, AutomationStatus } from "@/types/automation";
+import { Automation, STATUS_LABELS, PRIORITY_LABELS, RISK_LABELS, AutomationStatus, computeExecutionPercent } from "@/types/automation";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -28,7 +28,7 @@ function buildRows(automations: Automation[], profileMap: Record<string, string>
     horasGastas: Number(a.spent_hours || 0).toFixed(1),
     bloqueios: blockerCounts[a.id] || 0,
     risco: RISK_LABELS[a.risk_level] || a.risk_level,
-    progresso: `${a.progress_percent}%`,
+    progresso: `${computeExecutionPercent(a)}%`,
   }));
 }
 

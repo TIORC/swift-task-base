@@ -191,6 +191,50 @@
   }
 }
 
+/* Barra de porcentagem de conclusão (Execução das automações).
+   Trilho com profundidade + preenchimento luminoso, com uma faixa de luz
+   que atravessa a barra e uma luz na ponta indicando onde o progresso parou. */
+.m-progress-track {
+  box-shadow:
+    inset 0 1px 3px rgb(0 0 0 / 0.45),
+    inset 0 0 0 1px rgb(255 255 255 / 0.05);
+}
+.m-progress-fill {
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.45),
+    inset -3px 0 7px -2px rgb(255 255 255 / 0.9);
+  transition: width 550ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.m-progress-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 18%, rgb(255 255 255 / 0.55) 48%, transparent 78%);
+  transform: translateX(-110%);
+  animation: m-progress-shine 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes m-progress-shine {
+  0% {
+    transform: translateX(-110%);
+  }
+  55%,
+  100% {
+    transform: translateX(110%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .m-progress-fill {
+    transition: none;
+  }
+  .m-progress-fill::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
 /* Abas compactas do modal: em telas pequenas, esconde o rótulo das abas
    inativas e mantém apenas o ícone (o texto completo fica na aba ativa). */
 @media (max-width: 640px) {
