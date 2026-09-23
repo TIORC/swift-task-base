@@ -143,6 +143,37 @@
   --sidebar-ring: 95 38% 48%;
 }
 
+/* Forçar cor verde do social em dropdowns (select) quando em dark mode */
+.dark.theme-social .select-trigger,
+.dark.theme-social [data-state="open"] .select-trigger,
+.dark.theme-social .select-trigger:hover,
+.dark.theme-social .select-trigger:focus,
+.dark.theme-social .select-trigger:focus-visible {
+  --tw-ring-color: hsl(var(--primary));
+  border-color: hsl(var(--primary)) !important;
+}
+
+.dark.theme-social .select-content {
+  border-color: hsl(var(--border));
+}
+
+.dark.theme-social .select-item:hover,
+.dark.theme-social .select-item[data-highlighted="true"] {
+  background-color: hsl(var(--primary) / 15%);
+  color: hsl(var(--primary-foreground));
+}
+
+.dark.theme-social .select-item[data-state="checked"] {
+  background-color: hsl(var(--primary) / 20%);
+  color: hsl(var(--primary-foreground));
+}
+
+/* Garantir que a borda do select fique verde quando aberto/focado */
+.dark.theme-social .select-trigger[data-placeholder]:focus,
+.dark.theme-social .select-trigger[data-placeholder]:hover {
+  border-color: hsl(var(--primary));
+}
+
 @layer base {
   * {
     @apply border-border;

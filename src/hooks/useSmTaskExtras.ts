@@ -127,6 +127,27 @@ export function useSmTaskTime(taskId: string | null) {
   return { logs, loading, refresh, running, totalMinutes, start, stop, addManual, removeLog };
 }
 
+/** Progresso de checklist por tarefa, para relatórios */
+export function useSmChecklistProgress() {
+  const [byTask, setByTask] = useState<Record<string, { total: number; done: number }>>({});
+
+  const refresh = useCallback(async () => {
+    const { data } = await sb.from("sm_task_checklist_items").select("task_id, done");
+    const m: Record<string, { total: number; done: number }> = {};
+    (data ?? []).forEach((r: any) => {
+      const e = m[r.task_id] ?? { total: 0, done: 0 };
+      e.total++;
+      if (r.done) e.done++;
+      m[r.task_id] = e;
+    });
+    setByTask(m);
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  return { byTask, refresh };
+}
+
 /** Horas por tarefa, para relatórios */
 export function useSmTimeTotals() {
   const [byTask, setByTask] = useState<Record<string, number>>({});
