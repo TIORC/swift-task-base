@@ -205,18 +205,8 @@ export interface AutomationSubtask {
   completed_by: string | null;
   notes: string | null;
   sort_order: number;
+  /** Coluna legada (vínculo com itens de escopo) — a aba Escopo foi removida do app. */
   item_escopo_id: string | null;
-  created_at: string;
-}
-
-// Item de escopo (checklist do solicitante). Só é concluído quando a tarefa
-// técnica vinculada for finalizada pelo dev — nunca pelo solicitante direto.
-export interface AutomationScopeItem {
-  id: string;
-  automation_id: string;
-  description: string;
-  concluded: boolean;
-  created_by: string;
   created_at: string;
 }
 

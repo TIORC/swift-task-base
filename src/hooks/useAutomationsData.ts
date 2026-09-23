@@ -9,7 +9,6 @@ import { STATUS_LABELS } from "@/types/automation";
 import type {
   Automation,
   AutomationSubtask,
-  AutomationScopeItem,
   AutomationBlocker,
   AutomationEvent,
   AutomationTimeLog,
@@ -297,17 +296,15 @@ export function useUpdateSubtask() {
       const payload: Record<string, unknown> = { ...values };
 
       let wasNewlyCompleted = false;
-      let linkedEscopoId: string | null = null;
       let automationId: string | null = null;
       let taskTitle = "";
 
       if (values.completed !== undefined) {
         const { data: prev } = await supabase
           .from("automation_subtasks")
-          .select("completed, item_escopo_id, automation_id, title")
+          .select("completed, automation_id, title")
           .eq("id", id)
           .single();
-        linkedEscopoId = (prev?.item_escopo_id as string) ?? null;
         automationId = (prev?.automation_id as string) ?? null;
         taskTitle = (prev?.title as string) ?? "";
         wasNewlyCompleted = values.completed === true && prev?.completed === false;
@@ -326,16 +323,8 @@ export function useUpdateSubtask() {
       const { error } = await supabase.from("automation_subtasks").update(payload as any).eq("id", id);
       if (error) throw error;
 
-      // Primeira conclusão: conclui o item de escopo vinculado, registra
-      // timeline e notifica o solicitante.
+      // Primeira conclusão: registra timeline e notifica o solicitante.
       if (wasNewlyCompleted && automationId) {
-        if (linkedEscopoId) {
-          await (supabase as any)
-            .from("automation_scope_items")
-            .update({ concluded: true })
-            .eq("id", linkedEscopoId);
-        }
-
         await supabase.from("automation_events").insert({
           automation_id: automationId,
           event_type: "subtask_completed",
@@ -354,7 +343,6 @@ export function useUpdateSubtask() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automation_subtasks"] });
-      qc.invalidateQueries({ queryKey: ["automation_scope_items"] });
       invalidateGamification(qc);
     },
     onError: (e: Error) => toast.error(e.message),
@@ -371,75 +359,6 @@ export function useDeleteSubtask() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automation_subtasks"] });
       invalidateGamification(qc);
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-}
-
-// ─── Scope Items (checklist do solicitante) ───
-
-export function useAutomationScopeItems(automationId: string | null) {
-  return useQuery({
-    queryKey: ["automation_scope_items", automationId],
-    enabled: !!automationId,
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("automation_scope_items")
-        .select("*")
-        .eq("automation_id", automationId!)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return (data || []) as AutomationScopeItem[];
-    },
-  });
-}
-
-export function useCreateScopeItem() {
-  const qc = useQueryClient();
-  const { user } = useAuth();
-  return useMutation({
-    mutationFn: async (values: Partial<AutomationScopeItem>) => {
-      const { error } = await (supabase as any)
-        .from("automation_scope_items")
-        .insert({ ...values, created_by: user!.id });
-      if (error) throw error;
-    },
-    onSuccess: (_, v) => {
-      qc.invalidateQueries({ queryKey: ["automation_scope_items", v.automation_id] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-}
-
-export function useUpdateScopeItem() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, ...values }: Partial<AutomationScopeItem> & { id: string }) => {
-      const { error } = await (supabase as any)
-        .from("automation_scope_items")
-        .update(values)
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["automation_scope_items"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-}
-
-export function useDeleteScopeItem() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
-        .from("automation_scope_items")
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["automation_scope_items"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });

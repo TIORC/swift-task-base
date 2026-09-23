@@ -18,7 +18,6 @@ import {
 import { SECTORS } from "@/types/sectors";
 import { useUpdateAutomation } from "@/hooks/useAutomationsData";
 import { useAutomationSubtasks, useCreateSubtask, useUpdateSubtask, useDeleteSubtask } from "@/hooks/useAutomationsData";
-import { useAutomationScopeItems, useCreateScopeItem, useUpdateScopeItem, useDeleteScopeItem } from "@/hooks/useAutomationsData";
 import { useAutomationBlockers, useCreateBlocker, useResolveBlocker } from "@/hooks/useAutomationsData";
 import { useAutomationEvents } from "@/hooks/useAutomationsData";
 import { useAutomationTimeLogs, useCreateTimeLog, useXpSettings } from "@/hooks/useAutomationsData";
@@ -30,8 +29,8 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   CheckCircle2, Clock, Code2, FileText, History,
-  ListChecks, Lock, MessageSquare, Paperclip, Play, Plus, Save, Square, Timer, Trash2, X,
-  Sparkles, RefreshCcw, Unlock, Pencil, CalendarClock, Check, User,
+  Lock, MessageSquare, Paperclip, Play, Plus, Square, Timer, X,
+  Sparkles, RefreshCcw, Unlock, CalendarClock, Check, User,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -47,7 +46,6 @@ const TIMELINE_META: Record<string, { label: string; color: string; Icon: Lucide
 
 const MODAL_TABS: { value: string; label: string; Icon: LucideIcon }[] = [
   { value: "details", label: "Dados", Icon: FileText },
-  { value: "escopo", label: "Escopo", Icon: ListChecks },
   { value: "tarefas", label: "Tarefas", Icon: Code2 },
   { value: "comments", label: "Chat", Icon: MessageSquare },
   { value: "files", label: "Anexos", Icon: Paperclip },
@@ -78,10 +76,6 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
   const createSubtask = useCreateSubtask();
   const updateSubtask = useUpdateSubtask();
   const deleteSubtask = useDeleteSubtask();
-  const { data: scopeItems = [] } = useAutomationScopeItems(automation?.id ?? null);
-  const createScopeItem = useCreateScopeItem();
-  const updateScopeItem = useUpdateScopeItem();
-  const deleteScopeItem = useDeleteScopeItem();
   const { data: blockers = [] } = useAutomationBlockers(automation?.id ?? null);
   const createBlocker = useCreateBlocker();
   const resolveBlocker = useResolveBlocker();
@@ -91,10 +85,6 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
   const { data: xpSettings } = useXpSettings();
 
   const [newSubtask, setNewSubtask] = useState("");
-  const [newSubtaskScope, setNewSubtaskScope] = useState("none");
-  const [newScopeItem, setNewScopeItem] = useState("");
-  const [editingScopeId, setEditingScopeId] = useState<string | null>(null);
-  const [editingScopeDraft, setEditingScopeDraft] = useState("");
   const [newBlockerType, setNewBlockerType] = useState("other");
   const [newBlockerDesc, setNewBlockerDesc] = useState("");
   const [timeMinutes, setTimeMinutes] = useState("");
@@ -106,15 +96,11 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
 
   // ── Papéis ──
   // Equipe técnica (dev) pode mudar status, tarefas, horas etc.
-  // Solicitante acompanha, comenta e gerencia o escopo (enquanto aberto).
+  // Solicitante acompanha e comenta, sem editar.
   const isTech = profile === "admin" || profile === "gestor" || profile === "lider" || roles.includes("dev");
   // Somente admin/gestor reatribui o responsável da automação.
   const canReassign = profile === "admin" || profile === "gestor";
   const isSolicitante = !isTech;
-  // Itens de escopo: solicitante edita só quando status em Solicitação/Backlog;
-  // a equipe técnica também pode administrar o checklist.
-  const scopeOpenStatuses = ["requested", "backlog"] as AutomationStatus[];
-  const canEditScope = isSolicitante ? scopeOpenStatuses.includes(a.status) : isTech;
 
   const canManage = isTech || a.assigned_to === user?.id || a.created_by === user?.id;
   const readOnly = !!isReadOnly || !canManage;
@@ -124,19 +110,14 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
     updateAutomation.mutate({ id: a.id, ...values });
   };
 
-  // ── Porcentagem de conclusão (barra única de Execução) ──
-  // Automática quando existem tarefas técnicas; manual (progress_percent)
-  // enquanto o desenvolvedor ainda não criou tarefas.
+  // ── Porcentagem de conclusão (barra de Execução) ──
+  // Sempre informada pela equipe (manual), mesmo com tarefas técnicas já
+  // criadas — o contador de tarefas fica só como referência.
   const execTotal = subtasks.length;
   const execDone = subtasks.filter((t) => t.completed).length;
-  // O percentual é sempre informado pela equipe (manual), mesmo com tarefas
-  // técnicas já criadas — o contador de tarefas fica só como referência.
   const execPct = computeExecutionPercent(a);
   // Cores: até 25% vermelho · 50% amarelo · 75% ou mais verde forte.
   const execBand = progressBand(execPct);
-  // Itens de escopo (checklist do solicitante) — contagem exibida na aba Escopo.
-  const scopeTotal = scopeItems.length;
-  const scopeDone = scopeItems.filter((i) => i.concluded).length;
 
   // Tempo trabalhado acumulado por tarefa técnica (logs com subtask_id).
   const subtaskMinutes: Record<string, number> = {};
@@ -164,28 +145,8 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
       title: newSubtask,
       deadline: new Date().toISOString(),
       sort_order: subtasks.length,
-      item_escopo_id: newSubtaskScope !== "none" ? newSubtaskScope : null,
     });
     setNewSubtask("");
-    setNewSubtaskScope("none");
-  };
-
-  const handleAddScopeItem = () => {
-    if (!newScopeItem.trim()) return;
-    createScopeItem.mutate({ automation_id: a.id, description: newScopeItem.trim() });
-    setNewScopeItem("");
-  };
-
-  const startEditScope = (id: string, current: string) => {
-    setEditingScopeId(id);
-    setEditingScopeDraft(current);
-  };
-
-  const commitEditScope = (id: string) => {
-    const description = editingScopeDraft.trim();
-    if (!description) return;
-    updateScopeItem.mutate({ id, description });
-    setEditingScopeId(null);
   };
 
   const handleAddBlocker = () => {
@@ -496,99 +457,6 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
               </div>
             </TabsContent>
 
-            {/* ─── Escopo Tab (checklist do solicitante) ─── */}
-            <TabsContent value="escopo" className="mt-4 space-y-3">
-              <div className="text-xs text-muted-foreground">
-                Checklist do solicitante: <span className="tabular-nums text-foreground">{scopeDone}/{scopeTotal}</span> itens atendidos
-              </div>
-
-              {isSolicitante && !canEditScope && (
-                <p className="text-[11px] text-amber-600 dark:text-amber-400 rounded-lg bg-amber-500/10 px-3 py-2">
-                  O escopo só pode ser alterado enquanto a automação estiver em <b>Solicitada</b> ou <b>Backlog</b>.
-                </p>
-              )}
-              {!isSolicitante && (
-                <p className="text-[11px] text-muted-foreground rounded-lg bg-muted/40 px-3 py-2">
-                  Itens de escopo refletem o que o solicitante pediu. Um item só é concluído quando a tarefa técnica vinculada
-                  for finalizada pelo desenvolvedor.
-                </p>
-              )}
-
-              <div className="space-y-1.5">
-                {scopeItems.map(item => (
-                  <div key={item.id} className="flex items-center gap-2 group">
-                    <Checkbox
-                      checked={item.concluded}
-                      disabled
-                      title={item.concluded ? "Concluído pela tarefa técnica" : "Concluído automaticamente pela tarefa técnica"}
-                    />
-                    <div className="flex-1 min-w-0">
-                      {editingScopeId === item.id ? (
-                        <div className="flex items-center gap-2">
-                          <Input
-                            autoFocus
-                            value={editingScopeDraft}
-                            onChange={(e) => setEditingScopeDraft(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") commitEditScope(item.id);
-                              if (e.key === "Escape") setEditingScopeId(null);
-                            }}
-                            className="h-7 text-sm"
-                          />
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" onClick={() => commitEditScope(item.id)}>
-                            <Save className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" onClick={() => setEditingScopeId(null)}>
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className={`text-sm ${item.concluded ? "line-through text-muted-foreground" : ""}`}>{item.description}</span>
-                      )}
-                      <span className="block text-[10px] text-muted-foreground">
-                        Criado por {profileMap[item.created_by] || "Solicitante"}
-                        {item.concluded && " • Atendido"}
-                      </span>
-                    </div>
-                    {canEditScope && editingScopeId !== item.id && (
-                      <>
-                        <button
-                          onClick={() => startEditScope(item.id, item.description)}
-                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-opacity"
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </button>
-                        <button
-                          onClick={() => deleteScopeItem.mutate(item.id)}
-                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                ))}
-                {scopeItems.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-3">Nenhum item de escopo cadastrado.</p>
-                )}
-              </div>
-
-              {canEditScope && (
-                <div className="flex gap-2">
-                  <Input
-                    value={newScopeItem}
-                    onChange={e => setNewScopeItem(e.target.value)}
-                    placeholder="Novo item de escopo (o que você espera que seja entregue)..."
-                    className="h-8"
-                    onKeyDown={e => e.key === "Enter" && handleAddScopeItem()}
-                  />
-                  <Button size="sm" onClick={handleAddScopeItem} className="h-8" disabled={!newScopeItem.trim()}>
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                </div>
-              )}
-            </TabsContent>
-
             {/* ─── Tarefas Tab (do desenvolvedor) ─── */}
             <TabsContent value="tarefas" className="mt-4 space-y-3">
               <div className="mb-1 flex items-center justify-between gap-2">
@@ -610,7 +478,6 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
               ) : (
                 <div className="space-y-2">
                   {subtasks.map(st => {
-                    const linkedScope = st.item_escopo_id ? scopeItems.find(i => i.id === st.item_escopo_id) : null;
                     return (
                       <div key={st.id} className="group flex items-center gap-3 rounded-[10px] border border-border bg-card/60 px-3 py-2.5">
                         <button
@@ -623,11 +490,6 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                         </button>
                         <div className="min-w-0 flex-1">
                           <p className={`text-[13px] leading-snug ${st.completed ? "line-through text-muted-foreground" : ""}`}>{st.title}</p>
-                          {linkedScope && (
-                            <p className="mt-0.5 truncate text-[10px] text-primary/80">
-                              {linkedScope.description}
-                            </p>
-                          )}
                           {st.completed && st.completed_at && (
                             <p className="mt-0.5 text-[10px] text-muted-foreground">
                               Concluída em {format(new Date(st.completed_at), "dd/MM/yy HH:mm", { locale: ptBR })}
@@ -685,17 +547,6 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                     placeholder="Nova tarefa técnica..."
                     className="h-9 flex-1 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0"
                   />
-                  <Select value={newSubtaskScope} onValueChange={setNewSubtaskScope}>
-                    <SelectTrigger className="h-9 w-[210px] shrink-0 text-[11px]">
-                      <SelectValue placeholder={scopeItems.length ? "Vincular a item de escopo" : "Sem itens de escopo"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sem vínculo</SelectItem>
-                      {scopeItems.map(si => (
-                        <SelectItem key={si.id} value={si.id}>{si.description}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                   <Button
                     size="sm"
                     onClick={handleAddSubtask}
