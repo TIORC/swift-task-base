@@ -22,6 +22,7 @@ export function SocialPostComments({ postId }: { postId: string }) {
   const [sending, setSending] = useState(false);
 
   const refresh = async () => {
+    if (!postId) { setItems([]); return; }
     const { data } = await sb.from("sm_post_comments").select("*").eq("post_id", postId).order("created_at", { ascending: true });
     const list = (data ?? []) as Comment[];
     const ids = Array.from(new Set(list.map(c => c.user_id)));

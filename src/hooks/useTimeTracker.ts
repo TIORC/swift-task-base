@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 interface TimeLog {
   id: string;
@@ -44,7 +45,10 @@ export function useTimeTracker(taskId: string | null) {
       .select()
       .single();
 
-    if (error || !data) return;
+    if (error || !data) {
+      toast.error(`Não foi possível iniciar o cronômetro: ${error?.message ?? "erro desconhecido"}`);
+      return;
+    }
 
     setActiveLogId(data.id);
     startTimeRef.current = new Date(now);
@@ -60,13 +64,15 @@ export function useTimeTracker(taskId: string | null) {
     const diffMs = now.getTime() - startTimeRef.current.getTime();
     const durationMinutes = Math.round((diffMs / 60000) * 100) / 100;
 
-    await supabase
+    const { error } = await supabase
       .from("time_logs")
       .update({
         ended_at: now.toISOString(),
         duration_minutes: durationMinutes,
       })
       .eq("id", activeLogId);
+
+    if (error) toast.error(`Não foi possível salvar o tempo trabalhado: ${error.message}`);
 
     setActiveLogId(null);
     setIsRunning(false);
@@ -78,12 +84,11 @@ export function useTimeTracker(taskId: string | null) {
 
   // Tick
   useEffect(() => {
-    if (isRunning && startTimeRef.current) {
-      intervalRef.current = setInterval(() => {
-        const now = new Date();
-        setElapsed(Math.floor((now.getTime() - startTimeRef.current!.getTime()) / 1000));
-      }, 1000);
-    }
+    const startTime = startTimeRef.current;
+    if (!isRunning || !startTime) return;
+    intervalRef.current = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTime.getTime()) / 1000));
+    }, 1000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };

@@ -19,6 +19,7 @@ export function SocialTaskChecklist({ taskId }: { taskId: string }) {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    if (!taskId) { setItems([]); setLoading(false); return; }
     setLoading(true);
     const { data, error } = await sb
       .from("sm_task_checklist_items").select("*").eq("task_id", taskId)

@@ -30,7 +30,7 @@ import {
   useRenameAutomation,
 } from "@/hooks/useAutomationsData";
 import { useGlobalTimer } from "@/hooks/useGlobalTimer";
-import { formatMinutes } from "@/hooks/useTimeTracker";
+import { formatMinutes, formatTime } from "@/hooks/useTimeTracker";
 
 interface Props {
   automation: Automation;
@@ -95,6 +95,8 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
   const baseMinutes = totals?.[a.id] || 0;
   const liveMinutes = isTimerOnThis ? Math.floor(elapsed / 60) : 0;
   const totalWorked = baseMinutes + liveMinutes;
+  // Enquanto o cronômetro desta automação roda, mostra HH:MM:SS ao vivo; parado, mostra o total acumulado.
+  const workedLabel = isTimerOnThis ? formatTime(elapsed) : formatMinutes(totalWorked);
   const isBlocked = a.status === "blocked";
   const isFinished = a.status === "completed" || a.status === "cancelled";
 
@@ -287,7 +289,7 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
       <div className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5 mb-3 ${isTimerOnThis ? "border-primary/30 bg-primary/10" : "border-border/70 bg-secondary/40"}`}>
         <div>
           <div className={`text-[11px] font-semibold leading-tight tabular-nums ${isTimerOnThis ? "text-primary" : "text-foreground"}`}>
-            {formatMinutes(totalWorked)} trabalhadas
+            {workedLabel} trabalhadas
           </div>
           <div className="text-[9px] text-muted-foreground mt-0.5">
             {a.estimated_hours > 0 ? `de ${a.estimated_hours}h estimadas` : "sem estimativa de horas"}

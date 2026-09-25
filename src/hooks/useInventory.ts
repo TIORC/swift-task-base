@@ -624,7 +624,7 @@ export function useRegisterExit() {
           .eq("item_id", p.item_id)
           .eq("status", "available")
           .order("created_at", { ascending: true })
-          .limit(Math.max(1, p.quantity));
+          .limit(Math.max(1, Math.trunc(Number(p.quantity) || 1)));
         if (freeAssets && freeAssets.length > 0) {
           const { error: assignErr } = await supabase.from("inventory_assets").update({
             status: "in_use",

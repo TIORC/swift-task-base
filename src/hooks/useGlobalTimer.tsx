@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef, Re
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 type TimerTarget = { type: "task"; id: string } | { type: "automation"; id: string; subtaskId?: string | null };
 
@@ -48,7 +49,8 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
     const diffMs = now.getTime() - startTimeRef.current.getTime();
     const durationMinutes = Math.round((diffMs / 60000) * 100) / 100;
     const table = activeTargetRef.current.type === "task" ? "time_logs" : "automation_time_logs";
-    await supabase.from(table).update({ ended_at: now.toISOString(), duration_minutes: durationMinutes }).eq("id", activeLogIdRef.current);
+    const { error } = await supabase.from(table).update({ ended_at: now.toISOString(), duration_minutes: durationMinutes }).eq("id", activeLogIdRef.current);
+    if (error) toast.error(`Não foi possível salvar o tempo trabalhado: ${error.message}`);
   }, []);
 
   const start = useCallback(async (taskId: string) => {
@@ -59,7 +61,10 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
       .from("time_logs")
       .insert({ task_id: taskId, user_id: user.id, started_at: now, duration_minutes: 0 })
       .select().single();
-    if (error || !data) return;
+    if (error || !data) {
+      toast.error(`Não foi possível iniciar o cronômetro: ${error?.message ?? "erro desconhecido"}`);
+      return;
+    }
     setActiveTarget({ type: "task", id: taskId });
     setActiveLogId(data.id);
     startTimeRef.current = new Date(now);
@@ -75,7 +80,10 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
       .from("automation_time_logs")
       .insert({ automation_id: automationId, subtask_id: subtaskId ?? null, user_id: user.id, started_at: now, duration_minutes: 0 })
       .select().single();
-    if (error || !data) return;
+    if (error || !data) {
+      toast.error(`Não foi possível iniciar o cronômetro: ${error?.message ?? "erro desconhecido"}`);
+      return;
+    }
     setActiveTarget({ type: "automation", id: automationId, subtaskId: subtaskId ?? null });
     setActiveLogId(data.id);
     startTimeRef.current = new Date(now);
@@ -100,12 +108,11 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
 
   // Tick
   useEffect(() => {
-    if (isRunning && startTimeRef.current) {
-      intervalRef.current = setInterval(() => {
-        const now = new Date();
-        setElapsed(Math.floor((now.getTime() - startTimeRef.current!.getTime()) / 1000));
-      }, 1000);
-    }
+    const startTime = startTimeRef.current;
+    if (!isRunning || !startTime) return;
+    intervalRef.current = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTime.getTime()) / 1000));
+    }, 1000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [isRunning]);
 
