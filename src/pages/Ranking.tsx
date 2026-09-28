@@ -23,7 +23,14 @@ const Ranking = () => {
     return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
-  const fmtH = (m: number) => `${Math.floor(m / 60)}h ${m % 60}m`;
+  // Show whole minutes only. Aggregated time logs can contain fractional
+  // minutes and binary floating point artifacts.
+  const fmtH = (minutes: number) => {
+    const totalMinutes = Math.floor(minutes);
+    const hours = Math.floor(totalMinutes / 60);
+    const remainingMinutes = totalMinutes % 60;
+    return `${hours}h ${remainingMinutes}m`;
+  };
   const teamUsers = team ? team.users.filter((u) => tiUserIds.has(u.user_id)) : [];
   const teamMinutes = teamUsers.reduce((s, u) => s + u.minutes, 0);
 
