@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Automation, AutomationSubtask, AutomationBlocker, AutomationEvent,
   STATUS_LABELS, STATUS_COLORS, AUTOMATION_STATUSES, PRIORITY_LABELS, PRIORITY_OPTIONS,
@@ -255,7 +254,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
             ))}
           </TabsList>
 
-          <ScrollArea className="flex-1 px-5 pb-5">
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-thin px-5 pb-5">
             {/* ─── Details Tab ─── */}
             <TabsContent value="details" className="mt-4 space-y-4">
               {a.description && (
@@ -476,7 +475,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                   </span>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="scrollbar-thin max-h-[45vh] space-y-2 overflow-y-auto overflow-x-hidden pr-1">
                   {subtasks.map(st => {
                     return (
                       <div key={st.id} className="group flex items-center gap-3 rounded-[10px] border border-border bg-card/60 px-3 py-2.5">
@@ -693,7 +692,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
               <TimeLogsEditor scope="automation" targetId={a.id} />
 
             </TabsContent>
-          </ScrollArea>
+          </div>
         </Tabs>
       </DialogContent>
     </Dialog>
