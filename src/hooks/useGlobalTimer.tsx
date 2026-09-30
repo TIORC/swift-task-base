@@ -116,6 +116,29 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [isRunning]);
 
+  // Persiste o tempo acumulado enquanto o cronômetro está ativo, para que
+  // relatórios e o painel de status mostrem as horas sem esperar o encerramento.
+  useEffect(() => {
+    if (!isRunning) return;
+    const persistElapsed = async () => {
+      const logId = activeLogIdRef.current;
+      const startedAt = startTimeRef.current;
+      const target = activeTargetRef.current;
+      if (!logId || !startedAt || !target) return;
+
+      const durationMinutes = Math.round(((Date.now() - startedAt.getTime()) / 60000) * 100) / 100;
+      const table = target.type === "task" ? "time_logs" : "automation_time_logs";
+      const { error } = await supabase.from(table).update({ duration_minutes: durationMinutes }).eq("id", logId);
+      if (error) return;
+      if (target.type === "task") queryClient.invalidateQueries({ queryKey: ["time-logs", target.id] });
+      else queryClient.invalidateQueries({ queryKey: ["automation_time_logs", target.id] });
+    };
+
+    void persistElapsed();
+    const interval = setInterval(persistElapsed, 60_000);
+    return () => clearInterval(interval);
+  }, [isRunning, queryClient]);
+
   // Auto-stop on unmount
   useEffect(() => {
     return () => {

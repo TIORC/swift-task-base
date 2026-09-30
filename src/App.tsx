@@ -33,6 +33,8 @@ import NotFound from "./pages/NotFound";
 import Reports from "./pages/Reports";
 import SupportTickets from "./pages/SupportTickets";
 import AutomacoesPage from "./pages/AutomacoesPage";
+import PublicAutomationRequestPage from "./pages/PublicAutomationRequestPage";
+import TrackMyAutomationRequestsPage from "./pages/TrackMyAutomationRequestsPage";
 import Hipocampo from "./pages/Hipocampo";
 import Almoxarifado from "./pages/Almoxarifado";
 import SocialDashboard from "./pages/social/SocialDashboard";
@@ -185,6 +187,8 @@ const AppRoutes = () => (
     <Route path="/admin/recorrentes" element={<ProtectedTI><RoleGate route="/admin"><RecurringTasksAdmin /></RoleGate></ProtectedTI>} />
     <Route path="/reports" element={<ProtectedTI><RoleGate route="/reports"><Reports /></RoleGate></ProtectedTI>} />
     <Route path="/support" element={<ProtectedTI><RoleGate route="/support"><SupportTickets /></RoleGate></ProtectedTI>} />
+    <Route path="/k7f3q9x2/solicitacoes/acompanhar-minha-solicitacao" element={<RequireAuth><SystemGate system="ti"><TrackMyAutomationRequestsPage /></SystemGate></RequireAuth>} />
+    <Route path="/k7f3q9x2/solicitacoes" element={<RequireAuth><SystemGate system="ti"><PublicAutomationRequestPage /></SystemGate></RequireAuth>} />
     <Route path="/automacoes" element={<ProtectedTI><RoleGate route="/automacoes"><AutomacoesPage /></RoleGate></ProtectedTI>} />
     <Route path="/hipocampo" element={<ProtectedTI><RoleGate route="/hipocampo"><Hipocampo /></RoleGate></ProtectedTI>} />
     <Route path="/almoxarifado" element={<ProtectedTI><RoleGate route="/almoxarifado"><Almoxarifado /></RoleGate></ProtectedTI>} />
