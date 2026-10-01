@@ -117,6 +117,23 @@ export function useCanWriteInventory() {
   return profile === "admin" || profile === "gestor" || profile === "lider" || systems.includes("ti");
 }
 
+export const INVENTORY_ADMIN_EMAILS = [
+  "angel.kauan@orcoma.com.br",
+  "gabriel.anacleto@orcoma.com.br",
+  "sofia.nardes@orcoma.com.br",
+  "timaracas@orcoma.com.br",
+  "welder@orcoma.com.br",
+];
+
+export function canManageInventory(email: string | null | undefined): boolean {
+  return INVENTORY_ADMIN_EMAILS.includes((email ?? "").trim().toLowerCase());
+}
+
+export function useCanManageInventory() {
+  const { user } = useAuth();
+  return canManageInventory(user?.email);
+}
+
 export function useInventoryCategories() {
   return useQuery({
     queryKey: ["inventory", "categories"],
@@ -251,6 +268,22 @@ export function useDeleteItem() {
   });
 }
 
+export function useDeactivateItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, reactivate }: { id: string; reactivate?: boolean }) => {
+      const { error } = await supabase.from("inventory_items")
+        .update({ status: reactivate ? "active" : "inactive" }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_data, v) => {
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+      toast.success(v.reactivate ? "Item reativado" : "Item desativado");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Não foi possível desativar"),
+  });
+}
+
 export function useCreateAsset() {
   const qc = useQueryClient();
   return useMutation({
@@ -291,6 +324,21 @@ export function useUpdateAsset() {
   });
 }
 
+export function useDeleteAsset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("inventory_assets").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+      toast.success("Patrimônio excluído");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Não foi possível excluir"),
+  });
+}
+
 export function useCreateMovement() {
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -319,6 +367,62 @@ export function useCreateMovement() {
   });
 }
 
+export type MovementPatch = Pick<InventoryMovement, "type" | "quantity"> &
+  Partial<Pick<InventoryMovement,
+    "reason" | "notes" | "unit_price" | "supplier" | "invoice_number" |
+    "from_location_id" | "to_location_id" | "collaborator_id" | "department" |
+    "patrimony_number" | "serial_number" | "occurred_at">>;
+
+export function useUpdateMovement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: MovementPatch & { id: string }) => {
+      const { data, error } = await supabase.from("inventory_movements")
+        .update({
+          type: patch.type,
+          quantity: patch.quantity,
+          reason: patch.reason || null,
+          notes: patch.notes || null,
+          unit_price: patch.unit_price ?? 0,
+          supplier: patch.supplier || null,
+          invoice_number: patch.invoice_number || null,
+          from_location_id: patch.from_location_id || null,
+          to_location_id: patch.to_location_id || null,
+          collaborator_id: patch.collaborator_id || null,
+          department: patch.department || null,
+          patrimony_number: patch.patrimony_number || null,
+          serial_number: patch.serial_number || null,
+          occurred_at: patch.occurred_at || new Date().toISOString(),
+        })
+        .eq("id", id)
+        .select("id")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+      toast.success("Movimentação atualizada");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Não foi possível atualizar"),
+  });
+}
+
+export function useDeleteMovement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("inventory_movements").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+      toast.success("Movimentação excluída e estoque estornado");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Não foi possível excluir"),
+  });
+}
+
 export function useCreateCategory() {
   const qc = useQueryClient();
   return useMutation({
@@ -331,6 +435,30 @@ export function useCreateCategory() {
   });
 }
 
+export function useUpdateCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: { id: string; name?: string; description?: string | null }) => {
+      const { error } = await supabase.from("inventory_categories").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Categoria atualizada"); },
+    onError: (e: any) => toast.error(e.message ?? "Erro"),
+  });
+}
+
+export function useDeleteCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("inventory_categories").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Categoria excluída"); },
+    onError: (e: any) => toast.error(e.message ?? "Não foi possível excluir"),
+  });
+}
+
 export function useCreateLocation() {
   const qc = useQueryClient();
   return useMutation({
@@ -340,6 +468,30 @@ export function useCreateLocation() {
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Local criado"); },
     onError: (e: any) => toast.error(e.message ?? "Erro"),
+  });
+}
+
+export function useUpdateLocation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: { id: string; name?: string; description?: string | null }) => {
+      const { error } = await supabase.from("inventory_locations").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Local atualizado"); },
+    onError: (e: any) => toast.error(e.message ?? "Erro"),
+  });
+}
+
+export function useDeleteLocation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("inventory_locations").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Local excluído"); },
+    onError: (e: any) => toast.error(e.message ?? "Não foi possível excluir"),
   });
 }
 
@@ -378,6 +530,18 @@ export function useSaveDepartment() {
   });
 }
 
+export function useDeleteDepartment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("inventory_departments").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Setor excluído"); },
+    onError: (e: any) => toast.error(e.message ?? "Não foi possível excluir"),
+  });
+}
+
 export function useCreateRequest() {
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -412,6 +576,18 @@ export function useUpdateRequest() {
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Solicitação atualizada"); },
     onError: (e: any) => toast.error(e.message ?? "Erro"),
+  });
+}
+
+export function useDeleteRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("inventory_requests").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Solicitação excluída"); },
+    onError: (e: any) => toast.error(e.message ?? "Não foi possível excluir"),
   });
 }
 
@@ -455,6 +631,18 @@ export function useSaveCollaborator() {
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Colaborador salvo"); },
     onError: (e: any) => toast.error(e.message ?? "Erro ao salvar colaborador"),
+  });
+}
+
+export function useDeleteCollaborator() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("inventory_collaborators").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Colaborador excluído"); },
+    onError: (e: any) => toast.error(e.message ?? "Não foi possível excluir"),
   });
 }
 

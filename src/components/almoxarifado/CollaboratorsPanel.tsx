@@ -9,17 +9,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Users, Plus } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useInventoryCollaborators, useSaveCollaborator, useInventoryDepartments, type InventoryCollaborator } from "@/hooks/useInventory";
+import { RowActions } from "@/components/almoxarifado/RowActions";
+import {
+  useInventoryCollaborators, useSaveCollaborator, useDeleteCollaborator,
+  useInventoryDepartments, type InventoryCollaborator,
+} from "@/hooks/useInventory";
 
 const empty = { full_name: "", department: "", active: true };
 
-export function CollaboratorsPanel({ canWrite }: { canWrite: boolean }) {
+export function CollaboratorsPanel({ canWrite, canManage }: { canWrite: boolean; canManage: boolean }) {
   const { data: collaborators = [] } = useInventoryCollaborators();
   const { data: departments = [] } = useInventoryDepartments();
   const save = useSaveCollaborator();
+  const del = useDeleteCollaborator();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<InventoryCollaborator | null>(null);
   const [form, setForm] = useState(empty);
+  const showActions = canWrite || canManage;
 
   const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
   const openEdit = (c: InventoryCollaborator) => {
@@ -43,7 +49,7 @@ export function CollaboratorsPanel({ canWrite }: { canWrite: boolean }) {
         <Table>
           <TableHeader><TableRow>
             <TableHead>Nome</TableHead><TableHead>Setor</TableHead><TableHead>Status</TableHead>
-            {canWrite && <TableHead className="text-right">Ações</TableHead>}
+            {showActions && <TableHead className="text-right">Ações</TableHead>}
           </TableRow></TableHeader>
           <TableBody>
             {collaborators.map((c) => (
@@ -57,15 +63,23 @@ export function CollaboratorsPanel({ canWrite }: { canWrite: boolean }) {
                     {c.active ? "Ativo" : "Inativo"}
                   </Badge>
                 </TableCell>
-                {canWrite && (
-                  <TableCell className="text-right">
-                    <Button size="sm" variant="ghost" onClick={() => openEdit(c)}>Editar</Button>
+                {showActions && (
+                  <TableCell>
+                    <RowActions
+                      onEdit={canWrite ? () => openEdit(c) : undefined}
+                      editTitle="Editar colaborador"
+                      deleteTitle="Excluir colaborador"
+                      deleteDescription={`${c.full_name} será removido da lista. Itens e saídas vinculados mantêm o registro.`}
+                      deleteLabel="Excluir"
+                      pending={del.isPending}
+                      onDelete={canManage ? () => del.mutateAsync(c.id) : undefined}
+                    />
                   </TableCell>
                 )}
               </TableRow>
             ))}
             {collaborators.length === 0 && (
-              <TableRow><TableCell colSpan={canWrite ? 4 : 3} className="text-center text-muted-foreground py-6">
+              <TableRow><TableCell colSpan={showActions ? 4 : 3} className="text-center text-muted-foreground py-6">
                 Nenhum colaborador cadastrado.
               </TableCell></TableRow>
             )}

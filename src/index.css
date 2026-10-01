@@ -4,6 +4,89 @@
 @tailwind components;
 @tailwind utilities;
 
+/* A coluna fixa de ações acompanha o gradiente azul do restante do card. */
+body[data-theme="almoxarifado"] main [class*="sticky"][class*="right-0"] {
+  background-color: #0c1d3d;
+  background-image: var(--card-gradient);
+}
+
+body[data-theme="almoxarifado"] main [data-slot="card"] tbody tr {
+  background-color: #050d20;
+  background-image: none;
+  color: #fff;
+  border-color: #fff;
+}
+
+body[data-theme="almoxarifado"] main [data-slot="card"] tbody tr > td {
+  color: #fff;
+}
+
+body[data-theme="almoxarifado"] main [data-slot="card"] thead tr {
+  background-color: #050d20;
+  background-image: none;
+  color: #fff;
+}
+
+body[data-theme="almoxarifado"] main [data-slot="card"] thead th {
+  color: #fff;
+}
+
+body[data-theme="almoxarifado"] main [data-slot="card"] thead th[class*="sticky"][class*="right-0"] {
+  background-color: #050d20;
+  background-image: none;
+  color: #fff;
+}
+
+body[data-theme="almoxarifado"] [role="listbox"] {
+  background-color: #050d20;
+  color: #fff;
+  border-color: rgb(255 255 255 / 0.3);
+}
+
+body[data-theme="almoxarifado"] [role="listbox"] [role="option"] {
+  color: #fff;
+  border-bottom: 1px solid rgb(255 255 255 / 0.14);
+}
+
+body[data-theme="almoxarifado"] [role="listbox"] [role="option"]:last-child {
+  border-bottom: 0;
+}
+
+body[data-theme="almoxarifado"] [role="listbox"] [role="option"][data-highlighted] {
+  background-color: #0c1d3d;
+  color: #fff;
+}
+
+body[data-theme="almoxarifado"] main [data-slot="card"] tbody tr > td[class*="sticky"][class*="right-0"] {
+  background-color: #050d20;
+  background-image: none;
+  color: #fff;
+}
+
+body[data-theme="almoxarifado"] main [class*="sticky"][class*="right-0"] button {
+  background-color: #bfdbfe;
+  border-color: #93c5fd;
+  color: #000;
+}
+
+body[data-theme="almoxarifado"] main [class*="sticky"][class*="right-0"] button:hover {
+  background-color: #93c5fd;
+  color: #000;
+}
+
+body[data-theme="almoxarifado"] main [role="tablist"] {
+  background-color: #0c1d3d;
+}
+
+body[data-theme="almoxarifado"] main [role="tablist"] [role="tab"] {
+  color: #fff;
+}
+
+body[data-theme="almoxarifado"] main [role="tablist"] [role="tab"][data-state="active"] {
+  background-color: #bfdbfe;
+  color: #000;
+}
+
 @layer base {
   :root {
     --background: 220 14% 96%;
@@ -172,6 +255,175 @@
 .dark.theme-social .select-trigger[data-placeholder]:focus,
 .dark.theme-social .select-trigger[data-placeholder]:hover {
   border-color: hsl(var(--primary));
+}
+
+/* ---------------------------------------------------------------------------
+   Tema da página /almoxarifado (ver usePageTheme).
+   Fundo ivory #FFFFF0 e cards no gradiente azul-escurificado, idênticos em
+   light e dark. O tema vive em 4 camadas porque os cards precisam de uma paleta
+   de texto clara que não pode vazar para o fundo ivory:
+     1. body            -> só a cor de fundo (não afeta header/sidebar/widget)
+     2. conteúdo        -> paleta clara forçada (inclui portais: dialog/alert/listbox)
+     3. card            -> paleta clara sobre o azul do gradiente
+     4. input no card   -> volta à paleta clara (campo claro sobre card azul)
+--------------------------------------------------------------------------- */
+body[data-theme="almoxarifado"] {
+  --background: 222 73% 7%;
+  --foreground: 0 0% 100%;
+  scrollbar-color: #0b1f4a #050d20;
+  --card-gradient: radial-gradient(
+      circle at 90% 10%,
+      rgba(255, 255, 255, 0.14),
+      transparent 35%
+    ),
+    linear-gradient(
+      135deg,
+      #081534 0%,
+      #0C1D3D 50%,
+      #142A50 100%
+    );
+}
+
+body[data-theme="almoxarifado"] * {
+  scrollbar-color: #0b1f4a #050d20;
+}
+
+body[data-theme="almoxarifado"] *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+body[data-theme="almoxarifado"] *::-webkit-scrollbar-track {
+  background: #050d20;
+}
+
+body[data-theme="almoxarifado"] *::-webkit-scrollbar-thumb {
+  background: #0b1f4a;
+  border: 1px solid #050d20;
+  border-radius: 9999px;
+}
+
+body[data-theme="almoxarifado"] *::-webkit-scrollbar-thumb:hover {
+  background: #12376a;
+}
+
+/* 2. Conteúdo da página + tudo que é portaleado (dialog, alertdialog, listbox,
+      menu, tooltip). */
+body[data-theme="almoxarifado"] :is(
+    main,
+    [role="dialog"],
+    [role="alertdialog"],
+    [role="listbox"],
+    [role="menu"],
+    [role="tooltip"]
+  ) {
+  --foreground: 0 0% 100%;
+
+  --card: 240 74% 47%;
+  --card-foreground: 0 0% 100%;
+
+  --popover: 60 100% 98%;
+  --popover-foreground: 220 13% 13%;
+
+  --primary: 38 92% 50%;
+  --primary-foreground: 26 83% 14%;
+
+  --secondary: 60 30% 90%;
+  --secondary-foreground: 220 13% 30%;
+
+  --muted: 60 30% 90%;
+  --muted-foreground: 220 9% 40%;
+
+  --accent: 60 30% 90%;
+  --accent-foreground: 220 13% 13%;
+
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 60 20% 84%;
+  --input: 60 20% 82%;
+  --ring: 240 74% 47%;
+
+  --success: 152 69% 40%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 100%;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.06), 0 4px 6px -4px rgb(0 0 0 / 0.06);
+}
+
+body[data-theme="almoxarifado"] [role="dialog"]:has([data-slot="dialog-title"]) {
+  background-color: #0c1d3d;
+  background-image: var(--card-gradient);
+  --foreground: 0 0% 100%;
+  --muted-foreground: 240 60% 88%;
+}
+
+body[data-theme="almoxarifado"] [role="dialog"]:has([data-slot="dialog-title"])
+  :is(input, textarea, [role="combobox"]) {
+  background-color: hsl(60 100% 98%);
+  color: hsl(220 13% 13%);
+}
+
+/* 3. Cards: azul escuro com texto claro. Vale para os cards do <main> e para os
+      cards dentro de modais. As células pintadas com bg-card (coluna de ações
+      fixa da tabela de Itens) ficam no tom sólido de --card: uma fatia estreita
+      do gradiente ficaria visível como emenda. */
+body[data-theme="almoxarifado"] :is(main, [role="dialog"], [role="alertdialog"]) [data-slot="card"] {
+  background-color: #050d20;
+  background-image: none;
+
+  --foreground: 0 0% 100%;
+
+  --popover: 60 100% 98%;
+  --popover-foreground: 220 13% 13%;
+
+  --primary: 38 92% 50%;
+  --primary-foreground: 26 83% 14%;
+
+  --secondary: 240 60% 85%;
+  --secondary-foreground: 240 90% 18%;
+
+  --muted: 240 50% 72%;
+  --muted-foreground: 240 60% 88%;
+
+  --accent: 240 60% 85%;
+  --accent-foreground: 240 90% 18%;
+
+  --destructive: 0 88% 76%;
+  --destructive-foreground: 26 83% 14%;
+
+  --border: 240 60% 85%;
+  --input: 240 50% 70%;
+  --ring: 240 60% 88%;
+
+  --success: 152 60% 72%;
+  --warning: 45 95% 72%;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.28), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+}
+
+/* 4. Elementos com fundo ivory dentro do card azul (inputs, selects e botões
+      outline): voltam à paleta escura, senão herdariam o texto branco do card.
+      .bg-background cobre inputs, textarea, combobox e os botões outline. */
+body[data-theme="almoxarifado"] :is(main, [role="dialog"], [role="alertdialog"]) [data-slot="card"]
+  :is(input, textarea, [role="combobox"], .bg-background) {
+  --background: 60 100% 98%;
+  --foreground: 220 13% 13%;
+
+  --muted: 60 30% 90%;
+  --muted-foreground: 220 9% 46%;
+
+  --accent: 60 30% 90%;
+  --accent-foreground: 220 13% 13%;
+
+  --border: 60 20% 84%;
+  --input: 60 20% 82%;
+  --ring: 240 74% 47%;
 }
 
 @layer base {

@@ -42,7 +42,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
         description: item.description ?? "",
         location_id: item.location_id ?? "",
         tracked_individually: item.tracked_individually,
-        unit_price: item.unit_price, min_stock: item.min_stock,
+        unit_price: item.unit_price, min_stock: 0,
         ideal_stock: item.ideal_stock, quantity: item.quantity,
         status: item.status, notes: item.notes ?? "",
         responsible_id: item.responsible_id ?? "",
@@ -111,7 +111,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
             <div><Label>Valor unitário (R$)</Label><Input type="number" step="0.01" value={form.unit_price} onChange={(e) => setForm({ ...form, unit_price: Number(e.target.value) })} /></div>
             <div>
               <Label>Estoque mínimo</Label>
-              <Input type="number" min={0} value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: Number(e.target.value) })} />
+              <Input type="number" min={0} value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: Math.max(0, Math.trunc(Number(e.target.value)) || 0) })} />
               <p className="mt-1 text-xs text-muted-foreground">Quantidades são atualizadas por entradas e saídas.</p>
             </div>
           </div>
