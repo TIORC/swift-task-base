@@ -38,14 +38,14 @@ body[data-theme="almoxarifado"] main [data-slot="card"] thead th[class*="sticky"
 }
 
 body[data-theme="almoxarifado"] [role="listbox"] {
-  background-color: #050d20;
-  color: #fff;
-  border-color: rgb(255 255 255 / 0.3);
+  background-color: #fff;
+  color: #000;
+  border-color: #000;
 }
 
 body[data-theme="almoxarifado"] [role="listbox"] [role="option"] {
-  color: #fff;
-  border-bottom: 1px solid rgb(255 255 255 / 0.14);
+  color: #000;
+  border-bottom: 1px solid #000;
 }
 
 body[data-theme="almoxarifado"] [role="listbox"] [role="option"]:last-child {
@@ -53,8 +53,8 @@ body[data-theme="almoxarifado"] [role="listbox"] [role="option"]:last-child {
 }
 
 body[data-theme="almoxarifado"] [role="listbox"] [role="option"][data-highlighted] {
-  background-color: #0c1d3d;
-  color: #fff;
+  background-color: #eee;
+  color: #000;
 }
 
 body[data-theme="almoxarifado"] [role="listbox"].responsible-dropdown {
@@ -74,6 +74,32 @@ body[data-theme="almoxarifado"] [role="listbox"].responsible-dropdown [role="opt
   color: #000;
 }
 
+/* Dropdowns do diálogo "Nova entrada": fundo branco, texto preto e linhas
+   pretas (substitui o azul-escuro padrão do tema). Vale para Categoria,
+   Item existente e Local de armazenamento. */
+body[data-theme="almoxarifado"] [role="dialog"] .entry-select-trigger {
+  background: #fff;
+  color: #000;
+  border-color: #000;
+}
+
+body[data-theme="almoxarifado"] [role="listbox"].entry-select-dropdown {
+  background: #fff;
+  color: #000;
+  border-color: #000;
+}
+
+body[data-theme="almoxarifado"] [role="listbox"].entry-select-dropdown [role="option"] {
+  background: #fff;
+  color: #000;
+  border-bottom: 1px solid #000;
+}
+
+body[data-theme="almoxarifado"] [role="listbox"].entry-select-dropdown [role="option"]:is([data-highlighted], [data-state="checked"]) {
+  background: #eee;
+  color: #000;
+}
+
 body[data-theme="almoxarifado"] main [data-slot="card"] tbody tr > td[class*="sticky"][class*="right-0"] {
   background-color: #050d20;
   background-image: none;
@@ -89,6 +115,21 @@ body[data-theme="almoxarifado"] main [class*="sticky"][class*="right-0"] button 
 body[data-theme="almoxarifado"] main [class*="sticky"][class*="right-0"] button:hover {
   background-color: #93c5fd;
   color: #000;
+}
+
+/* Botões de ação (variant "default", antes âmbar/amarelo) do /almoxarifado:
+   azul-escuro com borda branca, padronizando com os botões "Configurações" e
+   "CSV" do topo da página. Cobre o <main> e os diálogos portaleados. As ações
+   destrutivas (bg-destructive) são preservadas em vermelho. */
+body[data-theme="almoxarifado"] :is(main, [role="dialog"], [role="alertdialog"]) button.bg-primary:not(.bg-destructive) {
+  background-color: #050d20;
+  border: 1px solid #fff;
+  color: #fff;
+}
+
+body[data-theme="almoxarifado"] :is(main, [role="dialog"], [role="alertdialog"]) button.bg-primary:not(.bg-destructive):hover {
+  background-color: #0c1d3d;
+  color: #fff;
 }
 
 body[data-theme="almoxarifado"] main [role="tablist"] {
@@ -145,6 +186,26 @@ body[data-theme="almoxarifado"] main [data-slot="card"].low-stock-card :is(thead
 body[data-theme="almoxarifado"] main [data-slot="card"].low-stock-card button {
   background-color: #fff;
   border-color: #000;
+}
+
+/* Itens com 0 disponível na tabela "abaixo do estoque mínimo": destaca em vermelho. */
+body[data-theme="almoxarifado"] main [data-slot="card"].low-stock-card td.low-stock-zero {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+/* Tipo da movimentação na tabela "Últimas movimentações" (dashboard):
+   Entrada em verde forte e Saída em vermelho, com fundo/borda suaves. */
+body[data-theme="almoxarifado"] main [data-slot="card"] .mov-type-in {
+  color: #22c55e;
+  background-color: rgb(34 197 94 / 0.15);
+  border-color: rgb(34 197 94 / 0.5);
+}
+
+body[data-theme="almoxarifado"] main [data-slot="card"] .mov-type-out {
+  color: #ef4444;
+  background-color: rgb(239 68 68 / 0.15);
+  border-color: rgb(239 68 68 / 0.5);
 }
 
 body[data-theme="almoxarifado"] main [role="tabpanel"]:not([data-value="dashboard"]) [data-slot="card"] {
@@ -364,7 +425,7 @@ body[data-theme="almoxarifado"] main [role="tabpanel"]:not([data-value="dashboar
 body[data-theme="almoxarifado"] {
   --background: 0 0% 100%;
   --foreground: 220 13% 13%;
-  scrollbar-color: #0b1f4a #050d20;
+  scrollbar-color: #000 #fff;
   --card-gradient: radial-gradient(
       circle at 90% 10%,
       rgba(255, 255, 255, 0.14),
@@ -388,7 +449,7 @@ body[data-theme="almoxarifado"] main h1 + p {
 }
 
 body[data-theme="almoxarifado"] * {
-  scrollbar-color: #0b1f4a #050d20;
+  scrollbar-color: #000 #fff;
 }
 
 body[data-theme="almoxarifado"] *::-webkit-scrollbar {
@@ -397,17 +458,17 @@ body[data-theme="almoxarifado"] *::-webkit-scrollbar {
 }
 
 body[data-theme="almoxarifado"] *::-webkit-scrollbar-track {
-  background: #050d20;
+  background: #fff;
 }
 
 body[data-theme="almoxarifado"] *::-webkit-scrollbar-thumb {
-  background: #0b1f4a;
-  border: 1px solid #050d20;
+  background: #000;
+  border: 1px solid #fff;
   border-radius: 9999px;
 }
 
 body[data-theme="almoxarifado"] *::-webkit-scrollbar-thumb:hover {
-  background: #12376a;
+  background: #444;
 }
 
 /* 2. Conteúdo da página + tudo que é portaleado (dialog, alertdialog, listbox,
@@ -486,6 +547,24 @@ body[data-theme="almoxarifado"] main [role="tablist"] [role="tab"] {
 body[data-theme="almoxarifado"] main [role="tablist"] [role="tab"][data-state="active"] {
   background: #000;
   color: #fff;
+}
+
+/* Abas dentro de modais (ex.: "Nova entrada"). O conteúdo portaleado usa
+   --foreground branco, então o rótulo da aba ativa herdava texto branco sobre o
+   fundo claro e ficava invisível. Aqui o item selecionado recebe fundo azul-claro
+   e texto preto, mantendo a leitura tanto da aba ativa quanto das inativas. */
+body[data-theme="almoxarifado"] [role="dialog"] [role="tablist"] {
+  background: #fff;
+  border: 1px solid #000;
+}
+
+body[data-theme="almoxarifado"] [role="dialog"] [role="tablist"] [role="tab"] {
+  color: #000;
+}
+
+body[data-theme="almoxarifado"] [role="dialog"] [role="tablist"] [role="tab"][data-state="active"] {
+  background-color: #bfdbfe;
+  color: #000;
 }
 
 /* 3. Cards: azul escuro com texto claro. Vale para os cards do <main> e para os

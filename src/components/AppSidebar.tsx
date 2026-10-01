@@ -93,7 +93,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-2.5">
           <img src={currentLogo} alt="Orcoma" className="h-8 w-8 shrink-0 rounded-lg object-contain" />
           {!collapsed && (
-            <span className="text-lg font-bold text-foreground tracking-tight">Orcoma TI</span>
+            <span className="text-lg font-bold text-foreground dark:text-white tracking-tight">Orcoma TI</span>
           )}
         </div>
       </SidebarHeader>
@@ -170,7 +170,7 @@ export function AppSidebar() {
           </Avatar>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="truncate text-sm font-medium text-foreground">
+              <p className="truncate text-sm font-medium text-foreground dark:text-white">
                 {user?.user_metadata?.full_name || user?.email}
               </p>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{profileLabel}</p>

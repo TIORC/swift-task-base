@@ -161,7 +161,7 @@ export function ChatWidget({ context }: Props) {
       </button>
 
       {open && (
-        <div className="fixed bottom-24 right-5 z-50 w-[380px] h-[560px] max-h-[85vh] rounded-2xl bg-card border border-border shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed bottom-24 right-5 z-50 w-[380px] h-[560px] max-h-[85vh] rounded-2xl bg-card text-card-foreground border border-border shadow-2xl flex flex-col overflow-hidden">
           {/* Header */}
           <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-muted/30">
             {(view === "chat" || view === "new") && (

@@ -108,8 +108,8 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
                 <div>
                   <Label>Categoria</Label>
                   <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>{categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                    <SelectTrigger className="entry-select-trigger"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent className="entry-select-dropdown">{categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
               </div>
@@ -124,8 +124,8 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
             <div>
               <Label>Item existente *</Label>
               <Select value={form.item_id} onValueChange={(v) => setForm({ ...form, item_id: v })}>
-                <SelectTrigger><SelectValue placeholder="Selecione o item" /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="entry-select-trigger"><SelectValue placeholder="Selecione o item" /></SelectTrigger>
+                <SelectContent className="entry-select-dropdown">
                   {items.filter((i) => i.status === "active").map((i) => (
                     <SelectItem key={i.id} value={i.id}>{i.name} — disponível: {i.quantity}</SelectItem>
                   ))}
@@ -148,8 +148,8 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
             <div>
               <Label>Local de armazenamento</Label>
               <Select value={form.location_id} onValueChange={(v) => setForm({ ...form, location_id: v })}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{locations.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
+                <SelectTrigger className="entry-select-trigger"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent className="entry-select-dropdown">{locations.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div><Label>Data da entrada</Label><Input type="date" value={form.entry_date} onChange={(e) => setForm({ ...form, entry_date: e.target.value })} /></div>

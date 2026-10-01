@@ -45,6 +45,12 @@ const MOV_LABELS: Record<MovementType, string> = {
   discard: "Descarte", adjust: "Ajuste", assign: "Atribuição", return: "Devolução",
 };
 
+// Destaque de cor do tipo na tabela "Últimas movimentações" (regras em index.css).
+const MOV_TYPE_CLASS: Partial<Record<MovementType, string>> = {
+  in: "mov-type-in",
+  out: "mov-type-out",
+};
+
 function downloadCsv(rows: Record<string, string | number>[], filename: string) {
   if (!rows.length) return;
   const headers = Object.keys(rows[0]);
@@ -222,7 +228,7 @@ export default function Almoxarifado() {
 
           <Card className="low-stock-card">
             <CardHeader><CardTitle className="text-base">Itens abaixo do estoque mínimo</CardTitle></CardHeader>
-            <CardContent>
+            <CardContent className="max-h-[22rem] overflow-y-auto">
               {restock.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum item abaixo do estoque mínimo.</p> : (
                 <Table>
                   <TableHeader><TableRow>
@@ -233,7 +239,7 @@ export default function Almoxarifado() {
                     {restock.map((r) => (
                       <TableRow key={r.id}>
                         <TableCell>{r.item}</TableCell>
-                        <TableCell>{r.disponivel}</TableCell>
+                        <TableCell className={r.disponivel === 0 ? "low-stock-zero" : undefined}>{r.disponivel}</TableCell>
                         <TableCell>{r.minimo}</TableCell>
                         <TableCell><Badge variant="outline" className="border-amber-300/50 bg-amber-400/20 text-black font-normal">{r.comprar}</Badge></TableCell>
                         {canManage && (
@@ -259,7 +265,7 @@ export default function Almoxarifado() {
 
           <Card>
             <CardHeader><CardTitle className="text-base">Últimas movimentações</CardTitle></CardHeader>
-            <CardContent>
+            <CardContent className="max-h-[13rem] overflow-y-auto">
               <Table>
                 <TableHeader><TableRow>
                   <TableHead>Data</TableHead><TableHead>Tipo</TableHead><TableHead>Item</TableHead><TableHead>Qtd</TableHead><TableHead>Motivo</TableHead>
@@ -268,7 +274,7 @@ export default function Almoxarifado() {
                   {movements.slice(0, 10).map((m) => (
                     <TableRow key={m.id}>
                       <TableCell className="whitespace-nowrap">{dateFmt(m.created_at)}</TableCell>
-                      <TableCell><Badge variant="outline" className="font-normal">{MOV_LABELS[m.type]}</Badge></TableCell>
+                      <TableCell><Badge variant="outline" className={`font-normal ${MOV_TYPE_CLASS[m.type] ?? ""}`}>{MOV_LABELS[m.type]}</Badge></TableCell>
                       <TableCell>{itemName(m.item_id)}</TableCell>
                       <TableCell>{m.quantity}</TableCell>
                       <TableCell className="max-w-[300px] truncate">{m.reason ?? "—"}</TableCell>
@@ -527,7 +533,7 @@ export default function Almoxarifado() {
         {/* PATRIMÔNIOS */}
         <TabsContent value="assets" className="space-y-3">
           <div className="flex justify-end">
-            {canWrite && <Button size="sm" variant="outline" onClick={() => setAssetDlg({ open: true, asset: null })}><Plus className="mr-2 h-4 w-4" /> Novo patrimônio</Button>}
+            {canWrite && <Button size="sm" onClick={() => setAssetDlg({ open: true, asset: null })}><Plus className="mr-2 h-4 w-4" /> Novo patrimônio</Button>}
           </div>
           <AssetTable assets={assets} items={items} locations={locations} collaborators={collaborators} canWrite={canWrite} canManage={canManage} onEdit={(a) => setAssetDlg({ open: true, asset: a })} onDelete={(a) => delAsset.mutate(a.id)} />
         </TabsContent>
