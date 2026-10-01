@@ -220,7 +220,7 @@ export default function Almoxarifado() {
             <Kpi icon={<ShoppingCart />} label="Alertas de estoque" value={lowStock.length} accent={lowStock.length > 0} />
           </div>
 
-          <Card>
+          <Card className="low-stock-card">
             <CardHeader><CardTitle className="text-base">Itens abaixo do estoque mínimo</CardTitle></CardHeader>
             <CardContent>
               {restock.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum item abaixo do estoque mínimo.</p> : (
@@ -235,7 +235,7 @@ export default function Almoxarifado() {
                         <TableCell>{r.item}</TableCell>
                         <TableCell>{r.disponivel}</TableCell>
                         <TableCell>{r.minimo}</TableCell>
-                        <TableCell><Badge variant="outline" className="border-amber-300/50 bg-amber-400/20 text-amber-100 font-normal">{r.comprar}</Badge></TableCell>
+                        <TableCell><Badge variant="outline" className="border-amber-300/50 bg-amber-400/20 text-black font-normal">{r.comprar}</Badge></TableCell>
                         {canManage && (
                           <TableCell>
                             <RowActions
@@ -472,7 +472,7 @@ export default function Almoxarifado() {
               const available = outLetters.includes(letter);
               return <button key={letter} type="button" disabled={!available} aria-label={`Ir para responsáveis com ${letter}`}
                 onClick={() => document.getElementById(`out-letter-${letter}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="h-8 min-w-8 rounded border border-white/25 bg-[#050d20] px-2 text-sm font-medium text-white enabled:hover:bg-[#0c1d3d] disabled:opacity-30 md:w-9 md:px-0">
+                className="h-8 min-w-8 rounded border border-black bg-white px-2 text-sm font-medium text-black enabled:hover:bg-gray-100 disabled:border-gray-400 disabled:bg-white disabled:text-black disabled:opacity-100 md:w-9 md:px-0">
                 {letter}
               </button>;
             })}
@@ -651,13 +651,13 @@ export default function Almoxarifado() {
                   <TableCell>{r.categoria}</TableCell>
                   <TableCell>{r.disponivel}</TableCell>
                   <TableCell>{r.minimo}</TableCell>
-                  <TableCell><Badge variant="outline" className="font-normal">{r.comprar}</Badge></TableCell>
+                  <TableCell><Badge variant="outline" className="font-normal text-black">{r.comprar}</Badge></TableCell>
                   <TableCell>{currency(r.valor_unitario)}</TableCell>
                   <TableCell>{currency(r.valor_estimado)}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={r.status === "Crítico"
-                      ? "border-red-300/50 bg-red-400/20 text-red-100 font-normal"
-                      : "border-amber-300/50 bg-amber-400/20 text-amber-100 font-normal"}>{r.status}</Badge>
+                      ? "border-red-300/50 bg-red-400/20 text-black font-normal"
+                      : "border-amber-300/50 bg-amber-400/20 text-black font-normal"}>{r.status}</Badge>
                   </TableCell>
                   {canManage && (
                     <TableCell>
@@ -810,7 +810,7 @@ function Field({ label, value }: { label: string; value: string }) {
 
 function Kpi({ icon, label, value, accent }: { icon?: React.ReactNode; label: string; value: React.ReactNode; accent?: boolean }) {
   return (
-    <Card className={accent ? "border-destructive/40" : ""}>
+    <Card className={`almox-kpi-card ${accent ? "border-destructive/40" : ""}`}>
       <CardContent className="p-4 flex items-center gap-3">
         <div className={`shrink-0 rounded-lg p-2 ${accent ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>{icon}</div>
         <div className="min-w-0">

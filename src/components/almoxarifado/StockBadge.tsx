@@ -5,11 +5,11 @@ const base = "border font-normal";
 
 // Os badges ficam sempre sobre o card azul royal (tema do /almoxarifado), então
 // usam variantes claras tanto no light quanto no dark.
-const green = "bg-emerald-400/20 text-emerald-100 border-emerald-300/50";
-const sky = "bg-sky-400/20 text-sky-100 border-sky-300/50";
-const red = "bg-red-400/20 text-red-100 border-red-300/50";
-const amber = "bg-amber-400/20 text-amber-100 border-amber-300/50";
-const neutral = "bg-white/15 text-white border-white/40";
+const green = "bg-emerald-400/20 text-black border-emerald-300/50";
+const sky = "bg-sky-400/20 text-black border-sky-300/50";
+const red = "bg-red-400/20 text-black border-red-300/50";
+const amber = "bg-amber-400/20 text-black border-amber-300/50";
+const neutral = "bg-white/15 text-black border-white/40";
 
 export function StatusTag({ status }: { status: "available" | "in_use" | "damaged" | "discarded" | "maintenance" }) {
   const map: Record<string, { label: string; cls: string }> = {

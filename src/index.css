@@ -57,6 +57,23 @@ body[data-theme="almoxarifado"] [role="listbox"] [role="option"][data-highlighte
   color: #fff;
 }
 
+body[data-theme="almoxarifado"] [role="listbox"].responsible-dropdown {
+  background: #fff;
+  color: #000;
+  border-color: #000;
+}
+
+body[data-theme="almoxarifado"] [role="listbox"].responsible-dropdown [role="option"].responsible-dropdown-item {
+  background: #fff;
+  color: #000;
+  border-bottom: 1px solid #000;
+}
+
+body[data-theme="almoxarifado"] [role="listbox"].responsible-dropdown [role="option"].responsible-dropdown-item[data-highlighted] {
+  background: #eee;
+  color: #000;
+}
+
 body[data-theme="almoxarifado"] main [data-slot="card"] tbody tr > td[class*="sticky"][class*="right-0"] {
   background-color: #050d20;
   background-image: none;
@@ -85,6 +102,83 @@ body[data-theme="almoxarifado"] main [role="tablist"] [role="tab"] {
 body[data-theme="almoxarifado"] main [role="tablist"] [role="tab"][data-state="active"] {
   background-color: #bfdbfe;
   color: #000;
+}
+
+body[data-theme="almoxarifado"] main [data-slot="card"].almox-kpi-card {
+  background: #fff;
+  color: #000;
+  border-color: #000;
+  --foreground: 0 0% 0%;
+  --card-foreground: 0 0% 0%;
+  --muted-foreground: 0 0% 20%;
+}
+
+body[data-theme="almoxarifado"] main [data-slot="card"].almox-kpi-card[class*="border-destructive"] {
+  border-color: hsl(var(--destructive) / 0.4);
+}
+
+body[data-theme="almoxarifado"] main [data-slot="card"].almox-kpi-card p {
+  color: #000;
+}
+
+body[data-theme="almoxarifado"] main [data-slot="card"].low-stock-card {
+  background: #fff;
+  color: #000;
+  border-color: #000;
+  --foreground: 0 0% 0%;
+  --card-foreground: 0 0% 0%;
+  --border: 0 0% 0%;
+  --muted-foreground: 0 0% 20%;
+}
+
+body[data-theme="almoxarifado"] main [data-slot="card"].low-stock-card :is(thead tr, tbody tr) {
+  background: #fff;
+  color: #000;
+  border-color: #000;
+}
+
+body[data-theme="almoxarifado"] main [data-slot="card"].low-stock-card :is(thead th, tbody td) {
+  color: #000;
+  border-color: #000;
+}
+
+body[data-theme="almoxarifado"] main [data-slot="card"].low-stock-card button {
+  background-color: #fff;
+  border-color: #000;
+}
+
+body[data-theme="almoxarifado"] main [role="tabpanel"]:not([data-value="dashboard"]) [data-slot="card"] {
+  background: #fff;
+  color: #000;
+  border-color: #000;
+  --foreground: 0 0% 0%;
+  --card-foreground: 0 0% 0%;
+  --border: 0 0% 0%;
+  --input: 0 0% 0%;
+  --muted-foreground: 0 0% 20%;
+}
+
+body[data-theme="almoxarifado"] main [role="tabpanel"]:not([data-value="dashboard"]) [data-slot="card"] :is(thead tr, tbody tr) {
+  background: #fff;
+  color: #000;
+  border-color: #000;
+}
+
+body[data-theme="almoxarifado"] main [role="tabpanel"]:not([data-value="dashboard"]) [data-slot="card"] :is(thead th, tbody td) {
+  color: #000;
+  border-color: #000;
+}
+
+body[data-theme="almoxarifado"] main [role="tabpanel"]:not([data-value="dashboard"]) [data-slot="card"] [class*="sticky"][class*="right-0"] {
+  background: #fff;
+  color: #000;
+  border-color: #000;
+}
+
+body[data-theme="almoxarifado"] main [role="tabpanel"]:not([data-value="dashboard"]) [data-slot="card"] :is(input, textarea, [role="combobox"]) {
+  background: #fff;
+  color: #000;
+  border-color: #000;
 }
 
 @layer base {
@@ -268,8 +362,8 @@ body[data-theme="almoxarifado"] main [role="tablist"] [role="tab"][data-state="a
      4. input no card   -> volta à paleta clara (campo claro sobre card azul)
 --------------------------------------------------------------------------- */
 body[data-theme="almoxarifado"] {
-  --background: 222 73% 7%;
-  --foreground: 0 0% 100%;
+  --background: 0 0% 100%;
+  --foreground: 220 13% 13%;
   scrollbar-color: #0b1f4a #050d20;
   --card-gradient: radial-gradient(
       circle at 90% 10%,
@@ -282,6 +376,15 @@ body[data-theme="almoxarifado"] {
       #0C1D3D 50%,
       #142A50 100%
     );
+}
+
+body[data-theme="almoxarifado"] main {
+  --foreground: 220 13% 13%;
+}
+
+body[data-theme="almoxarifado"] main h1,
+body[data-theme="almoxarifado"] main h1 + p {
+  color: #000;
 }
 
 body[data-theme="almoxarifado"] * {
@@ -354,6 +457,10 @@ body[data-theme="almoxarifado"] :is(
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.06), 0 4px 6px -4px rgb(0 0 0 / 0.06);
 }
 
+body[data-theme="almoxarifado"] main {
+  --foreground: 220 13% 13%;
+}
+
 body[data-theme="almoxarifado"] [role="dialog"]:has([data-slot="dialog-title"]) {
   background-color: #0c1d3d;
   background-image: var(--card-gradient);
@@ -365,6 +472,20 @@ body[data-theme="almoxarifado"] [role="dialog"]:has([data-slot="dialog-title"])
   :is(input, textarea, [role="combobox"]) {
   background-color: hsl(60 100% 98%);
   color: hsl(220 13% 13%);
+}
+
+body[data-theme="almoxarifado"] main [role="tablist"] {
+  background: #fff;
+  border: 1px solid #000;
+}
+
+body[data-theme="almoxarifado"] main [role="tablist"] [role="tab"] {
+  color: #000;
+}
+
+body[data-theme="almoxarifado"] main [role="tablist"] [role="tab"][data-state="active"] {
+  background: #000;
+  color: #fff;
 }
 
 /* 3. Cards: azul escuro com texto claro. Vale para os cards do <main> e para os

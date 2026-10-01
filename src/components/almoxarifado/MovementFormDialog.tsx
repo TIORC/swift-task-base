@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  useInventoryItems, useInventoryLocations, useUpdateMovement,
+  useInventoryItems, useInventoryLocations, useInventoryCollaborators, useUpdateMovement, useUpdateItem,
   type InventoryMovement, type MovementType,
 } from "@/hooks/useInventory";
 
@@ -37,9 +37,12 @@ interface Props {
 export function MovementFormDialog({ open, onOpenChange, movement }: Props) {
   const { data: items = [] } = useInventoryItems();
   const { data: locations = [] } = useInventoryLocations();
+  const { data: collaborators = [] } = useInventoryCollaborators();
   const updateMov = useUpdateMovement();
+  const updateItem = useUpdateItem();
 
   const [type, setType] = useState<MovementType>("in");
+  const [itemNameValue, setItemNameValue] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState(0);
   const [reason, setReason] = useState("");
@@ -48,10 +51,12 @@ export function MovementFormDialog({ open, onOpenChange, movement }: Props) {
   const [invoice, setInvoice] = useState("");
   const [fromLoc, setFromLoc] = useState("");
   const [toLoc, setToLoc] = useState("");
+  const [collaboratorId, setCollaboratorId] = useState("");
   const [occurredAt, setOccurredAt] = useState("");
 
   useEffect(() => {
     if (!movement) return;
+    setItemNameValue(items.find((i) => i.id === movement.item_id)?.name ?? "");
     setType(movement.type);
     setQuantity(movement.quantity);
     setUnitPrice(movement.unit_price);
@@ -61,14 +66,20 @@ export function MovementFormDialog({ open, onOpenChange, movement }: Props) {
     setInvoice(movement.invoice_number ?? "");
     setFromLoc(movement.from_location_id ?? "");
     setToLoc(movement.to_location_id ?? "");
+    setCollaboratorId(movement.collaborator_id ?? "");
     setOccurredAt(toLocalInput(movement.occurred_at ?? movement.created_at));
-  }, [movement]);
+  }, [movement, items]);
 
   const item = items.find((i) => i.id === movement?.item_id);
   const tracked = !!movement?.asset_id || !!item?.tracked_individually;
 
   const submit = async () => {
     if (!movement) return;
+    const nextItemName = itemNameValue.trim();
+    if (!nextItemName) return;
+    if (item && nextItemName !== item.name) {
+      await updateItem.mutateAsync({ id: item.id, name: nextItemName });
+    }
     await updateMov.mutateAsync({
       id: movement.id,
       type,
@@ -80,6 +91,8 @@ export function MovementFormDialog({ open, onOpenChange, movement }: Props) {
       invoice_number: invoice,
       from_location_id: fromLoc || null,
       to_location_id: toLoc || null,
+      collaborator_id: collaboratorId || null,
+      department: collaborators.find((c) => c.id === collaboratorId)?.department ?? null,
       occurred_at: occurredAt ? new Date(occurredAt).toISOString() : undefined,
     });
     onOpenChange(false);
@@ -98,7 +111,7 @@ export function MovementFormDialog({ open, onOpenChange, movement }: Props) {
         <div className="grid gap-3 py-2">
           <div>
             <Label>Item</Label>
-            <Input value={item?.name ?? "—"} readOnly className="bg-muted/50" />
+            <Input value={itemNameValue} onChange={(e) => setItemNameValue(e.target.value)} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -114,6 +127,21 @@ export function MovementFormDialog({ open, onOpenChange, movement }: Props) {
               <Input type="datetime-local" value={occurredAt} onChange={(e) => setOccurredAt(e.target.value)} />
             </div>
           </div>
+
+          {(type === "out" || type === "assign") && (
+            <div>
+              <Label>Responsável</Label>
+              <Select value={collaboratorId || "none"} onValueChange={(value) => setCollaboratorId(value === "none" ? "" : value)}>
+                <SelectTrigger><SelectValue placeholder="Selecione um responsável" /></SelectTrigger>
+                <SelectContent className="responsible-dropdown">
+                  <SelectItem className="responsible-dropdown-item" value="none">Nenhum</SelectItem>
+                  {collaborators.map((collaborator) => (
+                    <SelectItem className="responsible-dropdown-item" key={collaborator.id} value={collaborator.id}>{collaborator.full_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -158,7 +186,7 @@ export function MovementFormDialog({ open, onOpenChange, movement }: Props) {
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={submit} disabled={updateMov.isPending}>Salvar</Button>
+          <Button onClick={submit} disabled={updateMov.isPending || updateItem.isPending || !itemNameValue.trim()}>Salvar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
