@@ -67,9 +67,6 @@ function IdentificationCard({
   onSectorChange,
   onSubmit,
   error,
-  loading,
-  identified,
-  onReset,
 }: {
   email: string;
   sector: string;
@@ -77,9 +74,6 @@ function IdentificationCard({
   onSectorChange: (v: string) => void;
   onSubmit: () => void;
   error: string | null;
-  loading: boolean;
-  identified: boolean;
-  onReset: () => void;
 }) {
   return (
     <section className="mx-auto w-full max-w-md rounded-2xl border border-white/10 bg-white/[0.04] p-6 shadow-[0_24px_70px_-40px_rgba(0,0,0,0.9)]">
@@ -143,22 +137,10 @@ function IdentificationCard({
         <div className="flex items-center gap-3 pt-1">
           <Button
             type="submit"
-            disabled={loading}
             className="h-10 bg-cyan-300 px-5 font-semibold text-slate-950 hover:bg-cyan-200"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
             Confirmar
           </Button>
-          {identified && (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={onReset}
-              className="h-10 text-slate-300 hover:bg-white/10 hover:text-white"
-            >
-              Alterar identificação
-            </Button>
-          )}
         </div>
 
         <p className="text-xs leading-relaxed text-slate-400">
@@ -206,6 +188,21 @@ function WelcomeBanner({ message }: { message: string }) {
   );
 }
 
+function AccessDenied() {
+  return (
+    <div className="flex w-full max-w-2xl flex-col items-center gap-4 rounded-2xl border border-amber-300/25 bg-amber-400/[0.07] px-6 py-10 text-center">
+      <AlertTriangle className="h-8 w-8 text-amber-300" aria-hidden="true" />
+      <p className="text-base font-medium leading-relaxed text-amber-100">
+        Você <span className="font-bold uppercase">não</span> está cadastrado como Solicitante do seu setor! Acione um
+        Administrador/Desenvolvedor do sistema para te ajudar!
+      </p>
+    </div>
+  );
+}
+
+/** Etapas do fluxo: identificar -> conferir cadastro -> liberado/bloqueado. */
+type Stage = "identify" | "checking" | "unlocked" | "denied";
+
 export default function PublicAutomationRequestPage() {
   const { canRequest, isLoadingRequester } = useIsAutomationRequester();
   const { user } = useAuth();
@@ -216,13 +213,8 @@ export default function PublicAutomationRequestPage() {
 
   const [email, setEmail] = useState("");
   const [sector, setSector] = useState<string>(NO_SECTOR);
-  const [identified, setIdentified] = useState(false);
+  const [stage, setStage] = useState<Stage>("identify");
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => setCardsVisible(true));
-    return () => cancelAnimationFrame(frame);
-  }, []);
 
   const sessionEmail = (user?.email ?? "").trim().toLowerCase();
   const welcomeMessage = rolesLoading ? null : resolveWelcomeMessage(roles);
@@ -238,52 +230,62 @@ export default function PublicAutomationRequestPage() {
       return;
     }
     setError(null);
-    setIdentified(true);
+    setStage("checking");
   };
 
-  const handleReset = () => {
-    setIdentified(false);
-    setError(null);
-  };
+  // Consulta da whitelist: só libera (ou barra) quando ela responder.
+  const checking = stage === "checking";
+  useEffect(() => {
+    if (!checking || isLoadingRequester || rolesLoading) return;
+    setStage(canRequest ? "unlocked" : "denied");
+  }, [checking, isLoadingRequester, rolesLoading, canRequest]);
+
+  // Anima a entrada dos cards só no momento em que eles aparecem.
+  useEffect(() => {
+    if (stage !== "unlocked") return;
+    const frame = requestAnimationFrame(() => setCardsVisible(true));
+    return () => cancelAnimationFrame(frame);
+  }, [stage]);
 
   return (
     <main className="flex min-h-screen flex-col items-center overflow-hidden bg-[#07111f] px-5 py-12 text-white">
       <section className="flex w-full max-w-5xl flex-col items-center gap-10">
-        <IdentificationCard
-          email={email}
-          sector={sector}
-          onEmailChange={(v) => {
-            setEmail(v);
-            if (error) setError(null);
-          }}
-          onSectorChange={setSector}
-          onSubmit={handleIdentify}
-          error={error}
-          loading={isLoadingRequester}
-          identified={identified}
-          onReset={handleReset}
-        />
-
-        {!identified ? null : isLoadingRequester ? (
+        {stage === "identify" ? (
+          <IdentificationCard
+            email={email}
+            sector={sector}
+            onEmailChange={(v) => {
+              setEmail(v);
+              if (error) setError(null);
+            }}
+            onSectorChange={setSector}
+            onSubmit={handleIdentify}
+            error={error}
+          />
+        ) : stage === "checking" ? (
           <div className="flex min-h-[40vh] items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-cyan-200" aria-hidden="true" />
           </div>
-        ) : canRequest ? (
+        ) : stage === "denied" ? (
+          <AccessDenied />
+        ) : (
           <>
-            <h1 className="mb-2 text-center text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-              Qual tipo de desenvolvimento você deseja?
-            </h1>
+            <div className="flex flex-col items-center gap-4">
+              {welcomeMessage ? (
+                <WelcomeBanner message={welcomeMessage} />
+              ) : (
+                <div className="flex items-center gap-2.5 rounded-full border border-emerald-300/30 bg-emerald-400/10 px-4 py-2">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-300" aria-hidden="true" />
+                  <p className="text-sm font-medium text-emerald-200">
+                    Você está cadastrado como Solicitante! Bem-vindo(a)!
+                  </p>
+                </div>
+              )}
 
-            {welcomeMessage ? (
-              <WelcomeBanner message={welcomeMessage} />
-            ) : (
-              <div className="flex items-center gap-2.5 rounded-full border border-emerald-300/30 bg-emerald-400/10 px-4 py-2">
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-300" aria-hidden="true" />
-                <p className="text-sm font-medium text-emerald-200">
-                  Você está cadastrado como Solicitante! Bem-vindo(a)!
-                </p>
-              </div>
-            )}
+              <h1 className="text-center text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                Qual tipo de desenvolvimento você deseja?
+              </h1>
+            </div>
 
             {requestType ? (
               <RequestAutomationDialog
@@ -327,14 +329,6 @@ export default function PublicAutomationRequestPage() {
               </>
             )}
           </>
-        ) : (
-          <div className="flex w-full max-w-2xl flex-col items-center gap-4 rounded-2xl border border-amber-300/25 bg-amber-400/[0.07] px-6 py-10 text-center">
-            <AlertTriangle className="h-8 w-8 text-amber-300" aria-hidden="true" />
-            <p className="text-base font-medium leading-relaxed text-amber-100">
-              Você <span className="font-bold uppercase">não</span> está cadastrado como Solicitante do seu setor! Acione um
-              Administrador/Desenvolvedor do sistema para te ajudar!
-            </p>
-          </div>
         )}
       </section>
     </main>
