@@ -250,6 +250,27 @@ export type Database = {
           },
         ]
       }
+      automation_requesters: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          sector: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          sector: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          sector?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       automation_rules: {
         Row: {
           action_type: string
@@ -286,6 +307,41 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_scope_items: {
+        Row: {
+          automation_id: string
+          concluded: boolean
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+        }
+        Insert: {
+          automation_id: string
+          concluded?: boolean
+          created_at?: string
+          created_by: string
+          description: string
+          id?: string
+        }
+        Update: {
+          automation_id?: string
+          concluded?: boolean
+          created_at?: string
+          created_by?: string
+          description?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_scope_items_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       automation_subtasks: {
         Row: {
           assigned_to: string | null
@@ -297,6 +353,7 @@ export type Database = {
           deadline: string | null
           description: string | null
           id: string
+          item_escopo_id: string | null
           notes: string | null
           sort_order: number | null
           status: string
@@ -312,6 +369,7 @@ export type Database = {
           deadline?: string | null
           description?: string | null
           id?: string
+          item_escopo_id?: string | null
           notes?: string | null
           sort_order?: number | null
           status?: string
@@ -327,6 +385,7 @@ export type Database = {
           deadline?: string | null
           description?: string | null
           id?: string
+          item_escopo_id?: string | null
           notes?: string | null
           sort_order?: number | null
           status?: string
@@ -338,6 +397,13 @@ export type Database = {
             columns: ["automation_id"]
             isOneToOne: false
             referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_subtasks_item_escopo_id_fkey"
+            columns: ["item_escopo_id"]
+            isOneToOne: false
+            referencedRelation: "automation_scope_items"
             referencedColumns: ["id"]
           },
         ]
@@ -3091,12 +3157,12 @@ export type Database = {
         Args: { _action: string; _task_id: string; _user_id: string }
         Returns: undefined
       }
-      can_manage_automation: {
-        Args: { _automation_id: string; _user: string }
-        Returns: boolean
-      }
       can_edit_automation_title: {
         Args: { _user_id: string }
+        Returns: boolean
+      }
+      can_manage_automation: {
+        Args: { _automation_id: string; _user: string }
         Returns: boolean
       }
       can_view_automation: {
@@ -3150,15 +3216,16 @@ export type Database = {
         Returns: boolean
       }
       has_ti_write: { Args: { _user_id: string }; Returns: boolean }
+      is_automation_requester: { Args: { _user_id: string }; Returns: boolean }
       is_chat_participant: {
         Args: { _conv: string; _user: string }
         Returns: boolean
       }
-      user_client_ids: { Args: { _user_id: string }; Returns: string[] }
       rename_automation: {
         Args: { _automation_id: string; _new_title: string }
         Returns: Json
       }
+      user_client_ids: { Args: { _user_id: string }; Returns: string[] }
       user_sector_codes: { Args: { _user_id: string }; Returns: string[] }
     }
     Enums: {

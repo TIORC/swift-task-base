@@ -45,7 +45,8 @@ const MOV_LABELS: Record<MovementType, string> = {
   discard: "Descarte", adjust: "Ajuste", assign: "Atribuição", return: "Devolução",
 };
 
-function downloadCsv(rows: Record<string, string | number>[], filename: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function downloadCsv(rows: any[], filename: string) {
   if (!rows.length) return;
   const headers = Object.keys(rows[0]);
   const csv = [
