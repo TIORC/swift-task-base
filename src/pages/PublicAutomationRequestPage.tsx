@@ -4,6 +4,9 @@ import { Loader2, CheckCircle2, AlertTriangle, UserCheck } from "lucide-react";
 import { RequestAutomationDialog } from "@/components/automations/RequestAutomationDialog";
 import { useIsAutomationRequester } from "@/hooks/useAutomationRequesters";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useTypewriter } from "@/hooks/useTypewriter";
+import type { Database } from "@/integrations/supabase/types";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -166,9 +169,47 @@ function IdentificationCard({
   );
 }
 
+type AppRole = Database["public"]["Enums"]["app_role"];
+
+const WELCOME_BY_ROLE: Partial<Record<AppRole, string>> = {
+  dev: "Acesso liberado! Bem vindo(a), Engenheiro(a) de Software.",
+  suporte: "Acesso liberado! Bem vindo(a), Engenheiro de Infraestrutura",
+};
+
+/**
+ * Texto de boas-vindas da equipe de TI. Quem não for dev nem suporte
+ * recebe a mensagem padrão de Solicitante.
+ */
+function resolveWelcomeMessage(roles: AppRole[]) {
+  for (const role of ["dev", "suporte"] as const) {
+    if (roles.includes(role)) return WELCOME_BY_ROLE[role] ?? null;
+  }
+  return null;
+}
+
+function WelcomeBanner({ message }: { message: string }) {
+  const { typed, done } = useTypewriter(message);
+
+  return (
+    <div className="flex items-center gap-2.5 rounded-full border border-emerald-300/30 bg-emerald-400/10 px-4 py-2">
+      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-300" aria-hidden="true" />
+      <p className="text-sm font-medium text-emerald-200">
+        <span>{typed}</span>
+        {done ? null : (
+          <span
+            aria-hidden="true"
+            className="ml-0.5 inline-block h-[1.05em] w-px translate-y-[0.18em] animate-pulse bg-emerald-300/80 motion-reduce:hidden"
+          />
+        )}
+      </p>
+    </div>
+  );
+}
+
 export default function PublicAutomationRequestPage() {
   const { canRequest, isLoadingRequester } = useIsAutomationRequester();
   const { user } = useAuth();
+  const { roles, loading: rolesLoading } = useUserRole();
   const navigate = useNavigate();
   const [requestType, setRequestType] = useState<RequestType | null>(null);
   const [cardsVisible, setCardsVisible] = useState(false);
@@ -184,6 +225,7 @@ export default function PublicAutomationRequestPage() {
   }, []);
 
   const sessionEmail = (user?.email ?? "").trim().toLowerCase();
+  const welcomeMessage = rolesLoading ? null : resolveWelcomeMessage(roles);
 
   const handleIdentify = () => {
     const typed = email.trim().toLowerCase();
@@ -232,12 +274,16 @@ export default function PublicAutomationRequestPage() {
               Qual tipo de desenvolvimento você deseja?
             </h1>
 
-            <div className="flex items-center gap-2.5 rounded-full border border-emerald-300/30 bg-emerald-400/10 px-4 py-2">
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-300" aria-hidden="true" />
-              <p className="text-sm font-medium text-emerald-200">
-                Você está cadastrado como Solicitante! Bem-vindo(a)!
-              </p>
-            </div>
+            {welcomeMessage ? (
+              <WelcomeBanner message={welcomeMessage} />
+            ) : (
+              <div className="flex items-center gap-2.5 rounded-full border border-emerald-300/30 bg-emerald-400/10 px-4 py-2">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-300" aria-hidden="true" />
+                <p className="text-sm font-medium text-emerald-200">
+                  Você está cadastrado como Solicitante! Bem-vindo(a)!
+                </p>
+              </div>
+            )}
 
             {requestType ? (
               <RequestAutomationDialog
