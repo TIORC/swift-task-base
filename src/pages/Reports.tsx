@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AutomationsReport } from "@/components/reports/AutomationsReport";
 import { SupportReport } from "@/components/reports/SupportReport";
+import { formatMinutes } from "@/lib/utils";
 
 const PIE_COLORS = [
   "hsl(230, 80%, 60%)", "hsl(38, 92%, 50%)", "hsl(152, 69%, 40%)",
@@ -166,8 +167,6 @@ const Reports = () => {
       .slice(0, 10);
   }, [periodFiltered]);
 
-  const fmtMin = (m: number) => m < 60 ? `${m}min` : `${Math.floor(m / 60)}h ${m % 60}min`;
-
   const handlePrintPDF = useCallback(async () => {
     const { default: jsPDF } = await import("jspdf");
     const { default: autoTable } = await import("jspdf-autotable");
@@ -222,7 +221,7 @@ const Reports = () => {
         ["Em Andamento", String(metrics.inProgress)],
         ["Em Validação", String(metrics.review)],
         ["Tarefas Travadas (>2 dias)", String(metrics.stalled)],
-        ["Tempo Total Trabalhado", fmtMin(metrics.totalMinutes)],
+        ["Tempo Total Trabalhado", formatMinutes(metrics.totalMinutes)],
         ["Taxa de Descarte", `${metrics.discardRate}%`],
       ],
       theme: "striped",
@@ -259,7 +258,7 @@ const Reports = () => {
     const complexityRows = Object.entries(complexityCounts).map(([k, v]) => [
       complexityLabels[k] || k,
       String(v.count),
-      fmtMin(v.minutes),
+      formatMinutes(v.minutes),
     ]);
     if (complexityRows.length > 0) {
       autoTable(doc, {
@@ -327,7 +326,7 @@ const Reports = () => {
           priorityLabels[t.priority] || t.priority,
           complexityLabels[(t as any).complexity] || "-",
           sanitize(t.profiles?.full_name?.split(" ")[0]) || "-",
-          fmtMin(t.total_minutes || 0),
+          formatMinutes(t.total_minutes || 0),
         ];
       }),
       theme: "grid",

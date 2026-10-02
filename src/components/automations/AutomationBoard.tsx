@@ -1,7 +1,7 @@
-import { Automation, BOARD_COLUMNS, STATUS_LABELS, AutomationStatus, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, computeHealthScore, computeExecutionPercent, progressBand, PROGRESS_BAND_BAR, PROGRESS_BAND_TEXT, PROGRESS_BAND_TRACK, PENDING_REASONS, PENDING_REASON_LABELS, PendingReason } from "@/types/automation";
+import { Automation, BOARD_COLUMNS, STATUS_LABELS, AutomationStatus, STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS, computeHealthScore, computeExecutionPercent, progressBand, PROGRESS_BAND_BAR, PROGRESS_BAND_TEXT, PROGRESS_BAND_TRACK, PENDING_REASONS, PENDING_REASON_LABELS, PendingReason, REQUEST_KIND_BADGE, REQUEST_KIND_LABELS, requestKind } from "@/types/automation";
 import { AutomationCard } from "./AutomationCard";
 import { useState } from "react";
-import { List, Columns3 } from "lucide-react";
+import { List, Columns3, MonitorSmartphone, Workflow } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -157,9 +157,20 @@ export function AutomationBoard({ automations, onSelect, profileMap, blockerCoun
                 const execPct = computeExecutionPercent(a);
                 // Cores: até 25% vermelho · 50% amarelo · 75% ou mais verde forte.
                 const execBand = progressBand(execPct);
+                const kind = requestKind(a.request_kind);
                 return (
                   <TableRow key={a.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onSelect(a)}>
-                    <TableCell className="font-medium">{a.title}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {kind && (
+                          <Badge variant="outline" className={`shrink-0 text-[10px] px-1.5 py-0 gap-1 font-medium ${REQUEST_KIND_BADGE[kind]}`}>
+                            {kind === "Sistema" ? <MonitorSmartphone className="h-2.5 w-2.5" /> : <Workflow className="h-2.5 w-2.5" />}
+                            {REQUEST_KIND_LABELS[kind]}
+                          </Badge>
+                        )}
+                        <span className="truncate">{a.title}</span>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`text-[10px] ${STATUS_COLORS[a.status as AutomationStatus]}`}>
                         {STATUS_LABELS[a.status as AutomationStatus]}

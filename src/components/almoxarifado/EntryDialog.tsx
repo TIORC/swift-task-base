@@ -63,7 +63,7 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
   const valid = mode === "new" ? form.name.trim().length > 0 && form.quantity > 0 : !!form.item_id && form.quantity > 0;
 
   const submit = async () => {
-    const id = await createEntry.mutateAsync({
+    const res = await createEntry.mutateAsync({
       mode,
       item_id: form.item_id || undefined,
       name: form.name,
@@ -85,7 +85,7 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
       notes: form.notes || null,
     });
     onOpenChange(false);
-    if (id) onCreated?.(id);
+    if (res?.itemId) onCreated?.(res.itemId);
   };
 
   return (
@@ -167,6 +167,7 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Nº de patrimônio</Label><Input value={form.patrimony_number} onChange={(e) => setForm({ ...form, patrimony_number: e.target.value })} /></div>
                 <div><Label>Nº de série (opcional)</Label><Input value={form.serial_number} onChange={(e) => setForm({ ...form, serial_number: e.target.value })} /></div>
+                <p className="col-span-2 text-xs text-muted-foreground">Se o nº de patrimônio já existir, os dados serão atualizados em vez de duplicados.</p>
               </div>
             )}
           </div>

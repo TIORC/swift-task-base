@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Columns3, ListTodo, Calendar, Users, Megaphone, CheckCircle2, Lightbulb, FileText, BarChart3, Trophy, Target, ShieldCheck, LogOut, ArrowLeftRight, Sparkles, Library, ImageIcon, LineChart, KeyRound, Briefcase, Workflow, Repeat } from "lucide-react";
+import { LayoutDashboard, Columns3, ListTodo, Calendar, Users, Megaphone, CheckCircle2, Lightbulb, FileText, BarChart3, Trophy, Target, ShieldCheck, LogOut, ArrowLeftRight, Sparkles, Library, LineChart, KeyRound, Briefcase, Workflow, Repeat, ImageIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocialRole } from "@/hooks/useSocialRole";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -9,6 +9,8 @@ import { ChatWidget } from "@/components/chat/ChatWidget";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useProfile } from "@/hooks/useProfile";
+import { NotificationRealtimeAlert } from "@/hooks/useNotificationRealtimeAlert";
+import { ChatRealtimeAlert } from "@/hooks/useChatRealtimeAlert";
 import {
   Sidebar,
   SidebarContent,
@@ -169,6 +171,8 @@ function SocialSidebar() {
 export function SocialLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
+      <NotificationRealtimeAlert />
+      <ChatRealtimeAlert />
       <div className="theme-social min-h-screen flex w-full bg-background text-foreground">
         <SocialSidebar />
         <div className="flex-1 flex flex-col min-w-0">

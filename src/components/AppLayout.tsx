@@ -3,12 +3,16 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
+import { NotificationRealtimeAlert } from "@/hooks/useNotificationRealtimeAlert";
+import { ChatRealtimeAlert } from "@/hooks/useChatRealtimeAlert";
 import { ChatWidget } from "@/components/chat/ChatWidget";
 import { CoffeeButton } from "@/components/CoffeeButton";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
+      <NotificationRealtimeAlert />
+      <ChatRealtimeAlert />
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">

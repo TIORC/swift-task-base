@@ -486,6 +486,7 @@ export type Database = {
           requester: string | null
           requester_department: string | null
           requester_id: string | null
+          request_kind: string | null
           risk_level: string | null
           sector: string
           spent_hours: number | null
@@ -522,6 +523,7 @@ export type Database = {
           requester?: string | null
           requester_department?: string | null
           requester_id?: string | null
+          request_kind?: string | null
           risk_level?: string | null
           sector: string
           spent_hours?: number | null
@@ -558,6 +560,7 @@ export type Database = {
           requester?: string | null
           requester_department?: string | null
           requester_id?: string | null
+          request_kind?: string | null
           risk_level?: string | null
           sector?: string
           spent_hours?: number | null

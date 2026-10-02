@@ -1,14 +1,44 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { format } from "date-fns";
+import { useMemo, useState } from "react";
+import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatMinutes } from "@/hooks/useTimeTracker";
+import { useAutomationCommentSummaries } from "@/hooks/useAutomationComments";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ClipboardList, CircleDot, Code2, Headset } from "lucide-react";
-import { PRIORITY_LABELS, STATUS_LABELS } from "@/types/automation";
+import { RequestChat } from "@/components/automations/RequestChat";
+import { Loader2, ClipboardList, CircleDot, Code2, Headset, MessageSquare, User, MonitorSmartphone, Workflow } from "lucide-react";
+import {
+  PRIORITY_LABELS,
+  STATUS_LABELS,
+  MANUAL_PROGRESS_STEPS,
+  REQUEST_KIND_BADGE,
+  REQUEST_KIND_LABELS,
+  computeExecutionPercent,
+  progressBand,
+  requestKind,
+  PROGRESS_BAND_BAR,
+  PROGRESS_BAND_TEXT,
+  PROGRESS_BAND_TRACK,
+} from "@/types/automation";
 import type { AutomationStatus } from "@/types/automation";
+
+/** Como o solicitante lê cada um dos marcos que a equipe de TI pode informar. */
+const PROGRESS_NOTES: Record<number, string> = {
+  0: "A equipe de TI ainda não informou avanço.",
+  25: "Execução iniciada pela equipe de TI.",
+  50: "Metade da automação concluída.",
+  75: "Etapas finais em andamento.",
+  100: "Execução concluída.",
+};
+
+/** Texto de apoio da barra: o marco correspondente ao percentual informado. */
+const progressNote = (percent: number, status: string) => {
+  if (status === "completed") return "Solicitação concluída.";
+  if (status === "cancelled") return "Solicitação cancelada.";
+  return PROGRESS_NOTES[percent] ?? `Andamento informado pela equipe de TI: ${percent}%.`;
+};
 
 const STATUS_FILL: Record<string, string> = {
   backlog: "bg-slate-500", analysis: "bg-blue-500", requested: "bg-sky-500",
@@ -453,16 +483,47 @@ function SupportTechnicianStatusPanel() {
   );
 }
 
+/**
+ * Barra de andamento da solicitação. O valor vem de `progress_percent`, o mesmo
+ * campo que a equipe de TI ajusta em /automacoes — o solicitante vê exatamente
+ * o percentual informado por ela, sem nenhum cálculo paralelo.
+ */
+function RequestProgress({ percent, status }: { percent: number; status: string }) {
+  const band = progressBand(percent);
+  return (
+    <div className="mb-3 rounded-lg border border-white/10 bg-white/5 p-3">
+      <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] text-white/60">
+        <span className="flex min-w-0 items-center gap-1">
+          <Code2 className="h-2.5 w-2.5 shrink-0" />
+          <span className="truncate">Andamento da automação</span>
+        </span>
+        <b className={`shrink-0 text-sm font-bold tabular-nums ${PROGRESS_BAND_TEXT[band]}`}>{percent}%</b>
+      </div>
+      <div className={`relative h-2.5 overflow-hidden rounded-full m-progress-track ${PROGRESS_BAND_TRACK[band]}`}>
+        <div className={`m-progress-fill h-full rounded-full ${PROGRESS_BAND_BAR[band]}`} style={{ width: `${percent}%` }} />
+        {MANUAL_PROGRESS_STEPS.filter((step) => step > 0 && step < 100).map((step) => (
+          <span key={step} aria-hidden className="absolute top-0 h-full w-px bg-white/25" style={{ left: `${step}%` }} />
+        ))}
+      </div>
+      <p className="mt-1.5 text-[10px] text-white/50">{progressNote(percent, status)}</p>
+    </div>
+  );
+}
+
 export default function TrackMyAutomationRequestsPage() {
   const { user } = useAuth();
   const [activeView, setActiveView] = useState<"tracking" | "developers" | "support">("tracking");
+  const [openChatId, setOpenChatId] = useState<string | null>(null);
   const { data: requests = [], isLoading, error } = useQuery({
     queryKey: ["my-automation-requests", user?.id],
     enabled: !!user?.id,
+    // A equipe de TI atualiza o percentual em /automacoes; a cada 30s esta tela
+    // busca o valor atual para que o solicitante veja a mudança sem recarregar.
+    refetchInterval: 30000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("automations")
-        .select("id, title, description, status, priority, sector, created_at")
+        .select("id, title, description, status, priority, sector, created_at, updated_at, progress_percent, assigned_to, request_kind")
         .eq("created_by", user!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -470,12 +531,36 @@ export default function TrackMyAutomationRequestsPage() {
     },
   });
 
+  // Último comentário de cada solicitação: alimenta o aviso de mensagem nova no
+  // botão do chat sem abrir uma conversa por card.
+  const { data: commentSummaries } = useAutomationCommentSummaries(requests.map((r) => r.id));
+
+  // Nome do responsável, para o cabeçalho da conversa.
+  const assigneeKey = useMemo(
+    () => [...new Set(requests.map((r) => r.assigned_to).filter((id): id is string => !!id))].sort().join(","),
+    [requests],
+  );
+  const { data: assigneeProfiles = [] } = useQuery({
+    queryKey: ["profiles", "automation-assignees", assigneeKey],
+    enabled: !!assigneeKey,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id, full_name").in("id", assigneeKey.split(","));
+      if (error) throw error;
+      return data;
+    },
+  });
+  const assigneeName = useMemo(
+    () => Object.fromEntries(assigneeProfiles.map((p) => [p.id, p.full_name || "Equipe de TI"])),
+    [assigneeProfiles],
+  );
+
   return (
     <main className="min-h-screen bg-[#07111f] px-5 py-10 text-white">
       <section className="mx-auto w-full max-w-3xl space-y-6">
         <header className="flex items-center gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-xl border border-sky-300/20 bg-sky-400/10 text-sky-200"><ClipboardList className="h-5 w-5" /></span>
-          <div><h1 className="text-xl font-semibold">{activeView === "tracking" ? "Acompanhar minhas solicitações" : activeView === "developers" ? "Status dos Desenvolvedores" : "Status dos Suportes/Infra"}</h1><p className="text-sm text-white/60">{activeView === "tracking" ? "Veja o status e as informações enviadas à equipe de TI." : activeView === "developers" ? "Veja quem está desenvolvendo e há quanto tempo." : "Acompanhe os chamados atribuídos a Angel e Sofia."}</p></div>
+          <div><h1 className="text-xl font-semibold">{activeView === "tracking" ? "Acompanhar minhas solicitações" : activeView === "developers" ? "Status dos Desenvolvedores" : "Status dos Suportes/Infra"}</h1><p className="text-sm text-white/60">{activeView === "tracking" ? "Veja o status, o percentual de andamento e as informações enviadas à equipe de TI." : activeView === "developers" ? "Veja quem está desenvolvendo e há quanto tempo." : "Acompanhe os chamados atribuídos a Angel e Sofia."}</p></div>
         </header>
 
         <nav aria-label="Menu de solicitações" className="flex gap-1 border-b border-border">
@@ -494,15 +579,71 @@ export default function TrackMyAutomationRequestsPage() {
           <div className="space-y-4">
             {requests.map((request) => {
               const status = request.status as AutomationStatus;
+              const percent = computeExecutionPercent(request);
+              const latest = commentSummaries?.[request.id];
+              const assignee = request.assigned_to ? assigneeName[request.assigned_to] : null;
+              const kind = requestKind(request.request_kind);
               return (
                 <article key={request.id} className="group relative overflow-hidden rounded-lg border border-border bg-gradient-to-b from-card to-card/60 px-4 pb-3.5 pt-4 text-card-foreground shadow-[0_8px_24px_-16px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,255,255,0.03)] transition-all duration-200 hover:border-primary/40 hover:shadow-md">
                   <div className="mb-2 flex flex-wrap items-center gap-1.5 pr-2">
                     <span className={"inline-flex items-center rounded-full px-[7px] py-1 text-[10px] font-bold leading-none text-white " + (STATUS_FILL[status] || "bg-primary")}>{STATUS_LABELS[status] || status}</span>
+                    {kind && (
+                      <span className={"inline-flex items-center gap-1 rounded-full border px-[7px] py-1 text-[10px] font-semibold leading-none " + REQUEST_KIND_BADGE[kind]}>
+                        {kind === "Sistema" ? <MonitorSmartphone className="h-2.5 w-2.5" /> : <Workflow className="h-2.5 w-2.5" />}
+                        {REQUEST_KIND_LABELS[kind]}
+                      </span>
+                    )}
                     <Badge variant="outline" className="px-1.5 py-0 text-[10px]">{PRIORITY_LABELS[request.priority] || request.priority}</Badge>
                     {request.sector && <Badge variant="outline" className="px-1.5 py-0 text-[10px]">{request.sector}</Badge>}
                   </div>
                   <h2 className="mb-2 text-sm font-semibold leading-snug">{request.title}</h2>
-                  <p className="mb-3 text-[11px] text-muted-foreground">Enviada em {new Date(request.created_at).toLocaleDateString("pt-BR")}</p>
+                  <p className="mb-1 text-[11px] text-muted-foreground">
+                    Enviada em {new Date(request.created_at).toLocaleDateString("pt-BR")}
+                    {request.updated_at && request.updated_at !== request.created_at && (
+                      <> · atualizada {formatDistanceToNow(new Date(request.updated_at), { locale: ptBR, addSuffix: true })}</>
+                    )}
+                  </p>
+                  {/* Quem pegou a solicitação: a pessoa que responde no chat de /automacoes. */}
+                  <p className="mb-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <User className="h-3 w-3 shrink-0" />
+                    <span>Responsável:</span>
+                    {assignee ? (
+                      <b className="font-semibold text-white/85">{assignee}</b>
+                    ) : (
+                      <span className="text-white/50">ainda não atribuído</span>
+                    )}
+                  </p>
+                  <RequestProgress percent={percent} status={status} />
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setOpenChatId(openChatId === request.id ? null : request.id)}
+                      aria-expanded={openChatId === request.id}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs font-medium text-white/80 transition-colors hover:border-sky-300/40 hover:text-white"
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      Conversar com os Desenvolvedores
+                      {latest && <span className="tabular-nums text-white/45">({latest.total})</span>}
+                      {/* Mensagem da última mensagem é da equipe: alguém respondeu. */}
+                      {latest && latest.lastAuthor !== user?.id && (
+                        <span className="ml-0.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                      )}
+                    </button>
+                    {latest && (
+                      <span className="truncate text-[10px] text-white/40">
+                        {latest.lastAuthor === user?.id ? "Você: " : `${latest.lastAuthorName ?? "Equipe de TI"}: `}
+                        {latest.lastContent}
+                      </span>
+                    )}
+                  </div>
+                  {openChatId === request.id && (
+                    <div className="mb-3">
+                      <RequestChat
+                        automationId={request.id}
+                        counterpartName={request.assigned_to ? assigneeName[request.assigned_to] ?? null : null}
+                      />
+                    </div>
+                  )}
                   <details>
                     <summary className="cursor-pointer text-xs font-medium text-primary underline-offset-4 hover:underline">Ver informações da solicitação</summary>
                     <p className="mt-3 whitespace-pre-wrap border-l-2 border-primary/40 pl-3 text-xs leading-relaxed text-muted-foreground">{request.description}</p>

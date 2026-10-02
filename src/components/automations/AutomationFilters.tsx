@@ -1,7 +1,7 @@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search } from "lucide-react";
-import { PRIORITY_OPTIONS, PRIORITY_LABELS } from "@/types/automation";
+import { PRIORITY_OPTIONS, PRIORITY_LABELS, REQUEST_KINDS } from "@/types/automation";
 import { SECTORS } from "@/types/sectors";
 
 interface Props {
@@ -17,6 +17,8 @@ interface Props {
   onSectorFilterChange?: (v: string) => void;
   availableSectors?: string[];
   lockSector?: boolean;
+  kindFilter?: string;
+  onKindFilterChange?: (v: string) => void;
   profiles: { id: string; full_name: string | null }[];
 }
 
@@ -26,6 +28,7 @@ export function AutomationFilters({
   priorityFilter, onPriorityFilterChange,
   assigneeFilter, onAssigneeFilterChange,
   sectorFilter, onSectorFilterChange, availableSectors, lockSector,
+  kindFilter, onKindFilterChange,
   profiles,
 }: Props) {
   const sectorOptions = availableSectors && availableSectors.length > 0 ? availableSectors : SECTORS;
@@ -68,6 +71,22 @@ export function AutomationFilters({
             ))}
           </SelectContent>
         </Select>
+        {onKindFilterChange && (
+          <Select value={kindFilter || "all"} onValueChange={onKindFilterChange}>
+            <SelectTrigger className="w-[150px] h-9">
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Sistemas e automações</SelectItem>
+              <SelectItem value="none">Sem classificação</SelectItem>
+              {REQUEST_KINDS.map((k) => (
+                <SelectItem key={k} value={k}>
+                  {k === "Sistema" ? "Só sistemas" : "Só automações"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         {onSectorFilterChange && (
           <Select
             value={sectorFilter || "all"}

@@ -11,6 +11,9 @@ import {
   PROGRESS_BAND_BAR,
   PROGRESS_BAND_TEXT,
   PROGRESS_BAND_TRACK,
+  REQUEST_KIND_BADGE,
+  REQUEST_KIND_LABELS,
+  requestKind,
 } from "@/types/automation";
 import { SECTOR_COLORS } from "@/types/sectors";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import {
   Lock, User, Play, Square, Building2,
   Code2, MessageSquare, Activity, Pencil, Check, X, ArrowRight,
+  MonitorSmartphone, Workflow,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -111,6 +115,8 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
   // Cores: até 25% vermelho · 50% amarelo · 75% ou mais verde forte.
   const execBand = progressBand(execPct);
   const prediction = computePrediction(a);
+  // Sistema ou Automação — etiqueta que divide visualmente as duas filas.
+  const kind = requestKind(a.request_kind);
 
   const lastEventAuthor = lastEvent ? profileMap?.[lastEvent.user_id] : null;
   const lastCommentAuthor = lastComment ? profileMap?.[lastComment.user_id] : null;
@@ -169,6 +175,12 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
 
       {/* Badges row */}
       <div className="flex items-center gap-1 flex-wrap pr-4 mb-0">
+        {kind && (
+          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 gap-1 font-medium ${REQUEST_KIND_BADGE[kind]}`}>
+            {kind === "Sistema" ? <MonitorSmartphone className="h-2.5 w-2.5" /> : <Workflow className="h-2.5 w-2.5" />}
+            {REQUEST_KIND_LABELS[kind]}
+          </Badge>
+        )}
         <span className={`inline-flex items-center rounded-full px-[7px] py-1 text-[10px] font-bold leading-none text-white ${STATUS_FILL[a.status as AutomationStatus] || "bg-primary"}`}>
           {STATUS_LABELS[a.status as AutomationStatus] || a.status}
         </span>

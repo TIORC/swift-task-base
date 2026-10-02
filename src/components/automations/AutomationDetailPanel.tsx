@@ -13,6 +13,7 @@ import {
   COMPLEXITY_OPTIONS, COMPLEXITY_LABELS, COMPLEXITY_BONUS_KEYS,
   computeHealthScore, computeExecutionPercent,
   progressBand, PROGRESS_BAND_BAR, PROGRESS_BAND_TEXT, PROGRESS_BAND_TRACK, MANUAL_PROGRESS_STEPS, clampPercent, AutomationStatus,
+  REQUEST_KINDS, REQUEST_KIND_LABELS, requestKind,
 } from "@/types/automation";
 import { SECTORS } from "@/types/sectors";
 import { useUpdateAutomation } from "@/hooks/useAutomationsData";
@@ -135,6 +136,8 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
   // Indicadores visuais do status de saúde.
   const healthDot = health.score >= 70 ? "#22c55e" : health.score >= 40 ? "#f5b942" : "#ef4444";
   const healthPulse = health.score >= 70 ? "rgb(34 197 94 / .35)" : health.score >= 40 ? "rgb(245 185 66 / .4)" : "rgb(239 68 68 / .4)";
+  // Sistema ou Automação — a classificação escolhida pelo solicitante na entrada.
+  const kind = requestKind(a.request_kind);
   const healthStyle = { background: healthDot, "--pulse-color": healthPulse } as CSSProperties;
 
   const handleAddSubtask = () => {
@@ -324,6 +327,28 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                         <p className="text-sm mt-1.5 text-foreground">{a.assigned_to ? (profileMap[a.assigned_to] || "—") : "Não atribuído"}</p>
                       )}
                       <p className="text-[10px] text-muted-foreground mt-0.5">Apenas admin/gestor reatribui responsável.</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Tipo</label>
+                      <Select
+                        value={kind ?? "none"}
+                        onValueChange={(v) => handleUpdate({ request_kind: v === "none" ? null : v })}
+                      >
+                        <SelectTrigger className="h-8 mt-1"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Não classificado</SelectItem>
+                          {REQUEST_KINDS.map((k) => (
+                            <SelectItem key={k} value={k}>{REQUEST_KIND_LABELS[k]}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {kind ? (
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          O solicitante marcou como <b className={kind === "Sistema" ? "text-cyan-300" : "text-violet-300"}>{REQUEST_KIND_LABELS[kind]}</b> na entrada.
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-[10px] text-muted-foreground">Solicitação antiga, sem a marcação da tela inicial. Defina aqui.</p>
+                      )}
                     </div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground">Complexidade (bônus de XP)</label>
@@ -561,7 +586,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
 
             {/* ─── Comments Tab ─── */}
             <TabsContent value="comments" className="mt-4">
-              <AutomationComments automationId={a.id} />
+              <AutomationComments automationId={a.id} requesterId={a.requester_id} />
             </TabsContent>
 
             {/* ─── Attachments Tab ─── */}

@@ -187,10 +187,45 @@ export interface Automation {
   documentation_done: boolean;
   sector: string | null;
   requester_id: string | null;
+  /** "Sistema" ou "Automação" — a modalidade escolhida pelo solicitante. */
+  request_kind: string | null;
   xp_bonus_awarded: number | null;
   created_at: string;
   updated_at: string;
 }
+
+/** As duas modalidades de desenvolvimento oferecidas ao solicitante. */
+export const REQUEST_KINDS = ["Sistema", "Automação"] as const;
+export type RequestKind = (typeof REQUEST_KINDS)[number];
+
+/**
+ * Aceita as variações de escrita que vieram da tela de escolha do solicitante
+ * ("Sistema", "sistema", "AUTOMAÇÃO", …) e devolve a forma canônica.
+ * Devolve null quando a solicitação ainda não foi classificada — caso das
+ * antigo, que a equipe de TI precisa definir na aba Dados.
+ */
+export function requestKind(value: string | null | undefined): RequestKind | null {
+  const normalized = (value || "").trim().toLowerCase();
+  if (normalized.startsWith("sistem")) return "Sistema";
+  if (normalized.startsWith("automa")) return "Automação";
+  return null;
+}
+
+/** Rótulo curto para o card. */
+export const REQUEST_KIND_LABELS: Record<RequestKind, string> = {
+  Sistema: "Sistema",
+  Automação: "Automação",
+};
+
+/**
+ * Cores da etiqueta de tipo — as mesmas da tela inicial de /solicitacoes:
+ * azul-claro para Sistema, roxo para Automação. Assim o card do solicitante e o
+ * card de /automacoes falam a mesma língua da escolha feita na entrada.
+ */
+export const REQUEST_KIND_BADGE: Record<RequestKind, string> = {
+  Sistema: "border-cyan-400/40 bg-cyan-400/15 text-cyan-200",
+  Automação: "border-violet-400/40 bg-violet-400/15 text-violet-200",
+};
 
 export interface AutomationSubtask {
   id: string;

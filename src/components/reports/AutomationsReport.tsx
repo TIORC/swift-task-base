@@ -11,6 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pi
 import { subDays, subMonths } from "date-fns";
 import { SECTORS, SECTOR_COLORS, SECTOR_LABELS } from "@/types/sectors";
 import { STATUS_LABELS } from "@/types/automation";
+import { formatMinutes } from "@/lib/utils";
 
 const PIE_COLORS = ["hsl(230,80%,60%)", "hsl(38,92%,50%)", "hsl(152,69%,40%)", "hsl(0,72%,51%)", "hsl(262,83%,58%)", "hsl(199,89%,48%)", "hsl(220,9%,46%)"];
 const tooltipStyle = { backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", color: "hsl(var(--foreground))", fontSize: "12px" };
@@ -106,8 +107,6 @@ export function AutomationsReport() {
 
   if (isLoading) return <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
-  const fmtH = (m: number) => `${Math.floor(m / 60)}h ${m % 60}m`;
-
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 flex-wrap">
@@ -135,7 +134,7 @@ export function AutomationsReport() {
           { label: "Concluídas", value: `${kpis.done} (${kpis.rate}%)`, icon: CheckCircle2, color: "text-emerald-500" },
           { label: "Em andamento", value: kpis.inProgress, icon: TrendingUp, color: "text-blue-500" },
           { label: "Pendentes", value: kpis.pending, icon: AlertTriangle, color: "text-amber-500" },
-          { label: "Horas totais", value: fmtH(kpis.minutes), icon: Clock, color: "text-purple-500" },
+          { label: "Horas totais", value: formatMinutes(kpis.minutes), icon: Clock, color: "text-purple-500" },
         ].map((k) => (
           <Card key={k.label} className="shadow-card">
             <CardContent className="pt-5 pb-4 px-5">

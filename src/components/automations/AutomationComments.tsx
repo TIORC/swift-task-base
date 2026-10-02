@@ -8,10 +8,14 @@ import { Send, MessageSquare, Loader2 } from "lucide-react";
 
 interface Props {
   automationId: string;
+  /** Solicitante da automação — recebe um selo ao lado do nome no chat. */
+  requesterId?: string | null;
 }
 
-export function AutomationComments({ automationId }: Props) {
-  const { data: comments, isLoading } = useAutomationComments(automationId);
+export function AutomationComments({ automationId, requesterId }: Props) {
+  // `live`: a mensagem que o solicitante escreve em /acompanhar-minha-solicitacao
+  // precisa aparecer aqui sem recarregar.
+  const { data: comments, isLoading } = useAutomationComments(automationId, { live: true });
   const { data: profiles } = useAllProfiles();
   const createComment = useCreateAutomationComment();
   const [content, setContent] = useState("");
@@ -89,8 +93,13 @@ export function AutomationComments({ automationId }: Props) {
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2">
+                <div className="flex items-baseline gap-2 flex-wrap">
                   <span className="text-xs font-medium">{c.profile?.full_name || "Sem nome"}</span>
+                  {requesterId && c.user_id === requesterId && (
+                    <span className="rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-medium text-sky-300">
+                      Solicitante
+                    </span>
+                  )}
                   <span className="text-[10px] text-muted-foreground">
                     {new Date(c.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                   </span>

@@ -5,7 +5,7 @@ import { useAutomations, useAllBlockers, useUpdateAutomation, useCanRenameAutoma
 import { useAssignableProfiles } from "@/hooks/useTasks";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAuth } from "@/hooks/useAuth";
-import { Automation, AutomationStatus } from "@/types/automation";
+import { Automation, AutomationStatus, requestKind } from "@/types/automation";
 import { AutomationSummaryCards } from "@/components/automations/AutomationSummaryCards";
 import { AutomationFilters } from "@/components/automations/AutomationFilters";
 import { AutomationBoard } from "@/components/automations/AutomationBoard";
@@ -36,6 +36,7 @@ export default function AutomacoesPage() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [assigneeFilter, setAssigneeFilter] = useState("all");
   const [sectorFilter, setSectorFilter] = useState("all");
+  const [kindFilter, setKindFilter] = useState("all");
   const [selectedAutomation, setSelectedAutomation] = useState<Automation | null>(null);
 
   const { canSeeAll, allowedSectors, hasSector, ready: sectorsReady } = useSectorVisibility();
@@ -76,9 +77,13 @@ export default function AutomacoesPage() {
         if (effectiveSectorFilter === "none" && a.sector) return false;
         if (effectiveSectorFilter !== "none" && a.sector !== effectiveSectorFilter) return false;
       }
+      if (kindFilter !== "all") {
+        if (kindFilter === "none" && requestKind(a.request_kind)) return false;
+        if (kindFilter !== "none" && requestKind(a.request_kind) !== kindFilter) return false;
+      }
       return true;
     });
-  }, [visibleAutomations, search, statusFilter, priorityFilter, assigneeFilter, effectiveSectorFilter]);
+  }, [visibleAutomations, search, statusFilter, priorityFilter, assigneeFilter, effectiveSectorFilter, kindFilter]);
 
   // Alerts (somente bloqueios; atrasos/sem atualização foram removidos)
   const alerts = useMemo(() => {
@@ -192,6 +197,8 @@ export default function AutomacoesPage() {
             onSectorFilterChange={setSectorFilter}
             availableSectors={canSeeAll ? undefined : allowedSectors}
             lockSector={lockSector}
+            kindFilter={kindFilter}
+            onKindFilterChange={setKindFilter}
             profiles={profiles}
           />
 

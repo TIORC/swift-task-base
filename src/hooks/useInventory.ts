@@ -288,10 +288,33 @@ export function useCreateAsset() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: Partial<InventoryAsset>) => {
+      const patrimony = payload.patrimony_number?.trim();
+      if (!payload.item_id) throw new Error("Selecione um item");
+      if (!patrimony) throw new Error("Informe o nº de patrimônio");
+
+      const { data: dupPat, error: dupErr } = await supabase
+        .from("inventory_assets")
+        .select("id")
+        .ilike("patrimony_number", escapeIlike(patrimony))
+        .maybeSingle();
+      if (dupErr) throw dupErr;
+      if (dupPat) throw new Error(`Patrimônio ${patrimony} já cadastrado — edite o registro existente em vez de criar um novo.`);
+
+      const serial = payload.serial_number?.trim() || null;
+      if (serial) {
+        const { data: dupSer, error: serErr } = await supabase
+          .from("inventory_assets")
+          .select("patrimony_number")
+          .ilike("serial_number", escapeIlike(serial))
+          .maybeSingle();
+        if (serErr) throw serErr;
+        if (dupSer) throw new Error(`Nº de série já cadastrado no patrimônio ${(dupSer as { patrimony_number?: string }).patrimony_number}`);
+      }
+
       const { error } = await supabase.from("inventory_assets").insert({
         item_id: payload.item_id!,
-        patrimony_number: payload.patrimony_number!,
-        serial_number: payload.serial_number || null,
+        patrimony_number: patrimony,
+        serial_number: serial,
         value: payload.value ?? 0,
         status: payload.status ?? "available",
         location_id: payload.location_id || null,
@@ -701,6 +724,17 @@ export interface EntryPayload {
   notes?: string | null;
 }
 
+export interface EntryResult {
+  itemId: string;
+  /** "created" = patrimônio novo cadastrado · "updated" = patrimônio existente atualizado · "none" = sem patrimônio */
+  assetAction: "created" | "updated" | "none";
+  /** Nome do item ao qual o patrimônio atualizado já estava vinculado (quando diferente do item da entrada) */
+  assetItemName?: string | null;
+}
+
+/** Escapa curingas (%, _) do LIKE/ILIKE para busca exata case-insensitive */
+const escapeIlike = (v: string) => v.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+
 export function useCreateEntry() {
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -738,19 +772,63 @@ export function useCreateEntry() {
         if (error) throw error;
       }
 
-      if (p.has_patrimony && p.patrimony_number) {
-        const { error } = await supabase.from("inventory_assets").insert({
-          item_id: itemId,
-          patrimony_number: p.patrimony_number,
-          serial_number: p.serial_number || null,
-          value: p.unit_price,
-          status: "available",
-          location_id: p.location_id || null,
-          supplier: p.supplier || null,
-          invoice_number: p.invoice_number || null,
-          acquired_at: p.entry_date || null,
-        });
-        if (error) throw error;
+      let assetAction: EntryResult["assetAction"] = "none";
+      let assetItemName: string | null = null;
+
+      const patrimony = p.patrimony_number?.trim() || null;
+      const serial = p.serial_number?.trim() || null;
+
+      if (p.has_patrimony && patrimony) {
+        const { data: existing, error: findErr } = await supabase
+          .from("inventory_assets")
+          .select("id, item_id, patrimony_number")
+          .ilike("patrimony_number", escapeIlike(patrimony))
+          .maybeSingle();
+        if (findErr) throw findErr;
+
+        if (serial) {
+          const { data: serialOwner, error: serialErr } = await supabase
+            .from("inventory_assets")
+            .select("id, patrimony_number")
+            .ilike("serial_number", escapeIlike(serial))
+            .maybeSingle();
+          if (serialErr) throw serialErr;
+          if (serialOwner && serialOwner.id !== existing?.id) {
+            throw new Error(`Nº de série já cadastrado no patrimônio ${serialOwner.patrimony_number}`);
+          }
+        }
+
+        if (existing) {
+          const { error: updErr } = await supabase.from("inventory_assets").update({
+            serial_number: serial,
+            value: p.unit_price,
+            location_id: p.location_id || null,
+            supplier: p.supplier || null,
+            invoice_number: p.invoice_number || null,
+            acquired_at: p.entry_date || null,
+          }).eq("id", existing.id);
+          if (updErr) throw updErr;
+          assetAction = "updated";
+          if (existing.item_id !== itemId) {
+            const { data: linkedItem } = await supabase
+              .from("inventory_items").select("name").eq("id", existing.item_id).maybeSingle();
+            assetItemName = (linkedItem as { name?: string } | null)?.name ?? null;
+          }
+        } else {
+          const { error } = await supabase.from("inventory_assets").insert({
+            item_id: itemId,
+            patrimony_number: patrimony,
+            serial_number: serial,
+            value: p.unit_price,
+            status: "available",
+            location_id: p.location_id || null,
+            supplier: p.supplier || null,
+            invoice_number: p.invoice_number || null,
+            acquired_at: p.entry_date || null,
+          });
+          if (error) throw error;
+          assetAction = "created";
+        }
       }
 
       const { error: movErr } = await supabase.from("inventory_movements").insert({
@@ -760,8 +838,8 @@ export function useCreateEntry() {
         unit_price: p.unit_price,
         supplier: p.supplier || null,
         invoice_number: p.invoice_number || null,
-        patrimony_number: p.has_patrimony ? (p.patrimony_number || null) : null,
-        serial_number: p.serial_number || null,
+        patrimony_number: p.has_patrimony ? patrimony : null,
+        serial_number: serial,
         to_location_id: p.location_id || null,
         occurred_at: p.entry_date ? new Date(`${p.entry_date}T12:00:00`).toISOString() : new Date().toISOString(),
         reason: "Entrada de estoque",
@@ -771,9 +849,21 @@ export function useCreateEntry() {
         performed_by: user.id,
       });
       if (movErr) throw movErr;
-      return itemId;
+      return { itemId, assetAction, assetItemName } satisfies EntryResult;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Entrada registrada"); },
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+      if (res.assetAction === "updated") {
+        toast.success("Entrada registrada · patrimônio atualizado");
+        if (res.assetItemName) {
+          toast.info(`Patrimônio já estava vinculado ao item "${res.assetItemName}" — vínculo mantido.`);
+        }
+      } else if (res.assetAction === "created") {
+        toast.success("Entrada registrada · patrimônio cadastrado");
+      } else {
+        toast.success("Entrada registrada");
+      }
+    },
     onError: (e: any) => toast.error(e.message ?? "Erro ao registrar entrada"),
   });
 }

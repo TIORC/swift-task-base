@@ -18,6 +18,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend,
 } from "recharts";
+import { formatMinutes } from "@/lib/utils";
 
 const STATUS_COLORS: Record<string, string> = {
   backlog: "hsl(220, 9%, 46%)",
@@ -272,11 +273,6 @@ const ManagerDashboard = () => {
   }, [filteredTasks]);
 
   if (!tasks) return null;
-
-  const formatMinutes = (m: number) => {
-    if (m < 60) return `${m}min`;
-    return `${Math.floor(m / 60)}h ${m % 60}min`;
-  };
 
   return (
     <div className="space-y-6 max-w-7xl">

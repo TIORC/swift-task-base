@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
+import { NotificationAlertProvider } from "@/components/NotificationAlert";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
@@ -229,17 +230,19 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <UserRoleProvider>
-              <UserSystemsProvider>
-                <GlobalTimerProvider>
-                  <AppRoutes />
-                </GlobalTimerProvider>
-              </UserSystemsProvider>
-            </UserRoleProvider>
-          </AuthProvider>
-        </BrowserRouter>
+        <NotificationAlertProvider>
+          <BrowserRouter>
+            <AuthProvider>
+              <UserRoleProvider>
+                <UserSystemsProvider>
+                  <GlobalTimerProvider>
+                    <AppRoutes />
+                  </GlobalTimerProvider>
+                </UserSystemsProvider>
+              </UserRoleProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </NotificationAlertProvider>
       </TooltipProvider>
     </QueryClientProvider>
   </ThemeProvider>

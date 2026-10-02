@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-react";
 import { useCreateAutomation } from "@/hooks/useAutomationsData";
-import { PRIORITY_OPTIONS, PRIORITY_LABELS, COMPLEXITY_OPTIONS, COMPLEXITY_LABELS } from "@/types/automation";
+import { PRIORITY_OPTIONS, PRIORITY_LABELS, COMPLEXITY_OPTIONS, COMPLEXITY_LABELS, REQUEST_KINDS, REQUEST_KIND_LABELS } from "@/types/automation";
 import { SECTORS } from "@/types/sectors";
 import { useSectorVisibility } from "@/hooks/useUserSectors";
 
@@ -32,6 +32,7 @@ export function CreateAutomationDialog({ profiles }: Props) {
     assigned_to: "",
     priority: "medium",
     complexity: "medium",
+    request_kind: "Automação",
     automation_type: "",
     estimated_hours: "",
     final_deadline: "",
@@ -54,6 +55,7 @@ export function CreateAutomationDialog({ profiles }: Props) {
       assigned_to: form.assigned_to || null,
       priority: form.priority,
       complexity: form.complexity,
+      request_kind: form.request_kind,
       automation_type: form.automation_type || null,
       estimated_hours: parseFloat(form.estimated_hours) || 0,
       final_deadline: form.final_deadline ? new Date(form.final_deadline).toISOString() : null,
@@ -61,7 +63,7 @@ export function CreateAutomationDialog({ profiles }: Props) {
     } as any, {
       onSuccess: () => {
         setOpen(false);
-        setForm({ title: "", description: "", objective: "", system_process: "", requester: "", requester_department: "", assigned_to: "", priority: "medium", complexity: "medium", automation_type: "", estimated_hours: "", final_deadline: "", sector: "" });
+        setForm({ title: "", description: "", objective: "", system_process: "", requester: "", requester_department: "", assigned_to: "", priority: "medium", complexity: "medium", request_kind: "Automação", automation_type: "", estimated_hours: "", final_deadline: "", sector: "" });
       },
     });
   };
@@ -131,6 +133,16 @@ export function CreateAutomationDialog({ profiles }: Props) {
               <Label className="text-xs">Horas Estimadas</Label>
               <Input type="number" value={form.estimated_hours} onChange={e => set("estimated_hours", e.target.value)} className="h-9 mt-1" />
             </div>
+          </div>
+          <div>
+            <Label className="text-xs">Tipo</Label>
+            <Select value={form.request_kind} onValueChange={v => set("request_kind", v)}>
+              <SelectTrigger className="h-9 mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {REQUEST_KINDS.map(k => <SelectItem key={k} value={k}>{REQUEST_KIND_LABELS[k]}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-[10px] text-muted-foreground">Sistema é uma ferramenta com telas; automação é uma rotina que roda sozinha.</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

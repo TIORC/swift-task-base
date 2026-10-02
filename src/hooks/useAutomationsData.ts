@@ -5,7 +5,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useProfile } from "@/hooks/useProfile";
 import { toast } from "sonner";
 import { invalidateGamification } from "@/hooks/useGamification";
-import { STATUS_LABELS } from "@/types/automation";
+import { STATUS_LABELS, clampPercent } from "@/types/automation";
 import type {
   Automation,
   AutomationSubtask,
@@ -138,7 +138,7 @@ export function useUpdateAutomation() {
   return useMutation({
     mutationFn: async ({ id, ...values }: Partial<Automation> & { id: string }) => {
       // Fetch current automation for notification context
-      const { data: current } = await supabase.from("automations").select("title, status, assigned_to, requester_id").eq("id", id).single();
+      const { data: current } = await supabase.from("automations").select("title, status, assigned_to, requester_id, progress_percent").eq("id", id).single();
 
       const { error } = await supabase.from("automations").update(values as any).eq("id", id);
       if (error) throw error;
@@ -165,6 +165,19 @@ export function useUpdateAutomation() {
         }
       }
 
+      if (values.progress_percent !== undefined && clampPercent(values.progress_percent) !== clampPercent(current?.progress_percent)) {
+        const percent = clampPercent(values.progress_percent);
+        changes.push(`ficou em ${percent}% de execução`);
+
+        // O solicitante acompanha esta porcentagem em
+        // /solicitacoes/acompanhar-minha-solicitacao.
+        await notifyRequester(
+          id,
+          `A automação "${current.title || "Sua solicitação"}" está em ${percent}% de execução.`,
+          user!.id,
+        );
+      }
+
       if (values.assigned_to !== undefined && values.assigned_to !== current?.assigned_to) {
         changes.push("teve o responsável alterado");
 
@@ -180,6 +193,8 @@ export function useUpdateAutomation() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["automations"] });
+      // Tela de acompanhamento do solicitante: precisa refletir o novo percentual.
+      qc.invalidateQueries({ queryKey: ["my-automation-requests"] });
       invalidateGamification(qc);
       toast.success("Automação atualizada!");
     },
