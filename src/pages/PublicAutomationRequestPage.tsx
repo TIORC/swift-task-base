@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, CheckCircle2, AlertTriangle, UserCheck } from "lucide-react";
-import { SolicitanteRequestDialog } from "@/components/automations/SolicitanteRequestDialog";
+import { RequestAutomationDialog } from "@/components/automations/RequestAutomationDialog";
 import { useSolicitante } from "@/hooks/useSolicitante";
 import { useTypewriter } from "@/hooks/useTypewriter";
 import { Input } from "@/components/ui/input";
@@ -186,6 +186,15 @@ function AccessDenied() {
   );
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Administrador",
+  gestor: "Gestor",
+  lider: "Líder",
+  dev: "Desenvolvedor",
+  member: "Membro (Gestão)",
+  suporte: "Suporte TI",
+};
+
 /** Etapas do fluxo: identificar -> conferir cadastro -> liberado/bloqueado. */
 type Stage = "identify" | "checking" | "unlocked" | "denied";
 
@@ -261,7 +270,13 @@ export default function PublicAutomationRequestPage() {
         ) : (
           <>
             <div className="flex flex-col items-center gap-4">
-              <WelcomeBanner message="Você está cadastrado como Solicitante! Bem-vindo(a)!" />
+              <WelcomeBanner
+                message={
+                  solicitante?.role && ROLE_LABELS[solicitante.role]
+                    ? `Você está cadastrado como ${ROLE_LABELS[solicitante.role]}! Bem-vindo(a)!`
+                    : "Você está cadastrado como Solicitante! Bem-vindo(a)!"
+                }
+              />
 
               <h1 className="text-center text-2xl font-semibold tracking-tight text-white sm:text-3xl">
                 Qual tipo de desenvolvimento você deseja?
@@ -269,13 +284,13 @@ export default function PublicAutomationRequestPage() {
             </div>
 
             {requestType ? (
-              <SolicitanteRequestDialog
+              <RequestAutomationDialog
                 key={requestType}
                 openOnMount
                 hideTrigger
                 requestType={requestType}
-                senderName={solicitante?.email ?? email}
-                senderSector={solicitante?.sector ?? (sector === NO_SECTOR ? "" : sector)}
+                solicitanteEmail={solicitante?.email ?? email}
+                solicitanteSector={solicitante?.sector ?? (sector === NO_SECTOR ? "" : sector)}
                 onClose={() => setRequestType(null)}
                 onSubmitted={() => navigate("/k7f3q9x2/solicitacoes/acompanhar-minha-solicitacao", { replace: true })}
               />

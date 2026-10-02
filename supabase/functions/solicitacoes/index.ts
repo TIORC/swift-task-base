@@ -135,6 +135,14 @@ Deno.serve(async (req) => {
         return json({ error: "E-mail não cadastrado como solicitante" }, 403);
       }
 
+      const { data: roleRow, error: roleError } = await admin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", row.user_id)
+        .maybeSingle();
+      if (roleError) throw roleError;
+      const userRole = (roleRow as { role?: string } | null)?.role ?? null;
+
       const claims: SolicitanteClaims = {
         sub: row.user_id,
         email,
@@ -145,7 +153,7 @@ Deno.serve(async (req) => {
       return json({
         token,
         tokenKey: TOKEN_KEY,
-        solicitante: { id: claims.sub, email, sector: claims.sector },
+        solicitante: { id: claims.sub, email, sector: claims.sector, role: userRole },
       });
     }
 
@@ -166,11 +174,20 @@ Deno.serve(async (req) => {
     }
 
     if (action === "me") {
+      const { data: roleRow, error: roleError } = await admin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", solicitanteId)
+        .maybeSingle();
+      if (roleError) throw roleError;
+      const userRole = (roleRow as { role?: string } | null)?.role ?? null;
+
       return json({
         solicitante: {
           id: solicitanteId,
           email: claims.email,
           sector: ((requester as { sector?: string }).sector ?? claims.sector),
+          role: userRole,
         },
       });
     }

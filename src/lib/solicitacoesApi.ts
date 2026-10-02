@@ -15,6 +15,7 @@ export interface SolicitanteIdentity {
   id: string;
   email: string;
   sector: string;
+  role?: string;
 }
 
 export interface SolicitanteRequest {

@@ -14,6 +14,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { PRIORITY_LABELS, PRIORITY_OPTIONS } from "@/types/automation";
+import { solicitanteCall } from "@/lib/solicitacoesApi";
 import { Loader2, Lock, Paperclip, Send, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,7 +43,7 @@ function FieldError({ message }: { message?: string }) {
 
 const invalidInput = "border-red-500/70 focus-visible:ring-red-500/40";
 
-export function RequestAutomationDialog({ openOnMount = false, hideTrigger = false, requestType = "Automação", onClose, onSubmitted }: { openOnMount?: boolean; hideTrigger?: boolean; requestType?: "Sistema" | "Automação"; onClose?: () => void; onSubmitted?: (id: string) => void }) {
+export function RequestAutomationDialog({ openOnMount = false, hideTrigger = false, requestType = "Automação", solicitanteEmail = "", solicitanteSector = "", onClose, onSubmitted }: { openOnMount?: boolean; hideTrigger?: boolean; requestType?: "Sistema" | "Automação"; solicitanteEmail?: string; solicitanteSector?: string; onClose?: () => void; onSubmitted?: (id: string) => void }) {
   const { user } = useAuth();
   const { profile } = useProfile();
   const qc = useQueryClient();
@@ -50,11 +51,18 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
   const notifyNewRequest = useNotifyNewAutomationRequest();
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // No portal público (/k7f3q9x2/solicitacoes) não existe sessão do Supabase
+  // Auth: a identidade vem do token curto emitido pela Edge Function
+  // "solicitacoes". Nesse fluxo nada é gravado direto no banco — o insert
+  // acontece no servidor e os anexos ficam indisponíveis, porque o Storage
+  // exige o dono autenticado.
+  const isPortal = !user;
+
   const [open, setOpen] = useState(openOnMount);
   const [title, setTitle] = useState("");
   const [requesterName, setRequesterName] = useState("");
   const [requesterEmail, setRequesterEmail] = useState("");
-  const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
+  const [selectedSectors, setSelectedSectors] = useState<string[]>(REQUEST_SECTORS.includes(solicitanteSector) ? [solicitanteSector] : []);
   const [otherSector, setOtherSector] = useState("");
   const [routineOwners, setRoutineOwners] = useState("");
   const [problem, setProblem] = useState("");
@@ -177,8 +185,8 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
 
   useEffect(() => {
     if (!requesterName && profile?.full_name) setRequesterName(profile.full_name);
-    if (!requesterEmail && user?.email) setRequesterEmail(user.email);
-  }, [profile?.full_name, user?.email, requesterName, requesterEmail]);
+    if (!requesterEmail && (user?.email ?? solicitanteEmail)) setRequesterEmail(user?.email ?? solicitanteEmail);
+  }, [profile?.full_name, user?.email, solicitanteEmail, requesterName, requesterEmail]);
 
   const reset = () => {
     setTitle(""); setRequesterName(""); setRequesterEmail(""); setSelectedSectors([]); setOtherSector("");
@@ -211,7 +219,6 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
 
   const create = useMutation({
     mutationFn: async () => {
-      if (!user) throw new Error("Não autenticado");
       const allFailures: Record<string, string> = {};
       let firstFailingStation = -1;
       requiredByStation.forEach((checks, index) => {
@@ -238,6 +245,26 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
         `6. Validação final pelo solicitante\nImpacto esperado: ${automationImpact.trim()}\nExemplos de teste: ${acceptanceTests.trim()}\nDemonstração e validação em teste: ${demoAvailability}`,
       ].join("\n\n");
 
+      if (isPortal) {
+        // Portal público: o front não toca o banco. A função preenche
+        // created_by/requester_id a partir do token, grava o evento e notifica
+        // os gestores.
+        const { id } = await solicitanteCall<{ id: string }>("create", {
+          request: {
+            title: title.trim(),
+            description: completeDescription,
+            objective: expectedResult.trim() || null,
+            process_impact: expectedResult.trim() || null,
+            sector: effectiveSector,
+            request_kind: requestType,
+            priority,
+            sender_name: requesterName.trim() || requesterEmail.trim() || undefined,
+          },
+        });
+        return id;
+      }
+
+      if (!user) throw new Error("Não autenticado");
       const { data, error } = await supabase
         .from("automations")
         .insert({
@@ -269,6 +296,16 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
       return (data as any).id as string;
     },
     onSuccess: async (id) => {
+      if (isPortal) {
+        // No portal a notificação dos gestores e o registro do evento já
+        // saíram da Edge Function; aqui só invalida a lista do solicitante.
+        qc.invalidateQueries({ queryKey: ["solicitante-requests"] });
+        toast.success("Solicitação enviada para a equipe de TI!");
+        reset();
+        setOpen(false);
+        onSubmitted?.(id);
+        return;
+      }
       qc.invalidateQueries({ queryKey: ["automations"] });
       qc.invalidateQueries({ queryKey: ["my-automation-requests"] });
       // Envia os anexos após a automação existir (imagens, vídeos e PDFs).
@@ -313,6 +350,12 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
               ? "Descreva sua necessidade de sistema para a equipe de TI avaliar."
               : "A equipe de TI vai analisar, definir prioridade, responsável e prazo. Você acompanha tudo por aqui."}
           </DialogDescription>
+          {isPortal && (solicitanteEmail || solicitanteSector) && (
+            <p className="text-xs text-white/55">
+              Identificado como <b className="text-white/80">{solicitanteEmail}</b>
+              {solicitanteSector && <> · setor <b className="text-white/80">{solicitanteSector}</b></>}.
+            </p>
+          )}
         </DialogHeader>
 
         <div className="grid min-h-0 flex-1 gap-5 overflow-hidden md:grid-cols-[245px_minmax(0,1fr)]">
@@ -430,13 +473,23 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
                   <div><Label>Quais recibos, protocolos, valores e vencimentos precisam ser confrontados com a origem?</Label><Textarea value={receiptChecks} onChange={(e) => setReceiptChecks(e.target.value)} rows={3} placeholder="Informe quais dados precisam ser comparados com a fonte original." className="mt-1" /></div>
                   <div><Label>Quais informações precisam ser consultadas ou atualizadas em outros setores?</Label><Textarea value={departmentUpdates} onChange={(e) => setDepartmentUpdates(e.target.value)} rows={3} placeholder="Indique as informações e os setores envolvidos." className="mt-1" /></div>
                   <div><Label>Quem pode solicitar, aprovar, executar e visualizar o resultado?</Label><Textarea value={accessRoles} onChange={(e) => setAccessRoles(e.target.value)} rows={3} placeholder="Informe as pessoas ou funções envolvidas em cada etapa." className="mt-1" /></div>
-                  <Label className="block">Anexos (opcional)</Label>
-                  <div className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed ${accent.border} ${accent.bg} px-4 py-5 text-center`} onClick={() => inputRef.current?.click()} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files); }}>
-                    <Paperclip className={`h-5 w-5 ${accent.active}`} /><p className="text-xs text-white/65">Anexe documentos, imagens, vídeos ou PDF para contextualizar.</p>
-                    <Button size="sm" variant="outline" type="button" className="pointer-events-none h-7 text-xs">Escolher arquivos</Button>
-                    <input ref={inputRef} type="file" multiple accept="image/*,video/*,application/pdf" hidden onChange={(e) => addFiles(e.target.files)} />
-                  </div>
-                  {files.length > 0 && <ul className="space-y-1">{files.map((f, i) => <li key={i} className="flex items-center gap-2 rounded-md border border-white/10 bg-black/10 px-2.5 py-1.5"><Paperclip className="h-3 w-3 shrink-0" /><span className="min-w-0 flex-1 truncate text-xs">{f.name}</span><span className="shrink-0 text-[10px]">{(f.size / 1024 / 1024).toFixed(1)} MB</span><button type="button" onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))} className="shrink-0 hover:text-red-300" aria-label={`Remover ${f.name}`}><X className="h-3.5 w-3.5" /></button></li>)}</ul>}
+                  {isPortal ? (
+                    <p className="flex items-start gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs leading-relaxed text-white/60">
+                      <Paperclip className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      Anexos (imagem, vídeo ou PDF) exigem login no sistema. Se precisar
+                      enviar arquivos, mencione no chat da solicitação após o envio.
+                    </p>
+                  ) : (
+                    <>
+                    <Label className="block">Anexos (opcional)</Label>
+                    <div className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed ${accent.border} ${accent.bg} px-4 py-5 text-center`} onClick={() => inputRef.current?.click()} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files); }}>
+                      <Paperclip className={`h-5 w-5 ${accent.active}`} /><p className="text-xs text-white/65">Anexe documentos, imagens, vídeos ou PDF para contextualizar.</p>
+                      <Button size="sm" variant="outline" type="button" className="pointer-events-none h-7 text-xs">Escolher arquivos</Button>
+                      <input ref={inputRef} type="file" multiple accept="image/*,video/*,application/pdf" hidden onChange={(e) => addFiles(e.target.files)} />
+                    </div>
+                    {files.length > 0 && <ul className="space-y-1">{files.map((f, i) => <li key={i} className="flex items-center gap-2 rounded-md border border-white/10 bg-black/10 px-2.5 py-1.5"><Paperclip className="h-3 w-3 shrink-0" /><span className="min-w-0 flex-1 truncate text-xs">{f.name}</span><span className="shrink-0 text-[10px]">{(f.size / 1024 / 1024).toFixed(1)} MB</span><button type="button" onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))} className="shrink-0 hover:text-red-300" aria-label={`Remover ${f.name}`}><X className="h-3.5 w-3.5" /></button></li>)}</ul>}
+                    </>
+                  )}
                 </>}
                 {station === 5 && <>
                   <div className={`rounded-xl border ${accent.border} ${accent.bg} p-4 text-sm`}>
