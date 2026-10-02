@@ -1,12 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, CheckCircle2, AlertTriangle, UserCheck } from "lucide-react";
-import { RequestAutomationDialog } from "@/components/automations/RequestAutomationDialog";
-import { useIsAutomationRequester } from "@/hooks/useAutomationRequesters";
-import { useAuth } from "@/hooks/useAuth";
-import { useUserRole } from "@/hooks/useUserRole";
+import { SolicitanteRequestDialog } from "@/components/automations/SolicitanteRequestDialog";
+import { useSolicitante } from "@/hooks/useSolicitante";
 import { useTypewriter } from "@/hooks/useTypewriter";
-import type { Database } from "@/integrations/supabase/types";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -144,30 +141,19 @@ function IdentificationCard({
         </div>
 
         <p className="text-xs leading-relaxed text-slate-400">
-          Informe o e-mail com que você acessou o sistema.
+          Informe o e-mail cadastrado como solicitante do seu setor.
         </p>
       </form>
     </section>
   );
 }
 
-type AppRole = Database["public"]["Enums"]["app_role"];
-
-const WELCOME_BY_ROLE: Partial<Record<AppRole, string>> = {
-  dev: "Acesso liberado! Bem vindo(a), Engenheiro(a) de Software.",
-  suporte: "Acesso liberado! Bem vindo(a), Engenheiro de Infraestrutura",
-};
-
 /**
- * Texto de boas-vindas da equipe de TI. Quem não for dev nem suporte
- * recebe a mensagem padrão de Solicitante.
+ * Etapas do fluxo: identificar (tela "Identifique-se") -> checking (validação
+ * no SERVIDOR) -> unlocked. "denied" ficou sem uso: e-mail não cadastrado
+ * volta para "identify" com a mensagem "E-mail não cadastrado como
+ * solicitante" — nada é liberado.
  */
-function resolveWelcomeMessage(roles: AppRole[]) {
-  for (const role of ["dev", "suporte"] as const) {
-    if (roles.includes(role)) return WELCOME_BY_ROLE[role] ?? null;
-  }
-  return null;
-}
 
 function WelcomeBanner({ message }: { message: string }) {
   const { typed, done } = useTypewriter(message);
@@ -204,10 +190,11 @@ function AccessDenied() {
 type Stage = "identify" | "checking" | "unlocked" | "denied";
 
 export default function PublicAutomationRequestPage() {
-  const { canRequest, isLoadingRequester } = useIsAutomationRequester();
-  const { user } = useAuth();
-  const { roles, loading: rolesLoading } = useUserRole();
   const navigate = useNavigate();
+  // Identificação do solicitante via SERVIDOR (Edge Function "solicitacoes").
+  // Aqui não existe sessão do Supabase Auth: quem confere o e-mail contra a
+  // tabela de solicitantes é a função, que devolve o token curto.
+  const { solicitante, isLoadingSolicitante, identify } = useSolicitante();
   const [requestType, setRequestType] = useState<RequestType | null>(null);
   const [cardsVisible, setCardsVisible] = useState(false);
 
@@ -216,29 +203,32 @@ export default function PublicAutomationRequestPage() {
   const [stage, setStage] = useState<Stage>("identify");
   const [error, setError] = useState<string | null>(null);
 
-  const sessionEmail = (user?.email ?? "").trim().toLowerCase();
-  const welcomeMessage = rolesLoading ? null : resolveWelcomeMessage(roles);
+  // Se já existe identificação válida em sessionStorage, pula a tela.
+  useEffect(() => {
+    if (!isLoadingSolicitante && solicitante) setStage("unlocked");
+  }, [isLoadingSolicitante, solicitante]);
 
-  const handleIdentify = () => {
-    const typed = email.trim().toLowerCase();
+  const handleIdentify = async () => {
+    const typed = email.trim();
     if (!typed) {
       setError("Informe o seu e-mail para continuar.");
       return;
     }
-    if (typed !== sessionEmail) {
-      setError("O e-mail informado não é o e-mail da sua conta. Use o e-mail com que você entrou no sistema.");
-      return;
-    }
     setError(null);
     setStage("checking");
+    try {
+      const identity = await identify.mutateAsync(typed);
+      if (sector !== NO_SECTOR && sector !== identity.sector) {
+        // O setor escolhido é só conferência visual; o que vale é a whitelist.
+      }
+      setStage("unlocked");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Não foi possível validar o e-mail.";
+      // Mensagem de "não cadastrado" vem do servidor (403); o resto é erro técnico.
+      setError(/não cadastrado como solicitante/i.test(message) ? message : message);
+      setStage("identify");
+    }
   };
-
-  // Consulta da whitelist: só libera (ou barra) quando ela responder.
-  const checking = stage === "checking";
-  useEffect(() => {
-    if (!checking || isLoadingRequester || rolesLoading) return;
-    setStage(canRequest ? "unlocked" : "denied");
-  }, [checking, isLoadingRequester, rolesLoading, canRequest]);
 
   // Anima a entrada dos cards só no momento em que eles aparecem.
   useEffect(() => {
@@ -271,16 +261,7 @@ export default function PublicAutomationRequestPage() {
         ) : (
           <>
             <div className="flex flex-col items-center gap-4">
-              {welcomeMessage ? (
-                <WelcomeBanner message={welcomeMessage} />
-              ) : (
-                <div className="flex items-center gap-2.5 rounded-full border border-emerald-300/30 bg-emerald-400/10 px-4 py-2">
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-300" aria-hidden="true" />
-                  <p className="text-sm font-medium text-emerald-200">
-                    Você está cadastrado como Solicitante! Bem-vindo(a)!
-                  </p>
-                </div>
-              )}
+              <WelcomeBanner message="Você está cadastrado como Solicitante! Bem-vindo(a)!" />
 
               <h1 className="text-center text-2xl font-semibold tracking-tight text-white sm:text-3xl">
                 Qual tipo de desenvolvimento você deseja?
@@ -288,11 +269,13 @@ export default function PublicAutomationRequestPage() {
             </div>
 
             {requestType ? (
-              <RequestAutomationDialog
+              <SolicitanteRequestDialog
                 key={requestType}
                 openOnMount
                 hideTrigger
                 requestType={requestType}
+                senderName={solicitante?.email ?? email}
+                senderSector={solicitante?.sector ?? (sector === NO_SECTOR ? "" : sector)}
                 onClose={() => setRequestType(null)}
                 onSubmitted={() => navigate("/k7f3q9x2/solicitacoes/acompanhar-minha-solicitacao", { replace: true })}
               />

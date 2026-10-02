@@ -98,6 +98,19 @@ function SystemGate({ system, children }: { system: SystemKey; children: React.R
   return <>{children}</>;
 }
 
+/**
+ * Guard próprio da rota pública /k7f3q9x2/solicitacoes.
+ *
+ * PROPOSITALMENTE fora do guard de autenticação: não lê useAuth, não usa
+ * RequireAuth/SystemGate e nunca redireciona para /auth. A identificação
+ * aqui é o e-mail validado no SERVIDOR pela Edge Function "solicitacoes"
+ * (token curto em sessionStorage) — ver useSolicitante. Sem token válido,
+ * as páginas exibem a tela "Identifique-se".
+ */
+function SolicitanteGate({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
+}
+
 function ProtectedTI({ children }: { children: React.ReactNode }) {
   return (
     <RequireAuth>
@@ -188,8 +201,8 @@ const AppRoutes = () => (
     <Route path="/admin/recorrentes" element={<ProtectedTI><RoleGate route="/admin"><RecurringTasksAdmin /></RoleGate></ProtectedTI>} />
     <Route path="/reports" element={<ProtectedTI><RoleGate route="/reports"><Reports /></RoleGate></ProtectedTI>} />
     <Route path="/support" element={<ProtectedTI><RoleGate route="/support"><SupportTickets /></RoleGate></ProtectedTI>} />
-    <Route path="/k7f3q9x2/solicitacoes/acompanhar-minha-solicitacao" element={<RequireAuth><SystemGate system="ti"><TrackMyAutomationRequestsPage /></SystemGate></RequireAuth>} />
-    <Route path="/k7f3q9x2/solicitacoes" element={<RequireAuth><SystemGate system="ti"><PublicAutomationRequestPage /></SystemGate></RequireAuth>} />
+    <Route path="/k7f3q9x2/solicitacoes/acompanhar-minha-solicitacao" element={<SolicitanteGate><TrackMyAutomationRequestsPage /></SolicitanteGate>} />
+    <Route path="/k7f3q9x2/solicitacoes" element={<SolicitanteGate><PublicAutomationRequestPage /></SolicitanteGate>} />
     <Route path="/automacoes" element={<ProtectedTI><RoleGate route="/automacoes"><AutomacoesPage /></RoleGate></ProtectedTI>} />
     <Route path="/hipocampo" element={<ProtectedTI><RoleGate route="/hipocampo"><Hipocampo /></RoleGate></ProtectedTI>} />
     <Route path="/almoxarifado" element={<ProtectedTI><RoleGate route="/almoxarifado"><Almoxarifado /></RoleGate></ProtectedTI>} />
