@@ -127,7 +127,6 @@ Deno.serve(async (req) => {
       // Confere no SERVIDOR: e-mail existe em auth.users E está na whitelist.
       const { data: requester, error } = await admin.rpc("get_automation_requester_by_email", { _email: email });
       if (error) throw error;
-      console.log("[solicitacoes] identify lookup", JSON.stringify(requester));
       // RPC que retorna TABLE devolve array; aceita também objeto único.
       const row = (Array.isArray(requester) ? requester[0] ?? null : requester ?? null) as
         | { user_id: string; sector: string }
