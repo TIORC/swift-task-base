@@ -69,12 +69,15 @@ interface StatusEntry {
   name: string;
   working: boolean;
   lastStart: string | null;
+  /** Marcado pela Edge Function quando o usuário tem o papel `dev`. */
+  dev?: boolean;
 }
 
 /**
  * Status dos desenvolvedores via Edge Function (o visitante não tem sessão e
- * a RLS barra anon). A função devolve {id, name, working, lastStart} já
- * calculado no servidor; aqui só formatamos a exibição.
+ * a RLS barra anon). A função devolve {id, name, working, lastStart, dev} já
+ * calculado no servidor; aqui só formatamos a exibição. `dev: true` identifica
+ * quem tem o papel `dev` — só esses entram na aba de desenvolvedores.
  */
 function useDeveloperStatuses() {
   return useQuery({
@@ -89,6 +92,10 @@ function useDeveloperStatuses() {
 
 function DeveloperStatusPanel() {
   const { data: developers = [], isLoading, error } = useDeveloperStatuses();
+  // Só quem tem o papel `dev` (Angel/Sofia/Danicarla ficam de fora). Entradas
+  // sem o campo — função ainda não reimplantada — continuam visíveis para a
+  // aba não ficar vazia durante o deploy.
+  const visibleDevelopers = developers.filter((developer) => developer.dev !== false);
 
   return (
     <section className="space-y-4">
@@ -102,7 +109,7 @@ function DeveloperStatusPanel() {
         <p className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">Não foi possível carregar o status dos desenvolvedores.</p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          {developers.map((developer) => (
+          {visibleDevelopers.map((developer) => (
             <article key={developer.id} className={`${STATUS_CARD_BASE} ${
               developer.working ? STATUS_CARD_BORDER.working : STATUS_CARD_BORDER.stopped
             }`}>

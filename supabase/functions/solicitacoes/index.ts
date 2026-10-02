@@ -380,6 +380,24 @@ Deno.serve(async (req) => {
         const { data } = await admin.rpc("get_ti_assignable_user_ids");
         assignableIds = ((data as string[] | null) ?? []).filter(Boolean);
       }
+
+      // Papel `dev` de verdade: get_ti_assignable_user_ids devolve quem pode
+      // receber tarefas de TI (member/dev/lider) — NÃO é a lista de
+      // desenvolvedores. A aba "Status dos Desenvolvedores" filtra pelo flag
+      // `dev` abaixo; a lista completa continua sendo devolvida porque os nomes
+      // dos responsáveis (cards/chat) também saem daqui.
+      const devIds = new Set<string>();
+      if (action === "developer-status") {
+        const { data: devRows, error: devError } = await admin
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "dev");
+        if (devError) throw devError;
+        for (const row of ((devRows ?? []) as { user_id: string }[])) devIds.add(row.user_id);
+        // Todo desenvolvedor aparece na aba, mesmo fora da lista de atribuição.
+        assignableIds = [...new Set([...assignableIds, ...devIds])];
+      }
+
       if (assignableIds.length === 0) {
         return json(action === "developer-status" ? { developers: [] } : { technicians: [] });
       }
@@ -415,6 +433,7 @@ Deno.serve(async (req) => {
           name: names[id] ?? "Equipe de TI",
           working: latest ? !latest.ended_at : false,
           lastStart: latest?.started_at ?? null,
+          dev: devIds.has(id),
         };
       });
       return json(action === "developer-status" ? { developers: entries } : { technicians: entries });
