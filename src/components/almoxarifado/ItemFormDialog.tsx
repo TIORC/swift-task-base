@@ -9,7 +9,7 @@ import {
   useCreateItem, useUpdateItem, useInventoryCategories, useInventoryLocations,
   type InventoryItem,
 } from "@/hooks/useInventory";
-import { useAssignableProfiles } from "@/hooks/useTasks";
+import { useProfiles } from "@/hooks/useTasks";
 
 
 interface Props {
@@ -21,9 +21,13 @@ interface Props {
 export function ItemFormDialog({ open, onOpenChange, item }: Props) {
   const { data: categories = [] } = useInventoryCategories();
   const { data: locations = [] } = useInventoryLocations();
-  const { data: profiles } = useAssignableProfiles();
+  const { data: profiles } = useProfiles();
   const createItem = useCreateItem();
   const updateItem = useUpdateItem();
+
+  const responsibles = (profiles ?? [])
+    .filter((p) => !!p.full_name?.trim())
+    .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? "", "pt-BR"));
 
   const [form, setForm] = useState({
     name: "", sku: "", category_id: "", subcategory: "", brand: "", model: "",
@@ -128,12 +132,12 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
               </Select>
             </div>
             <div>
-              <Label>Responsável pelo equipamento</Label>
+              <Label>Responsável</Label>
               <Select value={form.responsible_id || "none"} onValueChange={(v) => setForm({ ...form, responsible_id: v === "none" ? "" : v })}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Nenhum</SelectItem>
-                  {profiles?.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>)}
+                  {responsibles.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

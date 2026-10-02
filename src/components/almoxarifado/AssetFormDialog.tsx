@@ -9,7 +9,7 @@ import {
   useCreateAsset, useUpdateAsset, useInventoryItems, useInventoryLocations,
   type InventoryAsset, type AssetStatus,
 } from "@/hooks/useInventory";
-import { useAssignableProfiles } from "@/hooks/useTasks";
+import { useProfiles } from "@/hooks/useTasks";
 
 
 interface Props {
@@ -30,9 +30,13 @@ const STATUSES: { v: AssetStatus; label: string }[] = [
 export function AssetFormDialog({ open, onOpenChange, asset, defaultItemId }: Props) {
   const { data: items = [] } = useInventoryItems();
   const { data: locations = [] } = useInventoryLocations();
-  const { data: profiles } = useAssignableProfiles();
+  const { data: profiles } = useProfiles();
   const createAsset = useCreateAsset();
   const updateAsset = useUpdateAsset();
+
+  const responsibles = (profiles ?? [])
+    .filter((p) => !!p.full_name?.trim())
+    .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? "", "pt-BR"));
 
   const [form, setForm] = useState({
     item_id: "", patrimony_number: "", serial_number: "", value: 0,
@@ -107,12 +111,12 @@ export function AssetFormDialog({ open, onOpenChange, asset, defaultItemId }: Pr
             </div>
           </div>
           <div>
-            <Label>Responsável pelo equipamento</Label>
+            <Label>Responsável</Label>
             <Select value={form.assigned_to || "none"} onValueChange={(v) => setForm({ ...form, assigned_to: v === "none" ? "" : v })}>
               <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Nenhum</SelectItem>
-                {profiles?.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>)}
+                {responsibles.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

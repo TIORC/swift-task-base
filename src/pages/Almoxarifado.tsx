@@ -26,6 +26,7 @@ import { ItemFormDialog } from "@/components/almoxarifado/ItemFormDialog";
 import { EntryDialog } from "@/components/almoxarifado/EntryDialog";
 import { ExitDialog } from "@/components/almoxarifado/ExitDialog";
 import { StatusChangeDialog } from "@/components/almoxarifado/StatusChangeDialog";
+import { ItemUpgradeDialog } from "@/components/almoxarifado/ItemUpgradeDialog";
 import { AssetFormDialog } from "@/components/almoxarifado/AssetFormDialog";
 import { CollaboratorsPanel } from "@/components/almoxarifado/CollaboratorsPanel";
 import { MovementFormDialog } from "@/components/almoxarifado/MovementFormDialog";
@@ -43,6 +44,7 @@ const alphaInitial = (name: string) => name.trim().charAt(0).normalize("NFD").re
 const MOV_LABELS: Record<MovementType, string> = {
   in: "Entrada", out: "Saída", transfer: "Transferência", damage: "Dano",
   discard: "Descarte", adjust: "Ajuste", assign: "Atribuição", return: "Devolução",
+  upgrade: "Atualização",
 };
 
 // Destaque de cor do tipo na tabela "Últimas movimentações" (regras em index.css).
@@ -115,6 +117,7 @@ export default function Almoxarifado() {
   const [lastCreatedItem, setLastCreatedItem] = useState<string | null>(null);
   const [exitDlg, setExitDlg] = useState<{ open: boolean; item?: InventoryItem | null }>({ open: false });
   const [statusDlg, setStatusDlg] = useState<{ open: boolean; item?: InventoryItem | null; mode: "damage" | "discard" }>({ open: false, mode: "damage" });
+  const [upgradeDlg, setUpgradeDlg] = useState<{ open: boolean; item?: InventoryItem | null }>({ open: false });
   const [itemDlg, setItemDlg] = useState<{ open: boolean; item?: InventoryItem | null }>({ open: false });
   const [assetDlg, setAssetDlg] = useState<{ open: boolean; asset?: InventoryAsset | null }>({ open: false });
   const [movDlg, setMovDlg] = useState<{ open: boolean; movement?: InventoryMovement | null }>({ open: false });
@@ -320,7 +323,7 @@ export default function Almoxarifado() {
             </Button>
           </div>
 
-          <p className="text-xs text-muted-foreground">Itens são criados apenas pela tela de Entradas.</p>
+          <p className="text-xs text-muted-foreground">Itens são criados apenas pela tela de Entradas. Use “Atualizar” para registrar uma mudança no item — a atualização fica gravada no histórico.</p>
           <Card>
             <CardContent className="p-0">
               <Table className="min-w-[880px]">
@@ -338,7 +341,20 @@ export default function Almoxarifado() {
                     const total = i.quantity + i.in_use_quantity + i.damaged_quantity;
                     return (
                       <TableRow key={i.id}>
-                        <TableCell className="font-medium">{i.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <span className="flex items-center gap-1.5">
+                            {i.name}
+                            {i.upgrade_count > 0 && (
+                              <Badge
+                                variant="outline"
+                                className="shrink-0 font-normal"
+                                title={`${i.upgrade_count} atualização(ões) registrada(s)`}
+                              >
+                                <Wrench className="mr-1 h-3 w-3" />{i.upgrade_count}
+                              </Badge>
+                            )}
+                          </span>
+                        </TableCell>
                         <TableCell>{catName(i.category_id)}</TableCell>
                         <TableCell>{total}</TableCell>
                         <TableCell>{i.quantity}</TableCell>
@@ -360,6 +376,10 @@ export default function Almoxarifado() {
                             />
                             {canWrite && (
                               <>
+                                <RowActionButton
+                                  icon={Wrench} label="Atualizar" title="Registrar atualização (upgrade) do item"
+                                  onClick={() => setUpgradeDlg({ open: true, item: i })}
+                                />
                                 <RowActionButton
                                   icon={Send} label="Saída" title="Registrar saída"
                                   onClick={() => setExitDlg({ open: true, item: i })}
@@ -774,6 +794,8 @@ export default function Almoxarifado() {
       <ExitDialog open={exitDlg.open} onOpenChange={(v) => setExitDlg({ open: v, item: v ? exitDlg.item : null })} item={exitDlg.item} />
       <StatusChangeDialog open={statusDlg.open} mode={statusDlg.mode}
         onOpenChange={(v) => setStatusDlg({ ...statusDlg, open: v })} item={statusDlg.item} />
+      <ItemUpgradeDialog open={upgradeDlg.open}
+        onOpenChange={(v) => setUpgradeDlg({ open: v, item: v ? upgradeDlg.item : null })} item={upgradeDlg.item} />
       <ItemFormDialog open={itemDlg.open} onOpenChange={(v) => setItemDlg({ open: v, item: v ? itemDlg.item : null })} item={itemDlg.item} />
       <AssetFormDialog open={assetDlg.open} onOpenChange={(v) => setAssetDlg({ open: v, asset: v ? assetDlg.asset : null })} asset={assetDlg.asset} />
       <MovementFormDialog open={movDlg.open} onOpenChange={(v) => setMovDlg({ open: v, movement: v ? movDlg.movement : null })} movement={movDlg.movement} />
@@ -796,6 +818,14 @@ export default function Almoxarifado() {
               <Field label="Valor unitário" value={currency(detail.unit_price)} />
               <Field label="Responsável" value={collabName(detail.responsible_collaborator_id)} />
               <Field label="Patrimônio" value={itemPatrimonies(detail.id)} />
+              <Field
+                label="Atualizações"
+                value={detail.upgrade_count > 0
+                  ? `${detail.upgrade_count}${detail.last_upgrade_at
+                    ? ` — última em ${new Date(detail.last_upgrade_at).toLocaleDateString("pt-BR")}`
+                    : ""}`
+                  : "Nenhuma"}
+              />
               <div className="col-span-2"><Field label="Descrição" value={detail.description ?? "—"} /></div>
             </div>
           )}

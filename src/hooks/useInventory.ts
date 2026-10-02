@@ -6,7 +6,8 @@ import { useUserSystems } from "@/hooks/useUserSystems";
 import { toast } from "sonner";
 
 export type MovementType =
-  | "in" | "out" | "transfer" | "damage" | "discard" | "adjust" | "assign" | "return";
+  | "in" | "out" | "transfer" | "damage" | "discard" | "adjust" | "assign" | "return"
+  | "upgrade";
 
 export type AssetStatus = "available" | "in_use" | "damaged" | "discarded" | "maintenance";
 
@@ -35,6 +36,8 @@ export interface InventoryItem {
   notes: string | null;
   responsible_id: string | null;
   responsible_collaborator_id: string | null;
+  last_upgrade_at: string | null;
+  upgrade_count: number;
 
   created_by: string | null;
   created_at: string;
@@ -60,6 +63,13 @@ export interface InventoryAsset {
   updated_at: string;
 }
 
+/** Antes/depois gravado na movimentação do tipo "upgrade". */
+export interface ItemUpgradeDetails {
+  before: Record<string, string | number | null>;
+  after: Record<string, string | number | null>;
+  changed_fields: string[];
+}
+
 export interface InventoryMovement {
   id: string;
   item_id: string;
@@ -68,6 +78,7 @@ export interface InventoryMovement {
   quantity: number;
   reason: string | null;
   notes: string | null;
+  upgrade_details: ItemUpgradeDetails | null;
   from_location_id: string | null;
   to_location_id: string | null;
   assigned_to: string | null;
@@ -1052,5 +1063,102 @@ export function useRecoverDamaged() {
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Item recuperado"); },
     onError: (e: any) => toast.error(e.message ?? "Erro ao recuperar"),
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Atualização (upgrade) do item                                       */
+/* ------------------------------------------------------------------ */
+
+export const UPGRADE_FIELDS = ["name", "brand", "model", "description", "unit_price"] as const;
+export type UpgradeField = (typeof UPGRADE_FIELDS)[number];
+
+export const UPGRADE_FIELD_LABELS: Record<UpgradeField, string> = {
+  name: "Nome do item",
+  brand: "Marca",
+  model: "Modelo",
+  description: "Descrição",
+  unit_price: "Valor unitário",
+};
+
+export interface ItemUpgradePayload {
+  item_id: string;
+  quantity?: number;
+  reason: string;
+  date: string;
+  notes?: string | null;
+  asset_id?: string | null;
+  location_id?: string | null;
+  changes?: Partial<Record<UpgradeField, string | number | null>>;
+}
+
+/**
+ * Registra a atualização do item e grava o antes/depois na movimentação.
+ *
+ * A movimentação entra antes do update: o trigger public.apply_inventory_movement()
+ * não tem ramo para 'upgrade', então ela não mexe em estoque. Se o update do item
+ * falhar, sobra o registro de histórico — o inverso deixaria o item alterado
+ * sem nenhum rastro.
+ */
+export function useRegisterItemUpgrade() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (p: ItemUpgradePayload) => {
+      if (!user) throw new Error("Não autenticado");
+
+      const { data: current, error: readErr } = await supabase
+        .from("inventory_items")
+        .select("brand, model, description, unit_price, location_id, upgrade_count")
+        .eq("id", p.item_id)
+        .maybeSingle();
+      if (readErr) throw readErr;
+      if (!current) throw new Error("Item não encontrado");
+
+      const before: Record<string, string | number | null> = {};
+      const after: Record<string, string | number | null> = {};
+      const patch: Record<string, string | number | null> = {};
+
+      for (const field of UPGRADE_FIELDS) {
+        const incoming = p.changes?.[field];
+        if (incoming === undefined) continue;
+        const from = (current[field] ?? "") as string | number;
+        if (incoming === from || (incoming === "" && from === "")) continue;
+        before[field] = from === "" ? null : from;
+        after[field] = incoming === "" ? null : incoming;
+        patch[field] = incoming;
+      }
+
+      if (p.location_id && p.location_id !== current.location_id) {
+        before.location_id = current.location_id;
+        after.location_id = p.location_id;
+        patch.location_id = p.location_id;
+      }
+
+      const changed = Object.keys(after);
+      const now = new Date().toISOString();
+
+      const { error: movErr } = await supabase.from("inventory_movements").insert({
+        item_id: p.item_id,
+        asset_id: p.asset_id || null,
+        type: "upgrade",
+        quantity: Math.max(1, p.quantity ?? 1),
+        reason: p.reason,
+        notes: p.notes || null,
+        to_location_id: p.location_id || null,
+        occurred_at: p.date ? new Date(`${p.date}T12:00:00`).toISOString() : now,
+        upgrade_details: { before, after, changed_fields: changed },
+        performed_by: user.id,
+      });
+      if (movErr) throw movErr;
+
+      const { error } = await supabase
+        .from("inventory_items")
+        .update({ ...patch, last_upgrade_at: now, upgrade_count: (current.upgrade_count ?? 0) + 1 })
+        .eq("id", p.item_id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Atualização registrada"); },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao registrar atualização"),
   });
 }
