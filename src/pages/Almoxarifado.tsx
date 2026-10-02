@@ -51,12 +51,12 @@ const MOV_TYPE_CLASS: Partial<Record<MovementType, string>> = {
   out: "mov-type-out",
 };
 
-function downloadCsv(rows: Record<string, string | number>[], filename: string) {
+function downloadCsv<T extends object>(rows: T[], filename: string) {
   if (!rows.length) return;
   const headers = Object.keys(rows[0]);
   const csv = [
     headers.join(","),
-    ...rows.map((r) => headers.map((h) => JSON.stringify(r[h] ?? "")).join(",")),
+    ...rows.map((r) => headers.map((h) => JSON.stringify((r as Record<string, unknown>)[h] ?? "")).join(",")),
   ].join("\n");
   const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);

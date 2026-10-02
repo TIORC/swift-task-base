@@ -483,10 +483,10 @@ export type Database = {
           priority: string
           process_impact: string | null
           progress_percent: number | null
+          request_kind: string | null
           requester: string | null
           requester_department: string | null
           requester_id: string | null
-          request_kind: string | null
           risk_level: string | null
           sector: string
           spent_hours: number | null
@@ -520,10 +520,10 @@ export type Database = {
           priority?: string
           process_impact?: string | null
           progress_percent?: number | null
+          request_kind?: string | null
           requester?: string | null
           requester_department?: string | null
           requester_id?: string | null
-          request_kind?: string | null
           risk_level?: string | null
           sector: string
           spent_hours?: number | null
@@ -557,10 +557,10 @@ export type Database = {
           priority?: string
           process_impact?: string | null
           progress_percent?: number | null
+          request_kind?: string | null
           requester?: string | null
           requester_department?: string | null
           requester_id?: string | null
-          request_kind?: string | null
           risk_level?: string | null
           sector?: string
           spent_hours?: number | null
@@ -1085,6 +1085,7 @@ export type Database = {
           assigned_to: string | null
           collaborator_id: string | null
           created_at: string
+          damaged_from: number
           department: string | null
           from_location_id: string | null
           id: string
@@ -1109,6 +1110,7 @@ export type Database = {
           assigned_to?: string | null
           collaborator_id?: string | null
           created_at?: string
+          damaged_from?: number
           department?: string | null
           from_location_id?: string | null
           id?: string
@@ -1133,6 +1135,7 @@ export type Database = {
           assigned_to?: string | null
           collaborator_id?: string | null
           created_at?: string
+          damaged_from?: number
           department?: string | null
           from_location_id?: string | null
           id?: string
@@ -3190,6 +3193,13 @@ export type Database = {
         }[]
       }
       get_admin_user_ids: { Args: never; Returns: string[] }
+      get_automation_requester_by_email: {
+        Args: { _email: string }
+        Returns: {
+          sector: string
+          user_id: string
+        }[]
+      }
       get_gestor_user_ids: { Args: never; Returns: string[] }
       get_or_create_direct_chat: { Args: { _other: string }; Returns: string }
       get_social_assignable_user_ids: { Args: never; Returns: string[] }
@@ -3199,6 +3209,7 @@ export type Database = {
         Returns: boolean
       }
       has_global_sector_access: { Args: { _user_id: string }; Returns: boolean }
+      has_inventory_admin: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3227,6 +3238,17 @@ export type Database = {
       rename_automation: {
         Args: { _automation_id: string; _new_title: string }
         Returns: Json
+      }
+      revert_inventory_movement: {
+        Args: {
+          _asset_id: string
+          _damaged_from: number
+          _exclude_id: string
+          _item_id: string
+          _quantity: number
+          _type: string
+        }
+        Returns: undefined
       }
       user_client_ids: { Args: { _user_id: string }; Returns: string[] }
       user_sector_codes: { Args: { _user_id: string }; Returns: string[] }
