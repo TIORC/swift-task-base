@@ -43,6 +43,13 @@
       "when": 1790962864282,
       "tag": "0005_solicitantes_portal_publico",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791206377282,
+      "tag": "0006_sync_inventory_upgrade_columns",
+      "breakpoints": true
     }
   ]
 }
