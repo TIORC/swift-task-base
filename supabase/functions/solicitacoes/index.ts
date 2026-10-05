@@ -32,8 +32,14 @@ interface SolicitanteClaims {
   sub: string; // user_id do solicitante (auth.users)
   email: string; // e-mail normalizado usado na identificação
   sector: string; // setor da whitelist
+  role: string | null; // papel do usuário (admin, dev, gestor, suporte…) — embutido no token
   exp: number; // epoch ms
 }
+
+// Papéis que, ao identificar-se no portal do solicitante, veem TODAS as
+// solicitações (e não apenas as que criou). Devs e gestores precisam
+// acompanhar solicitações de terceiros, já que eles EXECUTAM o trabalho.
+const SEE_ALL_ROLES = new Set(["dev", "admin", "gestor"]);
 
 function b64urlEncode(bytes: Uint8Array): string {
   let s = "";
@@ -147,6 +153,7 @@ Deno.serve(async (req) => {
         sub: row.user_id,
         email,
         sector: row.sector ?? "",
+        role: userRole,
         exp: Date.now() + TOKEN_TTL_MS,
       };
       const token = await signToken(claims, secret);
@@ -174,25 +181,18 @@ Deno.serve(async (req) => {
     }
 
     if (action === "me") {
-      const { data: roleRow, error: roleError } = await admin
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", solicitanteId)
-        .maybeSingle();
-      if (roleError) throw roleError;
-      const userRole = (roleRow as { role?: string } | null)?.role ?? null;
-
       return json({
         solicitante: {
           id: solicitanteId,
           email: claims.email,
           sector: ((requester as { sector?: string }).sector ?? claims.sector),
-          role: userRole,
+          role: claims.role,
         },
       });
     }
 
     // Pertence ao solicitante? Barreira única de propriedade.
+    // Usuários com role de equipe (dev/admin/gestor) têm acesso a tudo.
     const belongsToSolicitante = async (automationId: string) => {
       const { data } = await admin
         .from("automations")
@@ -200,19 +200,23 @@ Deno.serve(async (req) => {
         .eq("id", automationId)
         .maybeSingle();
       if (!data) return null;
+      if (claims.role != null && SEE_ALL_ROLES.has(claims.role)) return data;
       const d = data as { created_by: string | null; requester_id: string | null };
       const owner = d.created_by ?? d.requester_id;
       return owner === solicitanteId ? data : null;
     };
 
     if (action === "list") {
-      const { data, error } = await admin
+      const canSeeAll = claims.role != null && SEE_ALL_ROLES.has(claims.role);
+      let baseQuery = admin
         .from("automations")
         .select(
           "id, title, description, status, priority, sector, created_at, updated_at, progress_percent, assigned_to, request_kind",
-        )
-        .or(`created_by.eq.${solicitanteId},requester_id.eq.${solicitanteId}`)
-        .order("created_at", { ascending: false });
+        );
+      if (!canSeeAll) {
+        baseQuery = baseQuery.or(`created_by.eq.${solicitanteId},requester_id.eq.${solicitanteId}`);
+      }
+      const { data, error } = await baseQuery.order("created_at", { ascending: false });
       if (error) throw error;
       return json({ requests: data ?? [] });
     }
@@ -224,12 +228,16 @@ Deno.serve(async (req) => {
           ? [body.automation_id as string]
           : [];
       if (automationIds.length === 0) return bad("Informe automation_id.");
+      const canSeeAll = claims.role != null && SEE_ALL_ROLES.has(claims.role);
       // Filtra pelos ids que pertencem ao solicitante — nunca vaza conversa alheia.
-      const { data: owned } = await admin
-        .from("automations")
-        .select("id")
-        .in("id", automationIds)
-        .or(`created_by.eq.${solicitanteId},requester_id.eq.${solicitanteId}`);
+      // Usuários com role de equipe (dev/admin/gestor) veem tudo.
+      const { data: owned } = canSeeAll
+        ? await admin.from("automations").select("id").in("id", automationIds)
+        : await admin
+            .from("automations")
+            .select("id")
+            .in("id", automationIds)
+            .or(`created_by.eq.${solicitanteId},requester_id.eq.${solicitanteId}`);
       const ownedIds = new Set((((owned ?? []) as unknown) as { id: string }[]).map((r) => r.id));
       if (ownedIds.size === 0) return json({ comments: [], summaries: {} });
 

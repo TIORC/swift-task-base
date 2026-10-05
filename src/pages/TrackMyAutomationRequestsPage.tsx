@@ -64,6 +64,8 @@ const STATUS_CARD_BORDER = {
   neutral: "border-border hover:border-primary/40",
 } as const;
 
+const SEE_ALL_ROLES = new Set(["dev", "admin", "gestor"]);
+
 interface StatusEntry {
   id: string;
   name: string;
@@ -242,6 +244,7 @@ export default function TrackMyAutomationRequestsPage() {
   // Sem useAuth: a identidade aqui é o token do solicitante (sessionStorage).
   // Sem token válido, a tela pede a identificação — nunca /auth.
   const { solicitante, isLoadingSolicitante } = useSolicitante();
+  const isTeamMember = !!solicitante && solicitante.role != null && SEE_ALL_ROLES.has(solicitante.role);
   const [activeView, setActiveView] = useState<"tracking" | "developers" | "support">("tracking");
   const [openChatId, setOpenChatId] = useState<string | null>(null);
   const { data: requests = [], isLoading, error } = useQuery({
@@ -290,9 +293,9 @@ export default function TrackMyAutomationRequestsPage() {
   return (
     <main className="min-h-screen bg-[#07111f] px-5 py-10 text-white">
       <section className="mx-auto w-full max-w-3xl space-y-6">
-        <header className="flex items-center gap-3">
+          <header className="flex items-center gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-xl border border-sky-300/20 bg-sky-400/10 text-sky-200"><ClipboardList className="h-5 w-5" /></span>
-          <div><h1 className="text-xl font-semibold">{activeView === "tracking" ? "Acompanhar minhas solicitações" : activeView === "developers" ? "Status dos Desenvolvedores" : "Status dos Suportes/Infra"}</h1><p className="text-sm text-white/60">{activeView === "tracking" ? "Veja o status, o percentual de andamento e as informações enviadas à equipe de TI." : activeView === "developers" ? "Veja quem está desenvolvendo e há quanto tempo." : "Acompanhe os chamados atribuídos a Angel e Sofia."}</p></div>
+          <div><h1 className="text-xl font-semibold">{activeView === "tracking" ? (isTeamMember ? "Acompanhar todas as solicitações" : "Acompanhar minhas solicitações") : activeView === "developers" ? "Status dos Desenvolvedores" : "Status dos Suportes/Infra"}</h1><p className="text-sm text-white/60">{activeView === "tracking" ? (isTeamMember ? "Veja o status de todas as solicitações e o percentual de andamento informado à equipe de TI." : "Veja o status, o percentual de andamento e as informações enviadas à equipe de TI.") : activeView === "developers" ? "Veja quem está desenvolvendo e há quanto tempo." : "Acompanhe os chamados atribuídos a Angel e Sofia."}</p></div>
         </header>
 
         <nav aria-label="Menu de solicitações" className="flex gap-1 border-b border-border">
@@ -306,7 +309,7 @@ export default function TrackMyAutomationRequestsPage() {
         ) : error ? (
           <p className="rounded-xl border border-red-300/20 bg-red-400/10 p-4 text-sm text-red-200">Não foi possível carregar suas solicitações.</p>
         ) : requests.length === 0 ? (
-          <p className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-white/65">Você ainda não enviou solicitações.</p>
+          <p className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-white/65">{isTeamMember ? "Nenhuma solicitação no momento." : "Você ainda não enviou solicitações."}</p>
         ) : (
           <div className="space-y-4">
             {requests.map((request) => {

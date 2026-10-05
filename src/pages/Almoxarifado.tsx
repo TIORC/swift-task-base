@@ -31,6 +31,7 @@ import { AssetFormDialog } from "@/components/almoxarifado/AssetFormDialog";
 import { CollaboratorsPanel } from "@/components/almoxarifado/CollaboratorsPanel";
 import { MovementFormDialog } from "@/components/almoxarifado/MovementFormDialog";
 import { RowActions } from "@/components/almoxarifado/RowActions";
+import { TablePagination } from "@/components/almoxarifado/TablePagination";
 import { StockBadge, StatusTag, ItemStatusTags } from "@/components/almoxarifado/StockBadge";
 import type { InventoryItem, InventoryAsset, InventoryMovement, InventoryRequest, InventoryLocation, InventoryCollaborator, MovementType } from "@/hooks/useInventory";
 import { SECTORS } from "@/types/sectors";
@@ -112,6 +113,9 @@ export default function Almoxarifado() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [collabFilter, setCollabFilter] = useState("all");
   const [deptFilter, setDeptFilter] = useState("all");
+  const [outCollabFilter, setOutCollabFilter] = useState("all");
+  const [outPage, setOutPage] = useState(1);
+  const [outPageSize, setOutPageSize] = useState(100);
 
   const [entryOpen, setEntryOpen] = useState(false);
   const [lastCreatedItem, setLastCreatedItem] = useState<string | null>(null);
@@ -152,6 +156,26 @@ export default function Almoxarifado() {
   const outLetters = Array.from(new Set(outMovements
     .map((m) => alphaInitial(collabName(m.collaborator_id)))
     .filter((letter) => /^[A-Z]$/.test(letter))));
+  const filteredOutMovements = useMemo(
+    () => outCollabFilter === "all"
+      ? outMovements
+      : outMovements.filter((m) => m.collaborator_id === outCollabFilter),
+    [outMovements, outCollabFilter],
+  );
+  const outTotalPages = Math.max(1, Math.ceil(filteredOutMovements.length / outPageSize));
+  const outSafePage = Math.min(outPage, outTotalPages);
+  const pagedOutMovements = useMemo(
+    () => filteredOutMovements.slice((outSafePage - 1) * outPageSize, outSafePage * outPageSize),
+    [filteredOutMovements, outSafePage, outPageSize],
+  );
+  // O índice A-Z rola a página: com a lista paginada o destino pode estar em outra
+  // página, então o índice procurado define a página antes do scrollIntoView.
+  const jumpToOutLetter = (letter: string) => {
+    const index = filteredOutMovements.findIndex((m) => alphaInitial(collabName(m.collaborator_id)) === letter);
+    if (index < 0) return;
+    setOutPage(Math.floor(index / outPageSize) + 1);
+    setTimeout(() => document.getElementById(`out-letter-${letter}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+  };
   const itemPatrimonies = (id: string) => {
     const list = assets.filter((a) => a.item_id === id).map((a) => a.patrimony_number);
     return list.length ? list.join(", ") : "N/A";
@@ -492,12 +516,29 @@ export default function Almoxarifado() {
         {/* ---------------- SAÍDAS ---------------- */}
         <TabsContent value="out" className="space-y-3">
           <p className="text-sm text-muted-foreground">Toda saída exige um responsável. Registre a saída pela tela de Itens.</p>
+
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Select
+              value={outCollabFilter}
+              onValueChange={(v) => { setOutCollabFilter(v); setOutPage(1); }}
+            >
+              <SelectTrigger className="w-[240px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os responsáveis</SelectItem>
+                {collaborators.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {outCollabFilter !== "all" && (
+              <Button variant="outline" size="sm" onClick={() => { setOutCollabFilter("all"); setOutPage(1); }}>Limpar</Button>
+            )}
+          </div>
+
           <div className="flex min-w-0 flex-col gap-2 md:flex-row md:gap-3">
           <nav aria-label="Índice alfabético de responsáveis" className="scrollbar-thin flex shrink-0 gap-1 overflow-x-auto pb-1 md:sticky md:top-4 md:max-h-[70vh] md:flex-col md:overflow-y-auto md:overflow-x-hidden md:pb-0">
             {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((letter) => {
               const available = outLetters.includes(letter);
               return <button key={letter} type="button" disabled={!available} aria-label={`Ir para responsáveis com ${letter}`}
-                onClick={() => document.getElementById(`out-letter-${letter}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                onClick={() => jumpToOutLetter(letter)}
                 className="h-8 min-w-8 rounded border border-black bg-white px-2 text-sm font-medium text-black enabled:hover:bg-gray-100 disabled:border-gray-400 disabled:bg-white disabled:text-black disabled:opacity-100 md:w-9 md:px-0">
                 {letter}
               </button>;
@@ -513,9 +554,9 @@ export default function Almoxarifado() {
                 {canManage && <TableHead className="text-right">Ações</TableHead>}
               </TableRow></TableHeader>
               <TableBody>
-                {outMovements.map((m, index) => {
+                {pagedOutMovements.map((m, index) => {
                   const responsibleLetter = alphaInitial(collabName(m.collaborator_id));
-                  const previousLetter = index > 0 ? alphaInitial(collabName(outMovements[index - 1].collaborator_id)) : "";
+                  const previousLetter = index > 0 ? alphaInitial(collabName(pagedOutMovements[index - 1].collaborator_id)) : "";
                   const firstOfLetter = /^[A-Z]$/.test(responsibleLetter) && responsibleLetter !== previousLetter;
                   return <TableRow key={m.id} id={firstOfLetter ? `out-letter-${responsibleLetter}` : undefined}>
                     <TableCell className="whitespace-nowrap">{dateFmt(m.created_at)}</TableCell>
@@ -541,13 +582,26 @@ export default function Almoxarifado() {
                     )}
                   </TableRow>;
                 })}
-                {outMovements.length === 0 && (
-                  <TableRow><TableCell colSpan={canManage ? 9 : 8} className="text-center text-muted-foreground py-6">Nenhuma saída registrada.</TableCell></TableRow>
+                {filteredOutMovements.length === 0 && (
+                  <TableRow><TableCell colSpan={canManage ? 9 : 8} className="text-center text-muted-foreground py-6">
+                    {outCollabFilter === "all"
+                      ? "Nenhuma saída registrada."
+                      : `Nenhuma saída registrada para ${collabName(outCollabFilter)}.`}
+                  </TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
           </CardContent></Card>
           </div>
+
+          <TablePagination
+            page={outSafePage}
+            pageSize={outPageSize}
+            total={filteredOutMovements.length}
+            noun="saídas"
+            onPageChange={setOutPage}
+            onPageSizeChange={(n) => { setOutPageSize(n); setOutPage(1); }}
+          />
         </TabsContent>
 
         {/* PATRIMÔNIOS */}

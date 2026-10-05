@@ -189,17 +189,27 @@ export function useInventoryAssets() {
   });
 }
 
-export function useInventoryMovements(limit = 500) {
+// Sem limite de registros: a busca é feita em blocos até a última página, senão
+// o db-max-rows do PostgREST (1000) cortaria o histórico mais antigo em silêncio.
+const MOVEMENTS_PAGE = 1000;
+
+export function useInventoryMovements() {
   return useQuery({
-    queryKey: ["inventory", "movements", limit],
+    queryKey: ["inventory", "movements"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("inventory_movements")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(limit);
-      if (error) throw error;
-      return (data ?? []) as InventoryMovement[];
+      const rows: InventoryMovement[] = [];
+      for (let from = 0; ; from += MOVEMENTS_PAGE) {
+        const { data, error } = await supabase
+          .from("inventory_movements")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(from, from + MOVEMENTS_PAGE - 1);
+        if (error) throw error;
+        rows.push(...((data ?? []) as InventoryMovement[]));
+        if (!data || data.length < MOVEMENTS_PAGE) break;
+      }
+      return rows;
     },
   });
 }
