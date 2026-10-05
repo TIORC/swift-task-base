@@ -45,24 +45,34 @@ export function useTeamMetrics() {
       const doneTaskIds = (tasksRes.data || []).filter((t: any) => t.status === "done").map((t: any) => t.id);
       const doneAutoIds = (autosRes.data || []).filter((a: any) => a.status === "completed").map((a: any) => a.id);
 
-      const [taskEventsRes, autoEventsRes] = await Promise.all([
-        doneTaskIds.length
-          ? supabase
-              .from("task_events")
-              .select("task_id, created_at")
-              .in("task_id", doneTaskIds)
-              .eq("event_type", "completed")
-              .order("created_at", { ascending: true })
-          : Promise.resolve({ data: [] as any[] }),
-        doneAutoIds.length
-          ? supabase
-              .from("automation_events")
-              .select("automation_id, created_at, metadata")
-              .in("automation_id", doneAutoIds)
-              .eq("event_type", "status_changed")
-              .order("created_at", { ascending: true })
-          : Promise.resolve({ data: [] as any[] }),
+      // Busca em lotes: listas grandes de ids estouram o tamanho da URL (HTTP 400).
+      const fetchInChunks = async (ids: string[], run: (chunk: string[]) => PromiseLike<{ data: any[] | null; error: any }>) => {
+        const out: any[] = [];
+        for (let i = 0; i < ids.length; i += 100) {
+          const { data, error } = await run(ids.slice(i, i + 100));
+          if (error) throw error;
+          out.push(...(data || []));
+        }
+        return out;
+      };
+      const [taskEventsData, autoEventsData] = await Promise.all([
+        fetchInChunks(doneTaskIds, (chunk) =>
+          supabase
+            .from("task_events")
+            .select("task_id, created_at")
+            .in("task_id", chunk)
+            .eq("event_type", "completed")
+            .order("created_at", { ascending: true }) as any),
+        fetchInChunks(doneAutoIds, (chunk) =>
+          supabase
+            .from("automation_events")
+            .select("automation_id, created_at, metadata")
+            .in("automation_id", chunk)
+            .eq("event_type", "status_changed")
+            .order("created_at", { ascending: true }) as any),
       ]);
+      const taskEventsRes = { data: taskEventsData };
+      const autoEventsRes = { data: autoEventsData };
 
       const taskFirst = new Map<string, string>();
       (taskEventsRes.data || []).forEach((e: any) => {
