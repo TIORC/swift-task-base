@@ -206,7 +206,7 @@ export function useInventoryMovements() {
           .order("id", { ascending: false })
           .range(from, from + MOVEMENTS_PAGE - 1);
         if (error) throw error;
-        rows.push(...((data ?? []) as InventoryMovement[]));
+        rows.push(...((data ?? []) as unknown as InventoryMovement[]));
         if (!data || data.length < MOVEMENTS_PAGE) break;
       }
       return rows;
@@ -263,7 +263,7 @@ export function useUpdateItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...patch }: Partial<InventoryItem> & { id: string }) => {
-      const { error } = await supabase.from("inventory_items").update(patch).eq("id", id);
+      const { error } = await (supabase as any).from("inventory_items").update(patch).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -852,7 +852,7 @@ export function useCreateEntry() {
         }
       }
 
-      const { error: movErr } = await supabase.from("inventory_movements").insert({
+      const { error: movErr } = await (supabase as any).from("inventory_movements").insert({
         item_id: itemId,
         type: "in",
         quantity: p.quantity,
@@ -1117,7 +1117,7 @@ export function useRegisterItemUpgrade() {
     mutationFn: async (p: ItemUpgradePayload) => {
       if (!user) throw new Error("Não autenticado");
 
-      const { data: current, error: readErr } = await supabase
+      const { data: current, error: readErr } = await (supabase as any)
         .from("inventory_items")
         .select("brand, model, description, unit_price, location_id, upgrade_count")
         .eq("id", p.item_id)
@@ -1148,7 +1148,7 @@ export function useRegisterItemUpgrade() {
       const changed = Object.keys(after);
       const now = new Date().toISOString();
 
-      const { error: movErr } = await supabase.from("inventory_movements").insert({
+      const { error: movErr } = await (supabase as any).from("inventory_movements").insert({
         item_id: p.item_id,
         asset_id: p.asset_id || null,
         type: "upgrade",
@@ -1162,7 +1162,7 @@ export function useRegisterItemUpgrade() {
       });
       if (movErr) throw movErr;
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("inventory_items")
         .update({ ...patch, last_upgrade_at: now, upgrade_count: (current.upgrade_count ?? 0) + 1 })
         .eq("id", p.item_id);
