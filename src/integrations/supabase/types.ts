@@ -964,6 +964,7 @@ export type Database = {
           id: string
           ideal_stock: number
           in_use_quantity: number
+          last_upgrade_at: string | null
           location_id: string | null
           min_stock: number
           model: string | null
@@ -978,6 +979,7 @@ export type Database = {
           tracked_individually: boolean
           unit_price: number
           updated_at: string
+          upgrade_count: number
         }
         Insert: {
           brand?: string | null
@@ -990,6 +992,7 @@ export type Database = {
           id?: string
           ideal_stock?: number
           in_use_quantity?: number
+          last_upgrade_at?: string | null
           location_id?: string | null
           min_stock?: number
           model?: string | null
@@ -1004,6 +1007,7 @@ export type Database = {
           tracked_individually?: boolean
           unit_price?: number
           updated_at?: string
+          upgrade_count?: number
         }
         Update: {
           brand?: string | null
@@ -1016,6 +1020,7 @@ export type Database = {
           id?: string
           ideal_stock?: number
           in_use_quantity?: number
+          last_upgrade_at?: string | null
           location_id?: string | null
           min_stock?: number
           model?: string | null
@@ -1030,6 +1035,7 @@ export type Database = {
           tracked_individually?: boolean
           unit_price?: number
           updated_at?: string
+          upgrade_count?: number
         }
         Relationships: [
           {
@@ -1104,6 +1110,7 @@ export type Database = {
           to_location_id: string | null
           type: string
           unit_price: number
+          upgrade_details: Json | null
         }
         Insert: {
           asset_id?: string | null
@@ -1129,6 +1136,7 @@ export type Database = {
           to_location_id?: string | null
           type: string
           unit_price?: number
+          upgrade_details?: Json | null
         }
         Update: {
           asset_id?: string | null
@@ -1154,6 +1162,7 @@ export type Database = {
           to_location_id?: string | null
           type?: string
           unit_price?: number
+          upgrade_details?: Json | null
         }
         Relationships: [
           {
@@ -3200,9 +3209,11 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_developer_user_ids: { Args: never; Returns: string[] }
       get_gestor_user_ids: { Args: never; Returns: string[] }
       get_or_create_direct_chat: { Args: { _other: string }; Returns: string }
       get_social_assignable_user_ids: { Args: never; Returns: string[] }
+      get_support_assignable_user_ids: { Args: never; Returns: string[] }
       get_ti_assignable_user_ids: { Args: never; Returns: string[] }
       has_global_automation_access: {
         Args: { _user: string }
