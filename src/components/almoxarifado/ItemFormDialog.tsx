@@ -32,7 +32,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
   const [form, setForm] = useState({
     name: "", sku: "", category_id: "", subcategory: "", brand: "", model: "",
     description: "", location_id: "",
-    tracked_individually: false, unit_price: 0, min_stock: 2,
+    tracked_individually: false, unit_price: 0, min_stock: 0,
     ideal_stock: 0, quantity: 0, status: "active" as "active" | "inactive", notes: "",
     responsible_id: "",
   });
@@ -54,7 +54,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
     } else {
       setForm({ name: "", sku: "", category_id: "", subcategory: "", brand: "", model: "",
         description: "", location_id: "",
-        tracked_individually: false, unit_price: 0, min_stock: 2,
+        tracked_individually: false, unit_price: 0, min_stock: 0,
         ideal_stock: 0, quantity: 0, status: "active", notes: "", responsible_id: "" });
     }
   }, [item, open]);
@@ -75,7 +75,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
     };
 
     if (item) await updateItem.mutateAsync({ id: item.id, ...payload });
-    else await createItem.mutateAsync(payload);
+    else await createItem.mutateAsync({ ...payload, quantity: Math.max(0, Math.trunc(quantity) || 0) });
     onOpenChange(false);
   };
 
@@ -116,9 +116,15 @@ export function ItemFormDialog({ open, onOpenChange, item }: Props) {
             <div>
               <Label>Estoque mínimo</Label>
               <Input type="number" min={0} value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: Math.max(0, Math.trunc(Number(e.target.value)) || 0) })} />
-              <p className="mt-1 text-xs text-muted-foreground">Quantidades são atualizadas por entradas e saídas.</p>
             </div>
           </div>
+          {!item && (
+            <div>
+              <Label>Estoque Disponível</Label>
+              <Input type="number" min={0} value={form.quantity} onChange={(e) => setForm({ ...form, quantity: Math.max(0, Math.trunc(Number(e.target.value)) || 0) })} />
+            </div>
+          )}
+          <p className="-mt-2 text-xs text-muted-foreground">Quantidades são atualizadas por entradas e saídas.</p>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
