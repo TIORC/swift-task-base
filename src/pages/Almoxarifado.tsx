@@ -1329,31 +1329,24 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, onAddItem, pending 
                     )}
                   </TableRow>
 
-                  {canManage && abertoRow && r.itens.map((item) => (
-                    <TableRow key={item.id} className="bg-muted/30">
-                      <TableCell className="pl-8 max-w-[420px]">
-                        <span className="block text-sm truncate overflow-hidden whitespace-nowrap" title={[item.name, item.brand].filter(Boolean).join(" · ")}>{item.name}{item.brand ? ` · ${item.brand}` : ""}</span>
-                        <span className="text-xs text-muted-foreground">
-                          disp. {item.quantity} · em uso {item.in_use_quantity}
-                          {item.min_stock > item.quantity && ` · mín. ${item.min_stock}`}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right text-sm text-muted-foreground">
-                        {item.quantity}
-                      </TableCell>
-                      <TableCell>
-                        <RowActions
-                          editTitle="Editar item"
-                          onEdit={() => onEditItem(item)}
-                          deleteTitle="Desativar item"
-                          deleteDescription={`"${item.name}" deixa de aparecer no estoque e nas listas. O histórico é mantido.`}
-                          deleteLabel="Desativar"
-                          pending={pending}
-                          onDelete={() => onToggleItem(item)}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {canManage && abertoRow && (() => {
+                    const disp = r.itens.reduce((a, i) => a + (i.quantity || 0), 0);
+                    const uso = r.itens.reduce((a, i) => a + (i.in_use_quantity || 0), 0);
+                    const min = r.itens.reduce((a, i) => a + (i.min_stock || 0), 0);
+                    const marcas = Array.from(new Set(r.itens.map((i) => i.brand).filter(Boolean))).join(", ");
+                    return (
+                      <TableRow className="bg-muted/30">
+                        <TableCell className="pl-8 max-w-[420px]">
+                          <span className="block text-sm truncate overflow-hidden whitespace-nowrap" title={marcas || r.tipo}>{r.tipo}</span>
+                          <span className="text-xs text-muted-foreground">
+                            disp. {disp} · em uso {uso} · mín. {min}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right text-sm text-muted-foreground">{disp}</TableCell>
+                        <TableCell />
+                      </TableRow>
+                    );
+                  })()}
                 </Fragment>
               );
             })}
