@@ -246,7 +246,12 @@ export function useCreateItem() {
         status: payload.status ?? "active",
         notes: payload.notes || null,
         responsible_id: payload.responsible_id || null,
+        subcategory: payload.subcategory || null,
+        brand: payload.brand || null,
+        model: payload.model || null,
+        description: payload.description || null,
         created_by: user?.id ?? null,
+
 
       });
       if (error) throw error;

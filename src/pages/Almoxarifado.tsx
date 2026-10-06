@@ -839,6 +839,7 @@ export default function Almoxarifado() {
             canManage={canManage}
             pending={deactivate.isPending}
             onEditItem={(item) => setItemDlg({ open: true, item })}
+            onAddItem={() => setItemDlg({ open: true, item: null })}
             onToggleItem={(item) => deactivate.mutate({ id: item.id })}
           />
         </TabsContent>
@@ -1266,8 +1267,9 @@ function SettingsPanel({ canWrite, canManage }: { canWrite: boolean; canManage: 
   );
 }
 
-function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
+function EstoquePanel({ canManage, onEditItem, onToggleItem, onAddItem, pending }: {
   canManage: boolean;
+  onAddItem: () => void;
   onEditItem: (item: InventoryItem) => void;
   onToggleItem: (item: InventoryItem) => void;
   pending: boolean;
@@ -1284,9 +1286,14 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
         <p className="text-sm text-muted-foreground">
           Itens com o mesmo primeiro nome viram uma linha só. Total geral: <b>{total}</b>
         </p>
+        <div className="flex gap-2">
         <Button variant="outline" size="sm" className="border-white bg-[#050d20] text-white hover:bg-[#0c1d3d] hover:text-white" onClick={() => downloadCsv(rows.map(({ tipo, quantidade }) => ({ tipo, quantidade })), "estoque.csv")}>
           <Download className="mr-2 h-4 w-4" /> CSV
         </Button>
+        {canManage && (
+          <Button size="sm" onClick={onAddItem}><Plus className="mr-2 h-4 w-4" /> Adicionar Estoque</Button>
+        )}
+        </div>
       </div>
       <Card><CardContent className="p-0 overflow-x-auto">
         <Table>
