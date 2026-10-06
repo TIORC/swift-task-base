@@ -57,6 +57,7 @@ const MODAL_TABS: { value: string; label: string; Icon: LucideIcon }[] = [
 import { AutomationComments } from "@/components/automations/AutomationComments";
 import { AutomationAttachments } from "@/components/automations/AutomationAttachments";
 import { useAuth } from "@/hooks/useAuth";
+import { useAssignableDevelopers } from "@/hooks/useAssignableDevelopers";
 import { useUserRole } from "@/hooks/useUserRole";
 
 interface Props {
@@ -83,6 +84,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
   const { data: timeLogs = [] } = useAutomationTimeLogs(automation?.id ?? null);
   const createTimeLog = useCreateTimeLog();
   const { data: xpSettings } = useXpSettings();
+  const assignable = useAssignableDevelopers(profiles);
 
   const [newSubtask, setNewSubtask] = useState("");
   const [newBlockerType, setNewBlockerType] = useState("other");
@@ -98,8 +100,8 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
   // Equipe técnica (dev) pode mudar status, tarefas, horas etc.
   // Solicitante acompanha e comenta, sem editar.
   const isTech = profile === "admin" || profile === "gestor" || profile === "lider" || roles.includes("dev");
-  // Somente admin/gestor reatribui o responsável da automação.
-  const canReassign = profile === "admin" || profile === "gestor";
+  // Admin/gestor atribui a qualquer dev; dev só a si mesmo.
+  const canReassign = assignable.canAssign;
   const isSolicitante = !isTech;
 
   const canManage = isTech || a.assigned_to === user?.id || a.created_by === user?.id;
@@ -318,7 +320,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                         <Select value={a.assigned_to || ""} onValueChange={v => handleUpdate({ assigned_to: v || null })}>
                           <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Selecionar" /></SelectTrigger>
                           <SelectContent>
-                            {profiles.map(p => (
+                            {assignable.options.map(p => (
                               <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>
                             ))}
                           </SelectContent>
@@ -326,7 +328,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                       ) : (
                         <p className="text-sm mt-1.5 text-foreground">{a.assigned_to ? (profileMap[a.assigned_to] || "—") : "Não atribuído"}</p>
                       )}
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Apenas admin/gestor reatribui responsável.</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Gestor atribui a qualquer desenvolvedor; desenvolvedor só a si mesmo.</p>
                     </div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground">Tipo</label>
