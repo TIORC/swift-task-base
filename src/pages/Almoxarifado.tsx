@@ -1304,7 +1304,7 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
                     <TableCell className="font-medium">{r.tipo}</TableCell>
                     <TableCell className="text-right">
                       {r.quantidade === 0 ? (
-                        <Badge variant="outline" className="border-red-300/50 bg-red-400/20 text-red-100 font-normal">Sem estoque</Badge>
+                        <Badge variant="outline" className="border-red-500 bg-red-500 text-black font-medium hover:bg-red-500">Sem estoque</Badge>
                       ) : (
                         <span className="font-semibold">{r.quantidade}</span>
                       )}
