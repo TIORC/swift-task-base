@@ -59,7 +59,7 @@ export function resumoEstoque(items: InventoryItem[]): StockGroupDetail[] {
   ativos.forEach((item) => {
     const palavra = primeiraPalavra(item.name ?? "");
     const k = chaveDaPalavra(palavra);
-    const quantidade = (item.quantity ?? 0) + (item.in_use_quantity ?? 0);
+    const quantidade = item.quantity ?? 0;
     const existing = byType.get(k);
     if (existing) {
       existing.quantidade += quantidade;
