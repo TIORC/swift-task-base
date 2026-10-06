@@ -11,6 +11,7 @@ export const SECTORS = [
   "M7",
   "BPO",
   "TI",
+  "Diretoria",
 ] as const;
 
 export type Sector = (typeof SECTORS)[number];
@@ -27,6 +28,7 @@ export const SECTOR_LABELS: Record<string, string> = {
   M7: "M7",
   BPO: "BPO",
   TI: "TI",
+  Diretoria: "Diretoria",
 };
 
 export const SECTOR_COLORS: Record<string, string> = {
@@ -41,4 +43,5 @@ export const SECTOR_COLORS: Record<string, string> = {
   M7: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
   BPO: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
   TI: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
+  Diretoria: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20",
 };
