@@ -1282,7 +1282,7 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2 items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Mesmo produto com marcas diferentes vira uma linha só. Total geral: <b>{total}</b>
+          Itens com o mesmo primeiro nome viram uma linha só. Total geral: <b>{total}</b>
         </p>
         <Button variant="outline" size="sm" className="border-white bg-[#050d20] text-white hover:bg-[#0c1d3d] hover:text-white" onClick={() => downloadCsv(rows.map(({ tipo, quantidade }) => ({ tipo, quantidade })), "estoque.csv")}>
           <Download className="mr-2 h-4 w-4" /> CSV
@@ -1324,9 +1324,9 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
 
                   {canManage && abertoRow && r.itens.map((item) => (
                     <TableRow key={item.id} className="bg-muted/30">
-                      <TableCell className="pl-8">
-                        <span className="text-sm">{item.name}</span>
-                        <span className="ml-2 text-xs text-muted-foreground">
+                      <TableCell className="pl-8 max-w-[420px]">
+                        <span className="block text-sm truncate overflow-hidden whitespace-nowrap" title={[item.name, item.brand].filter(Boolean).join(" · ")}>{item.name}{item.brand ? ` · ${item.brand}` : ""}</span>
+                        <span className="text-xs text-muted-foreground">
                           disp. {item.quantity} · em uso {item.in_use_quantity}
                           {item.min_stock > item.quantity && ` · mín. ${item.min_stock}`}
                         </span>
