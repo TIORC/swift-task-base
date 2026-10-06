@@ -57,6 +57,7 @@ const MODAL_TABS: { value: string; label: string; Icon: LucideIcon }[] = [
 import { AutomationComments } from "@/components/automations/AutomationComments";
 import { AutomationAttachments } from "@/components/automations/AutomationAttachments";
 import { useAuth } from "@/hooks/useAuth";
+import { useAssignableDevelopers } from "@/hooks/useAssignableDevelopers";
 import { useUserRole } from "@/hooks/useUserRole";
 
 interface Props {
@@ -83,6 +84,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
   const { data: timeLogs = [] } = useAutomationTimeLogs(automation?.id ?? null);
   const createTimeLog = useCreateTimeLog();
   const { data: xpSettings } = useXpSettings();
+  const assignable = useAssignableDevelopers(profiles);
 
   const [newSubtask, setNewSubtask] = useState("");
   const [newBlockerType, setNewBlockerType] = useState("other");
@@ -98,8 +100,8 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
   // Equipe técnica (dev) pode mudar status, tarefas, horas etc.
   // Solicitante acompanha e comenta, sem editar.
   const isTech = profile === "admin" || profile === "gestor" || profile === "lider" || roles.includes("dev");
-  // Somente admin/gestor reatribui o responsável da automação.
-  const canReassign = profile === "admin" || profile === "gestor";
+  // Admin/gestor atribui a qualquer dev; dev só a si mesmo.
+  const canReassign = assignable.canAssign;
   const isSolicitante = !isTech;
 
   const canManage = isTech || a.assigned_to === user?.id || a.created_by === user?.id;
