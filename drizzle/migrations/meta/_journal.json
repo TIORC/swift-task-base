@@ -50,6 +50,13 @@
       "when": 1791206377282,
       "tag": "0006_sync_inventory_upgrade_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791288005860,
+      "tag": "0007_count_automation_subtasks_in_stats",
+      "breakpoints": true
     }
   ]
 }

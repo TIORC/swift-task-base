@@ -29,13 +29,14 @@ export function useTeamMetrics() {
   return useQuery({
     queryKey: ["team-metrics"],
     queryFn: async () => {
-      const [tasksRes, autosRes, timeRes, autoTimeRes, profilesRes, commentsRes] = await Promise.all([
+      const [tasksRes, autosRes, timeRes, autoTimeRes, profilesRes, commentsRes, subsRes] = await Promise.all([
         supabase.from("tasks").select("id, assigned_to, status, updated_at, title"),
         supabase.from("automations").select("id, assigned_to, sector, status, updated_at, completed_at"),
         supabase.from("time_logs").select("user_id, duration_minutes"),
         supabase.from("automation_time_logs").select("user_id, duration_minutes"),
         supabase.from("profiles").select("id, full_name"),
         supabase.from("comments").select("user_id"),
+        supabase.from("automation_subtasks").select("id, assigned_to, completed_by, status, completed, completed_at, created_at"),
       ]);
 
       const profiles = profilesRes.data || [];
@@ -123,6 +124,21 @@ export function useTeamMetrics() {
           const d = new Date(ts);
           if (d.getFullYear() === curY && d.getMonth() === curM) {
             monthTasksByUser.set(t.assigned_to, (monthTasksByUser.get(t.assigned_to) || 0) + 1);
+          }
+        }
+      });
+
+      // Tarefas técnicas das automações contam como tarefas concluídas
+      (subsRes.data || []).forEach((st: any) => {
+        const uid = st.assigned_to || st.completed_by;
+        const u = ensureUser(uid);
+        if (!u) return;
+        u.tasks_total += 1;
+        if (st.status === "done" || st.completed) {
+          u.tasks_done += 1;
+          const d = new Date(st.completed_at || st.created_at);
+          if (d.getFullYear() === curY && d.getMonth() === curM) {
+            monthTasksByUser.set(uid, (monthTasksByUser.get(uid) || 0) + 1);
           }
         }
       });
