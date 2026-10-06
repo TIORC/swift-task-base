@@ -46,23 +46,27 @@ export function baseDoTipo(nome: string, nomes: string[]): string {
   return base;
 }
 
+const primeiraPalavra = (nome: string) => (nome.trim().split(/[\s\-_/]+/)[0] || "—");
+
+const chaveDaPalavra = (p: string) => key(p).replace(/s$/, "").replace(/e$/, "");
+
+const capitalizar = (p: string) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
+
 export function resumoEstoque(items: InventoryItem[]): StockGroupDetail[] {
   const ativos = items.filter((i) => i.status === "active");
-  const nomes = ativos.map((i) => tipoDoItem(i) || "—");
   const byType = new Map<string, StockGroupDetail>();
 
-  nomes.forEach((nome, idx) => {
-    const tipo = baseDoTipo(nome, nomes);
-    const k = key(tipo);
-    const item = ativos[idx];
+  ativos.forEach((item) => {
+    const palavra = primeiraPalavra(item.name ?? "");
+    const k = chaveDaPalavra(palavra);
     const quantidade = (item.quantity ?? 0) + (item.in_use_quantity ?? 0);
     const existing = byType.get(k);
-
     if (existing) {
       existing.quantidade += quantidade;
       existing.itens.push(item);
+      if (palavra.length < existing.tipo.length) existing.tipo = capitalizar(palavra);
     } else {
-      byType.set(k, { tipo, quantidade, itens: [item] });
+      byType.set(k, { tipo: capitalizar(palavra), quantidade, itens: [item] });
     }
   });
 
