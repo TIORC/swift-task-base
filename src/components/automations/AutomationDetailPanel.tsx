@@ -320,7 +320,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                         <Select value={a.assigned_to || ""} onValueChange={v => handleUpdate({ assigned_to: v || null })}>
                           <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Selecionar" /></SelectTrigger>
                           <SelectContent>
-                            {profiles.map(p => (
+                            {assignable.options.map(p => (
                               <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>
                             ))}
                           </SelectContent>
@@ -328,7 +328,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                       ) : (
                         <p className="text-sm mt-1.5 text-foreground">{a.assigned_to ? (profileMap[a.assigned_to] || "—") : "Não atribuído"}</p>
                       )}
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Apenas admin/gestor reatribui responsável.</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Gestor atribui a qualquer desenvolvedor; desenvolvedor só a si mesmo.</p>
                     </div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground">Tipo</label>
