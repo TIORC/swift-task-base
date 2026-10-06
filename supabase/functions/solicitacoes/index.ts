@@ -141,13 +141,14 @@ Deno.serve(async (req) => {
         return json({ error: "E-mail não cadastrado como solicitante" }, 403);
       }
 
-      const { data: roleRow, error: roleError } = await admin
+      const { data: roleRows, error: roleError } = await admin
         .from("user_roles")
         .select("role")
-        .eq("user_id", row.user_id)
-        .maybeSingle();
+        .eq("user_id", row.user_id);
       if (roleError) throw roleError;
-      const userRole = (roleRow as { role?: string } | null)?.role ?? null;
+      // Usuário pode ter vários papéis: prioriza o que dá visão completa.
+      const roles = ((roleRows ?? []) as { role: string }[]).map((r) => r.role);
+      const userRole = roles.find((r) => SEE_ALL_ROLES.has(r)) ?? roles[0] ?? null;
 
       const claims: SolicitanteClaims = {
         sub: row.user_id,
