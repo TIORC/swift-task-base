@@ -1332,7 +1332,7 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
                         </span>
                       </TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">
-                        {item.quantity + item.in_use_quantity}
+                        {item.quantity}
                       </TableCell>
                       <TableCell>
                         <RowActions
