@@ -431,35 +431,59 @@ Deno.serve(async (req) => {
       const [devLogs, taskLogs] = await Promise.all([
         admin
           .from("automation_time_logs")
-          .select("user_id, started_at, ended_at")
+          .select("user_id, started_at, ended_at, automation_id, subtask_id")
           .in("user_id", assignableIds)
           .gte("started_at", sinceIso)
           .order("started_at", { ascending: false }),
         admin
           .from("time_logs")
-          .select("user_id, started_at, ended_at")
+          .select("user_id, started_at, ended_at, task_id")
           .in("user_id", assignableIds)
           .gte("started_at", sinceIso)
           .order("started_at", { ascending: false }),
       ]);
-      const latestByUser = new Map<string, { started_at: string; ended_at: string | null }>();
+      type LogRow = {
+        user_id: string; started_at: string; ended_at: string | null;
+        automation_id?: string | null; subtask_id?: string | null; task_id?: string | null;
+      };
       const allLogs = [
-        ...((((devLogs.data ?? []) as unknown)) as { user_id: string; started_at: string; ended_at: string | null }[]),
-        ...((((taskLogs.data ?? []) as unknown)) as { user_id: string; started_at: string; ended_at: string | null }[]),
-      ];
+        ...(((devLogs.data ?? []) as unknown) as LogRow[]),
+        ...(((taskLogs.data ?? []) as unknown) as LogRow[]),
+      ].sort((a, b) => (a.started_at < b.started_at ? 1 : -1));
+      const latestByUser = new Map<string, LogRow>();
       for (const log of allLogs) {
-        if (!latestByUser.has(log.user_id)) {
-          latestByUser.set(log.user_id, { started_at: log.started_at, ended_at: log.ended_at });
-        }
+        if (!latestByUser.has(log.user_id)) latestByUser.set(log.user_id, log);
       }
+      const latestList = [...latestByUser.values()];
+      const autoIds = [...new Set(latestList.map((l) => l.automation_id).filter(Boolean))] as string[];
+      const subIds = [...new Set(latestList.map((l) => l.subtask_id).filter(Boolean))] as string[];
+      const taskIds = [...new Set(latestList.map((l) => l.task_id).filter(Boolean))] as string[];
+      const [autos, subs, tasks] = await Promise.all([
+        autoIds.length ? admin.from("automations").select("id, title").in("id", autoIds) : Promise.resolve({ data: [] }),
+        subIds.length ? admin.from("automation_subtasks").select("id, title").in("id", subIds) : Promise.resolve({ data: [] }),
+        taskIds.length ? admin.from("tasks").select("id, title").in("id", taskIds) : Promise.resolve({ data: [] }),
+      ]);
+      const titleMap = (rows: unknown) =>
+        Object.fromEntries(((rows ?? []) as { id: string; title: string }[]).map((r) => [r.id, r.title]));
+      const autoT = titleMap(autos.data), subT = titleMap(subs.data), taskT = titleMap(tasks.data);
       const entries = assignableIds.map((id) => {
         const latest = latestByUser.get(id);
+        let activity: string | null = null;
+        let activityContext: string | null = null;
+        if (latest?.automation_id) {
+          activity = (latest.subtask_id && subT[latest.subtask_id]) || autoT[latest.automation_id] || null;
+          if (latest.subtask_id && subT[latest.subtask_id]) activityContext = autoT[latest.automation_id] ?? null;
+        } else if (latest?.task_id) {
+          activity = (taskT[latest.task_id] ?? "").replace(/^\[Chamado\]\s*/i, "") || null;
+        }
         return {
           id,
           name: names[id] ?? "Equipe de TI",
           working: latest ? !latest.ended_at : false,
           lastStart: latest?.started_at ?? null,
           dev: devIds.has(id),
+          activity,
+          activityContext,
         };
       });
       return json(action === "developer-status" ? { developers: entries } : { technicians: entries });
