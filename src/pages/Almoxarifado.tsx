@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { Package, Plus, AlertTriangle, Boxes, DollarSign, Wrench, Trash2, Search, ShoppingCart, Send, Settings, Download, History, ChevronDown } from "lucide-react";
+import { Package, Plus, AlertTriangle, Boxes, DollarSign, Wrench, Trash2, Search, ShoppingCart, Send, Settings, Download, History, ChevronDown, Grid3x3 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +24,11 @@ import {
 } from "@/hooks/useInventory";
 import { ItemFormDialog } from "@/components/almoxarifado/ItemFormDialog";
 import { EntryDialog } from "@/components/almoxarifado/EntryDialog";
+import { EntryGrid } from "@/components/almoxarifado/EntryGrid";
+import { EntryFilters, EMPTY_ENTRY_FILTERS, filterEntries, hasActiveEntryFilters, type EntryFilterState } from "@/components/almoxarifado/EntryFilters";
+import { ExitGrid } from "@/components/almoxarifado/ExitGrid";
+import { AssetGrid } from "@/components/almoxarifado/AssetGrid";
+import { ExitFilters, EMPTY_EXIT_FILTERS, filterExits, hasActiveExitFilters, type ExitFilterState } from "@/components/almoxarifado/ExitFilters";
 import { ExitDialog } from "@/components/almoxarifado/ExitDialog";
 import { StatusChangeDialog } from "@/components/almoxarifado/StatusChangeDialog";
 import { ItemUpgradeDialog } from "@/components/almoxarifado/ItemUpgradeDialog";
@@ -118,6 +123,15 @@ export default function Almoxarifado() {
   const [outPageSize, setOutPageSize] = useState(100);
 
   const [entryOpen, setEntryOpen] = useState(false);
+  const [entryGridOpen, setEntryGridOpen] = useState(false);
+  const [outGridOpen, setOutGridOpen] = useState(false);
+  const [assetGridOpen, setAssetGridOpen] = useState(false);
+  // Saídas: rascunho digitado e filtro pesquisado (mesmo padrão das entradas).
+  const [exitDraft, setExitDraft] = useState<ExitFilterState>(EMPTY_EXIT_FILTERS);
+  const [exitFilters, setExitFilters] = useState<ExitFilterState>(EMPTY_EXIT_FILTERS);
+  // entryDraft: o que está sendo digitado; entryFilters: o que foi pesquisado (aplicado à tabela).
+  const [entryDraft, setEntryDraft] = useState<EntryFilterState>(EMPTY_ENTRY_FILTERS);
+  const [entryFilters, setEntryFilters] = useState<EntryFilterState>(EMPTY_ENTRY_FILTERS);
   const [lastCreatedItem, setLastCreatedItem] = useState<string | null>(null);
   const [exitDlg, setExitDlg] = useState<{ open: boolean; item?: InventoryItem | null }>({ open: false });
   const [statusDlg, setStatusDlg] = useState<{ open: boolean; item?: InventoryItem | null; mode: "damage" | "discard" }>({ open: false, mode: "damage" });
@@ -146,6 +160,11 @@ export default function Almoxarifado() {
   const collabName = (id: string | null) => collaborators.find((c) => c.id === id)?.full_name ?? "—";
   const collabDept = (id: string | null) => collaborators.find((c) => c.id === id)?.department ?? "—";
   const itemName = (id: string) => items.find((i) => i.id === id)?.name ?? "—";
+  const entryMovements = useMemo(() => movements.filter((m) => m.type === "in"), [movements]);
+  const filteredEntries = useMemo(
+    () => filterEntries(entryMovements, entryFilters, itemName),
+    [entryMovements, entryFilters, items],
+  );
   const outMovements = useMemo(() => movements
     .filter((m) => m.type === "out" || m.type === "assign")
     .slice()
@@ -157,10 +176,13 @@ export default function Almoxarifado() {
     .map((m) => alphaInitial(collabName(m.collaborator_id)))
     .filter((letter) => /^[A-Z]$/.test(letter))));
   const filteredOutMovements = useMemo(
-    () => outCollabFilter === "all"
-      ? outMovements
-      : outMovements.filter((m) => m.collaborator_id === outCollabFilter),
-    [outMovements, outCollabFilter],
+    () => filterExits(
+      outCollabFilter === "all" ? outMovements : outMovements.filter((m) => m.collaborator_id === outCollabFilter),
+      exitFilters,
+      itemName,
+      collabName,
+    ),
+    [outMovements, outCollabFilter, exitFilters, items, collaborators],
   );
   const outTotalPages = Math.max(1, Math.ceil(filteredOutMovements.length / outPageSize));
   const outSafePage = Math.min(outPage, outTotalPages);
@@ -449,9 +471,19 @@ export default function Almoxarifado() {
         {/* ---------------- ENTRADAS ---------------- */}
         <TabsContent value="in" className="space-y-3">
           <div className="flex justify-between items-center">
-            <h2 className="text-sm text-muted-foreground">Histórico de entradas</h2>
+            <div>
+              <h2 className="text-sm text-muted-foreground">Histórico de entradas</h2>
+              <p className="text-xs text-muted-foreground">Entradas são somente para itens comprados. A data da chegada fica registrada e o item entra em estoque.</p>
+            </div>
             {canWrite && (
-              <Button size="sm" onClick={() => setEntryOpen(true)}><Plus className="mr-2 h-4 w-4" /> Nova entrada</Button>
+              <div className="flex gap-2">
+                {!entryGridOpen && (
+                  <Button size="sm" variant="outline" onClick={() => setEntryGridOpen(true)}>
+                    <Grid3x3 className="mr-2 h-4 w-4" /> Edição Estilo Excel
+                  </Button>
+                )}
+                <Button size="sm" onClick={() => setEntryOpen(true)}><Plus className="mr-2 h-4 w-4" /> Nova entrada</Button>
+              </div>
             )}
           </div>
 
@@ -469,6 +501,26 @@ export default function Almoxarifado() {
               </CardContent>
             </Card>
           )}
+          {!(entryGridOpen && canWrite) && (
+            <EntryFilters
+              value={entryDraft}
+              onChange={setEntryDraft}
+              onSearch={() => setEntryFilters(entryDraft)}
+              onClear={() => { setEntryDraft(EMPTY_ENTRY_FILTERS); setEntryFilters(EMPTY_ENTRY_FILTERS); }}
+              canClear={hasActiveEntryFilters(entryDraft) || hasActiveEntryFilters(entryFilters)}
+              locations={locations}
+              shown={filteredEntries.length}
+              total={entryMovements.length}
+            />
+          )}
+
+          {entryGridOpen && canWrite ? (
+            <EntryGrid
+              movements={movements.filter((m) => m.type === "in")}
+              items={items}
+              onExit={() => setEntryGridOpen(false)}
+            />
+          ) : (
           <Card><CardContent className="p-0 overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
@@ -479,7 +531,7 @@ export default function Almoxarifado() {
                     {canManage && <TableHead className="text-right">Ações</TableHead>}
                   </TableRow></TableHeader>
                   <TableBody>
-                    {movements.filter((m) => m.type === "in").map((m) => (
+                    {filteredEntries.map((m) => (
                       <TableRow key={m.id}>
                         <TableCell className="whitespace-nowrap">{dateFmt(m.occurred_at ?? m.created_at)}</TableCell>
                         <TableCell>{itemName(m.item_id)}</TableCell>
@@ -505,12 +557,15 @@ export default function Almoxarifado() {
                         )}
                       </TableRow>
                     ))}
-                    {movements.filter((m) => m.type === "in").length === 0 && (
-                      <TableRow><TableCell colSpan={canManage ? 10 : 9} className="text-center text-muted-foreground py-6">Nenhuma entrada registrada.</TableCell></TableRow>
+                    {filteredEntries.length === 0 && (
+                      <TableRow><TableCell colSpan={canManage ? 10 : 9} className="text-center text-muted-foreground py-6">
+                        {entryMovements.length === 0 ? "Nenhuma entrada registrada." : "Nenhuma entrada encontrada com esses filtros."}
+                      </TableCell></TableRow>
                     )}
               </TableBody>
             </Table>
           </CardContent></Card>
+          )}
         </TabsContent>
 
         {/* ---------------- SAÍDAS ---------------- */}
@@ -518,6 +573,11 @@ export default function Almoxarifado() {
           <p className="text-sm text-muted-foreground">Toda saída exige um responsável. Registre a saída pela tela de Itens.</p>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
+            {canWrite && !outGridOpen && (
+              <Button size="sm" variant="outline" onClick={() => setOutGridOpen(true)}>
+                <Grid3x3 className="mr-2 h-4 w-4" /> Edição Estilo Excel
+              </Button>
+            )}
             <Select
               value={outCollabFilter}
               onValueChange={(v) => { setOutCollabFilter(v); setOutPage(1); }}
@@ -533,6 +593,27 @@ export default function Almoxarifado() {
             )}
           </div>
 
+          {!(outGridOpen && canWrite) && (
+            <ExitFilters
+              value={exitDraft}
+              onChange={setExitDraft}
+              onSearch={() => { setExitFilters(exitDraft); setOutPage(1); }}
+              onClear={() => { setExitDraft(EMPTY_EXIT_FILTERS); setExitFilters(EMPTY_EXIT_FILTERS); setOutPage(1); }}
+              canClear={hasActiveExitFilters(exitDraft) || hasActiveExitFilters(exitFilters)}
+              shown={filteredOutMovements.length}
+              total={outMovements.length}
+            />
+          )}
+
+          {outGridOpen && canWrite ? (
+            <ExitGrid
+              movements={outMovements}
+              items={items}
+              collaborators={collaborators}
+              onExit={() => setOutGridOpen(false)}
+            />
+          ) : (
+          <>
           <div className="flex min-w-0 flex-col gap-2 md:flex-row md:gap-3">
           <nav aria-label="Índice alfabético de responsáveis" className="scrollbar-thin flex shrink-0 gap-1 overflow-x-auto pb-1 md:sticky md:top-4 md:max-h-[70vh] md:flex-col md:overflow-y-auto md:overflow-x-hidden md:pb-0">
             {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((letter) => {
@@ -584,9 +665,11 @@ export default function Almoxarifado() {
                 })}
                 {filteredOutMovements.length === 0 && (
                   <TableRow><TableCell colSpan={canManage ? 9 : 8} className="text-center text-muted-foreground py-6">
-                    {outCollabFilter === "all"
-                      ? "Nenhuma saída registrada."
-                      : `Nenhuma saída registrada para ${collabName(outCollabFilter)}.`}
+                    {hasActiveExitFilters(exitFilters)
+                      ? "Nenhuma saída encontrada com esses filtros."
+                      : outCollabFilter === "all"
+                        ? "Nenhuma saída registrada."
+                        : `Nenhuma saída registrada para ${collabName(outCollabFilter)}.`}
                   </TableCell></TableRow>
                 )}
               </TableBody>
@@ -602,14 +685,35 @@ export default function Almoxarifado() {
             onPageChange={setOutPage}
             onPageSizeChange={(n) => { setOutPageSize(n); setOutPage(1); }}
           />
+          </>
+          )}
         </TabsContent>
 
         {/* PATRIMÔNIOS */}
         <TabsContent value="assets" className="space-y-3">
           <div className="flex justify-end">
-            {canWrite && <Button size="sm" onClick={() => setAssetDlg({ open: true, asset: null })}><Plus className="mr-2 h-4 w-4" /> Novo patrimônio</Button>}
+            {canWrite && (
+              <div className="flex gap-2">
+                {!assetGridOpen && (
+                  <Button size="sm" variant="outline" onClick={() => setAssetGridOpen(true)}>
+                    <Grid3x3 className="mr-2 h-4 w-4" /> Edição Estilo Excel
+                  </Button>
+                )}
+                <Button size="sm" onClick={() => setAssetDlg({ open: true, asset: null })}><Plus className="mr-2 h-4 w-4" /> Novo patrimônio</Button>
+              </div>
+            )}
           </div>
-          <AssetTable assets={assets} items={items} locations={locations} collaborators={collaborators} canWrite={canWrite} canManage={canManage} onEdit={(a) => setAssetDlg({ open: true, asset: a })} onDelete={(a) => delAsset.mutate(a.id)} />
+          {assetGridOpen && canWrite ? (
+            <AssetGrid
+              assets={assets}
+              items={items}
+              locations={locations}
+              collaborators={collaborators}
+              onExit={() => setAssetGridOpen(false)}
+            />
+          ) : (
+            <AssetTable assets={assets} items={items} locations={locations} collaborators={collaborators} canWrite={canWrite} canManage={canManage} onEdit={(a) => setAssetDlg({ open: true, asset: a })} onDelete={(a) => delAsset.mutate(a.id)} />
+          )}
         </TabsContent>
 
         {/* DANIFICADOS */}
@@ -922,17 +1026,23 @@ function AssetTable({ assets, items, locations, collaborators, canWrite, canMana
   const locName = (id: string | null) => locations.find((l) => l.id === id)?.name ?? "—";
   const collabName = (id: string | null) => collaborators.find((c) => c.id === id)?.full_name ?? "—";
   const showActions = canWrite || canManage;
+  // Setores ficam juntos (A-Z); dentro de cada setor, responsáveis em ordem alfabética; depois patrimônio.
+  const sortedAssets = [...assets].sort((a, b) =>
+    (a.department ?? "").localeCompare(b.department ?? "", "pt-BR", { sensitivity: "base" })
+    || collabName(a.collaborator_id).localeCompare(collabName(b.collaborator_id), "pt-BR", { sensitivity: "base" })
+    || a.patrimony_number.localeCompare(b.patrimony_number, "pt-BR", { numeric: true }),
+  );
   return (
     <Card><CardContent className="p-0 overflow-x-auto">
       <Table>
         <TableHeader><TableRow>
           <TableHead>Patrimônio</TableHead><TableHead>Item</TableHead><TableHead>Série</TableHead>
           <TableHead>Valor</TableHead><TableHead>Status</TableHead><TableHead>Local</TableHead>
-          <TableHead>Responsável</TableHead>
+          <TableHead>Responsável</TableHead><TableHead>Departamento</TableHead>
           {showActions && <TableHead className="text-right">Ações</TableHead>}
         </TableRow></TableHeader>
         <TableBody>
-          {assets.map((a) => (
+          {sortedAssets.map((a) => (
             <TableRow key={a.id}>
               <TableCell className="font-mono font-medium">{a.patrimony_number}</TableCell>
               <TableCell>{itemName(a.item_id)}</TableCell>
@@ -941,6 +1051,7 @@ function AssetTable({ assets, items, locations, collaborators, canWrite, canMana
               <TableCell><StatusTag status={a.status} /></TableCell>
               <TableCell>{locName(a.location_id)}</TableCell>
               <TableCell>{collabName(a.collaborator_id)}</TableCell>
+              <TableCell>{a.department ?? "—"}</TableCell>
               {showActions && (
                 <TableCell>
                   <div className="flex justify-end">
@@ -957,7 +1068,7 @@ function AssetTable({ assets, items, locations, collaborators, canWrite, canMana
               )}
             </TableRow>
           ))}
-          {assets.length === 0 && <TableRow><TableCell colSpan={showActions ? 8 : 7} className="text-center text-muted-foreground py-6">Nenhum patrimônio.</TableCell></TableRow>}
+          {assets.length === 0 && <TableRow><TableCell colSpan={showActions ? 9 : 8} className="text-center text-muted-foreground py-6">Nenhum patrimônio.</TableCell></TableRow>}
         </TableBody>
       </Table>
     </CardContent></Card>

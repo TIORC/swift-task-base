@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserSystems } from "@/hooks/useUserSystems";
@@ -370,6 +371,51 @@ export function useUpdateAsset() {
       toast.success("Patrimônio atualizado");
     },
     onError: (e: any) => toast.error(e.message ?? "Erro"),
+  });
+}
+
+export type AssetBatchRow =
+  | {
+      kind: "update";
+      id: string;
+      item_id: string;
+      patrimony_number: string;
+      serial_number: string | null;
+      value: number;
+      status: AssetStatus;
+      location_id: string | null;
+      collaborator_id: string | null;
+      department: string | null;
+      original: {
+        item_id: string; patrimony_number: string; serial_number: string | null; value: number;
+        status: string; location_id: string | null; collaborator_id: string | null; department: string | null;
+      };
+    }
+  | {
+      kind: "new";
+      item_id: string;
+      patrimony_number: string;
+      serial_number: string | null;
+      value: number;
+      status: AssetStatus;
+      location_id: string | null;
+      collaborator_id: string | null;
+      department: string | null;
+    };
+
+/** Salva todas as linhas da planilha de patrimônios numa única transação no banco. */
+export function useSaveAssetBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: AssetBatchRow[]) => {
+      const { data, error } = await supabase.rpc("save_asset_batch", { _rows: rows as unknown as Json });
+      if (error) throw error;
+      return data as unknown as EntryBatchResult;
+    },
+    onSuccess: (res) => {
+      if (res.ok) qc.invalidateQueries({ queryKey: ["inventory"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao salvar as edições"),
   });
 }
 
@@ -747,6 +793,8 @@ export interface EntryPayload {
   supplier?: string | null;
   invoice_number?: string | null;
   entry_date: string;
+  /** Hora da chegada no formato HH:MM. Sem valor, usa 12:00. */
+  entry_time?: string | null;
   notes?: string | null;
 }
 
@@ -867,7 +915,7 @@ export function useCreateEntry() {
         patrimony_number: p.has_patrimony ? patrimony : null,
         serial_number: serial,
         to_location_id: p.location_id || null,
-        occurred_at: p.entry_date ? new Date(`${p.entry_date}T12:00:00`).toISOString() : new Date().toISOString(),
+        occurred_at: p.entry_date ? new Date(`${p.entry_date}T${p.entry_time || "12:00"}:00`).toISOString() : new Date().toISOString(),
         reason: "Entrada de estoque",
         notes: p.notes || null,
         status_from: null,
@@ -894,9 +942,109 @@ export function useCreateEntry() {
   });
 }
 
+export type EntryBatchRow =
+  | {
+      kind: "update";
+      id: string;
+      name: string;
+      quantity: number;
+      unit_price: number;
+      occurred_at: string;
+      notes: string | null;
+      brand: string | null;
+      model: string | null;
+      patrimony_number: string | null;
+      purchased: boolean;
+      original: {
+        name: string; quantity: number; unit_price: number; occurred_at: string; notes: string | null;
+        brand: string | null; model: string | null; patrimony_number: string | null;
+      };
+    }
+  | {
+      kind: "new";
+      name: string;
+      brand: string | null;
+      model: string | null;
+      patrimony_number: string | null;
+      serial_number: string | null;
+      quantity: number;
+      unit_price: number;
+      entry_date: string;
+      occurred_at: string;
+      notes: string | null;
+      purchased: true;
+    };
+
+export interface EntryBatchResult {
+  ok: boolean;
+  count?: number;
+  conflicts?: { id: string; reason: "alterada" | "removida" }[];
+}
+
+/** Salva todas as linhas da planilha de entradas numa única transação no banco. */
+export function useSaveEntryBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: EntryBatchRow[]) => {
+      const { data, error } = await supabase.rpc("save_entry_batch", { _rows: rows as unknown as Json });
+      if (error) throw error;
+      return data as unknown as EntryBatchResult;
+    },
+    onSuccess: (res) => {
+      if (res.ok) qc.invalidateQueries({ queryKey: ["inventory"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao salvar as edições"),
+  });
+}
+
 /* ------------------------------------------------------------------ */
 /* Fluxo de saída                                                      */
 /* ------------------------------------------------------------------ */
+
+export type ExitBatchRow =
+  | {
+      kind: "update";
+      id: string;
+      name: string;
+      quantity: number;
+      occurred_at: string;
+      collaborator_id: string;
+      department: string | null;
+      reason: string | null;
+      patrimony_number: string | null;
+      notes: string | null;
+      original: {
+        name: string; quantity: number; occurred_at: string; collaborator_id: string | null;
+        department: string | null; reason: string | null; patrimony_number: string | null; notes: string | null;
+      };
+    }
+  | {
+      kind: "new";
+      item_id: string;
+      quantity: number;
+      occurred_at: string;
+      collaborator_id: string;
+      department: string | null;
+      reason: string | null;
+      patrimony_number: string | null;
+      notes: string | null;
+    };
+
+/** Salva todas as linhas da planilha de saídas numa única transação no banco. */
+export function useSaveExitBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: ExitBatchRow[]) => {
+      const { data, error } = await supabase.rpc("save_exit_batch", { _rows: rows as unknown as Json });
+      if (error) throw error;
+      return data as unknown as EntryBatchResult;
+    },
+    onSuccess: (res) => {
+      if (res.ok) qc.invalidateQueries({ queryKey: ["inventory"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao salvar as edições"),
+  });
+}
 
 export interface ExitPayload {
   item_id: string;

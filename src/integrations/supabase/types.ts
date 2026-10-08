@@ -3261,6 +3261,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      save_entry_batch: {
+        Args: { _rows: Json }
+        Returns: Json
+      }
+      save_exit_batch: {
+        Args: { _rows: Json }
+        Returns: Json
+      }
+      save_asset_batch: {
+        Args: { _rows: Json }
+        Returns: Json
+      }
       user_client_ids: { Args: { _user_id: string }; Returns: string[] }
       user_sector_codes: { Args: { _user_id: string }; Returns: string[] }
     }

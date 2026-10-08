@@ -19,6 +19,20 @@ interface Props {
 
 const currency = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const today = () => new Date().toISOString().slice(0, 10);
+const nowTime = () => new Date().toTimeString().slice(0, 5);
+export const isoToBr = (iso: string) => iso.split("-").reverse().join("/");
+// Converte "dd/mm/aaaa" em "aaaa-mm-dd"; retorna null se a data não existir.
+export const brToIso = (br: string) => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(br);
+  if (!m) return null;
+  const [, d, mo, y] = m;
+  const date = new Date(Number(y), Number(mo) - 1, Number(d));
+  if (date.getDate() !== Number(d) || date.getMonth() !== Number(mo) - 1) return null;
+  return `${y}-${mo}-${d}`;
+};
+export const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+export const PURCHASED_NOTE = "Item comprado (confirmado pela infraestrutura)";
+const ALMOX_LOCATION_NAME = "almoxarifado ti";
 
 export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
   const { data: categories = [] } = useInventoryCategories();
@@ -31,17 +45,19 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
     item_id: "", name: "", category_id: "", subcategory: "", brand: "", model: "",
     description: "", location_id: "", quantity: 1, unit_price: 0, min_stock: 2,
     has_patrimony: false, patrimony_number: "", serial_number: "",
-    supplier: "", invoice_number: "", entry_date: today(), notes: "",
+    entry_date: isoToBr(today()), entry_time: nowTime(), notes: "",
   });
+  const [purchased, setPurchased] = useState(false);
 
   useEffect(() => {
     if (open) {
       setMode("new");
+      setPurchased(false);
       setForm({
         item_id: "", name: "", category_id: "", subcategory: "", brand: "", model: "",
         description: "", location_id: "", quantity: 1, unit_price: 0, min_stock: 2,
         has_patrimony: false, patrimony_number: "", serial_number: "",
-        supplier: "", invoice_number: "", entry_date: today(), notes: "",
+        entry_date: isoToBr(today()), entry_time: nowTime(), notes: "",
       });
     }
   }, [open]);
@@ -59,8 +75,20 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
     }
   }, [selected?.id]);
 
+  const almoxLocation = useMemo(
+    () => locations.find((l) => l.name.trim().toLowerCase() === ALMOX_LOCATION_NAME),
+    [locations],
+  );
+  // Itens novos sempre entram no Almoxarifado TI; itens existentes mantêm o local escolhido.
+  const locationId = mode === "new" ? (almoxLocation?.id ?? "") : form.location_id;
+
+  const entryDateIso = brToIso(form.entry_date);
+  const entryTimeOk = TIME_RE.test(form.entry_time);
+
   const total = form.quantity * form.unit_price;
-  const valid = mode === "new" ? form.name.trim().length > 0 && form.quantity > 0 : !!form.item_id && form.quantity > 0;
+  const valid = purchased && !!entryDateIso && entryTimeOk && (mode === "new"
+    ? form.name.trim().length > 0 && form.quantity > 0 && !!almoxLocation
+    : !!form.item_id && form.quantity > 0);
 
   const submit = async () => {
     const res = await createEntry.mutateAsync({
@@ -72,17 +100,18 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
       brand: form.brand || null,
       model: form.model || null,
       description: form.description || null,
-      location_id: form.location_id || null,
+      location_id: locationId || null,
       quantity: form.quantity,
       unit_price: form.unit_price,
       min_stock: form.min_stock,
       has_patrimony: form.has_patrimony,
       patrimony_number: form.patrimony_number || null,
       serial_number: form.serial_number || null,
-      supplier: form.supplier || null,
-      invoice_number: form.invoice_number || null,
-      entry_date: form.entry_date,
-      notes: form.notes || null,
+      supplier: null,
+      invoice_number: null,
+      entry_date: entryDateIso ?? "",
+      entry_time: form.entry_time,
+      notes: [PURCHASED_NOTE, form.notes].filter(Boolean).join(" — "),
     });
     onOpenChange(false);
     if (res?.itemId) onCreated?.(res.itemId);
@@ -147,13 +176,36 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Local de armazenamento</Label>
-              <Select value={form.location_id} onValueChange={(v) => setForm({ ...form, location_id: v })}>
+              <Select
+                value={locationId}
+                onValueChange={(v) => setForm({ ...form, location_id: v })}
+                disabled={mode === "new"}
+              >
                 <SelectTrigger className="entry-select-trigger"><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent className="entry-select-dropdown">{locations.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
               </Select>
+              {mode === "new" && !almoxLocation && (
+                <p className="mt-1 text-xs text-destructive">Local "Almoxarifado TI" não cadastrado. Cadastre-o antes de criar itens.</p>
+              )}
             </div>
-            <div><Label>Data da entrada</Label><Input type="date" value={form.entry_date} onChange={(e) => setForm({ ...form, entry_date: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Data da chegada *</Label>
+                <Input placeholder="dd/mm/aaaa" maxLength={10} value={form.entry_date}
+                  onChange={(e) => setForm({ ...form, entry_date: e.target.value })} />
+              </div>
+              <div>
+                <Label>Hora da chegada *</Label>
+                <Input placeholder="hh:mm" maxLength={5} value={form.entry_time}
+                  onChange={(e) => setForm({ ...form, entry_time: e.target.value })} />
+              </div>
+            </div>
           </div>
+
+          <label className="flex items-start gap-3 rounded-lg border p-3 text-sm">
+            <input type="checkbox" className="mt-1" checked={purchased} onChange={(e) => setPurchased(e.target.checked)} />
+            <span>Confirmo que este item é <b>comprado</b> (entrada somente para compras, confirmada pela infraestrutura). *</span>
+          </label>
 
           <div className="rounded-lg border p-3 space-y-3">
             <div className="flex items-center gap-3">
@@ -170,11 +222,6 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
                 <p className="col-span-2 text-xs text-muted-foreground">Se o nº de patrimônio já existir, os dados serão atualizados em vez de duplicados.</p>
               </div>
             )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label>Fornecedor (opcional)</Label><Input value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} /></div>
-            <div><Label>Nota fiscal (opcional)</Label><Input value={form.invoice_number} onChange={(e) => setForm({ ...form, invoice_number: e.target.value })} /></div>
           </div>
 
           <div><Label>Observações</Label><Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
