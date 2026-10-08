@@ -66,20 +66,48 @@ const STATUS_CARD_BORDER = {
 
 const SEE_ALL_ROLES = new Set(["dev", "admin", "gestor"]);
 
+/** Um trabalho (tarefa do board ou automação) listado no histórico da equipe. */
+interface RecentWork {
+  kind: "tarefa" | "automacao";
+  title: string;
+  status: string;
+  /** Só em automações: percentual informado pela equipe. */
+  progress?: number | null;
+  when: string;
+}
+
 interface StatusEntry {
   id: string;
   name: string;
+  /** Primeiro nome — a aba de Suportes/Infra publica só isso. */
+  firstName?: string | null;
   working: boolean;
   lastStart: string | null;
-  /** Marcado pela Edge Function quando o usuário tem o papel `dev`. */
+  /** true quando a entrada veio da aba de desenvolvedores (papel `dev`). */
   dev?: boolean;
+  /** Trabalho em aberto, se houver. */
+  currentTask?: { title: string; status: string } | null;
+  currentAutomation?: { title: string; status: string; progress?: number | null } | null;
+  /** Até 5 trabalhos anteriores, do mais recente para o mais antigo. */
+  recent?: RecentWork[];
 }
+
+/** Rótulo curto do status de um trabalho do histórico. */
+const WORK_STATUS_LABEL: Record<string, string> = {
+  backlog: "Backlog", pending: "Pendente", todo: "A fazer", in_progress: "Em andamento",
+  review: "Em validação", done: "Concluído", discarded: "Descartado",
+  analysis: "Em análise", requested: "Solicitado", approved: "Aprovado",
+  development: "Em desenvolvimento", internal_testing: "Testes internos",
+  homologation: "Homologação", waiting_info: "Aguardando informação",
+  waiting_user: "Aguardando solicitante", blocked: "Travado", cancelled: "Cancelado",
+};
 
 /**
  * Status dos desenvolvedores via Edge Function (o visitante não tem sessão e
- * a RLS barra anon). A função devolve {id, name, working, lastStart, dev} já
- * calculado no servidor; aqui só formatamos a exibição. `dev: true` identifica
- * quem tem o papel `dev` — só esses entram na aba de desenvolvedores.
+ * a RLS barra anon). A função monta a lista pelo PAPEL `dev` no banco — Welder e
+ * Gabriel entram, e Angel/Sofia/Danicarla nunca aparecem porque não são `dev`.
+ * O front não filtra mais nada: confia na lista para não reintroduzir o vazamento
+ * caso um campo volte a faltar no payload.
  */
 function useDeveloperStatuses() {
   return useQuery({
@@ -92,12 +120,79 @@ function useDeveloperStatuses() {
   });
 }
 
+/** Linha "no que está trabalhando agora": tarefa do board e/ou automação. */
+function CurrentWork({ developer }: { developer: StatusEntry }) {
+  const lines = [
+    developer.currentTask && {
+      key: `tarefa-${developer.currentTask.title}`,
+      label: "Tarefa",
+      title: developer.currentTask.title,
+      status: developer.currentTask.status,
+    },
+    developer.currentAutomation && {
+      key: `automacao-${developer.currentAutomation.title}`,
+      label: "Automação",
+      title: developer.currentAutomation.title,
+      status: developer.currentAutomation.status,
+      progress: developer.currentAutomation.progress ?? null,
+    },
+  ].filter(Boolean) as {
+    key: string;
+    label: string;
+    title: string;
+    status: string;
+    progress?: number | null;
+  }[];
+
+  if (lines.length === 0) {
+    return <p className="mt-2 text-xs text-muted-foreground/80">Nenhuma tarefa atribuída no momento.</p>;
+  }
+
+  return (
+    <div className="mt-2 space-y-1.5">
+      {lines.map((line) => (
+        <p key={line.key} className="text-xs leading-snug">
+          <span className="text-muted-foreground">{line.label}: </span>
+          <span className="font-medium text-foreground/90">{line.title}</span>
+          <span className="text-muted-foreground/80">
+            {" "}· {WORK_STATUS_LABEL[line.status] || line.status}
+            {line.progress != null && ` · ${line.progress}%`}
+          </span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
+/** Histórico do que a pessoa já fez, escondido em <details> para não pesar o card. */
+function RecentWorkList({ items }: { items: RecentWork[] }) {
+  if (items.length === 0) return null;
+  return (
+    <details className="mt-3">
+      <summary className="cursor-pointer text-[11px] font-medium text-primary underline-offset-4 hover:underline">
+        Atividade recente ({items.length})
+      </summary>
+      <ul className="mt-2 space-y-1.5">
+        {items.map((item, index) => (
+          <li key={`${item.kind}-${item.title}-${index}`} className="flex flex-wrap items-baseline gap-x-1.5 text-[11px] leading-snug">
+            <span className="shrink-0 rounded border border-border px-1 text-[9px] font-semibold uppercase text-muted-foreground">
+              {item.kind === "automacao" ? "automação" : "tarefa"}
+            </span>
+            <span className="min-w-0 flex-1 text-foreground/85">{item.title}</span>
+            <span className="shrink-0 text-muted-foreground/80">
+              {WORK_STATUS_LABEL[item.status] || item.status}
+              {item.progress != null && ` · ${item.progress}%`}
+            </span>
+            <span className="shrink-0 text-muted-foreground/70">{sinceLabel(item.when)}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 function DeveloperStatusPanel() {
   const { data: developers = [], isLoading, error } = useDeveloperStatuses();
-  // Só quem tem o papel `dev` (Angel/Sofia/Danicarla ficam de fora). Entradas
-  // sem o campo — função ainda não reimplantada — continuam visíveis para a
-  // aba não ficar vazia durante o deploy.
-  const visibleDevelopers = developers.filter((developer) => developer.dev !== false);
 
   return (
     <section className="space-y-4">
@@ -109,9 +204,13 @@ function DeveloperStatusPanel() {
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : error ? (
         <p className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">Não foi possível carregar o status dos desenvolvedores.</p>
+      ) : developers.length === 0 ? (
+        <p className="rounded-lg border border-border bg-card/40 p-4 text-sm text-muted-foreground">
+          Nenhum desenvolvedor cadastrado no momento.
+        </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          {visibleDevelopers.map((developer) => (
+          {developers.map((developer) => (
             <article key={developer.id} className={`${STATUS_CARD_BASE} ${
               developer.working ? STATUS_CARD_BORDER.working : STATUS_CARD_BORDER.stopped
             }`}>
@@ -144,6 +243,8 @@ function DeveloperStatusPanel() {
                   </div>
                 </div>
               )}
+              <CurrentWork developer={developer} />
+              <RecentWorkList items={developer.recent ?? []} />
             </article>
           ))}
         </div>
@@ -152,19 +253,17 @@ function DeveloperStatusPanel() {
   );
 }
 
-type SupportTechnician = {
-  id: string;
-  name: string;
-  working: boolean;
-  lastStart: string | null;
-};
-
+/**
+ * A aba de Suportes/Infra mostra apenas o PRIMEIRO NOME de cada pessoa e o
+ * estado do cronômetro. Nem tarefa atual, nem histórico: os chamados carregam
+ * usuário, máquina, sistema e local, e isso não vai para a tela pública.
+ */
 function useSupportTechnicianStatuses() {
   return useQuery({
     queryKey: ["solicitante-support-status"],
     refetchInterval: 15000,
-    queryFn: async (): Promise<SupportTechnician[]> => {
-      const { technicians } = await solicitanteCall<{ technicians: SupportTechnician[] }>("support-status");
+    queryFn: async (): Promise<StatusEntry[]> => {
+      const { technicians } = await solicitanteCall<{ technicians: StatusEntry[] }>("support-status");
       return technicians;
     },
   });
@@ -182,7 +281,11 @@ function SupportTechnicianStatusPanel() {
       {isLoading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : error ? (
-        <p className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">Não foi possível carregar os chamados dos técnicos.</p>
+        <p className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">Não foi possível carregar a disponibilidade da equipe.</p>
+      ) : technicians.length === 0 ? (
+        <p className="rounded-lg border border-border bg-card/40 p-4 text-sm text-muted-foreground">
+          Nenhum suporte cadastrado no momento.
+        </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {technicians.map((technician) => (
@@ -190,7 +293,7 @@ function SupportTechnicianStatusPanel() {
               <div className="mb-3 flex items-center gap-3">
                 <span className="grid h-10 w-10 place-items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-500"><Headset className="h-4 w-4" /></span>
                 <div>
-                  <h3 className="text-sm font-semibold">{technician.name}</h3>
+                  <h3 className="text-sm font-semibold">{technician.firstName || technician.name}</h3>
                   <p className="text-xs text-muted-foreground">{technician.working ? "Atendendo chamado" : "Sem atendimento no momento"}</p>
                 </div>
               </div>
@@ -276,16 +379,15 @@ export default function TrackMyAutomationRequestsPage() {
   });
 
   // Nome do responsável, para o cabeçalho da conversa.
-  // Vem junto dos status (a função devolve os nomes) — sem consulta direta.
+  // Usa a ação team-names (todos os usuários) e NÃO as abas de status: estas
+  // são travadas em Welder, Gabriel, Angel e Sofia, mas uma solicitação também
+  // pode estar atribuída a um gestor ou líder.
   const { data: teamNames = {} } = useQuery({
     queryKey: ["solicitante-team-names"],
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<Record<string, string>> => {
-      const [{ developers }, { technicians }] = await Promise.all([
-        solicitanteCall<{ developers: StatusEntry[] }>("developer-status"),
-        solicitanteCall<{ technicians: StatusEntry[] }>("support-status"),
-      ]);
-      return Object.fromEntries([...developers, ...technicians].map((d) => [d.id, d.name]));
+      const { names } = await solicitanteCall<{ names: Record<string, string> }>("team-names");
+      return names;
     },
   });
   const assigneeName: Record<string, string> = teamNames;
@@ -295,7 +397,7 @@ export default function TrackMyAutomationRequestsPage() {
       <section className="mx-auto w-full max-w-3xl space-y-6">
           <header className="flex items-center gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-xl border border-sky-300/20 bg-sky-400/10 text-sky-200"><ClipboardList className="h-5 w-5" /></span>
-          <div><h1 className="text-xl font-semibold">{activeView === "tracking" ? (isTeamMember ? "Acompanhar todas as solicitações" : "Acompanhar minhas solicitações") : activeView === "developers" ? "Status dos Desenvolvedores" : "Status dos Suportes/Infra"}</h1><p className="text-sm text-white/60">{activeView === "tracking" ? (isTeamMember ? "Veja o status de todas as solicitações e o percentual de andamento informado à equipe de TI." : "Veja o status, o percentual de andamento e as informações enviadas à equipe de TI.") : activeView === "developers" ? "Veja quem está desenvolvendo e há quanto tempo." : "Acompanhe os chamados atribuídos a Angel e Sofia."}</p></div>
+          <div><h1 className="text-xl font-semibold">{activeView === "tracking" ? (isTeamMember ? "Acompanhar todas as solicitações" : "Acompanhar minhas solicitações") : activeView === "developers" ? "Status dos Desenvolvedores" : "Status dos Suportes/Infra"}</h1><p className="text-sm text-white/60">{activeView === "tracking" ? (isTeamMember ? "Veja o status de todas as solicitações e o percentual de andamento informado à equipe de TI." : "Veja o status, o percentual de andamento e as informações enviadas à equipe de TI.") : activeView === "developers" ? "Veja quem está desenvolvendo, no que está trabalhando e o que já entregou." : "Veja a disponibilidade da equipe de Suporte e Infra."}</p></div>
         </header>
 
         <nav aria-label="Menu de solicitações" className="flex gap-1 border-b border-border">

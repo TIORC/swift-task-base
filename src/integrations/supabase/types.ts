@@ -3200,9 +3200,11 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_developer_user_ids: { Args: never; Returns: string[] }
       get_gestor_user_ids: { Args: never; Returns: string[] }
       get_or_create_direct_chat: { Args: { _other: string }; Returns: string }
       get_social_assignable_user_ids: { Args: never; Returns: string[] }
+      get_support_assignable_user_ids: { Args: never; Returns: string[] }
       get_ti_assignable_user_ids: { Args: never; Returns: string[] }
       has_global_automation_access: {
         Args: { _user: string }
@@ -3249,6 +3251,18 @@ export type Database = {
           _type: string
         }
         Returns: undefined
+      }
+      save_entry_batch: {
+        Args: { _rows: Json }
+        Returns: Json
+      }
+      save_exit_batch: {
+        Args: { _rows: Json }
+        Returns: Json
+      }
+      save_asset_batch: {
+        Args: { _rows: Json }
+        Returns: Json
       }
       user_client_ids: { Args: { _user_id: string }; Returns: string[] }
       user_sector_codes: { Args: { _user_id: string }; Returns: string[] }

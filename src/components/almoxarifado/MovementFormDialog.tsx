@@ -9,6 +9,7 @@ import {
   useInventoryItems, useInventoryLocations, useInventoryCollaborators, useUpdateMovement, useUpdateItem,
   type InventoryMovement, type MovementType,
 } from "@/hooks/useInventory";
+import { isoToBr, brToIso, TIME_RE } from "@/components/almoxarifado/EntryDialog";
 
 const TYPES: { value: MovementType; label: string }[] = [
   { value: "in", label: "Entrada" },
@@ -52,7 +53,8 @@ export function MovementFormDialog({ open, onOpenChange, movement }: Props) {
   const [fromLoc, setFromLoc] = useState("");
   const [toLoc, setToLoc] = useState("");
   const [collaboratorId, setCollaboratorId] = useState("");
-  const [occurredAt, setOccurredAt] = useState("");
+  const [occurredDate, setOccurredDate] = useState("");
+  const [occurredTime, setOccurredTime] = useState("");
 
   useEffect(() => {
     if (!movement) return;
@@ -67,14 +69,19 @@ export function MovementFormDialog({ open, onOpenChange, movement }: Props) {
     setFromLoc(movement.from_location_id ?? "");
     setToLoc(movement.to_location_id ?? "");
     setCollaboratorId(movement.collaborator_id ?? "");
-    setOccurredAt(toLocalInput(movement.occurred_at ?? movement.created_at));
+    const [datePart, timePart] = toLocalInput(movement.occurred_at ?? movement.created_at).split("T");
+    setOccurredDate(datePart ? isoToBr(datePart) : "");
+    setOccurredTime(timePart ?? "");
   }, [movement, items]);
 
   const item = items.find((i) => i.id === movement?.item_id);
   const tracked = !!movement?.asset_id || !!item?.tracked_individually;
 
+  const occurredIso = brToIso(occurredDate);
+  const occurredValid = !!occurredIso && TIME_RE.test(occurredTime);
+
   const submit = async () => {
-    if (!movement) return;
+    if (!movement || !occurredIso || !TIME_RE.test(occurredTime)) return;
     const nextItemName = itemNameValue.trim();
     if (!nextItemName) return;
     if (item && nextItemName !== item.name) {
@@ -93,7 +100,7 @@ export function MovementFormDialog({ open, onOpenChange, movement }: Props) {
       to_location_id: toLoc || null,
       collaborator_id: collaboratorId || null,
       department: collaborators.find((c) => c.id === collaboratorId)?.department ?? null,
-      occurred_at: occurredAt ? new Date(occurredAt).toISOString() : undefined,
+      occurred_at: new Date(`${occurredIso}T${occurredTime}:00`).toISOString(),
     });
     onOpenChange(false);
   };
@@ -122,9 +129,16 @@ export function MovementFormDialog({ open, onOpenChange, movement }: Props) {
                 <SelectContent>{TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Data e hora</Label>
-              <Input type="datetime-local" value={occurredAt} onChange={(e) => setOccurredAt(e.target.value)} />
+              <Label>Data *</Label>
+              <Input placeholder="dd/mm/aaaa" maxLength={10} value={occurredDate} onChange={(e) => setOccurredDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>Hora *</Label>
+              <Input placeholder="hh:mm" maxLength={5} value={occurredTime} onChange={(e) => setOccurredTime(e.target.value)} />
             </div>
           </div>
 
@@ -186,7 +200,7 @@ export function MovementFormDialog({ open, onOpenChange, movement }: Props) {
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={submit} disabled={updateMov.isPending || updateItem.isPending || !itemNameValue.trim()}>Salvar</Button>
+          <Button onClick={submit} disabled={updateMov.isPending || updateItem.isPending || !itemNameValue.trim() || !occurredValid}>Salvar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

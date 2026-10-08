@@ -21,6 +21,13 @@ import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
  *   - comments:create { token, automation_id, content } -> { id }
  *   - developer-status { token }                        -> { developers }
  *   - support-status   { token }                        -> { technicians }
+ *   - team-names       { token }                        -> { names }
+ *
+ * `developer-status` devolve EXCLUSIVAMENTE Welder e Gabriel (com tarefa
+ * atual, automação em aberto e histórico recente). `support-status` devolve
+ * EXCLUSIVAMENTE Angel e Sofia, com apenas o PRIMEIRO NOME e o estado do
+ * cronômetro — os chamados carregam usuário, máquina, sistema e local, nada
+ * disso sai para a tela pública do solicitante.
  *
  * RLS existente NÃO é alterada: anon continua sem acesso direto às tabelas.
  */
@@ -40,6 +47,37 @@ interface SolicitanteClaims {
 // solicitações (e não apenas as que criou). Devs e gestores precisam
 // acompanhar solicitações de terceiros, já que eles EXECUTAM o trabalho.
 const SEE_ALL_ROLES = new Set(["dev", "admin", "gestor"]);
+
+/**
+ * Quantos itens de trabalho cada pessoa mostra nas abas de status — o que está
+ * fazendo agora (task/automação em aberto) mais o histórico recente do board.
+ */
+const TEAM_HISTORY_LIMIT = 5;
+
+/** Status de `tasks` em que a tarefa ainda está no fluxo (não concluída). */
+const OPEN_TASK_STATUSES = new Set(["backlog", "pending", "todo", "in_progress", "review"]);
+
+/** Status de `automations` em que a solicitação ainda está sendo executada. */
+const OPEN_AUTOMATION_STATUSES = new Set([
+  "requested",
+  "analysis",
+  "approved",
+  "development",
+  "internal_testing",
+  "homologation",
+  "waiting_info",
+  "waiting_user",
+  "blocked",
+]);
+
+/** Um item do histórico de trabalho exibido nas abas de status. */
+interface RecentItem {
+  kind: "tarefa" | "automacao";
+  title: string;
+  status: string;
+  progress?: number | null;
+  when: string;
+}
 
 function b64urlEncode(bytes: Uint8Array): string {
   let s = "";
@@ -391,77 +429,171 @@ Deno.serve(async (req) => {
     }
 
     if (action === "developer-status" || action === "support-status") {
-      const { data: profiles } = await admin.from("profiles").select("id, full_name");
+      const isDevelopers = action === "developer-status";
+
+      // Cada aba tem sua própria equipe, por PAPEL — nunca mais
+      // get_ti_assignable_user_ids (member/dev/lider), que trazia qualquer
+      // solicitante com o papel padrão `member` para a aba de desenvolvedores.
+      //   developer-status -> papel 'dev'      (Welder, Gabriel)
+      //   support-status   -> papel 'suporte'  (Angel, Sofia)
+      const rosterRpc = isDevelopers ? "get_developer_user_ids" : "get_support_assignable_user_ids";
+      const { data: roster, error: rosterError } = await admin.rpc(rosterRpc as "get_developer_user_ids");
+      // O SDK do Supabase NÃO lança exceção em erro de RPC: devolve
+      // {data:null,error}. Checar `error` explicitamente é o que impede uma aba
+      // de voltar vazia em silêncio quando o RPC não existe.
+      if (rosterError) throw new Error(`RPC ${rosterRpc} indisponível: ${rosterError.message}`);
+      const teamIds = [...new Set(((roster as string[] | null) ?? []).filter(Boolean))];
+
+      if (teamIds.length === 0) {
+        console.warn(`[solicitacoes] ${rosterRpc} devolveu lista vazia — aba ${action} sairá vazia`);
+        return json(isDevelopers ? { developers: [] } : { technicians: [] });
+      }
+
+      const { data: profiles } = await admin.from("profiles").select("id, full_name").in("id", teamIds);
       const names = Object.fromEntries(
-        ((((profiles ?? []) as unknown) as { id: string; full_name: string | null }[])).map((p) => [p.id, p.full_name || "Usuário"]),
+        ((((profiles ?? []) as unknown) as { id: string; full_name: string | null }[])).map((p) => [p.id, p.full_name || "Equipe de TI"]),
       );
-      let assignableIds: string[];
-      try {
-        const { data } = await admin.rpc(
-          action === "developer-status" ? "get_ti_assignable_user_ids" : "get_support_assignable_user_ids",
-        );
-        assignableIds = ((data as string[] | null) ?? []).filter(Boolean);
-      } catch {
-        const { data } = await admin.rpc("get_ti_assignable_user_ids");
-        assignableIds = ((data as string[] | null) ?? []).filter(Boolean);
-      }
 
-      // Papel `dev` de verdade: get_ti_assignable_user_ids devolve quem pode
-      // receber tarefas de TI (member/dev/lider) — NÃO é a lista de
-      // desenvolvedores. A aba "Status dos Desenvolvedores" filtra pelo flag
-      // `dev` abaixo; a lista completa continua sendo devolvida porque os nomes
-      // dos responsáveis (cards/chat) também saem daqui.
-      const devIds = new Set<string>();
-      if (action === "developer-status") {
-        const { data: devRows, error: devError } = await admin
-          .from("user_roles")
-          .select("user_id")
-          .eq("role", "dev");
-        if (devError) throw devError;
-        for (const row of ((devRows ?? []) as { user_id: string }[])) devIds.add(row.user_id);
-        // Todo desenvolvedor aparece na aba, mesmo fora da lista de atribuição.
-        assignableIds = [...new Set([...assignableIds, ...devIds])];
-      }
-
-      if (assignableIds.length === 0) {
-        return json(action === "developer-status" ? { developers: [] } : { technicians: [] });
-      }
-      const sinceIso = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
-      const [devLogs, taskLogs] = await Promise.all([
+      // Janela longa: o histórico precisa cobrir o que já foi feito, não só a
+      // última hora.
+      const sinceIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const [devLogs, taskLogs, tasks, automations] = await Promise.all([
         admin
           .from("automation_time_logs")
           .select("user_id, started_at, ended_at")
-          .in("user_id", assignableIds)
+          .in("user_id", teamIds)
           .gte("started_at", sinceIso)
           .order("started_at", { ascending: false }),
         admin
           .from("time_logs")
           .select("user_id, started_at, ended_at")
-          .in("user_id", assignableIds)
+          .in("user_id", teamIds)
           .gte("started_at", sinceIso)
           .order("started_at", { ascending: false }),
+        // A lista de trabalho é montada só para a aba de desenvolvedores. Na de
+        // suportes o payload é só nome + cronômetro, então nem vale a pena ler
+        // `tasks`/`automations` — esta rota é consultada a cada 15s.
+        isDevelopers
+          ? admin
+              .from("tasks")
+              .select("id, title, status, assigned_to, updated_at")
+              .in("assigned_to", teamIds)
+              .order("updated_at", { ascending: false })
+              .limit(TEAM_HISTORY_LIMIT * teamIds.length)
+          : Promise.resolve({ data: null }),
+        isDevelopers
+          ? admin
+              .from("automations")
+              .select("id, title, status, progress_percent, assigned_to, updated_at")
+              .in("assigned_to", teamIds)
+              .order("updated_at", { ascending: false })
+              .limit(TEAM_HISTORY_LIMIT * teamIds.length)
+          : Promise.resolve({ data: null }),
       ]);
-      const latestByUser = new Map<string, { started_at: string; ended_at: string | null }>();
+
+      type StatusLog = { user_id: string; started_at: string; ended_at: string | null };
+      type TaskRow = { id: string; title: string; status: string; assigned_to: string | null; updated_at: string };
+      type AutomationRow = {
+        id: string;
+        title: string;
+        status: string;
+        progress_percent: number | null;
+        assigned_to: string | null;
+        updated_at: string;
+      };
+
       const allLogs = [
-        ...((((devLogs.data ?? []) as unknown)) as { user_id: string; started_at: string; ended_at: string | null }[]),
-        ...((((taskLogs.data ?? []) as unknown)) as { user_id: string; started_at: string; ended_at: string | null }[]),
+        ...((((devLogs.data ?? []) as unknown)) as StatusLog[]),
+        ...((((taskLogs.data ?? []) as unknown)) as StatusLog[]),
       ];
-      for (const log of allLogs) {
-        if (!latestByUser.has(log.user_id)) {
-          latestByUser.set(log.user_id, { started_at: log.started_at, ended_at: log.ended_at });
+      const taskRows = (((tasks.data ?? []) as unknown) as TaskRow[]).filter((t) => t.assigned_to);
+      const automationRows = (((automations.data ?? []) as unknown) as AutomationRow[]).filter((a) => a.assigned_to);
+
+      const entries = teamIds.map((id) => {
+        const mine = allLogs.filter((log) => log.user_id === id);
+        const latest = mine[0] ?? null;
+        const fullName = names[id] ?? "Equipe de TI";
+
+        if (!isDevelopers) {
+          // A aba de Suportes/Infra publica só o primeiro nome e o estado do
+          // cronômetro. Os chamados carregam usuário, máquina, sistema e local,
+          // então a lista de trabalho nem é montada — e não vai no payload,
+          // senão apareceria no DevTools de qualquer solicitante identificado.
+          return {
+            id,
+            name: fullName,
+            firstName: fullName.split(/\s+/)[0] || fullName,
+            working: latest ? !latest.ended_at : false,
+            lastStart: latest?.started_at ?? null,
+            dev: false,
+            currentTask: null,
+            currentAutomation: null,
+            recent: [],
+          };
         }
-      }
-      const entries = assignableIds.map((id) => {
-        const latest = latestByUser.get(id);
+
+        // Tarefa atual: a mais recente que ainda não saiu do fluxo.
+        const openTask = taskRows.find((t) => t.assigned_to === id && OPEN_TASK_STATUSES.has(t.status)) ?? null;
+        const openAutomation =
+          automationRows.find((a) => a.assigned_to === id && OPEN_AUTOMATION_STATUSES.has(a.status)) ?? null;
+
+        // Histórico: tarefas e automações da pessoa, da mais recente para a
+        // mais antiga, cortando em TEAM_HISTORY_LIMIT. O trabalho em aberto não é
+        // repetido aqui — ele já aparece em currentTask/currentAutomation.
+        const history: RecentItem[] = [
+          ...taskRows
+            .filter((t) => t.assigned_to === id && t.id !== openTask?.id)
+            .map((t) => ({ kind: "tarefa" as const, title: t.title, status: t.status, when: t.updated_at })),
+          ...automationRows
+            .filter((a) => a.assigned_to === id && a.id !== openAutomation?.id)
+            .map((a) => ({
+              kind: "automacao" as const,
+              title: a.title,
+              status: a.status,
+              progress: a.progress_percent ?? null,
+              when: a.updated_at,
+            })),
+        ]
+          .sort((a, b) => new Date(b.when).getTime() - new Date(a.when).getTime())
+          .slice(0, TEAM_HISTORY_LIMIT);
+
         return {
           id,
-          name: names[id] ?? "Equipe de TI",
+          name: fullName,
+          firstName: null,
           working: latest ? !latest.ended_at : false,
           lastStart: latest?.started_at ?? null,
-          dev: devIds.has(id),
+          dev: true,
+          currentTask: openTask
+            ? { kind: "tarefa" as const, title: openTask.title, status: openTask.status }
+            : null,
+          currentAutomation: openAutomation
+            ? {
+                kind: "automacao" as const,
+                title: openAutomation.title,
+                status: openAutomation.status,
+                progress: openAutomation.progress_percent ?? null,
+              }
+            : null,
+          recent: history,
         };
       });
-      return json(action === "developer-status" ? { developers: entries } : { technicians: entries });
+      return json(isDevelopers ? { developers: entries } : { technicians: entries });
+    }
+
+    // Nome de TODOS os usuários, para resolver o campo "Responsável" dos cards
+    // de acompanhamento. Precisa ser separado de developer-status/support-status:
+    // aquelas duas abas são travadas em Welder, Gabriel, Angel e Sofia, mas uma
+    // solicitação pode estar atribuída a um gestor ou líder — sem esta ação, o
+    // responsável cairia em "ainda não atribuído".
+    if (action === "team-names") {
+      const { data, error: namesError } = await admin.from("profiles").select("id, full_name");
+      if (namesError) throw namesError;
+      const names: Record<string, string> = {};
+      for (const row of (((data ?? []) as unknown) as { id: string; full_name: string | null }[])) {
+        names[row.id] = row.full_name || "Equipe de TI";
+      }
+      return json({ names });
     }
 
     return bad("Ação desconhecida.", 400);
