@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { attachmentMime, ATTACHMENT_FORMATS_LABEL, storageSafeName } from "@/lib/attachment-types";
 
 export interface TaskAttachment {
   id: string;
@@ -13,14 +14,6 @@ export interface TaskAttachment {
   mime_type: string;
   created_at: string;
 }
-
-const ALLOWED_TYPES = [
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "image/jpeg",
-  "image/png",
-];
 
 const MAX_SIZE = 80 * 1024 * 1024; // 80MB
 
@@ -48,15 +41,16 @@ export function useUploadAttachment() {
     mutationFn: async ({ taskId, file }: { taskId: string; file: File }) => {
       if (!user) throw new Error("Não autenticado");
 
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        throw new Error("Tipo de arquivo não permitido. Use PDF, DOCX, XLSX, JPG ou PNG.");
+      const mime = attachmentMime(file);
+      if (!mime) {
+        throw new Error(`Tipo de arquivo não permitido. Use ${ATTACHMENT_FORMATS_LABEL}.`);
       }
 
       if (file.size > MAX_SIZE) {
         throw new Error("Arquivo excede o limite de 80MB.");
       }
 
-      const filePath = `${user.id}/${taskId}/${Date.now()}_${file.name}`;
+      const filePath = `${user.id}/${taskId}/${Date.now()}_${storageSafeName(file.name)}`;
 
       const { error: uploadError } = await supabase.storage
         .from("task-attachments")
@@ -72,7 +66,7 @@ export function useUploadAttachment() {
           file_name: file.name,
           file_path: filePath,
           file_size: file.size,
-          mime_type: file.type,
+          mime_type: mime,
         })
         .select()
         .single();

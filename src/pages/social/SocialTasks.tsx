@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -79,6 +79,13 @@ export default function SocialTasks() {
   const [open, setOpen] = useState(false);
   const [checklistTaskId, setChecklistTaskId] = useState<string | null>(null);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Abre a tarefa indicada em "?task=<id>" (vindo de uma notificação de menção).
+  useEffect(() => {
+    const id = searchParams.get("task");
+    if (id) setDetailTaskId(id);
+  }, [searchParams]);
   const [draftChecklist, setDraftChecklist] = useState<string[]>([]);
   const [newChecklistItem, setNewChecklistItem] = useState("");
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
@@ -581,7 +588,12 @@ export default function SocialTasks() {
 
       <SocialTaskDetailDialog
         task={detailTaskId ? (data?.find(t => t.id === detailTaskId) ?? null) : null}
-        onOpenChange={(o) => { if (!o) setDetailTaskId(null); }}
+        onOpenChange={(o) => {
+          if (!o) {
+            setDetailTaskId(null);
+            if (searchParams.has("task")) setSearchParams({}, { replace: true });
+          }
+        }}
         onChanged={refresh}
       />
 

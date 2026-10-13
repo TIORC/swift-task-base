@@ -96,6 +96,7 @@ export function useCreateComment() {
             user_id: uid,
             type: "mention" as const,
             task_id: taskId,
+            link: `/tasks?task=${taskId}`,
             message: `${senderName} mencionou você${where}`,
             created_by: user.id,
           }));

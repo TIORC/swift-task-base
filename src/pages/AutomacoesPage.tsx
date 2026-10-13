@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { Loader2, Zap, AlertTriangle } from "lucide-react";
 import { useAutomations, useAllBlockers, useUpdateAutomation, useCanRenameAutomation } from "@/hooks/useAutomationsData";
@@ -38,6 +39,20 @@ export default function AutomacoesPage() {
   const [sectorFilter, setSectorFilter] = useState("all");
   const [kindFilter, setKindFilter] = useState("all");
   const [selectedAutomation, setSelectedAutomation] = useState<Automation | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Abre a automação indicada em "?automation=<id>" (vindo de uma notificação de menção).
+  useEffect(() => {
+    const id = searchParams.get("automation");
+    if (!id) return;
+    const found = automations.find((a) => a.id === id);
+    if (found) setSelectedAutomation(found);
+  }, [searchParams, automations]);
+
+  const closeAutomation = () => {
+    setSelectedAutomation(null);
+    if (searchParams.has("automation")) setSearchParams({}, { replace: true });
+  };
 
   const { canSeeAll, allowedSectors, hasSector, ready: sectorsReady } = useSectorVisibility();
   const { canRequest, isLoadingRequester } = useIsAutomationRequester();
@@ -249,7 +264,7 @@ export default function AutomacoesPage() {
       <AutomationDetailPanel
         automation={selectedAutomation}
         open={!!selectedAutomation}
-        onClose={() => setSelectedAutomation(null)}
+        onClose={closeAutomation}
         profileMap={profileMap}
         profiles={profiles}
         isReadOnly={isReadOnly}

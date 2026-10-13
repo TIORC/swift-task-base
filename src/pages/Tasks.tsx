@@ -1,5 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTasks, useDeleteTask, useUpdateTask, Task, COLUMNS } from "@/hooks/useTasks";
+import { useMarkTaskMentionsRead, useUnreadMentionsByTask } from "@/hooks/useNotifications";
 import { useTaskFilter } from "@/hooks/useTaskFilter";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useGlobalTimer } from "@/hooks/useGlobalTimer";
@@ -71,6 +73,28 @@ const Tasks = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [recurringOpen, setRecurringOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Abre a tarefa indicada em "?task=<id>" (vindo de uma notificação de menção).
+  useEffect(() => {
+    const id = searchParams.get("task");
+    if (!id || !tasks) return;
+    const found = tasks.find((t) => t.id === id);
+    if (found) setSelectedTask(found);
+  }, [searchParams, tasks]);
+
+  const closeTask = () => {
+    setSelectedTask(null);
+    if (searchParams.has("task")) setSearchParams({}, { replace: true });
+  };
+
+  // Menções não lidas por tarefa; ao abrir a tarefa, elas viram lidas.
+  const { data: mentionCounts = {} } = useUnreadMentionsByTask();
+  const markMentionsRead = useMarkTaskMentionsRead().mutate;
+  const openTaskId = selectedTask?.id;
+  useEffect(() => {
+    if (openTaskId) markMentionsRead(openTaskId);
+  }, [openTaskId, markMentionsRead]);
 
   // Advanced filters
   const [statusChip, setStatusChip] = useState<StatusChip>("all");
@@ -324,7 +348,7 @@ const Tasks = () => {
               <div
                 key={task.id}
                 onClick={() => setSelectedTask(task)}
-                className={`flex items-center gap-4 rounded-xl border-2 bg-card p-3.5 cursor-pointer
+                className={`relative flex items-center gap-4 rounded-xl border-2 bg-card p-3.5 cursor-pointer
                   shadow-card hover:shadow-card-hover transition-all duration-150
                   ${isTimerOnThis
                     ? "border-primary/40 ring-1 ring-primary/20"
@@ -332,6 +356,14 @@ const Tasks = () => {
                       ? "border-amber-500/50 bg-amber-500/[0.03] hover:border-amber-500/70"
                       : "border-border hover:border-primary/20"}`}
               >
+                {(mentionCounts[task.id] ?? 0) > 0 && (
+                  <span
+                    title="Menções não lidas"
+                    className="absolute -top-2 -right-2 z-10 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-sky-500 px-1.5 text-[10px] font-bold text-white shadow ring-2 ring-background"
+                  >
+                    {mentionCounts[task.id]}
+                  </span>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     {recurring && (
@@ -436,7 +468,7 @@ const Tasks = () => {
       )}
 
       {!isGestor && <CreateTaskDialog open={createOpen} onOpenChange={setCreateOpen} />}
-      <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} isReadOnly={isGestor} />
+      <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && closeTask()} isReadOnly={isGestor} />
 
       <Dialog open={recurringOpen} onOpenChange={setRecurringOpen}>
         <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">

@@ -12,9 +12,11 @@ interface Props {
   index: number;
   onClick: (task: KanbanTask) => void;
   isDragDisabled?: boolean;
+  // Menções não lidas do usuário nesta tarefa (mostra o número no canto superior direito).
+  mentionCount?: number;
 }
 
-export function KanbanTaskCard({ task, index, onClick, isDragDisabled }: Props) {
+export function KanbanTaskCard({ task, index, onClick, isDragDisabled, mentionCount = 0 }: Props) {
   const isDone = task.status === "done";
   const isArchived = task.status === "discarded";
   const showDue = !!task.due_date && !isDone && !isArchived;
@@ -30,10 +32,18 @@ export function KanbanTaskCard({ task, index, onClick, isDragDisabled }: Props) 
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           onClick={() => onClick(task)}
-          className={`overflow-hidden rounded-lg border border-border bg-card cursor-pointer transition-all duration-150
+          className={`relative overflow-hidden rounded-lg border border-border bg-card cursor-pointer transition-all duration-150
             hover:border-primary/30 hover:shadow-card-hover
             ${snapshot.isDragging ? "shadow-card-hover ring-2 ring-primary/20 rotate-1" : "shadow-card"}`}
         >
+          {mentionCount > 0 && (
+            <span
+              title="Menções não lidas"
+              className="absolute right-2 top-2 z-10 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-sky-500 px-1.5 text-[10px] font-bold text-white shadow ring-2 ring-background"
+            >
+              {mentionCount}
+            </span>
+          )}
           {cover && <img src={cover} alt="" className="h-32 w-full object-cover" loading="lazy" />}
 
           <div className="space-y-2 p-3">

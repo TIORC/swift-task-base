@@ -243,8 +243,8 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <NotificationAlertProvider>
-          <BrowserRouter>
+        <BrowserRouter>
+          <NotificationAlertProvider>
             <AuthProvider>
               <UserRoleProvider>
                 <UserSystemsProvider>
@@ -254,8 +254,8 @@ const App = () => (
                 </UserSystemsProvider>
               </UserRoleProvider>
             </AuthProvider>
-          </BrowserRouter>
-        </NotificationAlertProvider>
+          </NotificationAlertProvider>
+        </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   </ThemeProvider>

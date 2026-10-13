@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DragDropContext, Droppable, DropResult } from "@hello-pangea/dnd";
 import { useKanbanTasks, useKanbanUpdateTask, KANBAN_COLUMNS, KanbanStatus, KanbanTask, toColumnStatus } from "@/hooks/useKanbanTasks";
+import { useMarkTaskMentionsRead, useUnreadMentionsByTask } from "@/hooks/useNotifications";
 import { useUserRole } from "@/hooks/useUserRole";
 import { KanbanTaskCard } from "@/components/KanbanTaskCard";
 import { KanbanTaskDialog } from "@/components/KanbanTaskDialog";
@@ -15,6 +17,28 @@ const Kanban = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [createStatus, setCreateStatus] = useState<KanbanStatus>("backlog");
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Abre a tarefa indicada em "?task=<id>" (vindo de uma notificação de menção).
+  useEffect(() => {
+    const id = searchParams.get("task");
+    if (!id || !tasks) return;
+    const found = tasks.find((t) => t.id === id);
+    if (found) setSelectedTask(found);
+  }, [searchParams, tasks]);
+
+  const closeTask = () => {
+    setSelectedTask(null);
+    if (searchParams.has("task")) setSearchParams({}, { replace: true });
+  };
+
+  // Menções não lidas por tarefa; ao abrir a tarefa, elas viram lidas.
+  const { data: mentionCounts = {} } = useUnreadMentionsByTask();
+  const markMentionsRead = useMarkTaskMentionsRead().mutate;
+  const openTaskId = selectedTask?.id;
+  useEffect(() => {
+    if (openTaskId) markMentionsRead(openTaskId);
+  }, [openTaskId, markMentionsRead]);
 
   const tasksByStatus = KANBAN_COLUMNS.reduce(
     (acc, col) => {
@@ -103,7 +127,7 @@ const Kanban = () => {
                       }`}
                     >
                       {colTasks.map((task, i) => (
-                        <KanbanTaskCard key={task.id} task={task} index={i} onClick={setSelectedTask} isDragDisabled={isGestor} />
+                        <KanbanTaskCard key={task.id} task={task} index={i} onClick={setSelectedTask} isDragDisabled={isGestor} mentionCount={mentionCounts[task.id] ?? 0} />
                       ))}
                       {provided.placeholder}
                       {colTasks.length === 0 && !snapshot.isDraggingOver && (
@@ -119,7 +143,7 @@ const Kanban = () => {
       </DragDropContext>
 
       {!isGestor && <KanbanTaskDialog open={createOpen} onOpenChange={setCreateOpen} defaultStatus={createStatus} />}
-      <KanbanTaskDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => { if (!o) setSelectedTask(null); }} readOnly={isGestor} />
+      <KanbanTaskDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => { if (!o) closeTask(); }} readOnly={isGestor} />
       </div>
     </div>
   );

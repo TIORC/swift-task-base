@@ -7,6 +7,7 @@ import {
   formatFileSize,
 } from "@/hooks/useAttachments";
 import { Button } from "@/components/ui/button";
+import { ATTACHMENT_ACCEPT } from "@/lib/attachment-types";
 import { Paperclip, Upload, Trash2, FileText, Image, FileSpreadsheet, Loader2, Download } from "lucide-react";
 
 const PASTEABLE_IMAGE_TYPES = ["image/png", "image/jpeg"];
@@ -83,7 +84,7 @@ export function TaskAttachments({ taskId }: TaskAttachmentsProps) {
           ref={inputRef}
           type="file"
           className="hidden"
-          accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
+          accept={ATTACHMENT_ACCEPT}
           multiple
           onChange={handleFileChange}
         />

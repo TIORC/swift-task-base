@@ -8,6 +8,7 @@ export interface Notification {
   user_id: string;
   type: string;
   task_id: string | null;
+  link: string | null;
   message: string;
   read: boolean;
   created_by: string | null;
@@ -64,6 +65,58 @@ export function useNotifications() {
 export function useUnreadCount() {
   const { data: notifications } = useNotifications();
   return notifications?.filter((n) => !n.read).length || 0;
+}
+
+// Extrai o id da tarefa do link da notificação ("/tasks?task=<id>" ou "/kanban?task=<id>").
+const TASK_ID_IN_LINK = /task=([0-9a-f-]{36})/i;
+
+// Quantas menções não lidas o usuário tem em cada tarefa (tarefas e Kanban).
+export function useUnreadMentionsByTask() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["notifications", "unread-mentions", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("task_id, link")
+        .eq("user_id", user!.id)
+        .eq("type", "mention")
+        .eq("read", false);
+      if (error) throw error;
+
+      const counts: Record<string, number> = {};
+      for (const n of data) {
+        const taskId = n.task_id ?? n.link?.match(TASK_ID_IN_LINK)?.[1];
+        if (taskId) counts[taskId] = (counts[taskId] ?? 0) + 1;
+      }
+      return counts;
+    },
+  });
+}
+
+// Marca como lidas as menções de uma tarefa (ao abrir a tarefa).
+export function useMarkTaskMentionsRead() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (taskId: string) => {
+      if (!user) return;
+      const { error } = await supabase
+        .from("notifications")
+        .update({ read: true })
+        .eq("user_id", user.id)
+        .eq("type", "mention")
+        .eq("read", false)
+        .or(`task_id.eq.${taskId},link.like.*task=${taskId}*`);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
 }
 
 export function useMarkAsRead() {

@@ -179,6 +179,7 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
       await supabase.from("notifications").insert({
         user_id: uid,
         type: "mention",
+        link: `/kanban?task=${task.id}`,
         message: `${author} mencionou você na tarefa do Kanban "${task.title}"`,
         created_by: user.id,
       });
