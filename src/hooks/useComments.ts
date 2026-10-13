@@ -55,10 +55,12 @@ export function useCreateComment() {
   return useMutation({
     mutationFn: async ({
       taskId,
+      taskTitle,
       content,
       mentions,
     }: {
       taskId: string;
+      taskTitle?: string;
       content: string;
       mentions: string[];
     }) => {
@@ -83,9 +85,10 @@ export function useCreateComment() {
           .from("profiles")
           .select("full_name")
           .eq("id", user.id)
-          .single();
+          .maybeSingle();
 
         const senderName = profile?.full_name || user.email || "Alguém";
+        const where = taskTitle ? ` na tarefa "${taskTitle}"` : "";
 
         const notifications = mentions
           .filter((uid) => uid !== user.id)
@@ -93,12 +96,14 @@ export function useCreateComment() {
             user_id: uid,
             type: "mention" as const,
             task_id: taskId,
-            message: `${senderName} mencionou você em um comentário`,
+            message: `${senderName} mencionou você${where}`,
             created_by: user.id,
           }));
 
         if (notifications.length > 0) {
-          await supabase.from("notifications").insert(notifications);
+          const { error: notifyError } = await supabase.from("notifications").insert(notifications);
+          // O comentário já foi salvo; só avisa que a notificação falhou.
+          if (notifyError) toast.error(`Comentário salvo, mas a notificação falhou: ${notifyError.message}`);
         }
       }
 

@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { TaskFilterSelect } from "@/components/TaskFilterSelect";
+import { TaskDueDate } from "@/components/TaskDueDate";
 import RecurringTasksAdmin from "@/pages/RecurringTasksAdmin";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/PageHeader";
@@ -348,10 +349,11 @@ const Tasks = () => {
                     </p>
                   )}
                   {task.description && (
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">{task.description}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2 whitespace-pre-line mt-0.5">{task.description}</p>
                   )}
                 </div>
 
+                <TaskDueDate dueDate={task.due_date} done={task.status === "done"} className="shrink-0" />
                 <StatusBadge type="status" value={task.status} />
                 <StatusBadge type="priority" value={task.priority} />
 

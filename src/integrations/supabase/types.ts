@@ -1288,6 +1288,41 @@ export type Database = {
         }
         Relationships: []
       }
+      task_checklist_items: {
+        Row: {
+          content: string
+          created_at: string
+          done: boolean
+          id: string
+          position: number
+          task_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          position?: number
+          task_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          position?: number
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_checklist_items_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kanban_task_checklist_items: {
         Row: {
           content: string

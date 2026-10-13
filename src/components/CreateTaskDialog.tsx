@@ -185,7 +185,8 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
 
           <div className="space-y-2">
             <Label>Descrição</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Descreva a tarefa..." rows={3} />
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Descreva a tarefa... (Enter pula linha)" rows={6} className="resize-y whitespace-pre-wrap" />
+            <p className="text-[11px] text-muted-foreground">Enter pula linha. Dois Enters deixam uma linha em branco entre os parágrafos.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
