@@ -1,17 +1,15 @@
 import { useState } from "react";
 import { DragDropContext, Droppable, DropResult } from "@hello-pangea/dnd";
-import { useKanbanTasks, useKanbanUpdateTask, useKanbanTaskFilter, KANBAN_COLUMNS, KanbanStatus, KanbanTask } from "@/hooks/useKanbanTasks";
+import { useKanbanTasks, useKanbanUpdateTask, KANBAN_COLUMNS, KanbanStatus, KanbanTask, toColumnStatus } from "@/hooks/useKanbanTasks";
 import { useUserRole } from "@/hooks/useUserRole";
-import { TaskCard } from "@/components/TaskCard";
+import { KanbanTaskCard } from "@/components/KanbanTaskCard";
 import { KanbanTaskDialog } from "@/components/KanbanTaskDialog";
-import { TaskFilterSelect } from "@/components/TaskFilterSelect";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, Columns3 } from "lucide-react";
 
 const Kanban = () => {
     const { data: tasks, isLoading } = useKanbanTasks();
-  const { filteredTasks, selectedUserId, setSelectedUserId, canFilter } = useKanbanTaskFilter(tasks);
   const updateTask = useKanbanUpdateTask();
   const { isGestor } = useUserRole();
   const [createOpen, setCreateOpen] = useState(false);
@@ -20,7 +18,7 @@ const Kanban = () => {
 
   const tasksByStatus = KANBAN_COLUMNS.reduce(
     (acc, col) => {
-      acc[col.status] = filteredTasks.filter((t) => t.status === col.status);
+      acc[col.status] = (tasks ?? []).filter((t) => toColumnStatus(t.status) === col.status);
       return acc;
     },
     {} as Record<KanbanStatus, KanbanTask[]>
@@ -60,9 +58,6 @@ const Kanban = () => {
         icon={<Columns3 className="h-5 w-5" />}
         actions={
           <div className="flex items-center gap-2">
-            {canFilter && (
-              <TaskFilterSelect value={selectedUserId} onChange={setSelectedUserId} />
-            )}
             {!isGestor && (
               <Button onClick={() => handleAddToColumn("backlog")} className="h-9">
                 <Plus className="mr-2 h-4 w-4" />
@@ -108,7 +103,7 @@ const Kanban = () => {
                       }`}
                     >
                       {colTasks.map((task, i) => (
-                        <TaskCard key={task.id} task={task as any} index={i} onClick={(t) => setSelectedTask(t as any)} isDragDisabled={isGestor} />
+                        <KanbanTaskCard key={task.id} task={task} index={i} onClick={setSelectedTask} isDragDisabled={isGestor} />
                       ))}
                       {provided.placeholder}
                       {colTasks.length === 0 && !snapshot.isDraggingOver && (
