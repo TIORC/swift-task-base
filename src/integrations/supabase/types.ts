@@ -1288,11 +1288,91 @@ export type Database = {
         }
         Relationships: []
       }
+      kanban_task_checklist_items: {
+        Row: {
+          content: string
+          created_at: string
+          done: boolean
+          id: string
+          position: number
+          task_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          position?: number
+          task_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          position?: number
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kanban_task_checklist_items_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "kanban_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kanban_task_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          is_cover: boolean
+          mime_type: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number
+          id?: string
+          is_cover?: boolean
+          mime_type: string
+          task_id: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          is_cover?: boolean
+          mime_type?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kanban_task_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "kanban_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kanban_task_comments: {
         Row: {
           content: string
           created_at: string
           id: string
+          mentions: string[]
           task_id: string
           user_id: string
         }
@@ -1300,6 +1380,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          mentions?: string[]
           task_id: string
           user_id?: string
         }
@@ -1307,6 +1388,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          mentions?: string[]
           task_id?: string
           user_id?: string
         }
@@ -1320,9 +1402,34 @@ export type Database = {
           },
         ]
       }
+      kanban_task_assignees: {
+        Row: {
+          created_at: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kanban_task_assignees_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "kanban_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kanban_tasks: {
         Row: {
-          assigned_to: string | null
           completed_at: string | null
           created_at: string
           created_by: string
@@ -1335,7 +1442,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          assigned_to?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string
@@ -1348,7 +1454,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          assigned_to?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string
