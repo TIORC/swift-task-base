@@ -1,19 +1,16 @@
 import { useState } from "react";
 import { DragDropContext, Droppable, DropResult } from "@hello-pangea/dnd";
-import { useQueryClient } from "@tanstack/react-query";
 import { useKanbanTasks, useKanbanUpdateTask, useKanbanTaskFilter, KANBAN_COLUMNS, KanbanStatus, KanbanTask } from "@/hooks/useKanbanTasks";
 import { useUserRole } from "@/hooks/useUserRole";
 import { TaskCard } from "@/components/TaskCard";
-import { TaskDetailDialog } from "@/components/TaskDetailDialog";
-import { CreateTaskDialog } from "@/components/CreateTaskDialog";
+import { KanbanTaskDialog } from "@/components/KanbanTaskDialog";
 import { TaskFilterSelect } from "@/components/TaskFilterSelect";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, Columns3 } from "lucide-react";
 
 const Kanban = () => {
-  const queryClient = useQueryClient();
-  const { data: tasks, isLoading } = useKanbanTasks();
+    const { data: tasks, isLoading } = useKanbanTasks();
   const { filteredTasks, selectedUserId, setSelectedUserId, canFilter } = useKanbanTaskFilter(tasks);
   const updateTask = useKanbanUpdateTask();
   const { isGestor } = useUserRole();
@@ -111,7 +108,7 @@ const Kanban = () => {
                       }`}
                     >
                       {colTasks.map((task, i) => (
-                        <TaskCard key={task.id} task={task} index={i} onClick={setSelectedTask} isDragDisabled={isGestor} />
+                        <TaskCard key={task.id} task={task as any} index={i} onClick={(t) => setSelectedTask(t as any)} isDragDisabled={isGestor} />
                       ))}
                       {provided.placeholder}
                       {colTasks.length === 0 && !snapshot.isDraggingOver && (
@@ -126,8 +123,8 @@ const Kanban = () => {
         </div>
       </DragDropContext>
 
-      {!isGestor && <CreateTaskDialog open={createOpen} onOpenChange={(open) => { if (!open) queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] }); setCreateOpen(open); }} defaultStatus={createStatus} />}
-      <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => { if (!o) { queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] }); setSelectedTask(null); } }} isReadOnly={isGestor} />
+      {!isGestor && <KanbanTaskDialog open={createOpen} onOpenChange={setCreateOpen} defaultStatus={createStatus} />}
+      <KanbanTaskDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => { if (!o) setSelectedTask(null); }} readOnly={isGestor} />
       </div>
     </div>
   );

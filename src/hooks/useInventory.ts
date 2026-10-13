@@ -408,7 +408,7 @@ export function useSaveAssetBatch() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (rows: AssetBatchRow[]) => {
-      const { data, error } = await supabase.rpc("save_asset_batch", { _rows: rows as unknown as Json });
+      const { data, error } = await (supabase as any).rpc("save_asset_batch", { _rows: rows as unknown as Json });
       if (error) throw error;
       return data as unknown as EntryBatchResult;
     },
