@@ -135,13 +135,10 @@ function useAfterChange() {
 }
 
 // Troca a lista de responsáveis da tarefa. Lista vazia = sem responsável (aberta para todos).
+// Feito numa única operação no servidor: apagar antes e inserir depois fazia o responsável
+// perder a permissão no meio do caminho (erro de RLS em kanban_task_assignees).
 async function setKanbanAssignees(taskId: string, assigneeIds: string[]) {
-  const { error: delError } = await supabase.from("kanban_task_assignees").delete().eq("task_id", taskId);
-  if (delError) throw delError;
-  if (assigneeIds.length === 0) return;
-  const { error } = await supabase
-    .from("kanban_task_assignees")
-    .insert(assigneeIds.map((user_id) => ({ task_id: taskId, user_id })));
+  const { error } = await supabase.rpc("kanban_set_assignees", { _task_id: taskId, _user_ids: assigneeIds });
   if (error) throw error;
 }
 
