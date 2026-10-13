@@ -1,0 +1,3 @@
+-- Capa enviada do computador: fica guardada na própria tarefa (não vira anexo).
+-- Arquivo no bucket "task-attachments", no caminho <user_id>/kanban/<task_id>/cover_...
+ALTER TABLE public.kanban_tasks ADD COLUMN IF NOT EXISTS cover_file_path text;

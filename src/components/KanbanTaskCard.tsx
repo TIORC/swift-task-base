@@ -6,6 +6,7 @@ import { KanbanTask } from "@/hooks/useKanbanTasks";
 import { getKanbanFileUrl } from "@/hooks/useKanbanAttachments";
 import { isOverdue } from "@/lib/dates";
 import { labelFor } from "@/lib/kanban-labels";
+import { coverPresetStyle } from "@/lib/kanban-covers";
 
 interface Props {
   task: KanbanTask;
@@ -22,6 +23,7 @@ export function KanbanTaskCard({ task, index, onClick, isDragDisabled, mentionCo
   const showDue = !!task.due_date && !isDone && !isArchived;
   const dueLate = showDue && isOverdue(task.due_date);
   const assignees = task.assignees.filter((a) => a.full_name);
+  const presetStyle = coverPresetStyle(task.cover_preset);
   const cover = task.cover_path ? getKanbanFileUrl(task.cover_path) : null;
 
   return (
@@ -44,7 +46,11 @@ export function KanbanTaskCard({ task, index, onClick, isDragDisabled, mentionCo
               {mentionCount}
             </span>
           )}
-          {cover && <img src={cover} alt="" className="h-32 w-full object-cover" loading="lazy" />}
+          {presetStyle ? (
+            <div className="h-20 w-full" style={presetStyle} />
+          ) : (
+            cover && <img src={cover} alt="" className="h-32 w-full object-cover" loading="lazy" />
+          )}
 
           <div className="space-y-2 p-3">
             {assignees.length > 0 && (

@@ -1466,6 +1466,8 @@ export type Database = {
       kanban_tasks: {
         Row: {
           completed_at: string | null
+          cover_file_path: string | null
+          cover_preset: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -1478,6 +1480,8 @@ export type Database = {
         }
         Insert: {
           completed_at?: string | null
+          cover_file_path?: string | null
+          cover_preset?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
@@ -1490,6 +1494,8 @@ export type Database = {
         }
         Update: {
           completed_at?: string | null
+          cover_file_path?: string | null
+          cover_preset?: string | null
           created_at?: string
           created_by?: string
           description?: string | null

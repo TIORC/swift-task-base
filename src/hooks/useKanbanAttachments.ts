@@ -52,6 +52,7 @@ export function useUploadKanbanAttachments() {
       if (!user) throw new Error("Não autenticado");
       validateKanbanFiles(files);
 
+      const ids: string[] = [];
       for (const [i, file] of files.entries()) {
         const filePath = `${user.id}/kanban/${taskId}/${Date.now()}_${i}_${storageSafeName(file.name)}`;
         const { error: uploadError } = await supabase.storage
@@ -59,16 +60,22 @@ export function useUploadKanbanAttachments() {
           .upload(filePath, file, { upsert: false });
         if (uploadError) throw uploadError;
 
-        const { error } = await supabase.from("kanban_task_attachments").insert({
-          task_id: taskId,
-          user_id: user.id,
-          file_name: file.name,
-          file_path: filePath,
-          file_size: file.size,
-          mime_type: attachmentMime(file)!,
-        });
+        const { data, error } = await supabase
+          .from("kanban_task_attachments")
+          .insert({
+            task_id: taskId,
+            user_id: user.id,
+            file_name: file.name,
+            file_path: filePath,
+            file_size: file.size,
+            mime_type: attachmentMime(file)!,
+          })
+          .select("id")
+          .single();
         if (error) throw error;
+        ids.push(data.id);
       }
+      return ids;
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["kanban-attachments", vars.taskId] });
@@ -97,6 +104,74 @@ export function useDeleteKanbanAttachment() {
   });
 }
 
+// Capa enviada do computador: vai para o storage e fica na tarefa, sem criar anexo.
+export function useUploadKanbanCover() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ taskId, file }: { taskId: string; file: File }) => {
+      if (!user) throw new Error("Não autenticado");
+      if (!file.type.startsWith("image/")) throw new Error("Escolha uma imagem para a capa.");
+      if (file.size > MAX_SIZE) throw new Error(`"${file.name}" excede o limite de 80MB.`);
+
+      const filePath = `${user.id}/kanban/${taskId}/cover_${Date.now()}_${storageSafeName(file.name)}`;
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET)
+        .upload(filePath, file, { upsert: false });
+      if (uploadError) throw uploadError;
+
+      // A capa enviada substitui a cor e a foto marcada.
+      const { error: taskError } = await supabase
+        .from("kanban_tasks")
+        .update({ cover_file_path: filePath, cover_preset: null })
+        .eq("id", taskId);
+      if (taskError) throw taskError;
+
+      const { error: clearError } = await supabase
+        .from("kanban_task_attachments")
+        .update({ is_cover: false })
+        .eq("task_id", taskId)
+        .eq("is_cover", true);
+      if (clearError) throw clearError;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["kanban-attachments", vars.taskId] });
+      qc.invalidateQueries({ queryKey: ["kanban-tasks"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// Capa de cor/gradiente. preset = null remove a capa de cor e também a foto marcada.
+export function useSetKanbanCoverPreset() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ taskId, preset }: { taskId: string; preset: string | null }) => {
+      const { error } = await supabase
+        .from("kanban_tasks")
+        .update({ cover_preset: preset, cover_file_path: null })
+        .eq("id", taskId);
+      if (error) throw error;
+
+      if (!preset) {
+        const { error: clearError } = await supabase
+          .from("kanban_task_attachments")
+          .update({ is_cover: false })
+          .eq("task_id", taskId)
+          .eq("is_cover", true);
+        if (clearError) throw clearError;
+      }
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["kanban-attachments", vars.taskId] });
+      qc.invalidateQueries({ queryKey: ["kanban-tasks"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 // Capa: só uma por tarefa. attachmentId = null remove a capa.
 export function useSetKanbanCover() {
   const qc = useQueryClient();
@@ -109,6 +184,13 @@ export function useSetKanbanCover() {
         .eq("task_id", taskId)
         .eq("is_cover", true);
       if (clearError) throw clearError;
+
+      // Escolher uma foto tira a capa de cor/gradiente e a capa enviada do computador.
+      const { error: presetError } = await supabase
+        .from("kanban_tasks")
+        .update({ cover_preset: null, cover_file_path: null })
+        .eq("id", taskId);
+      if (presetError) throw presetError;
 
       if (attachmentId) {
         const { error } = await supabase
