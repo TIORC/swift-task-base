@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback } from "react";
-import { useComments, useCreateComment, Comment } from "@/hooks/useComments";
+import { useState, useRef, useMemo } from "react";
+import { useComments, useCreateComment } from "@/hooks/useComments";
 import { useProfiles } from "@/hooks/useTasks";
+import { findMentionedIds, normalizeName, splitMentions } from "@/lib/mentions";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,85 +9,62 @@ import { Send, MessageSquare, Loader2 } from "lucide-react";
 
 interface TaskCommentsProps {
   taskId: string;
+  taskTitle?: string;
 }
 
-export function TaskComments({ taskId }: TaskCommentsProps) {
+const getInitials = (name: string | null) =>
+  name ? name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() : "??";
+
+export function TaskComments({ taskId, taskTitle }: TaskCommentsProps) {
   const { data: comments, isLoading } = useComments(taskId);
-  const { data: profiles } = useProfiles();
+  const { data: profiles = [] } = useProfiles();
   const createComment = useCreateComment();
   const [content, setContent] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const getInitials = (name: string | null) =>
-    name ? name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() : "??";
+  // Pessoas que batem com o que foi digitado depois do "@".
+  const suggestions = useMemo(() => {
+    if (mentionQuery === null) return [];
+    const q = normalizeName(mentionQuery);
+    return profiles
+      .filter((p) => p.full_name && normalizeName(p.full_name).includes(q))
+      .slice(0, 6);
+  }, [mentionQuery, profiles]);
 
-  const handleInputChange = (value: string) => {
+  const onContentChange = (value: string) => {
     setContent(value);
-
-    // Check for @mention trigger
-    const cursorPos = textareaRef.current?.selectionStart || value.length;
-    const textBeforeCursor = value.slice(0, cursorPos);
-    const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
-
-    if (mentionMatch) {
-      setMentionQuery(mentionMatch[1].toLowerCase());
-      setShowSuggestions(true);
-    } else {
-      setShowSuggestions(false);
-    }
+    // "@" seguido de texto até o cursor, sem quebra de linha no meio.
+    const cursor = textareaRef.current?.selectionStart ?? value.length;
+    const match = value.slice(0, cursor).match(/@([^@\n]*)$/);
+    setMentionQuery(match ? match[1] : null);
   };
 
-  const insertMention = useCallback(
-    (profileId: string, name: string) => {
-      const cursorPos = textareaRef.current?.selectionStart || content.length;
-      const textBeforeCursor = content.slice(0, cursorPos);
-      const textAfterCursor = content.slice(cursorPos);
-      const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
-
-      if (mentionMatch) {
-        const beforeMention = textBeforeCursor.slice(0, mentionMatch.index);
-        const newContent = `${beforeMention}@${name} ${textAfterCursor}`;
-        setContent(newContent);
-      }
-
-      setShowSuggestions(false);
-      textareaRef.current?.focus();
-    },
-    [content]
-  );
+  // Troca o "@texto" digitado pelo nome completo escolhido.
+  const pickMention = (fullName: string) => {
+    const cursor = textareaRef.current?.selectionStart ?? content.length;
+    const before = content.slice(0, cursor).replace(/@([^@\n]*)$/, `@${fullName} `);
+    const after = content.slice(cursor);
+    setContent(before + after);
+    setMentionQuery(null);
+    textareaRef.current?.focus();
+  };
 
   const handleSubmit = () => {
-    if (!content.trim()) return;
+    const text = content.trim();
+    if (!text) return;
 
-    // Extract mentions from content
-    const mentionRegex = /@(\S+)/g;
-    const mentionNames: string[] = [];
-    let match;
-    while ((match = mentionRegex.exec(content)) !== null) {
-      mentionNames.push(match[1].toLowerCase());
-    }
-
-    const mentionIds = (profiles || [])
-      .filter((p) =>
-        mentionNames.some(
-          (name) => p.full_name?.toLowerCase().split(" ").some((part) => name.includes(part.toLowerCase()))
-        )
-      )
-      .map((p) => p.id);
+    // Só vira menção quem aparece com o nome completo no texto.
+    const mentionIds = findMentionedIds(text, profiles);
 
     createComment.mutate(
-      { taskId, content: content.trim(), mentions: mentionIds },
-      { onSuccess: () => setContent("") }
+      { taskId, taskTitle, content: text, mentions: mentionIds },
+      { onSuccess: () => { setContent(""); setMentionQuery(null); } }
     );
   };
 
-  const filteredProfiles = (profiles || []).filter((p) =>
-    mentionQuery
-      ? p.full_name?.toLowerCase().includes(mentionQuery)
-      : true
-  );
+  const mentionedNames = (ids: string[]) =>
+    profiles.filter((p) => ids.includes(p.id) && p.full_name).map((p) => p.full_name as string);
 
   return (
     <div className="space-y-3 border-t border-border pt-4">
@@ -98,7 +76,6 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
         )}
       </h4>
 
-      {/* Comments list */}
       {isLoading ? (
         <div className="flex justify-center py-4">
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -127,7 +104,15 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground mt-0.5 whitespace-pre-wrap break-words">
-                  {renderContentWithMentions(comment.content)}
+                  {splitMentions(comment.content, mentionedNames(comment.mentions)).map((part, i) =>
+                    part.mention ? (
+                      <span key={i} className="rounded bg-primary/10 px-1 font-medium text-primary">
+                        {part.text}
+                      </span>
+                    ) : (
+                      <span key={i}>{part.text}</span>
+                    )
+                  )}
                 </p>
               </div>
             </div>
@@ -138,19 +123,25 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
         </div>
       )}
 
-      {/* Input */}
       <div className="relative">
         <Textarea
           ref={textareaRef}
           value={content}
-          onChange={(e) => handleInputChange(e.target.value)}
+          onChange={(e) => onContentChange(e.target.value)}
           onKeyDown={(e) => {
+            // Com a lista de pessoas aberta, Enter escolhe a primeira sugestão.
+            if (suggestions.length > 0 && e.key === "Enter") {
+              e.preventDefault();
+              pickMention(suggestions[0].full_name!);
+              return;
+            }
+            if (e.key === "Escape") setMentionQuery(null);
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               handleSubmit();
             }
           }}
-          placeholder="Escreva um comentário... Use @ para mencionar"
+          placeholder="Escreva um comentário... Digite @ para marcar alguém"
           rows={2}
           className="bg-secondary border-border pr-12 text-sm resize-none"
         />
@@ -167,39 +158,27 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
           )}
         </Button>
 
-        {/* Mention suggestions */}
-        {showSuggestions && filteredProfiles.length > 0 && (
-          <div className="absolute bottom-full mb-1 left-0 w-full rounded-lg border border-border bg-popover shadow-lg z-50 max-h-32 overflow-y-auto">
-            {filteredProfiles.map((p) => (
+        {suggestions.length > 0 && (
+          <div className="absolute bottom-full mb-1 left-0 w-full rounded-lg border border-border bg-popover shadow-lg z-50 max-h-40 overflow-y-auto">
+            {suggestions.map((p) => (
               <button
                 key={p.id}
+                type="button"
                 className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left transition-colors"
-                onClick={() => insertMention(p.id, p.full_name || "user")}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => pickMention(p.full_name!)}
               >
                 <Avatar className="h-5 w-5">
                   <AvatarFallback className="bg-primary/20 text-primary text-[8px]">
                     {getInitials(p.full_name)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-foreground">{p.full_name || "Sem nome"}</span>
+                <span className="text-foreground">{p.full_name}</span>
               </button>
             ))}
           </div>
         )}
       </div>
     </div>
-  );
-}
-
-function renderContentWithMentions(content: string) {
-  const parts = content.split(/(@\S+)/g);
-  return parts.map((part, i) =>
-    part.startsWith("@") ? (
-      <span key={i} className="text-primary font-medium">
-        {part}
-      </span>
-    ) : (
-      part
-    )
   );
 }
