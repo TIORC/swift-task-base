@@ -57,6 +57,13 @@
       "when": 1791288005860,
       "tag": "0007_count_automation_subtasks_in_stats",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791909532566,
+      "tag": "0008_kanban_independente",
+      "breakpoints": true
     }
   ]
 }
