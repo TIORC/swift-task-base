@@ -118,7 +118,8 @@ export function useKanbanTasks() {
           comments_count: commentsCount[t.id] ?? 0,
           checklist_total: checklistTotal[t.id] ?? 0,
           checklist_done: checklistDone[t.id] ?? 0,
-          cover_path: cover(t.id),
+          // Capa enviada do computador tem prioridade sobre as fotos anexadas.
+          cover_path: t.cover_file_path ?? cover(t.id),
         };
       }) as KanbanTask[];
     },

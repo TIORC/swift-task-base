@@ -23,6 +23,7 @@ import { getKanbanFileUrl, useUploadKanbanAttachments } from "@/hooks/useKanbanA
 import { useAddChecklistItems } from "@/hooks/useKanbanChecklist";
 import { KanbanAttachments } from "@/components/KanbanAttachments";
 import { KanbanChecklist, PendingChecklistItem } from "@/components/KanbanChecklist";
+import { KanbanCoverPicker } from "@/components/KanbanCoverPicker";
 import { labelFor } from "@/lib/kanban-labels";
 import { Trash2 } from "lucide-react";
 import { format } from "date-fns";
@@ -195,9 +196,7 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={`${task ? "max-w-5xl" : "max-w-lg"} max-h-[90vh] overflow-y-auto overflow-x-hidden p-0`}>
-        {task?.cover_path && (
-          <img src={getKanbanFileUrl(task.cover_path)} alt="" className="block h-44 w-full object-cover sm:h-52" />
-        )}
+        {task && <KanbanCoverPicker task={task} readOnly={readOnly} />}
         <div className="space-y-4 p-6">
         <DialogHeader><DialogTitle>{task ? "Tarefa do Kanban" : "Nova tarefa do Kanban"}</DialogTitle></DialogHeader>
         <div className={task ? "grid gap-6 md:grid-cols-[1fr_300px]" : ""}>
