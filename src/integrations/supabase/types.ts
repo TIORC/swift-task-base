@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.4"
   }
   public: {
     Tables: {
@@ -732,6 +732,24 @@ export type Database = {
           position_y?: number
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      gamification_stats_cache: {
+        Row: {
+          computed_at: string
+          data: Json
+          id: number
+        }
+        Insert: {
+          computed_at: string
+          data: Json
+          id?: number
+        }
+        Update: {
+          computed_at?: string
+          data?: Json
+          id?: number
         }
         Relationships: []
       }
@@ -3168,6 +3186,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _gamification_stats_compute: {
+        Args: never
+        Returns: {
+          automations_done: number
+          avatar_url: string
+          chamados_done: number
+          full_name: string
+          ledger_xp: number
+          medal_months: Json
+          medals_month: number
+          medals_year: number
+          seed_xp: number
+          tasks_done: number
+          total_xp: number
+          user_id: string
+        }[]
+      }
       award_xp: {
         Args: { _action: string; _task_id: string; _user_id: string }
         Returns: undefined
@@ -3261,17 +3296,14 @@ export type Database = {
         }
         Returns: undefined
       }
-      save_entry_batch: {
-        Args: { _rows: Json }
-        Returns: Json
-      }
-      save_exit_batch: {
-        Args: { _rows: Json }
-        Returns: Json
-      }
-      save_asset_batch: {
-        Args: { _rows: Json }
-        Returns: Json
+      save_entry_batch: { Args: { _rows: Json }; Returns: Json }
+      save_exit_batch: { Args: { _rows: Json }; Returns: Json }
+      task_time_totals: {
+        Args: never
+        Returns: {
+          task_id: string
+          total_minutes: number
+        }[]
       }
       user_client_ids: { Args: { _user_id: string }; Returns: string[] }
       user_sector_codes: { Args: { _user_id: string }; Returns: string[] }
