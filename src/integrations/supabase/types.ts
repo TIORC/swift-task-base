@@ -1288,69 +1288,25 @@ export type Database = {
         }
         Relationships: []
       }
-      task_checklist_items: {
+      kanban_task_assignees: {
         Row: {
-          content: string
           created_at: string
-          done: boolean
-          id: string
-          position: number
           task_id: string
+          user_id: string
         }
         Insert: {
-          content: string
           created_at?: string
-          done?: boolean
-          id?: string
-          position?: number
           task_id: string
+          user_id: string
         }
         Update: {
-          content?: string
           created_at?: string
-          done?: boolean
-          id?: string
-          position?: number
           task_id?: string
+          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "task_checklist_items_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      kanban_task_checklist_items: {
-        Row: {
-          content: string
-          created_at: string
-          done: boolean
-          id: string
-          position: number
-          task_id: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          done?: boolean
-          id?: string
-          position?: number
-          task_id: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          done?: boolean
-          id?: string
-          position?: number
-          task_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "kanban_task_checklist_items_task_id_fkey"
+            foreignKeyName: "kanban_task_assignees_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "kanban_tasks"
@@ -1402,6 +1358,41 @@ export type Database = {
           },
         ]
       }
+      kanban_task_checklist_items: {
+        Row: {
+          content: string
+          created_at: string
+          done: boolean
+          id: string
+          position: number
+          task_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          position?: number
+          task_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          position?: number
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kanban_task_checklist_items_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "kanban_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kanban_task_comments: {
         Row: {
           content: string
@@ -1430,32 +1421,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "kanban_task_comments_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "kanban_tasks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      kanban_task_assignees: {
-        Row: {
-          created_at: string
-          task_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          task_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          task_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "kanban_task_assignees_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "kanban_tasks"
@@ -2835,6 +2800,41 @@ export type Database = {
           },
         ]
       }
+      task_checklist_items: {
+        Row: {
+          content: string
+          created_at: string
+          done: boolean
+          id: string
+          position: number
+          task_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          position?: number
+          task_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          position?: number
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_checklist_items_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_dependencies: {
         Row: {
           created_at: string
@@ -3503,6 +3503,11 @@ export type Database = {
       is_chat_participant: {
         Args: { _conv: string; _user: string }
         Returns: boolean
+      }
+      kanban_can_edit: { Args: { _task_id: string }; Returns: boolean }
+      kanban_set_assignees: {
+        Args: { _task_id: string; _user_ids: string[] }
+        Returns: undefined
       }
       rename_automation: {
         Args: { _automation_id: string; _new_title: string }
