@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { useNotifications, useMarkAsRead, useMarkAllAsRead, Notification } from "@/hooks/useNotifications";
 import { useTasks, Task } from "@/hooks/useTasks";
 import { useUnreadCount } from "@/hooks/useNotifications";
@@ -27,16 +29,24 @@ export function NotificationBell() {
   const unreadCount = useUnreadCount();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handleClick = (n: Notification) => {
     if (!n.read) markAsRead.mutate(n.id);
+    if (n.link) {
+      setOpen(false);
+      navigate(n.link);
+      return;
+    }
     if (n.task_id && tasks) {
       const task = tasks.find((t) => t.id === n.task_id);
       if (task) {
         setOpen(false);
         setSelectedTask(task);
+        return;
       }
     }
+    toast.info("Não encontramos a tela desta menção.");
   };
 
   return (
@@ -46,7 +56,7 @@ export function NotificationBell() {
           <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-foreground transition-colors">
             <Bell className="h-4.5 w-4.5" />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground animate-pulse">
+              <span className="absolute -top-1.5 -right-1.5 z-10 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-bold leading-none text-destructive-foreground shadow-md ring-2 ring-background animate-pulse">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}

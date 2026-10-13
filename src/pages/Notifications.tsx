@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { useNotifications, useMarkAsRead, useMarkAllAsRead, Notification } from "@/hooks/useNotifications";
 import { useTasks, Task } from "@/hooks/useTasks";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
@@ -18,6 +20,7 @@ const typeConfig: Record<string, { icon: typeof AtSign; label: string; className
 const Notifications = () => {
   const { data: notifications, isLoading } = useNotifications();
   const { data: tasks } = useTasks();
+  const navigate = useNavigate();
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -26,10 +29,18 @@ const Notifications = () => {
 
   const handleNotificationClick = (notification: Notification) => {
     if (!notification.read) markAsRead.mutate(notification.id);
+    if (notification.link) {
+      navigate(notification.link);
+      return;
+    }
     if (notification.task_id && tasks) {
       const task = tasks.find((t) => t.id === notification.task_id);
-      if (task) setSelectedTask(task);
+      if (task) {
+        setSelectedTask(task);
+        return;
+      }
     }
+    toast.info("Não encontramos a tela desta menção.");
   };
 
   if (isLoading) {

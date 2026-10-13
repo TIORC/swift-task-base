@@ -12,6 +12,7 @@ import {
   validateKanbanFiles,
 } from "@/hooks/useKanbanAttachments";
 import { toast } from "sonner";
+import { ATTACHMENT_ACCEPT, extensionOf } from "@/lib/attachment-types";
 
 interface Props {
   taskId: string | null;
@@ -67,7 +68,7 @@ export function KanbanAttachments({ taskId, readOnly, pendingFiles, onPendingCha
         ref={inputRef}
         type="file"
         className="hidden"
-        accept="image/*,.pdf,.docx,.xlsx"
+        accept={ATTACHMENT_ACCEPT}
         multiple
         onChange={handleFiles}
       />
@@ -145,8 +146,9 @@ export function KanbanAttachments({ taskId, readOnly, pendingFiles, onPendingCha
                     <img src={url} alt={att.file_name} className="h-24 w-full object-cover" loading="lazy" />
                   </a>
                 ) : (
-                  <a href={url} target="_blank" rel="noopener noreferrer" className="flex h-24 items-center justify-center">
+                  <a href={url} target="_blank" rel="noopener noreferrer" className="flex h-24 flex-col items-center justify-center gap-1">
                     <FileText className="h-8 w-8 text-muted-foreground" />
+                    <span className="text-[10px] font-semibold uppercase text-muted-foreground">{extensionOf(att.file_name) || "arquivo"}</span>
                   </a>
                 )}
                 <div className="flex items-center gap-1 p-1.5">

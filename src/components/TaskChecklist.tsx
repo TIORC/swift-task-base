@@ -46,10 +46,10 @@ export function TaskChecklist({ taskId, readOnly }: TaskChecklistProps) {
         {items.length > 0 && <span className="text-[11px] text-muted-foreground">{percent}%</span>}
       </div>
 
-      {!isLoading && !complete && (
+      {!isLoading && items.length > 0 && !complete && (
         <p className="flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
           <AlertTriangle className="h-3 w-3" />
-          Obrigatório para concluir: adicione os itens e marque todos.
+          Para concluir a tarefa, marque todos os itens.
         </p>
       )}
 

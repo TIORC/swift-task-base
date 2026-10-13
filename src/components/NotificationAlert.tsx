@@ -1,5 +1,6 @@
 import { useState, useEffect, ReactNode, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import { X, Construction, MessageSquare, AtSign, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,14 @@ const KIND_CONFIG: Record<AlertKind, { icon: typeof Bell; iconBg: string; iconCo
 function AlertCard({ alert, onDismiss }: { alert: AlertItem; onDismiss: (id: string) => void }) {
   const cfg = KIND_CONFIG[alert.kind] || KIND_CONFIG.default;
   const Icon = cfg.icon;
+  const navigate = useNavigate();
+
+  // Clicar no texto do alerta abre a tela da menção (o X e o OK só fecham).
+  const open = () => {
+    if (!alert.href) return;
+    onDismiss(alert.id);
+    navigate(alert.href);
+  };
 
   return (
     <div
@@ -50,7 +59,11 @@ function AlertCard({ alert, onDismiss }: { alert: AlertItem; onDismiss: (id: str
       <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", cfg.iconBg, cfg.iconRing, "ring-1")}>
         <Icon className={cn("h-5 w-5", cfg.iconColor)} />
       </div>
-      <div className="flex-1 min-w-0 py-3 pr-3">
+      <div
+        className={cn("flex-1 min-w-0 py-3 pr-3", alert.href && "cursor-pointer")}
+        onClick={open}
+        title={alert.href ? "Abrir" : undefined}
+      >
         <p className="text-sm font-semibold text-foreground leading-snug">{alert.title}</p>
         <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{alert.description}</p>
         <div className="mt-2.5 flex items-center gap-2">

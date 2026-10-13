@@ -3,21 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Tables } from "@/integrations/supabase/types";
 import { toast } from "sonner";
+import { attachmentMime, ATTACHMENT_FORMATS_LABEL, storageSafeName } from "@/lib/attachment-types";
 
 export type KanbanAttachment = Tables<"kanban_task_attachments">;
 
 // Mesmo bucket de /tarefas: as políticas de storage já existentes cobrem o caminho <user_id>/...
 const BUCKET = "task-attachments";
-
-const ALLOWED_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-];
 
 const MAX_SIZE = 80 * 1024 * 1024; // 80MB
 
@@ -45,8 +36,8 @@ export function useKanbanAttachments(taskId: string | null) {
 
 export function validateKanbanFiles(files: File[]) {
   for (const file of files) {
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      throw new Error(`"${file.name}": use imagem (JPG, PNG, WEBP, GIF), PDF, DOCX ou XLSX.`);
+    if (!attachmentMime(file)) {
+      throw new Error(`"${file.name}": use ${ATTACHMENT_FORMATS_LABEL}.`);
     }
     if (file.size > MAX_SIZE) throw new Error(`"${file.name}" excede o limite de 80MB.`);
   }
@@ -62,7 +53,7 @@ export function useUploadKanbanAttachments() {
       validateKanbanFiles(files);
 
       for (const [i, file] of files.entries()) {
-        const filePath = `${user.id}/kanban/${taskId}/${Date.now()}_${i}_${file.name}`;
+        const filePath = `${user.id}/kanban/${taskId}/${Date.now()}_${i}_${storageSafeName(file.name)}`;
         const { error: uploadError } = await supabase.storage
           .from(BUCKET)
           .upload(filePath, file, { upsert: false });
@@ -74,7 +65,7 @@ export function useUploadKanbanAttachments() {
           file_name: file.name,
           file_path: filePath,
           file_size: file.size,
-          mime_type: file.type,
+          mime_type: attachmentMime(file)!,
         });
         if (error) throw error;
       }
