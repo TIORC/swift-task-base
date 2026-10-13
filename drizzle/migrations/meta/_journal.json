@@ -64,6 +64,13 @@
       "when": 1791909532566,
       "tag": "0008_kanban_independente",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791909559219,
+      "tag": "0009_kanban_update_policy_fix",
+      "breakpoints": true
     }
   ]
 }
