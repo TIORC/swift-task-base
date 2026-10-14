@@ -18,6 +18,9 @@ import { useUserRole } from "@/hooks/useUserRole";
 import type { Task } from "@/hooks/useTasks";
 import { CloseTicketDialog } from "@/components/CloseTicketDialog";
 
+const SUPPORT_PAGE = 1000;
+const TICKETS_PER_PAGE = 100;
+
 const CATEGORY_ICONS: Record<string, typeof Monitor> = {
   "computador": Monitor,
   "sistema": FileText,
@@ -59,6 +62,7 @@ export default function SupportTickets() {
   const [search, setSearch] = useState("");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [closingTicket, setClosingTicket] = useState<Task | null>(null);
+  const [page, setPage] = useState(1);
   const updateTask = useUpdateTask();
   const queryClient = useQueryClient();
   const { data: profiles } = useAssignableProfiles();
@@ -67,13 +71,21 @@ export default function SupportTickets() {
   const { data: tickets, isLoading } = useQuery({
     queryKey: ["support-tickets"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("tasks")
-        .select("*")
-        .like("title", "[Chamado]%")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
+      // Busca em blocos até a última página: o db-max-rows do PostgREST (1000)
+      // cortaria os chamados mais antigos em silêncio.
+      const data: any[] = [];
+      for (let from = 0; ; from += SUPPORT_PAGE) {
+        const { data: page, error } = await supabase
+          .from("tasks")
+          .select("*")
+          .like("title", "[Chamado]%")
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(from, from + SUPPORT_PAGE - 1);
+        if (error) throw error;
+        data.push(...(page ?? []));
+        if (!page || page.length < SUPPORT_PAGE) break;
+      }
 
       // Fetch profiles for assigned users
       const userIds = [...new Set(data.map((t) => t.assigned_to).filter(Boolean))] as string[];
@@ -130,6 +142,10 @@ export default function SupportTickets() {
     }
     return true;
   }) ?? [];
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / TICKETS_PER_PAGE));
+  const currentPage = Math.min(page, totalPages);
+  const pageItems = filtered.slice((currentPage - 1) * TICKETS_PER_PAGE, currentPage * TICKETS_PER_PAGE);
 
   const stats = {
     total: tickets?.length ?? 0,
@@ -210,11 +226,11 @@ export default function SupportTickets() {
           <Input
             placeholder="Buscar por solicitante, máquina..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="pl-9"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
           <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -227,7 +243,7 @@ export default function SupportTickets() {
             <SelectItem value="discarded">Descartado</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+        <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); setPage(1); }}>
           <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Categoria" />
           </SelectTrigger>
@@ -265,7 +281,7 @@ export default function SupportTickets() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((ticket) => {
+                {pageItems.map((ticket) => {
                   const cat = extractCategory(ticket.title);
                   const CatIcon = CATEGORY_ICONS[cat] || Headset;
                   const requester = extractRequester(ticket.description);
@@ -348,6 +364,22 @@ export default function SupportTickets() {
                 })}
               </TableBody>
             </Table>
+          )}
+          {!isLoading && filtered.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t text-sm text-muted-foreground">
+              <span>
+                Mostrando {(currentPage - 1) * TICKETS_PER_PAGE + 1}–{Math.min(currentPage * TICKETS_PER_PAGE, filtered.length)} de {filtered.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setPage(currentPage - 1)} disabled={currentPage <= 1}>
+                  Anterior
+                </Button>
+                <span>Página {currentPage} de {totalPages}</span>
+                <Button variant="outline" size="sm" onClick={() => setPage(currentPage + 1)} disabled={currentPage >= totalPages}>
+                  Próxima
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
