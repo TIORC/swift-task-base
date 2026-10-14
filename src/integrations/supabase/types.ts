@@ -3473,10 +3473,6 @@ export type Database = {
       get_social_assignable_user_ids: { Args: never; Returns: string[] }
       get_support_assignable_user_ids: { Args: never; Returns: string[] }
       get_ti_assignable_user_ids: { Args: never; Returns: string[] }
-      kanban_set_assignees: {
-        Args: { _task_id: string; _user_ids: string[] }
-        Returns: undefined
-      }
       has_global_automation_access: {
         Args: { _user: string }
         Returns: boolean
@@ -3508,6 +3504,7 @@ export type Database = {
         Args: { _conv: string; _user: string }
         Returns: boolean
       }
+      kanban_can_delete: { Args: { _task_id: string }; Returns: boolean }
       kanban_can_edit: { Args: { _task_id: string }; Returns: boolean }
       kanban_set_assignees: {
         Args: { _task_id: string; _user_ids: string[] }
