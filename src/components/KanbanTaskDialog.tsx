@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +14,7 @@ import {
   KANBAN_COLUMNS,
   KanbanStatus,
   KanbanTask,
+  canDeleteKanbanTaskName,
   isKanbanResponsible,
   toColumnStatus,
   useKanbanCreateTask,
@@ -45,6 +47,7 @@ interface Props {
 
 export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "backlog", readOnly }: Props) {
   const { user } = useAuth();
+  const { profile: me } = useProfile();
   const qc = useQueryClient();
   const create = useKanbanCreateTask();
   const update = useKanbanUpdateTask();
@@ -193,6 +196,14 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
 
   const busy = create.isPending || update.isPending;
 
+  // Excluir: criador da tarefa ou corporativos da lista (também no modo somente leitura).
+  const canDelete = !!task && (task.created_by === user?.id || canDeleteKanbanTaskName(me?.full_name));
+  const removeTask = async () => {
+    if (!task || !confirm("Excluir esta tarefa? Esta ação não pode ser desfeita.")) return;
+    await del.mutateAsync(task.id);
+    onOpenChange(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={`${task ? "max-w-5xl" : "max-w-lg"} max-h-[90vh] overflow-y-auto overflow-x-hidden p-0`}>
@@ -244,14 +255,14 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
           </div>
         </fieldset>
 
-        {!readOnly && (
+        {(!readOnly || canDelete) && (
           <div className="flex justify-between gap-2">
-            {task && task.created_by === user?.id ? (
-              <Button variant="ghost" onClick={async () => { await del.mutateAsync(task.id); onOpenChange(false); }}>
+            {canDelete ? (
+              <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={removeTask} disabled={del.isPending}>
                 <Trash2 className="h-4 w-4 mr-1" />Excluir
               </Button>
             ) : <span />}
-            <Button onClick={save} disabled={busy || !title.trim()}>{busy ? "Salvando..." : "Salvar"}</Button>
+            {!readOnly && <Button onClick={save} disabled={busy || !title.trim()}>{busy ? "Salvando..." : "Salvar"}</Button>}
           </div>
         )}
 

@@ -52,6 +52,15 @@ export const firstNameKey = (fullName: string) =>
 export const isKanbanResponsible = (fullName: string | null) =>
   !!fullName && KANBAN_RESPONSIBLE_FIRST_NAMES.includes(firstNameKey(fullName));
 
+// Corporativos que podem excluir qualquer tarefa do Kanban (além do criador). Espelha kanban_can_delete no banco.
+const KANBAN_DELETER_NAMES = ["gabriel anacleto", "sofia nardes", "angel kauan", "welder"];
+
+export const canDeleteKanbanTaskName = (fullName: string | null | undefined) => {
+  if (!fullName) return false;
+  const name = fullName.trim().toLowerCase();
+  return KANBAN_DELETER_NAMES.some((n) => name === n || name.startsWith(n + " "));
+};
+
 export function useKanbanTasks() {
   return useQuery({
     queryKey: ["kanban-tasks"],
