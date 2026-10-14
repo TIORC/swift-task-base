@@ -45,7 +45,7 @@ serve(async (req) => {
       .from("tasks")
       .select("id, title, status, priority, assigned_to, created_at, updated_at")
       .not("status", "in", '("done","discarded")')
-      .eq("is_recurring_template", false)
+      .or("is_recurring_template.is.null,is_recurring_template.eq.false")
       .order("updated_at", { ascending: false })
       .limit(150);
 
@@ -74,8 +74,14 @@ ${taskSummaries.join("\n")}
 
 Responda com insights classificados por tipo.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Desiste depois de 60s para não travar a tela
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60_000);
+    let response: Response;
+    try {
+    response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
+      signal: controller.signal,
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
@@ -145,6 +151,15 @@ Responda com insights classificados por tipo.`;
         tool_choice: { type: "function", function: { name: "provide_insights" } },
       }),
     });
+    } catch (err) {
+      clearTimeout(timeout);
+      console.error("AI timeout/abort:", err);
+      return new Response(JSON.stringify({
+        delayed_tasks: [], priority_suggestions: [], general_insights: [],
+        warning: "A análise de IA demorou demais. Tente novamente mais tarde.",
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
