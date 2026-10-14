@@ -14,6 +14,7 @@ import {
   KANBAN_COLUMNS,
   KanbanStatus,
   KanbanTask,
+  PENDING_KANBAN_PEOPLE,
   canDeleteKanbanTaskName,
   isKanbanResponsible,
   toColumnStatus,
@@ -81,7 +82,7 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
     queryKey: ["kanban-people"],
     queryFn: async () => {
       const { data } = await supabase.from("profiles").select("id, full_name").order("full_name");
-      return (data ?? []).filter((p) => isKanbanResponsible(p.full_name));
+      return [...(data ?? []).filter((p) => isKanbanResponsible(p.full_name)), ...PENDING_KANBAN_PEOPLE];
     },
   });
 
@@ -206,7 +207,7 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`${task ? "max-w-5xl" : "max-w-lg"} max-h-[90vh] overflow-y-auto overflow-x-hidden p-0`}>
+      <DialogContent className={`kanban-scroll ${task ? "max-w-5xl" : "max-w-lg"} max-h-[90vh] overflow-y-auto overflow-x-hidden p-0`}>
         {task && <KanbanCoverPicker task={task} readOnly={readOnly} />}
         <div className="space-y-4 p-6">
         <DialogHeader><DialogTitle>{task ? "Tarefa do Kanban" : "Nova tarefa do Kanban"}</DialogTitle></DialogHeader>
@@ -283,7 +284,7 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
         </div>
 
         {task && (
-          <aside className="space-y-3 md:border-l md:border-border md:pl-6">
+          <aside className="space-y-3 md:-mr-6 md:border-l md:border-border md:pl-6">
             <h4 className="text-sm font-semibold">
               Comentários e atividade
               <span className="ml-1 text-xs font-normal text-muted-foreground">({comments.length}/{MAX_COMMENTS})</span>
@@ -322,10 +323,13 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
                 </ul>
               )}
             </div>
-            <div className="max-h-[60vh] space-y-3 overflow-y-auto">
+            <div className="max-h-[60vh] space-y-3 overflow-y-auto md:max-h-none md:h-[calc(90vh-11rem)]">
               {comments.map((c) => (
                 <div key={c.id} className="flex gap-2">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">
+                  <div
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold"
+                    style={{ backgroundColor: labelFor(nameOf(c.user_id)).bg, color: labelFor(nameOf(c.user_id)).text }}
+                  >
                     {nameOf(c.user_id).split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">

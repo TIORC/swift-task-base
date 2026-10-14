@@ -6,6 +6,7 @@ const PERSON_LABELS: Record<string, { bg: string; text: string }> = {
   welder: { bg: "#61bd4f", text: "#000000" },
   angel: { bg: "#ffab4a", text: "#000000" },
   sofia: { bg: "#ff8ed4", text: "#000000" },
+  icaro: { bg: "#ef4444", text: "#ffffff" },
 };
 const DEFAULT_LABEL = { bg: "#6b7280", text: "#ffffff" };
 
