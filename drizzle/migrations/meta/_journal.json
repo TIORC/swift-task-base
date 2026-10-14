@@ -71,6 +71,13 @@
       "when": 1791909559219,
       "tag": "0009_kanban_update_policy_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791977505075,
+      "tag": "0010_light_query_indexes",
+      "breakpoints": true
     }
   ]
 }
