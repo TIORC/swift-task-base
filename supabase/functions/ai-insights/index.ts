@@ -40,20 +40,23 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
 
-    // Fetch tasks with profiles
+    // Só as 150 tarefas em aberto mais recentes (mantém o pedido à IA pequeno)
     const { data: tasks } = await supabase
       .from("tasks")
       .select("id, title, status, priority, assigned_to, created_at, updated_at")
-      .not("status", "in", '("done","discarded")');
+      .not("status", "in", '("done","discarded")')
+      .eq("is_recurring_template", false)
+      .order("updated_at", { ascending: false })
+      .limit(150);
 
     const { data: profiles } = await supabase.from("profiles").select("id, full_name");
     const profileMap = Object.fromEntries((profiles || []).map((p: any) => [p.id, p.full_name || "Sem nome"]));
 
-    // Fetch time logs
-    const { data: timeLogs } = await supabase.from("time_logs").select("task_id, duration_minutes");
+    // Horas já somadas no servidor
+    const { data: totals } = await supabase.rpc("task_time_totals");
     const timeMap: Record<string, number> = {};
-    (timeLogs || []).forEach((l: any) => {
-      timeMap[l.task_id] = (timeMap[l.task_id] || 0) + l.duration_minutes;
+    (totals || []).forEach((r: any) => {
+      timeMap[r.task_id] = Number(r.total_minutes) || 0;
     });
 
     const now = new Date();
