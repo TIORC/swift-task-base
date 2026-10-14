@@ -52,6 +52,15 @@ export const firstNameKey = (fullName: string) =>
 export const isKanbanResponsible = (fullName: string | null) =>
   !!fullName && KANBAN_RESPONSIBLE_FIRST_NAMES.includes(firstNameKey(fullName));
 
+// Corporativos que podem excluir qualquer tarefa do Kanban (além do criador). Espelha kanban_can_delete no banco.
+const KANBAN_DELETER_NAMES = ["gabriel anacleto", "sofia nardes", "angel kauan", "welder"];
+
+export const canDeleteKanbanTaskName = (fullName: string | null | undefined) => {
+  if (!fullName) return false;
+  const name = fullName.trim().toLowerCase();
+  return KANBAN_DELETER_NAMES.some((n) => name === n || name.startsWith(n + " "));
+};
+
 export function useKanbanTasks() {
   return useQuery({
     queryKey: ["kanban-tasks"],
@@ -135,13 +144,9 @@ function useAfterChange() {
 }
 
 // Troca a lista de responsáveis da tarefa. Lista vazia = sem responsável (aberta para todos).
+// Faz tudo no banco (kanban_set_assignees), com a mesma regra de edição da tarefa.
 async function setKanbanAssignees(taskId: string, assigneeIds: string[]) {
-  const { error: delError } = await supabase.from("kanban_task_assignees").delete().eq("task_id", taskId);
-  if (delError) throw delError;
-  if (assigneeIds.length === 0) return;
-  const { error } = await supabase
-    .from("kanban_task_assignees")
-    .insert(assigneeIds.map((user_id) => ({ task_id: taskId, user_id })));
+  const { error } = await supabase.rpc("kanban_set_assignees", { _task_id: taskId, _user_ids: assigneeIds });
   if (error) throw error;
 }
 

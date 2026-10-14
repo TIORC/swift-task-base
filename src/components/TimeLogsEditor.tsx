@@ -47,7 +47,7 @@ export function TimeLogsEditor({ scope, targetId }: Props) {
         .from(table as any)
         .select("*")
         .eq(fk, targetId)
-        .order("created_at", { ascending: false });
+        .order(scope === "task" ? "started_at" : "created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as Row[];
     },
