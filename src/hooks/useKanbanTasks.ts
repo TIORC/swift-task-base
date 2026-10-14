@@ -52,6 +52,13 @@ export const firstNameKey = (fullName: string) =>
 export const isKanbanResponsible = (fullName: string | null) =>
   !!fullName && KANBAN_RESPONSIBLE_FIRST_NAMES.includes(firstNameKey(fullName));
 
+// Colaboradores que ainda não têm login (sem linha em profiles). Aparecem em Responsáveis
+// com um id fixo. Quando a pessoa entrar no sistema, remova daqui para não duplicar.
+export const PENDING_KANBAN_PEOPLE: KanbanAssignee[] = [
+  { id: "1c4a0000-0000-4000-8000-000000000001", full_name: "Icaro Nadson" },
+];
+const isPendingPerson = (id: string) => PENDING_KANBAN_PEOPLE.some((p) => p.id === id);
+
 // Corporativos que podem excluir qualquer tarefa do Kanban (além do criador). Espelha kanban_can_delete no banco.
 const KANBAN_DELETER_NAMES = ["gabriel anacleto", "sofia nardes", "angel kauan", "welder"];
 
@@ -121,7 +128,9 @@ export function useKanbanTasks() {
         return {
           ...t,
           assignee_ids: assigneeIds,
-          assignees: assigneeIds.map((id) => profilesMap[id] ?? { id, full_name: null }),
+          assignees: assigneeIds.map(
+            (id) => profilesMap[id] ?? PENDING_KANBAN_PEOPLE.find((p) => p.id === id) ?? { id, full_name: null }
+          ),
           total_minutes: 0,
           attachments_count: attachmentsCount[t.id] ?? 0,
           comments_count: commentsCount[t.id] ?? 0,
@@ -188,7 +197,8 @@ export function useKanbanUpdateTask() {
         await setKanbanAssignees(id, nextIds);
 
         if (user) {
-          const added = nextIds.filter((uid) => !oldIds.includes(uid) && uid !== user.id);
+          // Sem login, não há usuário para notificar (notifications aponta para auth.users).
+          const added = nextIds.filter((uid) => !oldIds.includes(uid) && uid !== user.id && !isPendingPerson(uid));
           for (const uid of added) {
             await supabase.from("notifications").insert({
               user_id: uid,
