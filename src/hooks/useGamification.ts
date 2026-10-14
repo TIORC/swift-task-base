@@ -126,7 +126,7 @@ function buildMonthly(raw: any): MonthlyMedal[] {
 export function useGamificationStats() {
   return useQuery({
     queryKey: GAMIFICATION_QUERY_KEY,
-    staleTime: 30_000,
+    staleTime: 120_000,
     queryFn: async (): Promise<GamificationStat[]> => {
       const { data, error } = await (supabase as any).rpc("gamification_stats");
       if (error) throw error;

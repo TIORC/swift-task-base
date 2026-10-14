@@ -1,0 +1,2 @@
+CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON public.notifications (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_unread_mentions ON public.notifications (user_id) WHERE type = 'mention' AND read = false;

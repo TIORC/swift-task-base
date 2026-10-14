@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useNotifications, useMarkAsRead, useMarkAllAsRead, Notification } from "@/hooks/useNotifications";
-import { useTasks, Task } from "@/hooks/useTasks";
+import type { Task } from "@/hooks/useTasks";
+import { supabase } from "@/integrations/supabase/client";
 import { useUnreadCount } from "@/hooks/useNotifications";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,6 @@ const typeConfig: Record<string, { icon: typeof AtSign; label: string; className
 
 export function NotificationBell() {
   const { data: notifications } = useNotifications();
-  const { data: tasks } = useTasks();
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
   const unreadCount = useUnreadCount();
@@ -31,18 +31,25 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
 
-  const handleClick = (n: Notification) => {
+  const handleClick = async (n: Notification) => {
     if (!n.read) markAsRead.mutate(n.id);
     if (n.link) {
       setOpen(false);
       navigate(n.link);
       return;
     }
-    if (n.task_id && tasks) {
-      const task = tasks.find((t) => t.id === n.task_id);
+    if (n.task_id) {
+      // Busca só a tarefa desta notificação, em vez da lista inteira.
+      const { data: task } = await supabase.from("tasks").select("*").eq("id", n.task_id).maybeSingle();
       if (task) {
+        let profiles: Task["profiles"] = null;
+        if (task.assigned_to) {
+          const { data: p } = await supabase
+            .from("profiles").select("full_name, avatar_url").eq("id", task.assigned_to).maybeSingle();
+          profiles = p ?? null;
+        }
         setOpen(false);
-        setSelectedTask(task);
+        setSelectedTask({ ...task, profiles } as Task);
         return;
       }
     }
