@@ -104,9 +104,15 @@ const Tasks = () => {
   const [recurringOnly, setRecurringOnly] = useState(false);
   const [weekdayFilter, setWeekdayFilter] = useState<string>("all");
 
+  // Chamados ("[Chamado] ...") têm página própria e não aparecem em Tarefas
+  const tasksOnly = useMemo(
+    () => filteredTasks.filter((t) => !/^\s*\[Chamado\]/i.test(t.title || "")),
+    [filteredTasks]
+  );
+
   // Apply advanced filters on top of user filter
   const advancedFiltered = useMemo(() => {
-    let result = filteredTasks;
+    let result = tasksOnly;
 
     // Status chip filter
     if (statusChip !== "all") {
@@ -149,18 +155,18 @@ const Tasks = () => {
     }
 
     return result;
-  }, [filteredTasks, statusChip, priorityFilter, dateFrom, dateTo, recurringOnly, weekdayFilter]);
+  }, [tasksOnly, statusChip, priorityFilter, dateFrom, dateTo, recurringOnly, weekdayFilter]);
 
   // Count per status chip
   const chipCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: filteredTasks.length };
+    const counts: Record<string, number> = { all: tasksOnly.length };
     STATUS_CHIPS.forEach(chip => {
       if (chip.key !== "all") {
-        counts[chip.key] = filteredTasks.filter(t => chip.statuses.includes(t.status)).length;
+        counts[chip.key] = tasksOnly.filter(t => chip.statuses.includes(t.status)).length;
       }
     });
     return counts;
-  }, [filteredTasks]);
+  }, [tasksOnly]);
 
   const handleComplete = (task: Task) => {
     if (activeTaskId === task.id && isRunning) stop();
@@ -338,8 +344,10 @@ const Tasks = () => {
             const isMyTask = task.assigned_to === user?.id;
             const isActive = task.status !== "done" && task.status !== "discarded";
             const isTimerOnThis = activeTaskId === task.id && isRunning;
-            const hours = Math.floor((task.total_minutes || 0) / 60);
-            const mins = (task.total_minutes || 0) % 60;
+            // total_minutes pode vir fracionado do banco; arredonda para não mostrar "12.98...m"
+            const totalMin = Math.round(task.total_minutes || 0);
+            const hours = Math.floor(totalMin / 60);
+            const mins = totalMin % 60;
             const recurring = isRecurringTask(task);
             const recDays: string[] = Array.isArray((task as any).recurrence_days) ? (task as any).recurrence_days : [];
             const startTime = (task as any).recurrence_start_time as string | null;
