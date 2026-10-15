@@ -13,7 +13,7 @@ type P = { id: string; full_name: string | null };
 export function useAssignableDevelopers(profiles: P[]) {
   const { user } = useAuth();
   const { profile, roles } = useUserRole();
-  const isManager = profile === "admin" || profile === "gestor";
+  const isManager = profile === "admin" || profile === "gestor" || profile === "lider";
   const isDev = roles.includes("dev");
 
   const { data: devIds = [] } = useQuery({
