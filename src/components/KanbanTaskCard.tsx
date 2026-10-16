@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { KanbanTask } from "@/hooks/useKanbanTasks";
 import { getKanbanFileUrl } from "@/hooks/useKanbanAttachments";
-import { isOverdue } from "@/lib/dates";
+import { isOverdue, parseDueDate } from "@/lib/dates";
 import { labelFor } from "@/lib/kanban-labels";
 import { coverPresetStyle } from "@/lib/kanban-covers";
 
@@ -74,7 +74,7 @@ export function KanbanTaskCard({ task, index, onClick, isDragDisabled, mentionCo
                 {showDue && (
                   <span className={`flex items-center gap-1 ${dueLate ? "font-medium text-destructive" : ""}`}>
                     <Calendar className="h-3 w-3" />
-                    {format(new Date(task.due_date!), "dd MMM", { locale: ptBR })}
+                    {format(parseDueDate(task.due_date!),"dd MMM", { locale: ptBR })}
                   </span>
                 )}
                 {isDone && (
