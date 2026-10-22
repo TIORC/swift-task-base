@@ -28,12 +28,15 @@ import {
   useCanZerarEstoque, useZerarEstoque,
 } from "@/hooks/useInventory";
 import { ItemFormDialog } from "@/components/almoxarifado/ItemFormDialog";
+import { DashboardCharts } from "@/components/almoxarifado/DashboardCharts";
+import { DashboardColaboradores } from "@/components/almoxarifado/DashboardColaboradores";
+import { DashboardSetores } from "@/components/almoxarifado/DashboardSetores";
+import { DashboardPainel } from "@/components/almoxarifado/DashboardPainel";
+import { DashboardPorColaborador } from "@/components/almoxarifado/DashboardPorColaborador";
 import { EntryDialog } from "@/components/almoxarifado/EntryDialog";
 import { EntryGrid } from "@/components/almoxarifado/EntryGrid";
-import { EntryFilters, EMPTY_ENTRY_FILTERS, filterEntries, hasActiveEntryFilters, type EntryFilterState } from "@/components/almoxarifado/EntryFilters";
 import { ExitGrid } from "@/components/almoxarifado/ExitGrid";
 import { AssetGrid } from "@/components/almoxarifado/AssetGrid";
-import { ExitFilters, EMPTY_EXIT_FILTERS, filterExits, hasActiveExitFilters, type ExitFilterState } from "@/components/almoxarifado/ExitFilters";
 import { ExitDialog } from "@/components/almoxarifado/ExitDialog";
 import { StatusChangeDialog } from "@/components/almoxarifado/StatusChangeDialog";
 import { ItemUpgradeDialog } from "@/components/almoxarifado/ItemUpgradeDialog";
@@ -131,12 +134,6 @@ export default function Almoxarifado() {
   const [entryGridOpen, setEntryGridOpen] = useState(false);
   const [outGridOpen, setOutGridOpen] = useState(false);
   const [assetGridOpen, setAssetGridOpen] = useState(false);
-  // Saídas: rascunho digitado e filtro pesquisado (mesmo padrão das entradas).
-  const [exitDraft, setExitDraft] = useState<ExitFilterState>(EMPTY_EXIT_FILTERS);
-  const [exitFilters, setExitFilters] = useState<ExitFilterState>(EMPTY_EXIT_FILTERS);
-  // entryDraft: o que está sendo digitado; entryFilters: o que foi pesquisado (aplicado à tabela).
-  const [entryDraft, setEntryDraft] = useState<EntryFilterState>(EMPTY_ENTRY_FILTERS);
-  const [entryFilters, setEntryFilters] = useState<EntryFilterState>(EMPTY_ENTRY_FILTERS);
   const [lastCreatedItem, setLastCreatedItem] = useState<string | null>(null);
   const [exitDlg, setExitDlg] = useState<{ open: boolean; item?: InventoryItem | null }>({ open: false });
   const [statusDlg, setStatusDlg] = useState<{ open: boolean; item?: InventoryItem | null; mode: "damage" | "discard" }>({ open: false, mode: "damage" });
@@ -166,10 +163,6 @@ export default function Almoxarifado() {
   const collabDept = (id: string | null) => collaborators.find((c) => c.id === id)?.department ?? "—";
   const itemName = (id: string) => items.find((i) => i.id === id)?.name ?? "—";
   const entryMovements = useMemo(() => movements.filter((m) => m.type === "in"), [movements]);
-  const filteredEntries = useMemo(
-    () => filterEntries(entryMovements, entryFilters, itemName),
-    [entryMovements, entryFilters, items],
-  );
   const outMovements = useMemo(() => movements
     .filter((m) => m.type === "out" || m.type === "assign")
     .slice()
@@ -181,13 +174,8 @@ export default function Almoxarifado() {
     .map((m) => alphaInitial(collabName(m.collaborator_id)))
     .filter((letter) => /^[A-Z]$/.test(letter))));
   const filteredOutMovements = useMemo(
-    () => filterExits(
-      outCollabFilter === "all" ? outMovements : outMovements.filter((m) => m.collaborator_id === outCollabFilter),
-      exitFilters,
-      itemName,
-      collabName,
-    ),
-    [outMovements, outCollabFilter, exitFilters, items, collaborators],
+    () => outCollabFilter === "all" ? outMovements : outMovements.filter((m) => m.collaborator_id === outCollabFilter),
+    [outMovements, outCollabFilter],
   );
   const outTotalPages = Math.max(1, Math.ceil(filteredOutMovements.length / outPageSize));
   const outSafePage = Math.min(outPage, outTotalPages);
@@ -254,14 +242,87 @@ export default function Almoxarifado() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex flex-wrap h-auto">
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="in">Entradas</TabsTrigger>
           <TabsTrigger value="out">Saídas</TabsTrigger>
           <TabsTrigger value="assets">Patrimônios</TabsTrigger>
-          <TabsTrigger value="discarded">Descartados</TabsTrigger>
+          <TabsTrigger value="discarded">Controle</TabsTrigger>
           <TabsTrigger value="requests">Solicitações</TabsTrigger>
           <TabsTrigger value="settings">Configurações</TabsTrigger>
           <TabsTrigger value="estoque">Estoque</TabsTrigger>
         </TabsList>
+
+        {/* ---------------- DASHBOARD ---------------- */}
+        <TabsContent value="dashboard" className="space-y-4">
+          <DashboardPainel views={[
+            { id: "resumo", title: "Resumo por departamento", node: <DashboardCharts assets={assets} items={items} /> },
+            { id: "colaboradores", title: "Ativos por colaborador", node: <DashboardColaboradores assets={assets} collaborators={collaborators} /> },
+            { id: "setores", title: "Ativos por setor", node: <DashboardSetores assets={assets} items={items} collaborators={collaborators} categories={categories} /> },
+            { id: "por-colaborador", title: "Patrimônios por colaborador", node: <DashboardPorColaborador assets={assets} items={items} collaborators={collaborators} categories={categories} /> },
+          ]} />
+
+          {/* Oculto por hora: para reativar, remova o "false &&" abaixo */}
+          {false && (
+          <Card className="low-stock-card">
+            <CardHeader><CardTitle className="text-base">Itens abaixo do estoque mínimo</CardTitle></CardHeader>
+            <CardContent className="max-h-[22rem] overflow-y-auto">
+              {restock.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum item abaixo do estoque mínimo.</p> : (
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>Item</TableHead><TableHead>Disponível</TableHead><TableHead>Mínimo</TableHead><TableHead>Comprar</TableHead>
+                    {canManage && <TableHead className="text-right">Ações</TableHead>}
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {restock.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell>{r.item}</TableCell>
+                        <TableCell className={r.disponivel === 0 ? "low-stock-zero" : undefined}>{r.disponivel}</TableCell>
+                        <TableCell>{r.minimo}</TableCell>
+                        <TableCell><Badge variant="outline" className="border-amber-300/50 bg-amber-400/20 text-black font-normal">{r.comprar}</Badge></TableCell>
+                        {canManage && (
+                          <TableCell>
+                            <RowActions
+                              editTitle="Editar item"
+                              onEdit={() => setItemDlg({ open: true, item: items.find((i) => i.id === r.id) })}
+                              deleteTitle="Desativar item"
+                              deleteDescription={`"${r.item}" deixa de aparecer no estoque e nas listas. O histórico é mantido.`}
+                              deleteLabel="Desativar"
+                              pending={deactivate.isPending}
+                              onDelete={() => deactivate.mutateAsync({ id: r.id })}
+                            />
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+          )}
+
+          <Card>
+            <CardHeader><CardTitle className="text-base">Últimas movimentações</CardTitle></CardHeader>
+            <CardContent className="max-h-[13rem] overflow-y-auto">
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Data</TableHead><TableHead>Tipo</TableHead><TableHead>Item</TableHead><TableHead>Qtd</TableHead><TableHead>Motivo</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {movements.slice(0, 10).map((m) => (
+                    <TableRow key={m.id}>
+                      <TableCell className="whitespace-nowrap">{dateFmt(m.created_at)}</TableCell>
+                      <TableCell><Badge variant="outline" className={`font-normal ${MOV_TYPE_CLASS[m.type] ?? ""}`}>{MOV_LABELS[m.type]}</Badge></TableCell>
+                      <TableCell>{itemName(m.item_id)}</TableCell>
+                      <TableCell>{m.quantity}</TableCell>
+                      <TableCell className="max-w-[300px] truncate">{m.reason ?? "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* ---------------- ENTRADAS ---------------- */}
         <TabsContent value="in" className="space-y-3">
@@ -296,18 +357,6 @@ export default function Almoxarifado() {
               </CardContent>
             </Card>
           )}
-          {!(entryGridOpen && canWrite) && (
-            <EntryFilters
-              value={entryDraft}
-              onChange={setEntryDraft}
-              onSearch={() => setEntryFilters(entryDraft)}
-              onClear={() => { setEntryDraft(EMPTY_ENTRY_FILTERS); setEntryFilters(EMPTY_ENTRY_FILTERS); }}
-              canClear={hasActiveEntryFilters(entryDraft) || hasActiveEntryFilters(entryFilters)}
-              locations={locations}
-              shown={filteredEntries.length}
-              total={entryMovements.length}
-            />
-          )}
 
           {entryGridOpen && canWrite ? (
             <EntryGrid
@@ -321,18 +370,17 @@ export default function Almoxarifado() {
               <TableHeader><TableRow>
                 <TableHead>Data</TableHead><TableHead>Item</TableHead><TableHead>Qtd</TableHead>
                 <TableHead>Valor unit.</TableHead><TableHead>Valor total</TableHead>
-                <TableHead>Fornecedor</TableHead><TableHead>Local</TableHead>
+                <TableHead>Local</TableHead>
                     {canManage && <TableHead className="text-right">Ações</TableHead>}
                   </TableRow></TableHeader>
                   <TableBody>
-                    {filteredEntries.map((m) => (
+                    {entryMovements.map((m) => (
                       <TableRow key={m.id}>
                         <TableCell className="whitespace-nowrap">{dateFmt(m.occurred_at ?? m.created_at)}</TableCell>
                         <TableCell>{itemName(m.item_id)}</TableCell>
                         <TableCell>{m.quantity}</TableCell>
                         <TableCell>{currency(m.unit_price ?? 0)}</TableCell>
                         <TableCell>{currency((m.unit_price ?? 0) * m.quantity)}</TableCell>
-                        <TableCell>{m.supplier ?? "—"}</TableCell>
                         <TableCell>{locName(m.to_location_id)}</TableCell>
                         {canManage && (
                           <TableCell>
@@ -349,9 +397,9 @@ export default function Almoxarifado() {
                         )}
                       </TableRow>
                     ))}
-                    {filteredEntries.length === 0 && (
-                      <TableRow><TableCell colSpan={canManage ? 8 : 7} className="text-center text-muted-foreground py-6">
-                        {entryMovements.length === 0 ? "Nenhuma entrada registrada." : "Nenhuma entrada encontrada com esses filtros."}
+                    {entryMovements.length === 0 && (
+                      <TableRow><TableCell colSpan={canManage ? 7 : 6} className="text-center text-muted-foreground py-6">
+                        Nenhuma entrada registrada.
                       </TableCell></TableRow>
                     )}
               </TableBody>
@@ -385,17 +433,6 @@ export default function Almoxarifado() {
             )}
           </div>
 
-          {!(outGridOpen && canWrite) && (
-            <ExitFilters
-              value={exitDraft}
-              onChange={setExitDraft}
-              onSearch={() => { setExitFilters(exitDraft); setOutPage(1); }}
-              onClear={() => { setExitDraft(EMPTY_EXIT_FILTERS); setExitFilters(EMPTY_EXIT_FILTERS); setOutPage(1); }}
-              canClear={hasActiveExitFilters(exitDraft) || hasActiveExitFilters(exitFilters)}
-              shown={filteredOutMovements.length}
-              total={outMovements.length}
-            />
-          )}
 
           {outGridOpen && canWrite ? (
             <ExitGrid
@@ -457,11 +494,9 @@ export default function Almoxarifado() {
                 })}
                 {filteredOutMovements.length === 0 && (
                   <TableRow><TableCell colSpan={canManage ? 9 : 8} className="text-center text-muted-foreground py-6">
-                    {hasActiveExitFilters(exitFilters)
-                      ? "Nenhuma saída encontrada com esses filtros."
-                      : outCollabFilter === "all"
-                        ? "Nenhuma saída registrada."
-                        : `Nenhuma saída registrada para ${collabName(outCollabFilter)}.`}
+                    {outCollabFilter === "all"
+                      ? "Nenhuma saída registrada."
+                      : `Nenhuma saída registrada para ${collabName(outCollabFilter)}.`}
                   </TableCell></TableRow>
                 )}
               </TableBody>
