@@ -42,7 +42,7 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
 
   const [mode, setMode] = useState<"new" | "existing">("new");
   const [form, setForm] = useState({
-    item_id: "", name: "", category_id: "", subcategory: "", brand: "", model: "",
+    item_id: "", name: "", category_id: "", status: "available" as "available" | "in_use", brand: "",
     description: "", location_id: "", quantity: 1, unit_price: 0, min_stock: 2,
     has_patrimony: false, patrimony_number: "", serial_number: "",
     entry_date: isoToBr(today()), entry_time: nowTime(), notes: "",
@@ -54,7 +54,7 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
       setMode("new");
       setPurchased(false);
       setForm({
-        item_id: "", name: "", category_id: "", subcategory: "", brand: "", model: "",
+        item_id: "", name: "", category_id: "", status: "available", brand: "",
         description: "", location_id: "", quantity: 1, unit_price: 0, min_stock: 2,
         has_patrimony: false, patrimony_number: "", serial_number: "",
         entry_date: isoToBr(today()), entry_time: nowTime(), notes: "",
@@ -79,15 +79,15 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
     () => locations.find((l) => l.name.trim().toLowerCase() === ALMOX_LOCATION_NAME),
     [locations],
   );
-  // Itens novos sempre entram no Almoxarifado TI; itens existentes mantêm o local escolhido.
-  const locationId = mode === "new" ? (almoxLocation?.id ?? "") : form.location_id;
+  // Departamento começa no Almoxarifado TI (base), mas pode ser trocado por outro local.
+  const locationId = form.location_id || almoxLocation?.id || "";
 
   const entryDateIso = brToIso(form.entry_date);
   const entryTimeOk = TIME_RE.test(form.entry_time);
 
   const total = form.quantity * form.unit_price;
   const valid = purchased && !!entryDateIso && entryTimeOk && (mode === "new"
-    ? form.name.trim().length > 0 && form.quantity > 0 && !!almoxLocation
+    ? form.name.trim().length > 0 && form.quantity > 0 && !!locationId
     : !!form.item_id && form.quantity > 0);
 
   const submit = async () => {
@@ -96,11 +96,10 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
       item_id: form.item_id || undefined,
       name: form.name,
       category_id: form.category_id || null,
-      subcategory: form.subcategory || null,
       brand: form.brand || null,
-      model: form.model || null,
       description: form.description || null,
       location_id: locationId || null,
+      status: mode === "new" ? form.status : "available",
       quantity: form.quantity,
       unit_price: form.unit_price,
       min_stock: form.min_stock,
@@ -111,7 +110,7 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
       invoice_number: null,
       entry_date: entryDateIso ?? "",
       entry_time: form.entry_time,
-      notes: [PURCHASED_NOTE, form.notes].filter(Boolean).join(" — "),
+      notes: [PURCHASED_NOTE, mode === "existing" ? form.notes : ""].filter(Boolean).join(" — "),
     });
     onOpenChange(false);
     if (res?.itemId) onCreated?.(res.itemId);
@@ -142,10 +141,18 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div><Label>Subcategoria</Label><Input value={form.subcategory} onChange={(e) => setForm({ ...form, subcategory: e.target.value })} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Status</Label>
+                  <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as "available" | "in_use" })}>
+                    <SelectTrigger className="entry-select-trigger"><SelectValue /></SelectTrigger>
+                    <SelectContent className="entry-select-dropdown">
+                      <SelectItem value="in_use">Em uso</SelectItem>
+                      <SelectItem value="available">Disponível</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div><Label>Marca</Label><Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} /></div>
-                <div><Label>Modelo</Label><Input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} /></div>
               </div>
               <div><Label>Descrição</Label><Textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
             </>
@@ -175,32 +182,29 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Local de armazenamento</Label>
-              <Select
-                value={locationId}
-                onValueChange={(v) => setForm({ ...form, location_id: v })}
-                disabled={mode === "new"}
-              >
+              <Label>Departamento</Label>
+              <Select value={locationId} onValueChange={(v) => setForm({ ...form, location_id: v })}>
                 <SelectTrigger className="entry-select-trigger"><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent className="entry-select-dropdown">{locations.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
               </Select>
-              {mode === "new" && !almoxLocation && (
+              {!almoxLocation && (
                 <p className="mt-1 text-xs text-destructive">Local "Almoxarifado TI" não cadastrado. Cadastre-o antes de criar itens.</p>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Data da chegada *</Label>
-                <Input placeholder="dd/mm/aaaa" maxLength={10} value={form.entry_date}
-                  onChange={(e) => setForm({ ...form, entry_date: e.target.value })} />
-              </div>
-              <div>
-                <Label>Hora da chegada *</Label>
-                <Input placeholder="hh:mm" maxLength={5} value={form.entry_time}
-                  onChange={(e) => setForm({ ...form, entry_time: e.target.value })} />
-              </div>
+            <div>
+              <Label>Data da chegada *</Label>
+              <Input placeholder="dd/mm/aaaa" maxLength={10} value={form.entry_date}
+                onChange={(e) => setForm({ ...form, entry_date: e.target.value })} />
             </div>
           </div>
+
+          {mode === "existing" && (
+            <div>
+              <Label>Hora da chegada *</Label>
+              <Input placeholder="hh:mm" maxLength={5} value={form.entry_time}
+                onChange={(e) => setForm({ ...form, entry_time: e.target.value })} />
+            </div>
+          )}
 
           <label className="flex items-start gap-3 rounded-lg border p-3 text-sm">
             <input type="checkbox" className="mt-1" checked={purchased} onChange={(e) => setPurchased(e.target.checked)} />
@@ -224,7 +228,9 @@ export function EntryDialog({ open, onOpenChange, onCreated }: Props) {
             )}
           </div>
 
-          <div><Label>Observações</Label><Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+          {mode === "existing" && (
+            <div><Label>Observações</Label><Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+          )}
         </div>
 
         <DialogFooter>

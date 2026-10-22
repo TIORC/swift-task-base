@@ -784,6 +784,8 @@ export interface EntryPayload {
   model?: string | null;
   description?: string | null;
   location_id?: string | null;
+  /** Situação dos itens recebidos. Sem valor, entra como disponível. */
+  status?: "available" | "in_use";
   quantity: number;
   unit_price: number;
   min_stock?: number | null;
@@ -894,7 +896,7 @@ export function useCreateEntry() {
             patrimony_number: patrimony,
             serial_number: serial,
             value: p.unit_price,
-            status: "available",
+            status: p.status ?? "available",
             location_id: p.location_id || null,
             supplier: p.supplier || null,
             invoice_number: p.invoice_number || null,
@@ -919,7 +921,7 @@ export function useCreateEntry() {
         reason: "Entrada de estoque",
         notes: p.notes || null,
         status_from: null,
-        status_to: "available",
+        status_to: p.status ?? "available",
         performed_by: user.id,
       });
       if (movErr) throw movErr;
@@ -1323,5 +1325,43 @@ export function useRegisterItemUpgrade() {
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Atualização registrada"); },
     onError: (e: any) => toast.error(e.message ?? "Erro ao registrar atualização"),
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Zerar estoque                                                       */
+/* ------------------------------------------------------------------ */
+
+// Mesma lista da função public.zerar_estoque() no banco.
+export const ZERAR_ESTOQUE_EMAILS = [
+  "angel.kauan@orcoma.com.br",
+  "sofia.nardes@orcoma.com.br",
+  "welder@orcoma.com.br",
+  "timaracas@orcoma.com.br",
+];
+
+export function canZerarEstoque(email: string | null | undefined): boolean {
+  return ZERAR_ESTOQUE_EMAILS.includes((email ?? "").trim().toLowerCase());
+}
+
+export function useCanZerarEstoque() {
+  const { user } = useAuth();
+  return canZerarEstoque(user?.email);
+}
+
+/** Zera a quantidade disponível de todos os itens. Cadastros e histórico são mantidos. */
+export function useZerarEstoque() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await (supabase as any).rpc("zerar_estoque");
+      if (error) throw error;
+      return data as number;
+    },
+    onSuccess: (count) => {
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+      toast.success(count > 0 ? `Estoque zerado: ${count} item(ns) atualizado(s)` : "Nenhum item com estoque para zerar");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Não foi possível zerar o estoque"),
   });
 }

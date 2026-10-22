@@ -14,6 +14,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   useInventoryItems, useInventoryAssets, useInventoryMovements, useInventoryRequests,
   useInventoryCategories, useInventoryLocations, useCanWriteInventory, useCanManageInventory,
   useCreateCategory, useCreateLocation, useCreateRequest, useUpdateRequest,
@@ -21,6 +25,7 @@ import {
   useInventoryCollaborators, useInventorySettings, useUpdateInventorySettings, useRecoverDamaged,
   useDeactivateItem, useDeleteMovement, useDeleteAsset, useDeleteRequest,
   useUpdateCategory, useDeleteCategory, useUpdateLocation, useDeleteLocation, useDeleteDepartment,
+  useCanZerarEstoque, useZerarEstoque,
 } from "@/hooks/useInventory";
 import { ItemFormDialog } from "@/components/almoxarifado/ItemFormDialog";
 import { EntryDialog } from "@/components/almoxarifado/EntryDialog";
@@ -113,7 +118,7 @@ export default function Almoxarifado() {
   const delMovement = useDeleteMovement();
   const delAsset = useDeleteAsset();
 
-  const [tab, setTab] = useState("dashboard");
+  const [tab, setTab] = useState("in");
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [collabFilter, setCollabFilter] = useState("all");
@@ -249,224 +254,14 @@ export default function Almoxarifado() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex flex-wrap h-auto">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="items">Itens</TabsTrigger>
           <TabsTrigger value="in">Entradas</TabsTrigger>
           <TabsTrigger value="out">Saídas</TabsTrigger>
           <TabsTrigger value="assets">Patrimônios</TabsTrigger>
-          <TabsTrigger value="damaged">Danificados</TabsTrigger>
           <TabsTrigger value="discarded">Descartados</TabsTrigger>
-          <TabsTrigger value="restock">Reposição</TabsTrigger>
-          <TabsTrigger value="history">Histórico</TabsTrigger>
           <TabsTrigger value="requests">Solicitações</TabsTrigger>
-          <TabsTrigger value="reports">Relatórios</TabsTrigger>
           <TabsTrigger value="settings">Configurações</TabsTrigger>
           <TabsTrigger value="estoque">Estoque</TabsTrigger>
         </TabsList>
-
-        {/* ---------------- DASHBOARD ---------------- */}
-        <TabsContent value="dashboard" className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            <Kpi icon={<Boxes />} label="Itens cadastrados" value={activeItems.length} />
-            <Kpi icon={<DollarSign />} label="Valor total" value={currency(totalValue)} />
-            <Kpi icon={<Wrench />} label="Em uso" value={inUse} />
-            <Kpi icon={<AlertTriangle />} label="Danificados" value={damaged} />
-            <Kpi icon={<Trash2 />} label="Descartados" value={discarded} />
-            <Kpi icon={<ShoppingCart />} label="Alertas de estoque" value={lowStock.length} accent={lowStock.length > 0} />
-          </div>
-
-          <Card className="low-stock-card">
-            <CardHeader><CardTitle className="text-base">Itens abaixo do estoque mínimo</CardTitle></CardHeader>
-            <CardContent className="max-h-[22rem] overflow-y-auto">
-              {restock.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum item abaixo do estoque mínimo.</p> : (
-                <Table>
-                  <TableHeader><TableRow>
-                    <TableHead>Item</TableHead><TableHead>Disponível</TableHead><TableHead>Mínimo</TableHead><TableHead>Comprar</TableHead>
-                    {canManage && <TableHead className="text-right">Ações</TableHead>}
-                  </TableRow></TableHeader>
-                  <TableBody>
-                    {restock.map((r) => (
-                      <TableRow key={r.id}>
-                        <TableCell>{r.item}</TableCell>
-                        <TableCell className={r.disponivel === 0 ? "low-stock-zero" : undefined}>{r.disponivel}</TableCell>
-                        <TableCell>{r.minimo}</TableCell>
-                        <TableCell><Badge variant="outline" className="border-amber-300/50 bg-amber-400/20 text-black font-normal">{r.comprar}</Badge></TableCell>
-                        {canManage && (
-                          <TableCell>
-                            <RowActions
-                              editTitle="Editar item"
-                              onEdit={() => setItemDlg({ open: true, item: items.find((i) => i.id === r.id) })}
-                              deleteTitle="Desativar item"
-                              deleteDescription={`"${r.item}" deixa de aparecer no estoque e nas listas. O histórico é mantido.`}
-                              deleteLabel="Desativar"
-                              pending={deactivate.isPending}
-                              onDelete={() => deactivate.mutateAsync({ id: r.id })}
-                            />
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader><CardTitle className="text-base">Últimas movimentações</CardTitle></CardHeader>
-            <CardContent className="max-h-[13rem] overflow-y-auto">
-              <Table>
-                <TableHeader><TableRow>
-                  <TableHead>Data</TableHead><TableHead>Tipo</TableHead><TableHead>Item</TableHead><TableHead>Qtd</TableHead><TableHead>Motivo</TableHead>
-                </TableRow></TableHeader>
-                <TableBody>
-                  {movements.slice(0, 10).map((m) => (
-                    <TableRow key={m.id}>
-                      <TableCell className="whitespace-nowrap">{dateFmt(m.created_at)}</TableCell>
-                      <TableCell><Badge variant="outline" className={`font-normal ${MOV_TYPE_CLASS[m.type] ?? ""}`}>{MOV_LABELS[m.type]}</Badge></TableCell>
-                      <TableCell>{itemName(m.item_id)}</TableCell>
-                      <TableCell>{m.quantity}</TableCell>
-                      <TableCell className="max-w-[300px] truncate">{m.reason ?? "—"}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ---------------- ITENS ---------------- */}
-        <TabsContent value="items" className="space-y-3">
-          <div className="flex flex-wrap gap-2 items-center">
-            <div className="relative flex-1 min-w-[220px]">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input className="pl-8" placeholder="Buscar item, marca ou modelo..." value={search} onChange={(e) => setSearch(e.target.value)} />
-            </div>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas categorias</SelectItem>
-                {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={collabFilter} onValueChange={setCollabFilter}>
-              <SelectTrigger className="w-[190px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos colaboradores</SelectItem>
-                <SelectItem value="none">Sem responsável</SelectItem>
-                {collaborators.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={deptFilter} onValueChange={setDeptFilter}>
-              <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos setores</SelectItem>
-                {SECTORS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="sm" className="border-white bg-[#050d20] text-white hover:bg-[#0c1d3d] hover:text-white" onClick={() => downloadCsv(filteredItems, "itens.csv")}>
-              <Download className="mr-2 h-4 w-4" /> CSV
-            </Button>
-          </div>
-
-          <p className="text-xs text-muted-foreground">Itens são criados apenas pela tela de Entradas. Use “Atualizar” para registrar uma mudança no item — a atualização fica gravada no histórico.</p>
-          <Card>
-            <CardContent className="p-0">
-              <Table className="min-w-[880px]">
-                <TableHeader><TableRow>
-                  <TableHead>Item</TableHead><TableHead>Categoria</TableHead>
-                  <TableHead>Total</TableHead><TableHead>Disp.</TableHead><TableHead>Em uso</TableHead>
-                  <TableHead>Danif.</TableHead><TableHead>Descart.</TableHead><TableHead>Mín.</TableHead>
-                  <TableHead>Valor unit.</TableHead><TableHead>Valor total</TableHead>
-                  <TableHead>Status</TableHead><TableHead>Responsável</TableHead>
-                  <TableHead>Patrimônio</TableHead><TableHead>Local</TableHead>
-                  <TableHead className="sticky right-0 z-20 w-1 min-w-0 border-l bg-card text-right">Ações</TableHead>
-                </TableRow></TableHeader>
-                <TableBody>
-                  {filteredItems.map((i) => {
-                    const total = i.quantity + i.in_use_quantity + i.damaged_quantity;
-                    return (
-                      <TableRow key={i.id}>
-                        <TableCell className="font-medium">
-                          <span className="flex items-center gap-1.5">
-                            {i.name}
-                            {i.upgrade_count > 0 && (
-                              <Badge
-                                variant="outline"
-                                className="shrink-0 font-normal"
-                                title={`${i.upgrade_count} atualização(ões) registrada(s)`}
-                              >
-                                <Wrench className="mr-1 h-3 w-3" />{i.upgrade_count}
-                              </Badge>
-                            )}
-                          </span>
-                        </TableCell>
-                        <TableCell>{catName(i.category_id)}</TableCell>
-                        <TableCell>{total}</TableCell>
-                        <TableCell>{i.quantity}</TableCell>
-                        <TableCell>{i.in_use_quantity}</TableCell>
-                        <TableCell className={i.damaged_quantity > 0 ? "text-red-200" : ""}>{i.damaged_quantity}</TableCell>
-                        <TableCell>{i.discarded_quantity}</TableCell>
-                        <TableCell>{i.min_stock}</TableCell>
-                        <TableCell>{currency(i.unit_price)}</TableCell>
-                        <TableCell>{currency(total * i.unit_price)}</TableCell>
-                        <TableCell><ItemStatusTags item={i} /></TableCell>
-                        <TableCell>{collabName(i.responsible_collaborator_id)}</TableCell>
-                        <TableCell className="font-mono text-xs">{itemPatrimonies(i.id)}</TableCell>
-                        <TableCell>{locName(i.location_id)}</TableCell>
-                        <TableCell className="sticky right-0 z-10 w-1 min-w-0 border-l bg-card">
-                          <div className="flex flex-wrap justify-end gap-1.5">
-                            <RowActionButton
-                              icon={Package} label="Detalhes" title="Ver detalhes do item"
-                              onClick={() => setDetail(i)}
-                            />
-                            {canWrite && (
-                              <>
-                                <RowActionButton
-                                  icon={Wrench} label="Atualizar" title="Registrar atualização (upgrade) do item"
-                                  onClick={() => setUpgradeDlg({ open: true, item: i })}
-                                />
-                                <RowActionButton
-                                  icon={Send} label="Saída" title="Registrar saída"
-                                  onClick={() => setExitDlg({ open: true, item: i })}
-                                />
-                                <RowActionButton
-                                  icon={AlertTriangle} label="Danificado" title="Marcar como danificado"
-                                  onClick={() => setStatusDlg({ open: true, item: i, mode: "damage" })}
-                                />
-                                <RowActionButton
-                                  icon={Trash2} label="Descartar" title="Descartar item" destructive
-                                  onClick={() => setStatusDlg({ open: true, item: i, mode: "discard" })}
-                                />
-                              </>
-                            )}
-                            {canManage && (
-                              <RowActions
-                                editTitle="Editar item"
-                                onEdit={() => setItemDlg({ open: true, item: i })}
-                                deleteTitle={i.status === "active" ? "Desativar item" : "Reativar item"}
-                                deleteDescription={i.status === "active"
-                                  ? `"${i.name}" deixa de aparecer no estoque e nas listas. O histórico é mantido.`
-                                  : `"${i.name}" volta a aparecer no estoque e nas listas.`}
-                                deleteLabel={i.status === "active" ? "Desativar" : "Reativar"}
-                                pending={deactivate.isPending}
-                                onDelete={() => deactivate.mutateAsync({ id: i.id, reactivate: i.status !== "active" })}
-                              />
-                            )}
-                          </div>
-                        </TableCell>
-
-                      </TableRow>
-                    );
-                  })}
-                  {filteredItems.length === 0 && (
-                    <TableRow><TableCell colSpan={15} className="text-center text-muted-foreground py-6">Nenhum item. Registre uma entrada para começar.</TableCell></TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         {/* ---------------- ENTRADAS ---------------- */}
         <TabsContent value="in" className="space-y-3">
@@ -526,8 +321,7 @@ export default function Almoxarifado() {
               <TableHeader><TableRow>
                 <TableHead>Data</TableHead><TableHead>Item</TableHead><TableHead>Qtd</TableHead>
                 <TableHead>Valor unit.</TableHead><TableHead>Valor total</TableHead>
-<TableHead>Patrimônio</TableHead><TableHead>Fornecedor</TableHead>
-                    <TableHead>Nota fiscal</TableHead><TableHead>Local</TableHead>
+                <TableHead>Fornecedor</TableHead><TableHead>Local</TableHead>
                     {canManage && <TableHead className="text-right">Ações</TableHead>}
                   </TableRow></TableHeader>
                   <TableBody>
@@ -538,9 +332,7 @@ export default function Almoxarifado() {
                         <TableCell>{m.quantity}</TableCell>
                         <TableCell>{currency(m.unit_price ?? 0)}</TableCell>
                         <TableCell>{currency((m.unit_price ?? 0) * m.quantity)}</TableCell>
-                        <TableCell className="font-mono text-xs">{m.patrimony_number || "N/A"}</TableCell>
                         <TableCell>{m.supplier ?? "—"}</TableCell>
-                        <TableCell>{m.invoice_number ?? "—"}</TableCell>
                         <TableCell>{locName(m.to_location_id)}</TableCell>
                         {canManage && (
                           <TableCell>
@@ -558,7 +350,7 @@ export default function Almoxarifado() {
                       </TableRow>
                     ))}
                     {filteredEntries.length === 0 && (
-                      <TableRow><TableCell colSpan={canManage ? 10 : 9} className="text-center text-muted-foreground py-6">
+                      <TableRow><TableCell colSpan={canManage ? 8 : 7} className="text-center text-muted-foreground py-6">
                         {entryMovements.length === 0 ? "Nenhuma entrada registrada." : "Nenhuma entrada encontrada com esses filtros."}
                       </TableCell></TableRow>
                     )}
@@ -716,54 +508,6 @@ export default function Almoxarifado() {
           )}
         </TabsContent>
 
-        {/* DANIFICADOS */}
-        <TabsContent value="damaged" className="space-y-3">
-          <Card><CardContent className="p-0">
-            <Table>
-              <TableHeader><TableRow>
-<TableHead>Item</TableHead><TableHead>Qtd danificada</TableHead><TableHead>Responsável</TableHead>
-            <TableHead>Status</TableHead>
-            {(canWrite || canManage) && <TableHead className="text-right">Ações</TableHead>}
-          </TableRow></TableHeader>
-          <TableBody>
-            {damagedItems.map((i) => (
-              <TableRow key={i.id}>
-                <TableCell className="font-medium">{i.name}</TableCell>
-                <TableCell>{i.damaged_quantity}</TableCell>
-                <TableCell>{collabName(i.responsible_collaborator_id)}</TableCell>
-                <TableCell><StatusTag status="damaged" /></TableCell>
-                {(canWrite || canManage) && (
-                  <TableCell>
-                    <div className="flex justify-end gap-1.5">
-                      {canWrite && (
-                        <>
-                          <Button size="sm" variant="ghost" onClick={() => recover.mutate({ item: i, quantity: 1 })}>Recuperar 1</Button>
-                          <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setStatusDlg({ open: true, item: i, mode: "discard" })}>Descartar</Button>
-                        </>
-                      )}
-                      {canManage && (
-                        <RowActions
-                          editTitle="Editar item"
-                          onEdit={() => setItemDlg({ open: true, item: i })}
-                          deleteTitle="Desativar item"
-                          deleteDescription={`"${i.name}" deixa de aparecer no estoque e nas listas. O histórico é mantido.`}
-                          deleteLabel="Desativar"
-                          pending={deactivate.isPending}
-                          onDelete={() => deactivate.mutateAsync({ id: i.id })}
-                        />
-                      )}
-                    </div>
-                  </TableCell>
-                )}
-              </TableRow>
-            ))}
-            {damagedItems.length === 0 && <TableRow><TableCell colSpan={(canWrite || canManage) ? 5 : 4} className="text-center text-muted-foreground py-6">Nenhum item danificado.</TableCell></TableRow>}
-              </TableBody>
-            </Table>
-          </CardContent></Card>
-          <AssetTable assets={assets.filter((a) => a.status === "damaged")} items={items} locations={locations} collaborators={collaborators} canWrite={canWrite} canManage={canManage} onEdit={(a) => setAssetDlg({ open: true, asset: a })} onDelete={(a) => delAsset.mutate(a.id)} />
-        </TabsContent>
-
         {/* DESCARTADOS */}
         <TabsContent value="discarded" className="space-y-3">
           <Card><CardContent className="p-0">
@@ -812,124 +556,8 @@ export default function Almoxarifado() {
           )}
         </TabsContent>
 
-        {/* REPOSIÇÃO */}
-        <TabsContent value="restock" className="space-y-3">
-          <div className="flex justify-between items-center">
-            <p className="text-sm text-muted-foreground">Sugestão de compra: <b>estoque mínimo − disponível + 1</b></p>
-            <Button variant="outline" size="sm" onClick={() => downloadCsv(restock, "reposicao.csv")}>
-              <Download className="mr-2 h-4 w-4" /> Lista de compras
-            </Button>
-          </div>
-          <Card><CardContent className="p-0">
-            <Table>
-              <TableHeader><TableRow>
-                <TableHead>Item</TableHead><TableHead>Categoria</TableHead><TableHead>Disponível</TableHead>
-                <TableHead>Mínimo</TableHead><TableHead>Comprar</TableHead>
-<TableHead>Valor unitário</TableHead><TableHead>Valor estimado</TableHead><TableHead>Status</TableHead>
-            {canManage && <TableHead className="text-right">Ações</TableHead>}
-            </TableRow></TableHeader>
-            <TableBody>
-              {restock.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="font-medium">{r.item}</TableCell>
-                  <TableCell>{r.categoria}</TableCell>
-                  <TableCell>{r.disponivel}</TableCell>
-                  <TableCell>{r.minimo}</TableCell>
-                  <TableCell><Badge variant="outline" className="font-normal text-black">{r.comprar}</Badge></TableCell>
-                  <TableCell>{currency(r.valor_unitario)}</TableCell>
-                  <TableCell>{currency(r.valor_estimado)}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={r.status === "Crítico"
-                      ? "border-red-300/50 bg-red-400/20 text-black font-normal"
-                      : "border-amber-300/50 bg-amber-400/20 text-black font-normal"}>{r.status}</Badge>
-                  </TableCell>
-                  {canManage && (
-                    <TableCell>
-                      <RowActions
-                        editTitle="Editar item"
-                        onEdit={() => setItemDlg({ open: true, item: items.find((i) => i.id === r.id) })}
-                        deleteTitle="Desativar item"
-                        deleteDescription={`"${r.item}" deixa de aparecer no estoque e nas listas. O histórico é mantido.`}
-                        deleteLabel="Desativar"
-                        pending={deactivate.isPending}
-                        onDelete={() => deactivate.mutateAsync({ id: r.id })}
-                      />
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-              {restock.length === 0 && <TableRow><TableCell colSpan={canManage ? 9 : 8} className="text-center text-muted-foreground py-6">Nada a comprar no momento.</TableCell></TableRow>}
-              </TableBody>
-            </Table>
-          </CardContent></Card>
-        </TabsContent>
-
-        {/* HISTÓRICO */}
-        <TabsContent value="history" className="space-y-3">
-          <div className="flex justify-between items-center">
-            <h2 className="text-sm text-muted-foreground flex items-center gap-2"><History className="h-4 w-4" /> Histórico completo</h2>
-            <Button variant="outline" size="sm" className="border-white bg-[#050d20] text-white hover:bg-[#0c1d3d] hover:text-white" onClick={() => downloadCsv(movements, "historico.csv")}>
-              <Download className="mr-2 h-4 w-4" /> CSV
-            </Button>
-          </div>
-          <Card><CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader><TableRow>
-                <TableHead>Data e hora</TableHead><TableHead>Ação</TableHead><TableHead>Item</TableHead>
-                <TableHead>Qtd</TableHead><TableHead>Patrimônio</TableHead><TableHead>Responsável</TableHead>
-                <TableHead>De</TableHead><TableHead>Para</TableHead><TableHead>Observações</TableHead>
-                {canManage && <TableHead className="text-right">Ações</TableHead>}
-              </TableRow></TableHeader>
-              <TableBody>
-                {movements.map((m) => (
-                  <TableRow key={m.id}>
-                    <TableCell className="whitespace-nowrap">{dateFmt(m.created_at)}</TableCell>
-                    <TableCell><Badge variant="outline" className="font-normal">{MOV_LABELS[m.type]}</Badge></TableCell>
-                    <TableCell>{itemName(m.item_id)}</TableCell>
-                    <TableCell>{m.quantity}</TableCell>
-                    <TableCell className="font-mono text-xs">{m.patrimony_number || "N/A"}</TableCell>
-                    <TableCell>{m.collaborator_id ? collabName(m.collaborator_id) : "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{m.status_from ?? "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{m.status_to ?? "—"}</TableCell>
-                    <TableCell className="max-w-[240px] truncate">{m.notes ?? m.reason ?? "—"}</TableCell>
-                    {canManage && (
-                      <TableCell>
-                        <RowActions
-                          editTitle="Editar movimentação"
-                          onEdit={() => setMovDlg({ open: true, movement: m })}
-                          deleteTitle="Excluir movimentação"
-                          deleteDescription="O estoque é recalculado para desfazer o efeito desta linha."
-                          deleteLabel="Excluir"
-                          pending={delMovement.isPending}
-                          onDelete={() => delMovement.mutateAsync(m.id)}
-                        />
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent></Card>
-        </TabsContent>
-
         {/* SOLICITAÇÕES */}
         <TabsContent value="requests"><RequestsPanel canWrite={canWrite} canManage={canManage} /></TabsContent>
-
-        {/* RELATÓRIOS */}
-        <TabsContent value="reports" className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => downloadCsv(items, "itens.csv")}><Download className="mr-2 h-4 w-4" /> Itens</Button>
-            <Button variant="outline" size="sm" onClick={() => downloadCsv(assets, "patrimonios.csv")}><Download className="mr-2 h-4 w-4" /> Patrimônios</Button>
-            <Button variant="outline" size="sm" onClick={() => downloadCsv(movements, "movimentacoes.csv")}><Download className="mr-2 h-4 w-4" /> Movimentações</Button>
-            <Button variant="outline" size="sm" onClick={() => window.print()}>Imprimir</Button>
-          </div>
-          <div className="grid md:grid-cols-2 gap-3">
-            <Kpi label="Total de movimentações" value={movements.length} icon={<Boxes />} />
-            <Kpi label="Valor imobilizado" value={currency(totalValue)} icon={<DollarSign />} />
-            <Kpi label="Patrimônios cadastrados" value={assets.length} icon={<Package />} />
-            <Kpi label="Colaboradores ativos" value={collaborators.filter((c) => c.active).length} icon={<Boxes />} />
-          </div>
-        </TabsContent>
 
         {/* CONFIGURAÇÕES */}
         <TabsContent value="settings" className="space-y-4">
@@ -1390,6 +1018,8 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, onAddItem, pending 
   const rows = useMemo(() => resumoEstoque(items), [items]);
   const [aberto, setAberto] = useState<Record<string, boolean>>({});
   const total = rows.reduce((acc, r) => acc + r.quantidade, 0);
+  const canZerar = useCanZerarEstoque();
+  const zerar = useZerarEstoque();
 
   return (
     <div className="space-y-3">
@@ -1401,6 +1031,28 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, onAddItem, pending 
         <Button variant="outline" size="sm" className="border-white bg-[#050d20] text-white hover:bg-[#0c1d3d] hover:text-white" onClick={() => downloadCsv(rows.map(({ tipo, quantidade }) => ({ tipo, quantidade })), "estoque.csv")}>
           <Download className="mr-2 h-4 w-4" /> CSV
         </Button>
+        {canZerar && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" className="bg-red-900 text-white hover:bg-red-950" disabled={zerar.isPending}>Zerar Estoque</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Zerar o estoque?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  A quantidade disponível de todos os itens volta para 0. Cadastros, histórico e patrimônios são mantidos,
+                  e as quantidades anteriores ficam guardadas. Novas entradas começam a contar a partir de zero.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction className="bg-red-900 text-white hover:bg-red-950" onClick={() => zerar.mutate()}>
+                  Zerar estoque
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
         {canManage && (
           <Button size="sm" onClick={onAddItem}><Plus className="mr-2 h-4 w-4" /> Adicionar Estoque</Button>
         )}
