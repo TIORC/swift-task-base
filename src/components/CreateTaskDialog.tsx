@@ -4,7 +4,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { CalendarIcon, Loader2, Plus, Repeat } from "lucide-react";
+import { CalendarIcon, Loader2, Plus, Repeat, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -80,6 +80,15 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
   });
 
 
+  const [checklist, setChecklist] = useState<string[]>([]);
+  const [newItem, setNewItem] = useState("");
+  const addItem = () => {
+    const v = newItem.trim();
+    if (!v) return;
+    setChecklist((prev) => [...prev, v]);
+    setNewItem("");
+  };
+
   const WEEK_DAYS = [
     { code: "SEG", label: "SEG", weekend: false },
     { code: "TER", label: "TER", weekend: false },
@@ -149,6 +158,7 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
         recurrence_months: isRecurring && isMonthBased(recurrenceType) ? schedule.months : [],
         recurrence_business_day_direction: schedule.direction,
         recurrence_deadline_days: isRecurring && isMonthBased(recurrenceType) ? schedule.deadlineDays : null,
+        checklist,
       } as any,
 
       {
@@ -161,7 +171,7 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
           setRecurrenceType("none"); setRecurrenceInterval(1); setRecurrenceUntil(undefined);
           setRecurrenceDays([]); setRecurrenceStartTime("07:00"); setOnlyBusinessDays(false);
           setSchedule({ dayOfMonth: null, months: [], direction: "next", deadlineDays: null });
-
+          setChecklist([]); setNewItem("");
         },
       }
     );
@@ -231,6 +241,43 @@ export function CreateTaskDialog({ open, onOpenChange, defaultStatus = "backlog"
                 </PopoverContent>
               </Popover>
             </div>
+          </div>
+
+          {/* Checklist */}
+          <div className="space-y-2">
+            <Label>Checklist (opcional)</Label>
+            {checklist.length > 0 && (
+              <ul className="space-y-1">
+                {checklist.map((item, i) => (
+                  <li key={i} className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2 py-1.5 text-sm">
+                    <span className="flex-1 break-words">{item}</span>
+                    <button
+                      type="button"
+                      onClick={() => setChecklist((prev) => prev.filter((_, j) => j !== i))}
+                      className="text-muted-foreground hover:text-destructive"
+                      aria-label="Remover item"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex gap-2">
+              <Input
+                value={newItem}
+                onChange={(e) => setNewItem(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }}
+                placeholder="Adicionar item e pressionar Enter"
+                className="h-9"
+              />
+              <Button type="button" variant="outline" size="sm" className="h-9" onClick={addItem}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            {isRecurring && (
+              <p className="text-[10px] text-muted-foreground">Cada tarefa gerada pela recorrência recebe este checklist.</p>
+            )}
           </div>
 
           {/* Datas Legal / Meta */}

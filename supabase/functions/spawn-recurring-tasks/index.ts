@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
       spawnedDue = applyStartTime(now, startTime);
     }
 
-    const { error: insErr } = await supabase.from("tasks").insert({
+    const { data: spawnedTask, error: insErr } = await supabase.from("tasks").insert({
       title: t.title,
       description: t.description,
       priority: t.priority,
@@ -205,9 +205,19 @@ Deno.serve(async (req) => {
       recurrence_interval: t.recurrence_interval,
       parent_recurring_task_id: t.id,
       is_recurring_template: false,
-    });
+    }).select("id").single();
 
     if (!insErr) {
+      // Copia o checklist do modelo (itens desmarcados) para a nova tarefa
+      const { data: tplItems } = await supabase
+        .from("task_checklist_items")
+        .select("content, position")
+        .eq("task_id", t.id);
+      if (tplItems?.length && spawnedTask) {
+        await supabase.from("task_checklist_items").insert(
+          tplItems.map((i) => ({ task_id: spawnedTask.id, content: i.content, position: i.position, done: false })),
+        );
+      }
       await supabase.from("tasks").update({ last_spawned_at: now.toISOString() }).eq("id", t.id);
       spawned++;
     }
