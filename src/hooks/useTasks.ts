@@ -121,13 +121,22 @@ export function useCreateTask() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (task: Omit<TablesInsert<"tasks">, "created_by">) => {
+    mutationFn: async (input: Omit<TablesInsert<"tasks">, "created_by"> & { checklist?: string[] }) => {
+      const { checklist, ...task } = input;
       const { data, error } = await supabase
         .from("tasks")
         .insert({ ...task, created_by: user!.id })
         .select()
         .single();
       if (error) throw error;
+
+      const items = (checklist ?? []).map((c) => c.trim()).filter(Boolean);
+      if (items.length) {
+        const { error: clErr } = await supabase
+          .from("task_checklist_items")
+          .insert(items.map((content, position) => ({ task_id: data.id, content, position })));
+        if (clErr) toast.error(`Tarefa criada, mas o checklist falhou: ${clErr.message}`);
+      }
 
       // Log creation event
       await supabase.from("task_events").insert({
