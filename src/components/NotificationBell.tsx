@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { useNotifications, useMarkAsRead, useMarkAllAsRead, Notification } from "@/hooks/useNotifications";
-import { useTasks, Task } from "@/hooks/useTasks";
+import type { Task } from "@/hooks/useTasks";
+import { supabase } from "@/integrations/supabase/client";
 import { useUnreadCount } from "@/hooks/useNotifications";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { Button } from "@/components/ui/button";
@@ -21,22 +24,36 @@ const typeConfig: Record<string, { icon: typeof AtSign; label: string; className
 
 export function NotificationBell() {
   const { data: notifications } = useNotifications();
-  const { data: tasks } = useTasks();
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
   const unreadCount = useUnreadCount();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
-  const handleClick = (n: Notification) => {
+  const handleClick = async (n: Notification) => {
     if (!n.read) markAsRead.mutate(n.id);
-    if (n.task_id && tasks) {
-      const task = tasks.find((t) => t.id === n.task_id);
+    if (n.link) {
+      setOpen(false);
+      navigate(n.link);
+      return;
+    }
+    if (n.task_id) {
+      // Busca só a tarefa desta notificação, em vez da lista inteira.
+      const { data: task } = await supabase.from("tasks").select("*").eq("id", n.task_id).maybeSingle();
       if (task) {
+        let profiles: Task["profiles"] = null;
+        if (task.assigned_to) {
+          const { data: p } = await supabase
+            .from("profiles").select("full_name, avatar_url").eq("id", task.assigned_to).maybeSingle();
+          profiles = p ?? null;
+        }
         setOpen(false);
-        setSelectedTask(task);
+        setSelectedTask({ ...task, profiles } as Task);
+        return;
       }
     }
+    toast.info("Não encontramos a tela desta menção.");
   };
 
   return (
@@ -46,7 +63,7 @@ export function NotificationBell() {
           <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-foreground transition-colors">
             <Bell className="h-4.5 w-4.5" />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground animate-pulse">
+              <span className="absolute -top-1.5 -right-1.5 z-10 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-bold leading-none text-destructive-foreground shadow-md ring-2 ring-background animate-pulse">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}

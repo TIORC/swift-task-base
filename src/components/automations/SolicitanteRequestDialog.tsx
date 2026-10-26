@@ -25,7 +25,7 @@ import { toast } from "sonner";
  * login (Storage só aceita o dono autenticado).
  */
 
-const REQUEST_SECTORS = ["Societário", "Pessoal", "Sucesso do Cliente", "Tecnologia da Informação", "Fiscal", "Contábil", "Qualidade", "RH", "BPO", "Financeiro", "Marketing", "Outro"];
+const REQUEST_SECTORS = ["Societário", "Pessoal", "Sucesso do Cliente", "Tecnologia da Informação", "Fiscal", "Contábil", "Qualidade", "RH", "BPO", "Financeiro", "Marketing", "Diretoria", "Outro"];
 
 export function SolicitanteRequestDialog({
   openOnMount = false,

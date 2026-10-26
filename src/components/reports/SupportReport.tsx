@@ -29,6 +29,7 @@ const tooltipStyle = {
   backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))",
   borderRadius: "12px", color: "hsl(var(--foreground))", fontSize: "12px",
 };
+const tooltipTextStyle = { color: "hsl(var(--foreground))" };
 
 type Period = "week" | "month" | "quarter" | "all";
 
@@ -556,7 +557,7 @@ ${perRequester.map((r, i) => `<tr>
                   <Pie data={reasonCounts} cx="50%" cy="50%" outerRadius={90} dataKey="value" nameKey="name" stroke="none" label={(e) => `${e.name}: ${e.value}`}>
                     {reasonCounts.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip contentStyle={tooltipStyle} />
+                  <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipTextStyle} labelStyle={tooltipTextStyle} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -578,7 +579,7 @@ ${perRequester.map((r, i) => `<tr>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                   <YAxis type="category" dataKey="name" tick={{ fill: "hsl(var(--foreground))", fontSize: 11 }} width={110} />
-                  <Tooltip contentStyle={tooltipStyle} />
+                  <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipTextStyle} labelStyle={tooltipTextStyle} />
                   <Bar dataKey="value" fill="hsl(262,83%,58%)" radius={[0, 6, 6, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -610,7 +611,7 @@ ${perRequester.map((r, i) => `<tr>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis type="number" allowDecimals={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                     <YAxis type="category" dataKey="name" tick={{ fill: "hsl(var(--foreground))", fontSize: 11 }} width={130} />
-                    <Tooltip contentStyle={tooltipStyle} />
+                    <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipTextStyle} labelStyle={tooltipTextStyle} />
                     <Bar dataKey="value" name="Chamados" fill={block.bar} radius={[0, 6, 6, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -638,7 +639,7 @@ ${perRequester.map((r, i) => `<tr>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="name" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                   <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                  <Tooltip contentStyle={tooltipStyle} />
+                  <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipTextStyle} labelStyle={tooltipTextStyle} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar dataKey="value" name="Categoria inicial" fill="hsl(230,80%,60%)" radius={[6, 6, 0, 0]} />
                 </BarChart>

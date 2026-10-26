@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Loader2, CheckCircle2, AlertTriangle, UserCheck } from "lucide-react";
 import { RequestAutomationDialog } from "@/components/automations/RequestAutomationDialog";
 import { useSolicitante } from "@/hooks/useSolicitante";
@@ -20,39 +21,96 @@ type RequestType = "Sistema" | "Automação";
 
 const NO_SECTOR = "__none__";
 
-function SystemsArtwork() {
+// Animações dos desenhos: o traço se desenha quando o card aparece,
+// os pontos pulsam e as linhas tracejadas "correm" em loop.
+const drawIn = (visible: boolean, delay = 0) => ({
+  initial: { pathLength: 0, opacity: 0 },
+  animate: visible ? { pathLength: 1, opacity: 1 } : { pathLength: 0, opacity: 0 },
+  transition: { duration: 1.2, delay, ease: "easeInOut" as const },
+});
+
+const pulseDot = (visible: boolean, delay = 0) => ({
+  initial: { opacity: 0 },
+  animate: visible ? { opacity: [0.2, 1, 0.2] } : { opacity: 0 },
+  transition: { duration: 2.4, delay, repeat: Infinity, ease: "easeInOut" as const },
+});
+
+const flowDash = {
+  initial: { strokeDashoffset: 0 },
+  animate: { strokeDashoffset: -18 },
+  transition: { duration: 1.5, repeat: Infinity, ease: "linear" as const },
+};
+
+function SystemsArtwork({ visible }: { visible: boolean }) {
   return (
     <svg viewBox="0 0 360 220" aria-hidden="true" className="pointer-events-none absolute -right-5 -top-6 h-52 w-80 opacity-[0.22] transition-transform duration-500 group-hover:scale-105">
       <g fill="none" stroke="currentColor" strokeWidth="1.5">
-        <rect x="132" y="54" width="105" height="66" rx="8" />
-        <path d="M148 72h73M148 84h48M148 96h62M184 120v24m-24 0h48" />
-        <rect x="46" y="104" width="48" height="38" rx="6" />
-        <rect x="264" y="103" width="48" height="38" rx="6" />
-        <path d="M94 123h38m105 0h27M70 104V78h62m130 25V78h-25" />
-        <circle cx="70" cy="78" r="4" fill="currentColor" />
-        <circle cx="290" cy="78" r="4" fill="currentColor" />
-        <circle cx="184" cy="164" r="12" />
-        <path d="M184 152v-8m-8 20-8 5m24-5 8 5" />
+        <motion.rect x="132" y="54" width="105" height="66" rx="8" {...drawIn(visible, 0)} />
+        <motion.path d="M148 72h73M148 84h48M148 96h62M184 120v24m-24 0h48" {...drawIn(visible, 0.4)} />
+        <motion.rect x="46" y="104" width="48" height="38" rx="6" {...drawIn(visible, 0.2)} />
+        <motion.rect x="264" y="103" width="48" height="38" rx="6" {...drawIn(visible, 0.2)} />
+        <motion.path d="M94 123h38m105 0h27M70 104V78h62m130 25V78h-25" {...drawIn(visible, 0.6)} />
+        <motion.circle cx="70" cy="78" r="4" fill="currentColor" {...pulseDot(visible, 0)} />
+        <motion.circle cx="290" cy="78" r="4" fill="currentColor" {...pulseDot(visible, 0.8)} />
+        <motion.circle cx="184" cy="164" r="12" {...drawIn(visible, 0.8)} />
+        <motion.path d="M184 152v-8m-8 20-8 5m24-5 8 5" {...drawIn(visible, 1)} />
       </g>
-      <g fill="currentColor"><circle cx="112" cy="123" r="3"/><circle cx="248" cy="123" r="3"/><circle cx="184" cy="40" r="3"/></g>
+      <g fill="currentColor">
+        <motion.circle cx="112" cy="123" r="3" {...pulseDot(visible, 0.4)} />
+        <motion.circle cx="248" cy="123" r="3" {...pulseDot(visible, 1.2)} />
+        <motion.circle cx="184" cy="40" r="3" {...pulseDot(visible, 1.6)} />
+      </g>
     </svg>
   );
 }
 
-function AutomationArtwork() {
+function MaintenanceArtwork({ visible }: { visible: boolean }) {
   return (
     <svg viewBox="0 0 360 220" aria-hidden="true" className="pointer-events-none absolute -right-5 -top-6 h-52 w-80 opacity-[0.22] transition-transform duration-500 group-hover:scale-105">
       <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="46" y="52" width="70" height="38" rx="9" />
-        <rect x="244" y="52" width="70" height="38" rx="9" />
-        <rect x="145" y="145" width="70" height="38" rx="9" />
-        <path d="M116 71h46a18 18 0 0 1 18 18v56m66-74h-46a18 18 0 0 0-18 18v56M180 109v16" />
-        <path d="m173 119 7 7 7-7" />
-        <circle cx="81" cy="71" r="7" /><circle cx="279" cy="71" r="7" />
-        <path d="M81 71h.1M279 71h.1M166 164h28m-14-8v16" />
-        <path d="M48 120h48m-40 10h32m176-10h48m-40 10h32" strokeDasharray="3 6" />
+        <motion.rect x="200" y="40" width="120" height="78" rx="8" {...drawIn(visible, 0)} />
+        <motion.path d="M200 66h120" {...drawIn(visible, 0.3)} />
+        <motion.path d="M216 52h.1M226 52h.1" {...drawIn(visible, 0.5)} />
+        <motion.path d="M240 118v16m40-16v16M226 134h68" {...drawIn(visible, 0.4)} />
+        {/* Engrenagem girando em torno do próprio centro (102, 150) */}
+        <motion.g
+          style={{ transformBox: "view-box", transformOrigin: "102px 150px" }}
+          animate={visible ? { rotate: 360 } : { rotate: 0 }}
+          transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+        >
+          <motion.circle cx="102" cy="150" r="22" {...drawIn(visible, 0.6)} />
+          <motion.circle cx="102" cy="150" r="8" {...drawIn(visible, 0.8)} />
+          <motion.path d="M102 120v-10m0 70v-10m-30-30h-10m70 0h10m-49-21-7-7m63 63 7 7m0-63-7 7m-63 63-7 7" {...drawIn(visible, 0.8)} />
+        </motion.g>
+        <motion.path
+          d="M46 52h44m-44 14h30m-30 14h18"
+          strokeDasharray="3 6"
+          {...flowDash}
+        />
       </g>
-      <g fill="currentColor"><circle cx="180" cy="108" r="4"/><circle cx="127" cy="71" r="3"/><circle cx="233" cy="71" r="3"/></g>
+    </svg>
+  );
+}
+
+function AutomationArtwork({ visible }: { visible: boolean }) {
+  return (
+    <svg viewBox="0 0 360 220" aria-hidden="true" className="pointer-events-none absolute -right-5 -top-6 h-52 w-80 opacity-[0.22] transition-transform duration-500 group-hover:scale-105">
+      <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <motion.rect x="46" y="52" width="70" height="38" rx="9" {...drawIn(visible, 0)} />
+        <motion.rect x="244" y="52" width="70" height="38" rx="9" {...drawIn(visible, 0.2)} />
+        <motion.rect x="145" y="145" width="70" height="38" rx="9" {...drawIn(visible, 0.8)} />
+        <motion.path d="M116 71h46a18 18 0 0 1 18 18v56m66-74h-46a18 18 0 0 0-18 18v56M180 109v16" {...drawIn(visible, 0.4)} />
+        <motion.path d="m173 119 7 7 7-7" {...drawIn(visible, 1)} />
+        <motion.circle cx="81" cy="71" r="7" {...drawIn(visible, 0.1)} />
+        <motion.circle cx="279" cy="71" r="7" {...drawIn(visible, 0.3)} />
+        <motion.path d="M81 71h.1M279 71h.1M166 164h28m-14-8v16" {...drawIn(visible, 1)} />
+        <motion.path d="M48 120h48m-40 10h32m176-10h48m-40 10h32" strokeDasharray="3 6" {...flowDash} />
+      </g>
+      <g fill="currentColor">
+        <motion.circle cx="180" cy="108" r="4" {...pulseDot(visible, 0.5)} />
+        <motion.circle cx="127" cy="71" r="3" {...pulseDot(visible, 1)} />
+        <motion.circle cx="233" cy="71" r="3" {...pulseDot(visible, 1.5)} />
+      </g>
     </svg>
   );
 }
@@ -303,7 +361,7 @@ export default function PublicAutomationRequestPage() {
                   className={`group relative flex min-h-64 items-end overflow-hidden rounded-2xl border border-cyan-300/20 bg-gradient-to-br from-[#122d48] via-[#10263d] to-[#101b30] p-7 text-left shadow-[0_24px_70px_-35px_rgba(34,211,238,0.4)] transition-[opacity,transform,border-color,box-shadow] duration-700 ease-out hover:-translate-y-1 hover:border-cyan-200/50 hover:shadow-[0_30px_80px_-35px_rgba(34,211,238,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${cardsVisible ? "translate-y-0 opacity-100" : "-translate-y-8 opacity-0"}`}
                 >
                   <span role="note" tabIndex={0} onClick={(e) => e.stopPropagation()} title="Sistema é uma ferramenta completa, com telas, menus e funções, que as pessoas abrem e usam. Tem vida própria e alguém interage com ele o tempo todo. Exemplos: Feedz, Excel, WhatsApp e aplicativos de bancos." className="absolute right-4 top-4 z-20 grid h-8 w-8 cursor-help place-items-center rounded-full border border-cyan-200/50 bg-[#0b1c30]/90 text-sm font-bold text-cyan-200 shadow-lg transition after:absolute after:-inset-1 after:rounded-full after:border after:border-dashed after:border-cyan-200/70 after:content-[''] after:motion-safe:animate-[spin_5s_linear_infinite] hover:bg-cyan-400 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">!</span>
-                  <SystemsArtwork />
+                  <SystemsArtwork visible={cardsVisible} />
                   <span className="absolute inset-0 bg-gradient-to-t from-[#07111f]/70 via-transparent to-transparent" />
                   <span className="relative z-10 text-xl font-bold tracking-[0.16em] sm:text-2xl">SISTEMAS</span>
                 </button>
@@ -314,10 +372,19 @@ export default function PublicAutomationRequestPage() {
                   className={`group relative flex min-h-64 items-end overflow-hidden rounded-2xl border border-violet-300/20 bg-gradient-to-br from-[#29234d] via-[#201e40] to-[#111a32] p-7 text-left shadow-[0_24px_70px_-35px_rgba(167,139,250,0.4)] transition-[opacity,transform,border-color,box-shadow] duration-700 ease-out delay-150 hover:-translate-y-1 hover:border-violet-200/50 hover:shadow-[0_30px_80px_-35px_rgba(167,139,250,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 ${cardsVisible ? "translate-x-0 opacity-100" : "translate-x-8 opacity-0"}`}
                 >
                   <span role="note" tabIndex={0} onClick={(e) => e.stopPropagation()} title="Automação é uma tarefa específica que passa a ser feita sozinha, sem a pessoa precisar fazer na mão. Normalmente roda em segundo plano, disparada por um evento ou por um horário, e faz um trabalho repetitivo. Exemplos: Robô do DTE, Demonstrativo de Tributos e Alíquota ISS." className="absolute right-4 top-4 z-20 grid h-8 w-8 cursor-help place-items-center rounded-full border border-violet-200/50 bg-[#17142c]/90 text-sm font-bold text-violet-200 shadow-lg transition after:absolute after:-inset-1 after:rounded-full after:border after:border-dashed after:border-violet-200/70 after:content-[''] after:motion-safe:animate-[spin_5s_linear_infinite] hover:bg-violet-400 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-200">!</span>
-                  <AutomationArtwork />
+                  <AutomationArtwork visible={cardsVisible} />
                   <span className="absolute inset-0 bg-gradient-to-t from-[#0b1020]/75 via-transparent to-transparent" />
                   <span className="relative z-10 max-w-xs text-xl font-bold leading-tight tracking-[0.12em] sm:text-2xl">AUTOMAÇÃO DE PROCESSOS</span>
                 </button>
+              </div>
+              <div className="flex w-full justify-center">
+                <div
+                  className={`group relative flex min-h-64 w-full items-end overflow-hidden rounded-2xl border border-indigo-300/20 bg-gradient-to-br from-[#122d48] via-[#1d2654] to-[#29234d] p-7 text-left shadow-[0_24px_70px_-35px_rgba(129,140,248,0.4)] transition-[opacity,transform] duration-700 ease-out delay-300 sm:w-[calc(50%-0.625rem)] ${cardsVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}`}
+                >
+                  <MaintenanceArtwork visible={cardsVisible} />
+                  <span className="absolute inset-0 bg-gradient-to-t from-[#07111f]/70 via-transparent to-transparent" />
+                  <span className="relative z-10 max-w-xs text-xl font-bold uppercase leading-tight tracking-[0.12em] sm:text-2xl">Manutenção de Sistema Existente</span>
+                </div>
               </div>
               <div className="flex justify-center">
                 <button type="button" onClick={() => navigate("/k7f3q9x2/solicitacoes/acompanhar-minha-solicitacao")} className="cursor-pointer text-sm font-medium text-amber-300 underline-offset-4 transition-colors hover:text-amber-200 hover:underline focus-visible:outline-none focus-visible:underline">

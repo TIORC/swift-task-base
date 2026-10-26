@@ -49,6 +49,7 @@ export function useSmTaskComments(taskId: string | null) {
         mentions.map((uid) => ({
           user_id: uid,
           type: "mention",
+          link: `/social/tarefas?task=${taskId}`,
           message: `Você foi mencionado em um comentário de tarefa (M7)`,
           created_by: user.id,
         }))

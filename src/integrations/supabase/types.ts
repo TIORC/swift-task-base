@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.4"
   }
   public: {
     Tables: {
@@ -735,6 +735,24 @@ export type Database = {
         }
         Relationships: []
       }
+      gamification_stats_cache: {
+        Row: {
+          computed_at: string
+          data: Json
+          id: number
+        }
+        Insert: {
+          computed_at: string
+          data: Json
+          id?: number
+        }
+        Update: {
+          computed_at?: string
+          data?: Json
+          id?: number
+        }
+        Relationships: []
+      }
       hippocampus_notes: {
         Row: {
           content: string
@@ -964,6 +982,7 @@ export type Database = {
           id: string
           ideal_stock: number
           in_use_quantity: number
+          last_upgrade_at: string | null
           location_id: string | null
           min_stock: number
           model: string | null
@@ -978,6 +997,7 @@ export type Database = {
           tracked_individually: boolean
           unit_price: number
           updated_at: string
+          upgrade_count: number
         }
         Insert: {
           brand?: string | null
@@ -990,6 +1010,7 @@ export type Database = {
           id?: string
           ideal_stock?: number
           in_use_quantity?: number
+          last_upgrade_at?: string | null
           location_id?: string | null
           min_stock?: number
           model?: string | null
@@ -1004,6 +1025,7 @@ export type Database = {
           tracked_individually?: boolean
           unit_price?: number
           updated_at?: string
+          upgrade_count?: number
         }
         Update: {
           brand?: string | null
@@ -1016,6 +1038,7 @@ export type Database = {
           id?: string
           ideal_stock?: number
           in_use_quantity?: number
+          last_upgrade_at?: string | null
           location_id?: string | null
           min_stock?: number
           model?: string | null
@@ -1030,6 +1053,7 @@ export type Database = {
           tracked_individually?: boolean
           unit_price?: number
           updated_at?: string
+          upgrade_count?: number
         }
         Relationships: [
           {
@@ -1104,6 +1128,7 @@ export type Database = {
           to_location_id: string | null
           type: string
           unit_price: number
+          upgrade_details: Json | null
         }
         Insert: {
           asset_id?: string | null
@@ -1129,6 +1154,7 @@ export type Database = {
           to_location_id?: string | null
           type: string
           unit_price?: number
+          upgrade_details?: Json | null
         }
         Update: {
           asset_id?: string | null
@@ -1154,6 +1180,7 @@ export type Database = {
           to_location_id?: string | null
           type?: string
           unit_price?: number
+          upgrade_details?: Json | null
         }
         Relationships: [
           {
@@ -1261,11 +1288,197 @@ export type Database = {
         }
         Relationships: []
       }
+      kanban_task_assignees: {
+        Row: {
+          created_at: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kanban_task_assignees_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "kanban_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kanban_task_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          is_cover: boolean
+          mime_type: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number
+          id?: string
+          is_cover?: boolean
+          mime_type: string
+          task_id: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          is_cover?: boolean
+          mime_type?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kanban_task_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "kanban_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kanban_task_checklist_items: {
+        Row: {
+          content: string
+          created_at: string
+          done: boolean
+          id: string
+          position: number
+          task_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          position?: number
+          task_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          position?: number
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kanban_task_checklist_items_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "kanban_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kanban_task_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          mentions: string[]
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          mentions?: string[]
+          task_id: string
+          user_id?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          mentions?: string[]
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kanban_task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "kanban_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kanban_tasks: {
+        Row: {
+          completed_at: string | null
+          cover_file_path: string | null
+          cover_preset: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: Database["public"]["Enums"]["task_priority"]
+          status: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          cover_file_path?: string | null
+          cover_preset?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["task_priority"]
+          status?: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          cover_file_path?: string | null
+          cover_preset?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["task_priority"]
+          status?: Database["public"]["Enums"]["task_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
           created_by: string | null
           id: string
+          link: string | null
           message: string
           read: boolean
           task_id: string | null
@@ -1276,6 +1489,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          link?: string | null
           message: string
           read?: boolean
           task_id?: string | null
@@ -1286,6 +1500,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          link?: string | null
           message?: string
           read?: boolean
           task_id?: string | null
@@ -2585,6 +2800,41 @@ export type Database = {
           },
         ]
       }
+      task_checklist_items: {
+        Row: {
+          content: string
+          created_at: string
+          done: boolean
+          id: string
+          position: number
+          task_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          position?: number
+          task_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          position?: number
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_checklist_items_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_dependencies: {
         Row: {
           created_at: string
@@ -3159,6 +3409,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _gamification_stats_compute: {
+        Args: never
+        Returns: {
+          automations_done: number
+          avatar_url: string
+          chamados_done: number
+          full_name: string
+          ledger_xp: number
+          medal_months: Json
+          medals_month: number
+          medals_year: number
+          seed_xp: number
+          tasks_done: number
+          total_xp: number
+          user_id: string
+        }[]
+      }
       award_xp: {
         Args: { _action: string; _task_id: string; _user_id: string }
         Returns: undefined
@@ -3237,6 +3504,12 @@ export type Database = {
         Args: { _conv: string; _user: string }
         Returns: boolean
       }
+      kanban_can_delete: { Args: { _task_id: string }; Returns: boolean }
+      kanban_can_edit: { Args: { _task_id: string }; Returns: boolean }
+      kanban_set_assignees: {
+        Args: { _task_id: string; _user_ids: string[] }
+        Returns: undefined
+      }
       rename_automation: {
         Args: { _automation_id: string; _new_title: string }
         Returns: Json
@@ -3252,17 +3525,15 @@ export type Database = {
         }
         Returns: undefined
       }
-      save_entry_batch: {
-        Args: { _rows: Json }
-        Returns: Json
-      }
-      save_exit_batch: {
-        Args: { _rows: Json }
-        Returns: Json
-      }
-      save_asset_batch: {
-        Args: { _rows: Json }
-        Returns: Json
+      save_entry_batch: { Args: { _rows: Json }; Returns: Json }
+      save_exit_batch: { Args: { _rows: Json }; Returns: Json }
+      save_asset_batch: { Args: { _rows: Json }; Returns: Json }
+      task_time_totals: {
+        Args: never
+        Returns: {
+          task_id: string
+          total_minutes: number
+        }[]
       }
       user_client_ids: { Args: { _user_id: string }; Returns: string[] }
       user_sector_codes: { Args: { _user_id: string }; Returns: string[] }

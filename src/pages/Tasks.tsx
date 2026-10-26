@@ -1,5 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTasks, useDeleteTask, useUpdateTask, Task, COLUMNS } from "@/hooks/useTasks";
+import { useMarkTaskMentionsRead, useUnreadMentionsByTask } from "@/hooks/useNotifications";
 import { useTaskFilter } from "@/hooks/useTaskFilter";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useGlobalTimer } from "@/hooks/useGlobalTimer";
@@ -8,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { TaskFilterSelect } from "@/components/TaskFilterSelect";
+import { TaskDueDate } from "@/components/TaskDueDate";
 import RecurringTasksAdmin from "@/pages/RecurringTasksAdmin";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/PageHeader";
@@ -70,6 +73,28 @@ const Tasks = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [recurringOpen, setRecurringOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Abre a tarefa indicada em "?task=<id>" (vindo de uma notificação de menção).
+  useEffect(() => {
+    const id = searchParams.get("task");
+    if (!id || !tasks) return;
+    const found = tasks.find((t) => t.id === id);
+    if (found) setSelectedTask(found);
+  }, [searchParams, tasks]);
+
+  const closeTask = () => {
+    setSelectedTask(null);
+    if (searchParams.has("task")) setSearchParams({}, { replace: true });
+  };
+
+  // Menções não lidas por tarefa; ao abrir a tarefa, elas viram lidas.
+  const { data: mentionCounts = {} } = useUnreadMentionsByTask();
+  const markMentionsRead = useMarkTaskMentionsRead().mutate;
+  const openTaskId = selectedTask?.id;
+  useEffect(() => {
+    if (openTaskId) markMentionsRead(openTaskId);
+  }, [openTaskId, markMentionsRead]);
 
   // Advanced filters
   const [statusChip, setStatusChip] = useState<StatusChip>("all");
@@ -79,9 +104,15 @@ const Tasks = () => {
   const [recurringOnly, setRecurringOnly] = useState(false);
   const [weekdayFilter, setWeekdayFilter] = useState<string>("all");
 
+  // Chamados ("[Chamado] ...") têm página própria e não aparecem em Tarefas
+  const tasksOnly = useMemo(
+    () => filteredTasks.filter((t) => !/^\s*\[Chamado\]/i.test(t.title || "")),
+    [filteredTasks]
+  );
+
   // Apply advanced filters on top of user filter
   const advancedFiltered = useMemo(() => {
-    let result = filteredTasks;
+    let result = tasksOnly;
 
     // Status chip filter
     if (statusChip !== "all") {
@@ -124,18 +155,18 @@ const Tasks = () => {
     }
 
     return result;
-  }, [filteredTasks, statusChip, priorityFilter, dateFrom, dateTo, recurringOnly, weekdayFilter]);
+  }, [tasksOnly, statusChip, priorityFilter, dateFrom, dateTo, recurringOnly, weekdayFilter]);
 
   // Count per status chip
   const chipCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: filteredTasks.length };
+    const counts: Record<string, number> = { all: tasksOnly.length };
     STATUS_CHIPS.forEach(chip => {
       if (chip.key !== "all") {
-        counts[chip.key] = filteredTasks.filter(t => chip.statuses.includes(t.status)).length;
+        counts[chip.key] = tasksOnly.filter(t => chip.statuses.includes(t.status)).length;
       }
     });
     return counts;
-  }, [filteredTasks]);
+  }, [tasksOnly]);
 
   const handleComplete = (task: Task) => {
     if (activeTaskId === task.id && isRunning) stop();
@@ -313,8 +344,10 @@ const Tasks = () => {
             const isMyTask = task.assigned_to === user?.id;
             const isActive = task.status !== "done" && task.status !== "discarded";
             const isTimerOnThis = activeTaskId === task.id && isRunning;
-            const hours = Math.floor((task.total_minutes || 0) / 60);
-            const mins = (task.total_minutes || 0) % 60;
+            // total_minutes pode vir fracionado do banco; arredonda para não mostrar "12.98...m"
+            const totalMin = Math.round(task.total_minutes || 0);
+            const hours = Math.floor(totalMin / 60);
+            const mins = totalMin % 60;
             const recurring = isRecurringTask(task);
             const recDays: string[] = Array.isArray((task as any).recurrence_days) ? (task as any).recurrence_days : [];
             const startTime = (task as any).recurrence_start_time as string | null;
@@ -323,7 +356,7 @@ const Tasks = () => {
               <div
                 key={task.id}
                 onClick={() => setSelectedTask(task)}
-                className={`flex items-center gap-4 rounded-xl border-2 bg-card p-3.5 cursor-pointer
+                className={`relative flex items-center gap-4 rounded-xl border-2 bg-card p-3.5 cursor-pointer
                   shadow-card hover:shadow-card-hover transition-all duration-150
                   ${isTimerOnThis
                     ? "border-primary/40 ring-1 ring-primary/20"
@@ -331,6 +364,14 @@ const Tasks = () => {
                       ? "border-amber-500/50 bg-amber-500/[0.03] hover:border-amber-500/70"
                       : "border-border hover:border-primary/20"}`}
               >
+                {(mentionCounts[task.id] ?? 0) > 0 && (
+                  <span
+                    title="Menções não lidas"
+                    className="absolute -top-2 -right-2 z-10 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-sky-500 px-1.5 text-[10px] font-bold text-white shadow ring-2 ring-background"
+                  >
+                    {mentionCounts[task.id]}
+                  </span>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     {recurring && (
@@ -348,10 +389,11 @@ const Tasks = () => {
                     </p>
                   )}
                   {task.description && (
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">{task.description}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2 whitespace-pre-line mt-0.5">{task.description}</p>
                   )}
                 </div>
 
+                <TaskDueDate dueDate={task.due_date} done={task.status === "done"} className="shrink-0" />
                 <StatusBadge type="status" value={task.status} />
                 <StatusBadge type="priority" value={task.priority} />
 
@@ -434,7 +476,7 @@ const Tasks = () => {
       )}
 
       {!isGestor && <CreateTaskDialog open={createOpen} onOpenChange={setCreateOpen} />}
-      <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} isReadOnly={isGestor} />
+      <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && closeTask()} isReadOnly={isGestor} />
 
       <Dialog open={recurringOpen} onOpenChange={setRecurringOpen}>
         <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">

@@ -21,7 +21,6 @@ import {
 import { format, subDays, subMonths, startOfWeek, endOfWeek, eachWeekOfInterval, startOfMonth, endOfMonth, eachMonthOfInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AutomationsReport } from "@/components/reports/AutomationsReport";
 import { SupportReport } from "@/components/reports/SupportReport";
 import { formatMinutes } from "@/lib/utils";
@@ -54,20 +53,28 @@ const Reports = () => {
   const [specificMonth, setSpecificMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
   const reportRef = useRef<HTMLDivElement>(null);
 
-  // Relatório de Tarefas ignora chamados ([Chamado] ...) — só tarefas manuais/recorrentes
-  const nonTicketTasks = useMemo(
-    () => (filteredTasks || []).filter(t => !(t.title || "").trim().startsWith("[Chamado]")),
+  // Pausas para café (☕ Café — ...) não são atividades: saem da contagem e das horas
+  // Chamados ([Chamado] ...) saem da contagem de tarefas, mas o tempo deles continua nas horas trabalhadas
+  const isCoffee = (t: Task) => (t.title || "").trim().startsWith("☕ Café");
+  const isTicket = (t: Task) => (t.title || "").trim().startsWith("[Chamado]");
+
+  const withoutCoffee = useMemo(
+    () => (filteredTasks || []).filter(t => !isCoffee(t)),
     [filteredTasks]
   );
 
-  const periodFiltered = useMemo(() => {
-    if (!nonTicketTasks) return [];
+  const nonTicketTasks = useMemo(
+    () => withoutCoffee.filter(t => !isTicket(t)),
+    [withoutCoffee]
+  );
+
+  const applyPeriod = (list: Task[]) => {
     const now = new Date();
     if (period === "specific") {
       const [y, m] = specificMonth.split("-").map(Number);
       const start = new Date(y, m - 1, 1);
       const end = new Date(y, m, 1);
-      return nonTicketTasks.filter(t => {
+      return list.filter(t => {
         const d = new Date(t.created_at);
         return d >= start && d < end;
       });
@@ -76,9 +83,20 @@ const Reports = () => {
     if (period === "week") cutoff = subDays(now, 7);
     else if (period === "month") cutoff = subMonths(now, 1);
     else if (period === "quarter") cutoff = subMonths(now, 3);
-    if (cutoff) return nonTicketTasks.filter(t => new Date(t.created_at) >= cutoff!);
-    return nonTicketTasks;
-  }, [nonTicketTasks, period, specificMonth]);
+    if (cutoff) return list.filter(t => new Date(t.created_at) >= cutoff!);
+    return list;
+  };
+
+  const periodFiltered = useMemo(
+    () => applyPeriod(nonTicketTasks),
+    [nonTicketTasks, period, specificMonth]
+  );
+
+  // Horas: tudo do período exceto café
+  const periodHoursTasks = useMemo(
+    () => applyPeriod(withoutCoffee),
+    [withoutCoffee, period, specificMonth]
+  );
 
   const metrics = useMemo(() => {
     const total = periodFiltered.length;
@@ -87,14 +105,15 @@ const Reports = () => {
     const review = periodFiltered.filter(t => t.status === "review").length;
     const discarded = periodFiltered.filter(t => t.status === "discarded").length;
 
-    const tasksWithTime = periodFiltered.filter(t => (t.total_minutes || 0) > 0);
-    const totalMinutes = periodFiltered.reduce((s, t) => s + (t.total_minutes || 0), 0);
+    const tasksWithTime = periodHoursTasks.filter(t => (t.total_minutes || 0) > 0);
+    const totalMinutes = periodHoursTasks.reduce((s, t) => s + (t.total_minutes || 0), 0);
     const avgExecMinutes = tasksWithTime.length > 0
       ? Math.round(totalMinutes / tasksWithTime.length)
       : 0;
 
-    const completionRate = total > 0 ? Math.round((done / total) * 100) : 0;
-    const discardRate = total > 0 ? Math.round((discarded / total) * 100) : 0;
+    // Uma casa decimal, truncada: 201/202 mostra 99.5% e só chega a 100 quando todas estão concluídas
+    const completionRate = total > 0 ? Math.floor((done / total) * 1000) / 10 : 0;
+    const discardRate = total > 0 ? Math.floor((discarded / total) * 1000) / 10 : 0;
 
     const twoDaysAgo = new Date();
     twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
@@ -103,7 +122,7 @@ const Reports = () => {
     ).length;
 
     return { total, done, inProgress, review, totalMinutes, avgExecMinutes, completionRate, discardRate, stalled };
-  }, [periodFiltered]);
+  }, [periodFiltered, periodHoursTasks]);
 
   const userMetrics = useMemo(() => {
     if (!profiles) return [];
@@ -113,6 +132,11 @@ const Reports = () => {
       if (!map[t.assigned_to]) map[t.assigned_to] = { total: 0, done: 0, minutes: 0 };
       map[t.assigned_to].total++;
       if (t.status === "done") map[t.assigned_to].done++;
+    });
+    // Horas incluem chamados e tarefas, mas não cafés
+    periodHoursTasks.forEach(t => {
+      if (!t.assigned_to) return;
+      if (!map[t.assigned_to]) map[t.assigned_to] = { total: 0, done: 0, minutes: 0 };
       map[t.assigned_to].minutes += t.total_minutes || 0;
     });
     return profiles
@@ -126,7 +150,7 @@ const Reports = () => {
         efficiency: map[p.id].total > 0 ? Math.round((map[p.id].done / map[p.id].total) * 100) : 0,
       }))
       .sort((a, b) => b.efficiency - a.efficiency);
-  }, [periodFiltered, profiles]);
+  }, [periodFiltered, periodHoursTasks, profiles]);
 
   const statusData = useMemo(() => {
     return COLUMNS.map(col => ({
@@ -418,16 +442,8 @@ const Reports = () => {
 
   return (
     <div className="space-y-6 max-w-7xl">
-      <Tabs defaultValue="tasks" className="space-y-6">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <TabsList className="bg-muted/50 p-1 rounded-xl">
-            <TabsTrigger value="tasks" className="rounded-lg"><Activity className="h-4 w-4 mr-1.5" />Tarefas</TabsTrigger>
-            <TabsTrigger value="automations" className="rounded-lg"><Bot className="h-4 w-4 mr-1.5" />Automações</TabsTrigger>
-            <TabsTrigger value="support" className="rounded-lg"><LifeBuoy className="h-4 w-4 mr-1.5" />Chamados</TabsTrigger>
-          </TabsList>
-        </div>
-
-        <TabsContent value="tasks" className="space-y-6 mt-0">
+      <div className="space-y-10">
+        <section className="space-y-6">
           <div className="flex items-center justify-between gap-4 flex-wrap">
         <PageHeader
           title="Relatórios"
@@ -625,16 +641,24 @@ const Reports = () => {
           </Card>
         )}
           </div>
-        </TabsContent>
+        </section>
 
-        <TabsContent value="automations" className="mt-0">
+        <section className="space-y-6 border-t border-border pt-8">
+          <div className="flex items-center gap-2">
+            <Bot className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">Automações</h2>
+          </div>
           <AutomationsReport />
-        </TabsContent>
+        </section>
 
-        <TabsContent value="support" className="mt-0">
+        <section className="space-y-6 border-t border-border pt-8">
+          <div className="flex items-center gap-2">
+            <LifeBuoy className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">Chamados</h2>
+          </div>
           <SupportReport />
-        </TabsContent>
-      </Tabs>
+        </section>
+      </div>
     </div>
   );
 };

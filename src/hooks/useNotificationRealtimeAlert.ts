@@ -41,7 +41,10 @@ export function useNotificationRealtimeAlert() {
           const kind = mapTypeToKind(notif.type as string | null);
           const { title, description } = buildAlertMessage(notif);
 
-          showAlert({ kind, title, description });
+          // Clicar no alerta abre a tarefa da notificação (link explícito ou, por padrão, /tasks).
+          const href = (notif.link as string | null) || (notif.task_id ? `/tasks?task=${notif.task_id}` : undefined);
+
+          showAlert({ kind, title, description, href });
         }
       )
       .subscribe();

@@ -30,8 +30,8 @@ export function useAIInsights(enabled = true) {
   return useQuery<AIInsights>({
     queryKey: ["ai-insights"],
     enabled,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: 10 * 60 * 1000,
+    staleTime: 30 * 60 * 1000, // 30 minutos, sem atualização automática
+    retry: false,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("ai-insights");
       if (error) throw error;

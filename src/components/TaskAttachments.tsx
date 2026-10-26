@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
   useTaskAttachments,
   useUploadAttachment,
@@ -7,7 +7,10 @@ import {
   formatFileSize,
 } from "@/hooks/useAttachments";
 import { Button } from "@/components/ui/button";
+import { ATTACHMENT_ACCEPT } from "@/lib/attachment-types";
 import { Paperclip, Upload, Trash2, FileText, Image, FileSpreadsheet, Loader2, Download } from "lucide-react";
+
+const PASTEABLE_IMAGE_TYPES = ["image/png", "image/jpeg"];
 
 const iconMap: Record<string, typeof FileText> = {
   "application/pdf": FileText,
@@ -24,6 +27,7 @@ interface TaskAttachmentsProps {
 export function TaskAttachments({ taskId }: TaskAttachmentsProps) {
   const { data: attachments, isLoading } = useTaskAttachments(taskId);
   const uploadAttachment = useUploadAttachment();
+  const uploadFile = uploadAttachment.mutate;
   const deleteAttachment = useDeleteAttachment();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -36,12 +40,28 @@ export function TaskAttachments({ taskId }: TaskAttachmentsProps) {
     e.target.value = "";
   };
 
+  // Colar print (Ctrl+V) envia a imagem direto para os anexos desta tarefa.
+  // Ignora o colar dentro de campos de texto (chat, título, descrição).
+  // Este efeito só existe enquanto a aba Detalhes está aberta.
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.closest("input, textarea, [contenteditable='true']"))) return;
+      const images = Array.from(e.clipboardData?.files ?? []).filter((f) => PASTEABLE_IMAGE_TYPES.includes(f.type));
+      if (images.length === 0) return;
+      e.preventDefault();
+      images.forEach((file) => uploadFile({ taskId, file }));
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [taskId, uploadFile]);
+
   return (
     <div className="space-y-3 border-t border-border pt-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
           <Paperclip className="h-4 w-4 text-muted-foreground" />
-          Arquivos
+          Anexos
           {attachments && attachments.length > 0 && (
             <span className="text-xs text-muted-foreground font-normal">({attachments.length})</span>
           )}
@@ -58,13 +78,13 @@ export function TaskAttachments({ taskId }: TaskAttachmentsProps) {
           ) : (
             <Upload className="h-3 w-3 mr-1" />
           )}
-          Upload
+          Anexar
         </Button>
         <input
           ref={inputRef}
           type="file"
           className="hidden"
-          accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
+          accept={ATTACHMENT_ACCEPT}
           multiple
           onChange={handleFileChange}
         />
@@ -109,7 +129,9 @@ export function TaskAttachments({ taskId }: TaskAttachmentsProps) {
           })}
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground text-center py-2">Nenhum arquivo anexado.</p>
+        <p className="text-xs text-muted-foreground text-center py-2">
+          Nenhum anexo. Clique em "Anexar" ou cole um print com Ctrl+V.
+        </p>
       )}
     </div>
   );

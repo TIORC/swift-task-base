@@ -6,6 +6,8 @@ export interface AlertItem {
   title: string;
   description: string;
   createdAt: number;
+  // Rota para abrir ao clicar no alerta (ex.: "/tasks?task=<id>").
+  href?: string;
 }
 
 type AlertListener = (alerts: AlertItem[]) => void;

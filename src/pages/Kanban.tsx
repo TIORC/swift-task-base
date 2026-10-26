@@ -1,29 +1,48 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DragDropContext, Droppable, DropResult } from "@hello-pangea/dnd";
-import { useQueryClient } from "@tanstack/react-query";
-import { useKanbanTasks, useKanbanUpdateTask, useKanbanTaskFilter, KANBAN_COLUMNS, KanbanStatus, KanbanTask } from "@/hooks/useKanbanTasks";
+import { useKanbanTasks, useKanbanUpdateTask, KANBAN_COLUMNS, KanbanStatus, KanbanTask, toColumnStatus } from "@/hooks/useKanbanTasks";
+import { useMarkTaskMentionsRead, useUnreadMentionsByTask } from "@/hooks/useNotifications";
 import { useUserRole } from "@/hooks/useUserRole";
-import { TaskCard } from "@/components/TaskCard";
-import { TaskDetailDialog } from "@/components/TaskDetailDialog";
-import { CreateTaskDialog } from "@/components/CreateTaskDialog";
-import { TaskFilterSelect } from "@/components/TaskFilterSelect";
+import { KanbanTaskCard } from "@/components/KanbanTaskCard";
+import { KanbanTaskDialog } from "@/components/KanbanTaskDialog";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, Columns3 } from "lucide-react";
 
 const Kanban = () => {
-  const queryClient = useQueryClient();
-  const { data: tasks, isLoading } = useKanbanTasks();
-  const { filteredTasks, selectedUserId, setSelectedUserId, canFilter } = useKanbanTaskFilter(tasks);
+    const { data: tasks, isLoading } = useKanbanTasks();
   const updateTask = useKanbanUpdateTask();
   const { isGestor } = useUserRole();
   const [createOpen, setCreateOpen] = useState(false);
   const [createStatus, setCreateStatus] = useState<KanbanStatus>("backlog");
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Abre a tarefa indicada em "?task=<id>" (vindo de uma notificação de menção).
+  useEffect(() => {
+    const id = searchParams.get("task");
+    if (!id || !tasks) return;
+    const found = tasks.find((t) => t.id === id);
+    if (found) setSelectedTask(found);
+  }, [searchParams, tasks]);
+
+  const closeTask = () => {
+    setSelectedTask(null);
+    if (searchParams.has("task")) setSearchParams({}, { replace: true });
+  };
+
+  // Menções não lidas por tarefa; ao abrir a tarefa, elas viram lidas.
+  const { data: mentionCounts = {} } = useUnreadMentionsByTask();
+  const markMentionsRead = useMarkTaskMentionsRead().mutate;
+  const openTaskId = selectedTask?.id;
+  useEffect(() => {
+    if (openTaskId) markMentionsRead(openTaskId);
+  }, [openTaskId, markMentionsRead]);
 
   const tasksByStatus = KANBAN_COLUMNS.reduce(
     (acc, col) => {
-      acc[col.status] = filteredTasks.filter((t) => t.status === col.status);
+      acc[col.status] = (tasks ?? []).filter((t) => toColumnStatus(t.status) === col.status);
       return acc;
     },
     {} as Record<KanbanStatus, KanbanTask[]>
@@ -63,9 +82,6 @@ const Kanban = () => {
         icon={<Columns3 className="h-5 w-5" />}
         actions={
           <div className="flex items-center gap-2">
-            {canFilter && (
-              <TaskFilterSelect value={selectedUserId} onChange={setSelectedUserId} />
-            )}
             {!isGestor && (
               <Button onClick={() => handleAddToColumn("backlog")} className="h-9">
                 <Plus className="mr-2 h-4 w-4" />
@@ -111,7 +127,7 @@ const Kanban = () => {
                       }`}
                     >
                       {colTasks.map((task, i) => (
-                        <TaskCard key={task.id} task={task} index={i} onClick={setSelectedTask} isDragDisabled={isGestor} />
+                        <KanbanTaskCard key={task.id} task={task} index={i} onClick={setSelectedTask} isDragDisabled={isGestor} mentionCount={mentionCounts[task.id] ?? 0} />
                       ))}
                       {provided.placeholder}
                       {colTasks.length === 0 && !snapshot.isDraggingOver && (
@@ -126,8 +142,8 @@ const Kanban = () => {
         </div>
       </DragDropContext>
 
-      {!isGestor && <CreateTaskDialog open={createOpen} onOpenChange={(open) => { if (!open) queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] }); setCreateOpen(open); }} defaultStatus={createStatus} />}
-      <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => { if (!o) { queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] }); setSelectedTask(null); } }} isReadOnly={isGestor} />
+      {!isGestor && <KanbanTaskDialog open={createOpen} onOpenChange={setCreateOpen} defaultStatus={createStatus} />}
+      <KanbanTaskDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => { if (!o) closeTask(); }} readOnly={isGestor} />
       </div>
     </div>
   );

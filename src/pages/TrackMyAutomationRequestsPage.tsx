@@ -90,6 +90,8 @@ interface StatusEntry {
   currentAutomation?: { title: string; status: string; progress?: number | null } | null;
   /** Até 5 trabalhos anteriores, do mais recente para o mais antigo. */
   recent?: RecentWork[];
+  activity?: string | null;
+  activityContext?: string | null;
 }
 
 /** Rótulo curto do status de um trabalho do histórico. */
@@ -222,7 +224,8 @@ function DeveloperStatusPanel() {
                 <div className="flex items-start gap-2 text-sm">
                   <CircleDot className="mt-0.5 h-4 w-4 shrink-0 animate-pulse text-emerald-500" />
                   <div>
-                    <p><span className="font-medium">Em desenvolvimento</span>.</p>
+                    <p><span className="font-medium">Em desenvolvimento</span>{developer.activity ? <>: <span className="font-semibold">{developer.activity}</span></> : "."}</p>
+                    {developer.activityContext && <p className="text-xs text-muted-foreground">Automação: {developer.activityContext}</p>}
                     {developer.lastStart && (
                       <p className="mt-1 text-xs text-muted-foreground">
                         desde {sinceLabel(developer.lastStart)}, sem pausa
@@ -302,6 +305,7 @@ function SupportTechnicianStatusPanel() {
                   ? <CircleDot className="mt-0.5 h-4 w-4 shrink-0 animate-pulse text-emerald-500" />
                   : <CircleDot className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />}
                 <div>
+                  {technician.working && technician.activity && <p className="font-semibold">{technician.activity}</p>}
                   <p className="text-muted-foreground">
                     {technician.working ? "com o cronômetro ligado" : "cronômetro desligado"}
                     {technician.lastStart && <> · desde {sinceLabel(technician.lastStart)}</>}

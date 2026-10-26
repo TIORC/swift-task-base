@@ -1,205 +1,229 @@
-import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Tables, TablesUpdate } from "@/integrations/supabase/types";
+import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserRole } from "@/hooks/useUserRole";
-import { useMyTaskVisibility } from "@/hooks/usePermissions";
 import { toast } from "sonner";
 import { invalidateGamification } from "@/hooks/useGamification";
-import { runAutomationEngine } from "@/hooks/useAutomationRules";
 
-export type KanbanTask = Tables<"tasks"> & {
-  profiles?: { full_name: string | null; avatar_url: string | null } | null;
+export interface KanbanAssignee {
+  id: string;
+  full_name: string | null;
+}
+
+// Tarefas do Kanban são independentes de /tarefas (tabela própria).
+export type KanbanTask = Tables<"kanban_tasks"> & {
+  assignees: KanbanAssignee[];
+  assignee_ids: string[];
   total_minutes?: number;
+  attachments_count: number;
+  comments_count: number;
+  checklist_total: number;
+  checklist_done: number;
+  cover_path: string | null;
 };
 
 export type KanbanStatus = "backlog" | "pending" | "todo" | "in_progress" | "review" | "done" | "discarded";
 
+// Colunas no estilo Trello. "review" (Em Validação) saiu do quadro:
+// tarefas que ainda estão nesse status aparecem em "Em Andamento".
 export const KANBAN_COLUMNS: { status: KanbanStatus; title: string }[] = [
-  { status: "backlog", title: "Backlog" },
-  { status: "pending", title: "Pendente" },
+  { status: "backlog", title: "A Fazer" },
+  { status: "todo", title: "Prioridade" },
   { status: "in_progress", title: "Em Andamento" },
-  { status: "review", title: "Em Validação" },
+  { status: "pending", title: "Pendente" },
   { status: "done", title: "Concluído" },
-  { status: "discarded", title: "Descartado" },
+  { status: "discarded", title: "Arquivado" },
 ];
 
-export type KanbanFilterValue = "mine_or_unassigned" | "mine" | "unassigned" | "all" | string;
+export const toColumnStatus = (status: KanbanStatus): KanbanStatus => (status === "review" ? "in_progress" : status);
+
+// Únicas pessoas que podem ser responsáveis por tarefas do Kanban (pelo primeiro nome).
+const KANBAN_RESPONSIBLE_FIRST_NAMES = ["welder", "angel", "sofia", "gabriel", "icaro"];
+
+// Primeiro nome, sem acento e em minúsculas: "Ícaro Silva" -> "icaro".
+export const firstNameKey = (fullName: string) =>
+  fullName
+    .trim()
+    .split(/\s+/)[0]
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+
+export const isKanbanResponsible = (fullName: string | null) =>
+  !!fullName && KANBAN_RESPONSIBLE_FIRST_NAMES.includes(firstNameKey(fullName));
+
+// Colaboradores que ainda não têm login (sem linha em profiles). Aparecem em Responsáveis
+// com um id fixo. Quando a pessoa entrar no sistema, remova daqui para não duplicar.
+export const PENDING_KANBAN_PEOPLE: KanbanAssignee[] = [
+  { id: "1c4a0000-0000-4000-8000-000000000001", full_name: "Icaro Nadson" },
+];
+const isPendingPerson = (id: string) => PENDING_KANBAN_PEOPLE.some((p) => p.id === id);
+
+// Corporativos que podem excluir qualquer tarefa do Kanban (além do criador). Espelha kanban_can_delete no banco.
+const KANBAN_DELETER_NAMES = ["gabriel anacleto", "sofia nardes", "angel kauan", "welder"];
+
+export const canDeleteKanbanTaskName = (fullName: string | null | undefined) => {
+  if (!fullName) return false;
+  const name = fullName.trim().toLowerCase();
+  return KANBAN_DELETER_NAMES.some((n) => name === n || name.startsWith(n + " "));
+};
 
 export function useKanbanTasks() {
   return useQuery({
     queryKey: ["kanban-tasks"],
     queryFn: async () => {
       const { data: tasks, error } = await supabase
-        .from("tasks")
+        .from("kanban_tasks")
         .select("*")
         .order("created_at", { ascending: false });
-
       if (error) throw error;
 
-      const userIds = [...new Set(tasks.map((t) => t.assigned_to).filter(Boolean))] as string[];
-      let profilesMap: Record<string, { full_name: string | null; avatar_url: string | null }> = {};
+      const { data: links, error: linksError } = await supabase
+        .from("kanban_task_assignees")
+        .select("task_id, user_id");
+      if (linksError) throw linksError;
 
+      const userIds = [...new Set((links ?? []).map((l) => l.user_id))];
+      let profilesMap: Record<string, KanbanAssignee> = {};
       if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, full_name, avatar_url")
-          .in("id", userIds);
-
-        if (profiles) {
-          profilesMap = Object.fromEntries(profiles.map((p) => [p.id, p]));
-        }
+        const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", userIds);
+        if (profiles) profilesMap = Object.fromEntries(profiles.map((p) => [p.id, p]));
       }
 
-      const { data: timeLogs } = await supabase
-        .from("time_logs")
-        .select("task_id, duration_minutes");
+      const assigneesByTask: Record<string, string[]> = {};
+      for (const l of links ?? []) {
+        (assigneesByTask[l.task_id] ??= []).push(l.user_id);
+      }
 
-      const timeMap: Record<string, number> = {};
-      timeLogs?.forEach((log) => {
-        timeMap[log.task_id] = (timeMap[log.task_id] || 0) + log.duration_minutes;
-      });
+      const [{ data: attachments }, { data: comments }, { data: checklist }] = await Promise.all([
+        supabase
+          .from("kanban_task_attachments")
+          .select("task_id, file_path, mime_type, is_cover")
+          .order("created_at", { ascending: false }),
+        supabase.from("kanban_task_comments").select("task_id"),
+        supabase.from("kanban_task_checklist_items").select("task_id, done"),
+      ]);
 
-      return tasks.map((t) => ({
-        ...t,
-        profiles: t.assigned_to ? profilesMap[t.assigned_to] || null : null,
-        total_minutes: timeMap[t.id] || 0,
-      })) as KanbanTask[];
+      const attachmentsCount: Record<string, number> = {};
+      // Capa: a escolhida pelo usuário (estrela); se não houver, a foto mais recente da tarefa.
+      const chosenCover: Record<string, string> = {};
+      const latestImage: Record<string, string> = {};
+      for (const a of attachments ?? []) {
+        attachmentsCount[a.task_id] = (attachmentsCount[a.task_id] ?? 0) + 1;
+        if (a.is_cover) chosenCover[a.task_id] = a.file_path;
+        if (!latestImage[a.task_id] && a.mime_type.startsWith("image/")) latestImage[a.task_id] = a.file_path;
+      }
+      const cover = (taskId: string) => chosenCover[taskId] ?? latestImage[taskId] ?? null;
+      const commentsCount: Record<string, number> = {};
+      for (const c of comments ?? []) commentsCount[c.task_id] = (commentsCount[c.task_id] ?? 0) + 1;
+      const checklistTotal: Record<string, number> = {};
+      const checklistDone: Record<string, number> = {};
+      for (const i of checklist ?? []) {
+        checklistTotal[i.task_id] = (checklistTotal[i.task_id] ?? 0) + 1;
+        if (i.done) checklistDone[i.task_id] = (checklistDone[i.task_id] ?? 0) + 1;
+      }
+
+      return tasks.map((t) => {
+        const assigneeIds = assigneesByTask[t.id] ?? [];
+        return {
+          ...t,
+          assignee_ids: assigneeIds,
+          assignees: assigneeIds.map(
+            (id) => profilesMap[id] ?? PENDING_KANBAN_PEOPLE.find((p) => p.id === id) ?? { id, full_name: null }
+          ),
+          total_minutes: 0,
+          attachments_count: attachmentsCount[t.id] ?? 0,
+          comments_count: commentsCount[t.id] ?? 0,
+          checklist_total: checklistTotal[t.id] ?? 0,
+          checklist_done: checklistDone[t.id] ?? 0,
+          // Capa enviada do computador tem prioridade sobre as fotos anexadas.
+          cover_path: t.cover_file_path ?? cover(t.id),
+        };
+      }) as KanbanTask[];
     },
   });
 }
 
-export function useKanbanUpdateTask() {
-  const queryClient = useQueryClient();
+function useAfterChange() {
+  const qc = useQueryClient();
+  return () => {
+    qc.invalidateQueries({ queryKey: ["kanban-tasks"] });
+    invalidateGamification(qc);
+  };
+}
+
+// Troca a lista de responsáveis da tarefa. Lista vazia = sem responsável (aberta para todos).
+// Feito numa única operação no servidor: apagar antes e inserir depois fazia o responsável
+// perder a permissão no meio do caminho (erro de RLS em kanban_task_assignees).
+async function setKanbanAssignees(taskId: string, assigneeIds: string[]) {
+  const { error } = await supabase.rpc("kanban_set_assignees", { _task_id: taskId, _user_ids: assigneeIds });
+  if (error) throw error;
+}
+
+type KanbanTaskInput = Omit<TablesInsert<"kanban_tasks">, "created_by"> & { assignee_ids?: string[] };
+
+export function useKanbanCreateTask() {
+  const after = useAfterChange();
   const { user } = useAuth();
-
   return useMutation({
-    mutationFn: async ({ id, ...updates }: TablesUpdate<"tasks"> & { id: string }) => {
-      const { data: oldTask } = await supabase
-        .from("tasks")
-        .select("assigned_to, title, status, priority")
-        .eq("id", id)
+    mutationFn: async ({ assignee_ids = [], ...row }: KanbanTaskInput) => {
+      const { data, error } = await supabase
+        .from("kanban_tasks")
+        .insert({ ...row, created_by: user!.id })
+        .select("id")
         .single();
-
-      const { data, error } = await supabase.from("tasks").update(updates).eq("id", id).select().single();
       if (error) throw error;
-
-      if (user && updates.status && updates.status !== oldTask?.status) {
-        const statusLabels: Record<string, string> = {
-          backlog: "Backlog", pending: "Pendente", todo: "A Fazer", in_progress: "Em Andamento",
-          review: "Em Validação", done: "Concluído", discarded: "Descartado",
-        };
-        const eventType = updates.status === "done" ? "completed"
-          : updates.status === "review" ? "sent_review"
-          : updates.status === "in_progress" ? "started"
-          : updates.status === "discarded" ? "discarded"
-          : "status_changed";
-        await supabase.from("task_events").insert({
-          task_id: id, user_id: user.id, event_type: eventType,
-          description: `Status alterado para "${statusLabels[updates.status as string] || updates.status}"`,
-        });
-      }
-
-      if (user && updates.priority && updates.priority !== oldTask?.priority) {
-        await supabase.from("task_events").insert({
-          task_id: id, user_id: user.id, event_type: "priority_changed",
-          description: `Prioridade alterada para "${updates.priority}"`,
-        });
-      }
-
-      if (user && updates.assigned_to && updates.assigned_to !== oldTask?.assigned_to) {
-        await supabase.from("task_events").insert({
-          task_id: id, user_id: user.id, event_type: "reassigned",
-          description: `Responsável alterado`,
-          metadata: { from: oldTask?.assigned_to, to: updates.assigned_to },
-        });
-      }
-
-      if (
-        user &&
-        updates.assigned_to &&
-        updates.assigned_to !== oldTask?.assigned_to &&
-        updates.assigned_to !== user.id
-      ) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("id", user.id)
-          .single();
-        const senderName = profile?.full_name || user.email || "Alguém";
-
-        await supabase.from("notifications").insert({
-          user_id: updates.assigned_to,
-          type: "assigned",
-          task_id: id,
-          message: `${senderName} atribuiu a tarefa "${oldTask?.title || "sem título"}" a você`,
-          created_by: user.id,
-        });
-      }
-
-      if (user && updates.status && updates.status !== oldTask?.status) {
-        await runAutomationEngine(id, "status", updates.status as string, user.id);
-      }
-      if (user && updates.priority) {
-        await runAutomationEngine(id, "priority", updates.priority as string, user.id);
-      }
-      if (user && updates.assigned_to) {
-        await runAutomationEngine(id, "assigned_to", updates.assigned_to, user.id);
-      }
-
+      await setKanbanAssignees(data.id, [...new Set(assignee_ids)]);
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      invalidateGamification(queryClient);
-    },
+    onSuccess: after,
     onError: (e: Error) => toast.error(e.message),
   });
 }
 
-export function useKanbanTaskFilter(tasks: KanbanTask[] | undefined) {
+export function useKanbanUpdateTask() {
+  const after = useAfterChange();
   const { user } = useAuth();
-  const { isAdmin, isGestor, isLider, isMembro } = useUserRole();
-  const { visibleUsers } = useMyTaskVisibility();
-  const [selectedUserId, setSelectedUserId] = useState<KanbanFilterValue>("mine_or_unassigned");
+  return useMutation({
+    mutationFn: async ({ id, assignee_ids, ...updates }: TablesUpdate<"kanban_tasks"> & { id: string; assignee_ids?: string[] }) => {
+      const { data: old } = await supabase.from("kanban_tasks").select("title").eq("id", id).maybeSingle();
+      const { data: oldLinks } = await supabase.from("kanban_task_assignees").select("user_id").eq("task_id", id);
+      const oldIds = (oldLinks ?? []).map((l) => l.user_id);
 
-  const filteredTasks = useMemo(() => {
-    if (!tasks || !user) return [];
+      const { error } = await supabase.from("kanban_tasks").update(updates).eq("id", id);
+      if (error) throw error;
 
-    if (isMembro) {
-      const base = tasks.filter(
-        (t) =>
-          t.assigned_to === user.id ||
-          t.created_by === user.id ||
-          (t.assigned_to && visibleUsers.includes(t.assigned_to)) ||
-          (t.created_by && visibleUsers.includes(t.created_by))
-      );
-      if (selectedUserId === "all") return base;
-      if (selectedUserId === "unassigned") return base.filter((t) => !t.assigned_to);
-      if (selectedUserId === "mine") return base.filter((t) => t.assigned_to === user.id);
-      return base.filter((t) => t.assigned_to === user.id || !t.assigned_to);
-    }
+      if (assignee_ids) {
+        const nextIds = [...new Set(assignee_ids)];
+        await setKanbanAssignees(id, nextIds);
 
-    if (selectedUserId === "all") return tasks;
-    if (selectedUserId === "unassigned") return tasks.filter((t) => !t.assigned_to);
-    if (selectedUserId === "mine_or_unassigned") {
-      return tasks.filter((t) => t.assigned_to === user.id || !t.assigned_to);
-    }
+        if (user) {
+          // Sem login, não há usuário para notificar (notifications aponta para auth.users).
+          const added = nextIds.filter((uid) => !oldIds.includes(uid) && uid !== user.id && !isPendingPerson(uid));
+          for (const uid of added) {
+            await supabase.from("notifications").insert({
+              user_id: uid,
+              type: "assigned",
+              message: `Você recebeu a tarefa do Kanban "${old?.title || "sem título"}"`,
+              created_by: user.id,
+            });
+          }
+        }
+      }
+    },
+    onSuccess: after,
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
 
-    const targetId = selectedUserId === "mine" ? user.id : selectedUserId;
-    return tasks.filter(
-      (t) => t.assigned_to === targetId || t.created_by === targetId
-    );
-  }, [tasks, user, isMembro, visibleUsers, selectedUserId]);
-
-  const canFilter = isAdmin || isGestor || isLider || isMembro;
-
-  return {
-    filteredTasks,
-    selectedUserId,
-    setSelectedUserId,
-    canFilter,
-  };
+export function useKanbanDeleteTask() {
+  const after = useAfterChange();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("kanban_tasks").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: after,
+    onError: (e: Error) => toast.error(e.message),
+  });
 }

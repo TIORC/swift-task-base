@@ -61,7 +61,11 @@ import SocialManagerDashboard from "./pages/social/SocialManagerDashboard";
 import SocialClientApprovals from "./pages/social/SocialClientApprovals";
 import SocialClientCalendar from "./pages/social/SocialClientCalendar";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 30_000, refetchOnWindowFocus: false, retry: 1 },
+  },
+});
 
 function FullScreenLoader() {
   return (
@@ -243,8 +247,8 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <NotificationAlertProvider>
-          <BrowserRouter>
+        <BrowserRouter>
+          <NotificationAlertProvider>
             <AuthProvider>
               <UserRoleProvider>
                 <UserSystemsProvider>
@@ -254,8 +258,8 @@ const App = () => (
                 </UserSystemsProvider>
               </UserRoleProvider>
             </AuthProvider>
-          </BrowserRouter>
-        </NotificationAlertProvider>
+          </NotificationAlertProvider>
+        </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   </ThemeProvider>

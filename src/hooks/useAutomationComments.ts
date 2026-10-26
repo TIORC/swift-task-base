@@ -229,6 +229,7 @@ export function useCreateAutomationComment() {
           .map((uid) => ({
             user_id: uid,
             type: "mention",
+            link: `/automacoes?automation=${automationId}`,
             message: `${senderName} mencionou você em "${auto?.title || "uma automação"}"`,
             created_by: user.id,
           }));

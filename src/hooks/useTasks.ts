@@ -48,14 +48,12 @@ export function useTasks() {
         }
       }
 
-      // Fetch time logs aggregated
-      const { data: timeLogs } = await supabase
-        .from("time_logs")
-        .select("task_id, duration_minutes");
+      // Horas já somadas no servidor (um total por tarefa)
+      const { data: totals } = await supabase.rpc("task_time_totals");
 
       const timeMap: Record<string, number> = {};
-      timeLogs?.forEach((log) => {
-        timeMap[log.task_id] = (timeMap[log.task_id] || 0) + log.duration_minutes;
+      (totals as { task_id: string; total_minutes: number | string }[] | null)?.forEach((r) => {
+        timeMap[r.task_id] = Number(r.total_minutes) || 0;
       });
 
       return tasks.map((t) => ({
@@ -245,8 +243,9 @@ export function useDeleteTask() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("tasks").delete().eq("id", id);
+      const { data, error } = await supabase.from("tasks").delete().eq("id", id).select("id");
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Sem permissão para excluir esta tarefa.");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });

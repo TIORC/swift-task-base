@@ -10,6 +10,7 @@ import { useCreateAutomation } from "@/hooks/useAutomationsData";
 import { PRIORITY_OPTIONS, PRIORITY_LABELS, COMPLEXITY_OPTIONS, COMPLEXITY_LABELS, REQUEST_KINDS, REQUEST_KIND_LABELS } from "@/types/automation";
 import { SECTORS } from "@/types/sectors";
 import { useSectorVisibility } from "@/hooks/useUserSectors";
+import { useAssignableDevelopers } from "@/hooks/useAssignableDevelopers";
 
 interface Props {
   profiles: { id: string; full_name: string | null }[];
@@ -18,6 +19,7 @@ interface Props {
 export function CreateAutomationDialog({ profiles }: Props) {
   const [open, setOpen] = useState(false);
   const createAutomation = useCreateAutomation();
+  const assignable = useAssignableDevelopers(profiles);
   const { canSeeAll, allowedSectors } = useSectorVisibility();
   const lockedSector = !canSeeAll && allowedSectors.length === 1 ? allowedSectors[0] : null;
   const sectorOptions = canSeeAll ? [...SECTORS] : allowedSectors;
@@ -150,7 +152,7 @@ export function CreateAutomationDialog({ profiles }: Props) {
               <Select value={form.assigned_to} onValueChange={v => set("assigned_to", v)}>
                 <SelectTrigger className="h-9 mt-1"><SelectValue placeholder="Selecionar" /></SelectTrigger>
                 <SelectContent>
-                  {profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>)}
+                  {assignable.options.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

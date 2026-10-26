@@ -97,16 +97,24 @@ const ManagerDashboard = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
+    // Agrupa várias mudanças seguidas numa única recarga a cada 5s
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const refresh = () => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      }, 5000);
+    };
     const channel = supabase
-      .channel("manager-dashboard-rt")
-      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () =>
-        queryClient.invalidateQueries({ queryKey: ["tasks"] })
-      )
-      .on("postgres_changes", { event: "*", schema: "public", table: "time_logs" }, () =>
-        queryClient.invalidateQueries({ queryKey: ["tasks"] })
-      )
+      .channel(`manager-dashboard-rt-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "time_logs" }, refresh)
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (timer) clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
   }, [queryClient]);
 
   const filteredTasks = useMemo(() => {

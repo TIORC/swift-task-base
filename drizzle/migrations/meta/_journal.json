@@ -43,6 +43,48 @@
       "when": 1790962864282,
       "tag": "0005_solicitantes_portal_publico",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791206377282,
+      "tag": "0006_sync_inventory_upgrade_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791288005860,
+      "tag": "0007_count_automation_subtasks_in_stats",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791909532566,
+      "tag": "0008_kanban_independente",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791909559219,
+      "tag": "0009_kanban_update_policy_fix",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791977505075,
+      "tag": "0010_light_query_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791995141979,
+      "tag": "0011_notifications_indexes",
+      "breakpoints": true
     }
   ]
 }

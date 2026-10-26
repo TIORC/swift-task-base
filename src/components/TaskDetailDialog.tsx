@@ -21,8 +21,9 @@ import { Play, Square, Clock, Trash2, User, Timer, FileText, History, MessageSqu
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { isOverdue } from "@/lib/dates";
 import { TaskComments } from "@/components/TaskComments";
+import { TaskDueDate } from "@/components/TaskDueDate";
+import { TaskChecklist } from "@/components/TaskChecklist";
 import { TaskAttachments } from "@/components/TaskAttachments";
 import { ResponsibilityHistorySection } from "@/components/ResponsibilityHistory";
 import { TaskApprovalSection } from "@/components/TaskApprovalSection";
@@ -150,7 +151,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
           {editing ? (
             <div className="space-y-3">
               <div className="space-y-2"><Label>Título</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-              <div className="space-y-2"><Label>Descrição</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} /></div>
+              <div className="space-y-2"><Label>Descrição</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} className="resize-y whitespace-pre-wrap" /><p className="text-[11px] text-muted-foreground">Enter pula linha. Dois Enters deixam uma linha em branco entre os parágrafos.</p></div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Prioridade</Label>
@@ -202,7 +203,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
             <div className="space-y-3">
               <div>
                 <p className="text-base font-semibold text-foreground">{task.title}</p>
-                {task.description && <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{task.description}</p>}
+                {task.description && <p className="text-sm text-muted-foreground mt-1 leading-relaxed whitespace-pre-wrap break-words">{task.description}</p>}
               </div>
               <div className="flex flex-wrap gap-2">
                 <StatusBadge type="status" value={task.status} />
@@ -218,12 +219,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
                   <span className="text-sm text-muted-foreground">{task.profiles.full_name}</span>
                 </div>
               )}
-              {task.due_date && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <CalendarIcon className="h-4 w-4" />
-                  Prazo: <span className={cn("font-medium", isOverdue(task.due_date) && task.status !== "done" ? "text-destructive" : "text-foreground")}>{format(new Date(task.due_date), "dd/MM/yyyy")}</span>
-                </div>
-              )}
+              <TaskDueDate dueDate={task.due_date} done={task.status === "done"} className="text-sm" />
               {!isReadOnly && (
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={() => setEditing(true)} className="rounded-lg">Editar</Button>
@@ -273,6 +269,8 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
               {(task as any).is_recurring_template && (
                 <EditRecurrenceSection task={task as any} />
               )}
+              <TaskChecklist taskId={task.id} readOnly={isReadOnly} />
+              <TaskAttachments taskId={task.id} />
               {userSummaries.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
@@ -294,11 +292,10 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
 
               <TaskDependencies taskId={task.id} />
               <TaskApprovalSection taskId={task.id} taskStatus={task.status} />
-              <TaskAttachments taskId={task.id} />
             </TabsContent>
 
             <TabsContent value="comments">
-              <TaskComments taskId={task.id} />
+              <TaskComments taskId={task.id} taskTitle={task.title} />
             </TabsContent>
 
             <TabsContent value="timeline">

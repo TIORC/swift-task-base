@@ -29,13 +29,14 @@ export function useTeamMetrics() {
   return useQuery({
     queryKey: ["team-metrics"],
     queryFn: async () => {
-      const [tasksRes, autosRes, timeRes, autoTimeRes, profilesRes, commentsRes] = await Promise.all([
+      const [tasksRes, autosRes, timeRes, autoTimeRes, profilesRes, commentsRes, subsRes] = await Promise.all([
         supabase.from("tasks").select("id, assigned_to, status, updated_at, title"),
         supabase.from("automations").select("id, assigned_to, sector, status, updated_at, completed_at"),
         supabase.from("time_logs").select("user_id, duration_minutes"),
         supabase.from("automation_time_logs").select("user_id, duration_minutes"),
         supabase.from("profiles").select("id, full_name"),
         supabase.from("comments").select("user_id"),
+        supabase.from("automation_subtasks").select("id, assigned_to, completed_by, status, completed, completed_at, created_at"),
       ]);
 
       const profiles = profilesRes.data || [];
@@ -45,24 +46,34 @@ export function useTeamMetrics() {
       const doneTaskIds = (tasksRes.data || []).filter((t: any) => t.status === "done").map((t: any) => t.id);
       const doneAutoIds = (autosRes.data || []).filter((a: any) => a.status === "completed").map((a: any) => a.id);
 
-      const [taskEventsRes, autoEventsRes] = await Promise.all([
-        doneTaskIds.length
-          ? supabase
-              .from("task_events")
-              .select("task_id, created_at")
-              .in("task_id", doneTaskIds)
-              .eq("event_type", "completed")
-              .order("created_at", { ascending: true })
-          : Promise.resolve({ data: [] as any[] }),
-        doneAutoIds.length
-          ? supabase
-              .from("automation_events")
-              .select("automation_id, created_at, metadata")
-              .in("automation_id", doneAutoIds)
-              .eq("event_type", "status_changed")
-              .order("created_at", { ascending: true })
-          : Promise.resolve({ data: [] as any[] }),
+      // Busca em lotes: listas grandes de ids estouram o tamanho da URL (HTTP 400).
+      const fetchInChunks = async (ids: string[], run: (chunk: string[]) => PromiseLike<{ data: any[] | null; error: any }>) => {
+        const out: any[] = [];
+        for (let i = 0; i < ids.length; i += 100) {
+          const { data, error } = await run(ids.slice(i, i + 100));
+          if (error) throw error;
+          out.push(...(data || []));
+        }
+        return out;
+      };
+      const [taskEventsData, autoEventsData] = await Promise.all([
+        fetchInChunks(doneTaskIds, (chunk) =>
+          supabase
+            .from("task_events")
+            .select("task_id, created_at")
+            .in("task_id", chunk)
+            .eq("event_type", "completed")
+            .order("created_at", { ascending: true }) as any),
+        fetchInChunks(doneAutoIds, (chunk) =>
+          supabase
+            .from("automation_events")
+            .select("automation_id, created_at, metadata")
+            .in("automation_id", chunk)
+            .eq("event_type", "status_changed")
+            .order("created_at", { ascending: true }) as any),
       ]);
+      const taskEventsRes = { data: taskEventsData };
+      const autoEventsRes = { data: autoEventsData };
 
       const taskFirst = new Map<string, string>();
       (taskEventsRes.data || []).forEach((e: any) => {
@@ -113,6 +124,21 @@ export function useTeamMetrics() {
           const d = new Date(ts);
           if (d.getFullYear() === curY && d.getMonth() === curM) {
             monthTasksByUser.set(t.assigned_to, (monthTasksByUser.get(t.assigned_to) || 0) + 1);
+          }
+        }
+      });
+
+      // Tarefas técnicas das automações contam como tarefas concluídas
+      (subsRes.data || []).forEach((st: any) => {
+        const uid = st.assigned_to || st.completed_by;
+        const u = ensureUser(uid);
+        if (!u) return;
+        u.tasks_total += 1;
+        if (st.status === "done" || st.completed) {
+          u.tasks_done += 1;
+          const d = new Date(st.completed_at || st.created_at);
+          if (d.getFullYear() === curY && d.getMonth() === curM) {
+            monthTasksByUser.set(uid, (monthTasksByUser.get(uid) || 0) + 1);
           }
         }
       });

@@ -27,7 +27,7 @@ const REQUEST_STATIONS = [
   "Validação final pelo solicitante",
 ];
 
-const REQUEST_SECTORS = ["Societário", "Pessoal", "Sucesso do Cliente", "Tecnologia da Informação", "Fiscal", "Contábil", "Qualidade", "RH", "BPO", "Financeiro", "Marketing", "Outro"];
+const REQUEST_SECTORS = ["Societário", "Pessoal", "Sucesso do Cliente", "Tecnologia da Informação", "Fiscal", "Contábil", "Qualidade", "RH", "BPO", "Financeiro", "Marketing", "Diretoria", "Outro"];
 const ROUTINE_TRIGGERS = ["Data/horário", "Chegada de e-mail", "Inclusão em planilha", "Solicitação de cliente", "Tarefa no sistema", "Ação manual", "Outro"];
 const DATA_SOURCES = ["Planilha", "PDF", "E-mail", "Formulário", "Pasta de rede", "Sistema interno", "Portal externo", "API", "Banco de dados", "Outro"];
 const OUTPUT_TYPES = ["Planilha", "PDF", "Lançamento no sistema", "Tarefa", "E-mail", "Mensagem", "Painel", "Log", "Outro"];
