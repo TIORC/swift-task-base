@@ -346,7 +346,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                       </Select>
                       {kind ? (
                         <p className="mt-1 text-[10px] text-muted-foreground">
-                          O solicitante marcou como <b className={kind === "Sistema" ? "text-cyan-300" : "text-violet-300"}>{REQUEST_KIND_LABELS[kind]}</b> na entrada.
+                          O solicitante marcou como <b className={kind === "Sistema" ? "text-cyan-700 dark:text-cyan-300" : "text-violet-700 dark:text-violet-300"}>{REQUEST_KIND_LABELS[kind]}</b> na entrada.
                         </p>
                       ) : (
                         <p className="mt-1 text-[10px] text-muted-foreground">Solicitação antiga, sem a marcação da tela inicial. Defina aqui.</p>
@@ -423,7 +423,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="hidden grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-medium text-muted-foreground">Linguagem/Ferramenta</label>
                       <Input value={a.language_tool || ""} onChange={e => handleUpdate({ language_tool: e.target.value })} className="h-8 mt-1" placeholder="Ex: Python, N8N..." />
@@ -434,7 +434,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4">
+                  <div className="hidden items-center gap-4">
                     <label className="flex items-center gap-2 text-xs">
                       <Checkbox checked={a.needs_credentials} onCheckedChange={v => handleUpdate({ needs_credentials: !!v })} />
                       Necessita credencial

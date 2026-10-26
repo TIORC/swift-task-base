@@ -174,7 +174,7 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
       )}
 
       {/* Badges row */}
-      <div className="flex items-center gap-1 flex-wrap pr-4 mb-0">
+      <div className="hidden items-center gap-1 flex-wrap pr-4 mb-0">
         {kind && (
           <Badge variant="outline" className={`text-[10px] px-1.5 py-0 gap-1 font-medium ${REQUEST_KIND_BADGE[kind]}`}>
             {kind === "Sistema" ? <MonitorSmartphone className="h-2.5 w-2.5" /> : <Workflow className="h-2.5 w-2.5" />}
@@ -206,7 +206,7 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
       </div>
 
       {/* Title */}
-      <div className="flex items-start justify-between gap-2 mt-2.5 mb-2 min-w-0">
+      <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
         {canEditTitle && editingTitle ? (
           <div
             className="flex items-center gap-1 flex-1 min-w-0"
@@ -260,7 +260,7 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
       </div>
 
       {/* Meta line: prioridade · risco · prazo */}
-      <div className="flex items-center gap-1 flex-wrap text-[10px] text-muted-foreground mb-3">
+      <div className="hidden items-center gap-1 flex-wrap text-[10px] text-muted-foreground mb-3">
         <span>
           Prioridade <b className="font-semibold text-foreground">{PRIORITY_LABELS[a.priority] || a.priority}</b>
         </span>
@@ -278,11 +278,11 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
           independente da quantidade de tarefas técnicas. */}
       <div className="rounded-lg border border-border/70 bg-primary/[0.05] p-3 mb-3">
         <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1 gap-2">
-          <span className="flex items-center gap-1 min-w-0">
+          <span className="hidden items-center gap-1 min-w-0">
             <Code2 className="h-2.5 w-2.5 shrink-0" />
             <span className="truncate">Execução</span>
           </span>
-          <b className={`font-semibold tabular-nums shrink-0 ${PROGRESS_BAND_TEXT[execBand]}`}>{execPct}%</b>
+          <b className={`font-semibold tabular-nums shrink-0 ml-auto ${PROGRESS_BAND_TEXT[execBand]}`}>{execPct}%</b>
         </div>
         <div className={`h-2 overflow-hidden rounded-full m-progress-track ${PROGRESS_BAND_TRACK[execBand]}`}>
           <div
@@ -290,7 +290,7 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
             style={{ width: `${execPct}%` }}
           />
         </div>
-        <div className="mt-1 text-[9px] text-muted-foreground tabular-nums truncate">
+        <div className="hidden mt-1 text-[9px] text-muted-foreground tabular-nums truncate">
           {execTotal > 0
             ? `${execDone}/${execTotal} tarefas técnicas concluídas`
             : "Percentual informado pela equipe"}
@@ -303,7 +303,7 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
           <div className={`text-[11px] font-semibold leading-tight tabular-nums ${isTimerOnThis ? "text-primary" : "text-foreground"}`}>
             {workedLabel} trabalhadas
           </div>
-          <div className="text-[9px] text-muted-foreground mt-0.5">
+          <div className="hidden text-[9px] text-muted-foreground mt-0.5">
             {a.estimated_hours > 0 ? `de ${a.estimated_hours}h estimadas` : "sem estimativa de horas"}
           </div>
         </div>
@@ -320,7 +320,7 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
       </div>
 
       {/* Linha de última atualização relevante */}
-      <div className="flex items-start gap-2 rounded-r-[8px] border-l-2 border-l-primary bg-primary/5 px-2.5 py-2.5 mb-3">
+      <div className="hidden items-start gap-2 rounded-r-[8px] border-l-2 border-l-primary bg-primary/5 px-2.5 py-2.5 mb-3">
         <Activity className="h-2.5 w-2.5 shrink-0 mt-0.5 text-primary/70" />
         <div className="flex-1 min-w-0 text-[10px] text-muted-foreground">
           {lastEvent && lastEventAuthor ? (
@@ -339,7 +339,7 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
 
       {/* Comentário recente */}
       {lastComment && (
-        <div className="flex items-start gap-2 text-[10px] text-muted-foreground mb-2 px-1">
+        <div className="hidden items-start gap-2 text-[10px] text-muted-foreground mb-2 px-1">
           <MessageSquare className="h-2.5 w-2.5 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             {lastCommentAuthor && (
