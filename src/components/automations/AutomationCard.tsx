@@ -84,6 +84,13 @@ function initials(name?: string | null) {
   return (first + last) || "?";
 }
 
+// Cor do avatar do responsável: Gabriel em azul, Welder em verde, demais no padrão
+function avatarColor(name?: string | null) {
+  if (name?.startsWith("Gabriel")) return "bg-blue-800";
+  if (name?.startsWith("Welder")) return "bg-emerald-500";
+  return "bg-gradient-to-br from-primary to-violet-500";
+}
+
 export function AutomationCard({ automation: a, onClick, profileName, profileMap, pendingCount = 0, canEditTitle }: Props) {
   const { data: totals } = useAutomationTotalMinutes();
   const { data: latestEvents } = useLatestAutomationEvents();
@@ -241,6 +248,12 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
             <h4 className="text-[14px] font-bold text-foreground leading-snug flex-1 min-w-0 break-words whitespace-normal">
               {a.title}
             </h4>
+            {a.sector && (
+              <Badge variant="outline" className={`text-[10px] px-1.5 py-0 gap-1 shrink-0 mt-0.5 ${SECTOR_COLORS[a.sector] || ""}`}>
+                <Building2 className="h-2.5 w-2.5" />
+                {a.sector}
+              </Badge>
+            )}
             {canEditTitle && (
               <button
                 onClick={(e) => {
@@ -353,7 +366,7 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
       {/* Rodapé: avatar + responsável + ver detalhes */}
       <div className="flex items-center justify-between gap-2 pt-2.5 mt-1.5 border-t border-border/60">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="h-[21px] w-[21px] shrink-0 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center text-[10px] font-bold text-white">
+          <div className={`h-[21px] w-[21px] shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${avatarColor(profileName)}`}>
             {initials(profileName)}
           </div>
           <div className="min-w-0">

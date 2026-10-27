@@ -88,7 +88,11 @@ export function AutomationMetrics({ automations, profileMap }: Props) {
               <BarChart data={workloadData} layout="vertical">
                 <XAxis type="number" hide />
                 <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 11 }} />
-                <Tooltip />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", color: "hsl(var(--foreground))", fontSize: "12px" }}
+                  itemStyle={{ color: "hsl(var(--foreground))" }}
+                  labelStyle={{ color: "hsl(var(--foreground))" }}
+                />
                 <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>

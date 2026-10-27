@@ -9,11 +9,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { Automation, AutomationStatus, requestKind } from "@/types/automation";
 import { AutomationSummaryCards } from "@/components/automations/AutomationSummaryCards";
 import { AutomationFilters } from "@/components/automations/AutomationFilters";
-import { AutomationBoard } from "@/components/automations/AutomationBoard";
+import { AutomationBoard, AutomationViewToggle, AutomationViewMode } from "@/components/automations/AutomationBoard";
 import { AutomationDetailPanel } from "@/components/automations/AutomationDetailPanel";
 import { AutomationMetrics } from "@/components/automations/AutomationMetrics";
 import { CreateAutomationDialog } from "@/components/automations/CreateAutomationDialog";
-import { RequestAutomationDialog } from "@/components/automations/RequestAutomationDialog";
 import { AutomationExport } from "@/components/automations/AutomationExport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +32,7 @@ export default function AutomacoesPage() {
   const canEditTitle = useCanRenameAutomation();
 
   const [search, setSearch] = useState("");
+  const [viewMode, setViewMode] = useState<AutomationViewMode>("board");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [assigneeFilter, setAssigneeFilter] = useState("all");
@@ -55,7 +55,7 @@ export default function AutomacoesPage() {
   };
 
   const { canSeeAll, allowedSectors, hasSector, ready: sectorsReady } = useSectorVisibility();
-  const { canRequest, isLoadingRequester } = useIsAutomationRequester();
+  const { isLoadingRequester } = useIsAutomationRequester();
   const lockSector = !canSeeAll;
   const effectiveSectorFilter = lockSector && allowedSectors.length === 1 ? allowedSectors[0] : sectorFilter;
   const { allowedAutomationIds } = useMyAutomationVisibility();
@@ -99,15 +99,6 @@ export default function AutomacoesPage() {
       return true;
     });
   }, [visibleAutomations, search, statusFilter, priorityFilter, assigneeFilter, effectiveSectorFilter, kindFilter]);
-
-  // Alerts (somente bloqueios; atrasos/sem atualização foram removidos)
-  const alerts = useMemo(() => {
-    const items: { text: string; type: "warning" | "danger" }[] = [];
-    visibleAutomations.forEach(a => {
-      if (a.status === "blocked") items.push({ text: `"${a.title}" está bloqueada`, type: "danger" });
-    });
-    return items.slice(0, 5);
-  }, [visibleAutomations]);
 
   const blockerCounts = useMemo(() => {
     const map: Record<string, number> = {};
@@ -168,34 +159,24 @@ export default function AutomacoesPage() {
         actions={
           <div className="flex items-center gap-2">
             <AutomationExport automations={filtered} profileMap={profileMap} blockerCounts={blockerCounts} />
-            {canRequest && <RequestAutomationDialog />}
             {!isReadOnly && <CreateAutomationDialog profiles={profiles} />}
           </div>
         }
       />
-
-      {/* Alerts */}
-      {alerts.length > 0 && (
-        <div className="space-y-1.5">
-          {alerts.map((alert, i) => (
-            <div key={i} className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${alert.type === "danger" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"}`}>
-              <AlertTriangle className="h-3 w-3 shrink-0" />
-              <span>{alert.text}</span>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Summary Cards */}
       <AutomationSummaryCards automations={visibleAutomations} />
 
       {/* Main Content with Tabs */}
       <Tabs defaultValue="board" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="board">Workflow</TabsTrigger>
-          <TabsTrigger value="metrics">Métricas</TabsTrigger>
-          <TabsTrigger value="blockers">Bloqueios ({activeBlockers.length})</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <TabsList>
+            <TabsTrigger value="board">Workflow</TabsTrigger>
+            <TabsTrigger value="metrics">Métricas</TabsTrigger>
+            <TabsTrigger value="blockers">Bloqueios ({activeBlockers.length})</TabsTrigger>
+          </TabsList>
+          <AutomationViewToggle value={viewMode} onChange={setViewMode} />
+        </div>
 
         <TabsContent value="board" className="space-y-4">
           {/* Filters */}
@@ -226,6 +207,7 @@ export default function AutomacoesPage() {
             onStatusChange={isReadOnly ? undefined : handleStatusChange}
             isReadOnly={isReadOnly}
             canEditTitle={canEditTitle}
+            viewMode={viewMode}
           />
         </TabsContent>
 
@@ -238,7 +220,7 @@ export default function AutomacoesPage() {
             <CardHeader>
               <CardTitle className="text-sm">Bloqueios Ativos</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-2 max-h-[420px] overflow-y-auto scrollbar-thin">
               {activeBlockers.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">Nenhum bloqueio ativo</p>
               ) : (

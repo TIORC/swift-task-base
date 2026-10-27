@@ -21,10 +21,31 @@ interface Props {
   onStatusChange?: (id: string, newStatus: AutomationStatus) => void;
   isReadOnly?: boolean;
   canEditTitle?: boolean;
+  viewMode: AutomationViewMode;
 }
 
-export function AutomationBoard({ automations, onSelect, profileMap, blockerCounts, onStatusChange, isReadOnly, canEditTitle }: Props) {
-  const [viewMode, setViewMode] = useState<"board" | "list">("board");
+export type AutomationViewMode = "board" | "list";
+
+export function AutomationViewToggle({ value, onChange }: { value: AutomationViewMode; onChange: (mode: AutomationViewMode) => void }) {
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => onChange("board")}
+        className={`p-1.5 rounded-md transition-colors ${value === "board" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+      >
+        <Columns3 className="h-4 w-4" />
+      </button>
+      <button
+        onClick={() => onChange("list")}
+        className={`p-1.5 rounded-md transition-colors ${value === "list" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+      >
+        <List className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+export function AutomationBoard({ automations, onSelect, profileMap, blockerCounts, onStatusChange, isReadOnly, canEditTitle, viewMode }: Props) {
   const [pendingMove, setPendingMove] = useState<{ id: string; status: AutomationStatus } | null>(null);
   const [reason, setReason] = useState<PendingReason>("approval");
   const [reasonDesc, setReasonDesc] = useState("");
@@ -60,21 +81,6 @@ export function AutomationBoard({ automations, onSelect, profileMap, blockerCoun
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
-        <button
-          onClick={() => setViewMode("board")}
-          className={`p-1.5 rounded-md transition-colors ${viewMode === "board" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
-        >
-          <Columns3 className="h-4 w-4" />
-        </button>
-        <button
-          onClick={() => setViewMode("list")}
-          className={`p-1.5 rounded-md transition-colors ${viewMode === "list" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
-        >
-          <List className="h-4 w-4" />
-        </button>
-      </div>
-
       {viewMode === "board" ? (
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="relative">
@@ -91,14 +97,14 @@ export function AutomationBoard({ automations, onSelect, profileMap, blockerCoun
                           className={`w-[360px] shrink-0 max-h-[620px] flex flex-col overflow-hidden rounded-lg border transition-colors ${snapshot.isDraggingOver ? "bg-primary/5 border-primary/20" : "border-border/60 bg-card/30"}`}
                         >
                           {/* Cabeçalho fixo da coluna */}
-                          <div className="flex items-center justify-between px-1 pb-2 gap-1 flex-shrink-0 sticky top-0 z-10 bg-inherit">
-                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider break-words">
+                          <div className="relative flex items-center justify-center px-8 pb-2 flex-shrink-0 sticky top-0 z-10 bg-inherit">
+                            <span className={`text-xs font-semibold uppercase tracking-wider text-center break-words ${col === "completed" ? "text-emerald-600" : "text-muted-foreground"}`}>
                               {STATUS_LABELS[col]}
                             </span>
-                            <Badge variant="secondary" className="text-[10px] h-5 shrink-0">{items.length}</Badge>
+                            <Badge variant="secondary" className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] h-5">{items.length}</Badge>
                           </div>
                           {/* Cards com scroll vertical independente */}
-                          <div className="scrollbar-thin flex-1 overflow-y-auto min-h-[140px] space-y-2 pr-1">
+                          <div className="scrollbar-thin flex-1 overflow-y-auto min-h-[140px] max-h-[490px] space-y-2 pr-1">
                             {items.map((a, index) => (
                               <Draggable key={a.id} draggableId={a.id} index={index} isDragDisabled={isReadOnly}>
                                 {(dragProvided, dragSnapshot) => (

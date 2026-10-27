@@ -43,7 +43,9 @@ function FieldError({ message }: { message?: string }) {
 
 const invalidInput = "border-red-500/70 focus-visible:ring-red-500/40";
 
-export function RequestAutomationDialog({ openOnMount = false, hideTrigger = false, requestType = "Automação", solicitanteEmail = "", solicitanteSector = "", onClose, onSubmitted }: { openOnMount?: boolean; hideTrigger?: boolean; requestType?: "Sistema" | "Automação"; solicitanteEmail?: string; solicitanteSector?: string; onClose?: () => void; onSubmitted?: (id: string) => void }) {
+export function RequestAutomationDialog({ openOnMount = false, hideTrigger = false, requestType = "Automação", maintenanceSystem, solicitanteEmail = "", solicitanteSector = "", onClose, onSubmitted }: { openOnMount?: boolean; hideTrigger?: boolean; requestType?: "Sistema" | "Automação"; maintenanceSystem?: string; solicitanteEmail?: string; solicitanteSector?: string; onClose?: () => void; onSubmitted?: (id: string) => void }) {
+  // Manutenção de sistema existente: usa o formulário do Sistema, em índigo.
+  const isMaintenance = !!maintenanceSystem;
   const { user } = useAuth();
   const { profile } = useProfile();
   const qc = useQueryClient();
@@ -62,7 +64,9 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
   const [title, setTitle] = useState("");
   const [requesterName, setRequesterName] = useState("");
   const [requesterEmail, setRequesterEmail] = useState("");
-  const [selectedSectors, setSelectedSectors] = useState<string[]>(REQUEST_SECTORS.includes(solicitanteSector) ? [solicitanteSector] : []);
+  // O código salvo do setor ("TI") vira o rótulo da lista ("Tecnologia da Informação") para pré-selecionar.
+  const presetSector = solicitanteSector === "TI" ? "Tecnologia da Informação" : solicitanteSector;
+  const [selectedSectors, setSelectedSectors] = useState<string[]>(REQUEST_SECTORS.includes(presetSector) ? [presetSector] : []);
   const [otherSector, setOtherSector] = useState("");
   const [routineOwners, setRoutineOwners] = useState("");
   const [problem, setProblem] = useState("");
@@ -197,7 +201,9 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
     setFiles([]);
   };
 
-  const accent = requestType === "Sistema"
+  const accent = isMaintenance
+    ? { active: "text-indigo-300", border: "border-indigo-400/40", bg: "bg-indigo-500/10", rail: "bg-indigo-400", ring: "focus-visible:ring-indigo-400", button: "bg-indigo-600 hover:bg-indigo-500" }
+    : requestType === "Sistema"
     ? { active: "text-sky-300", border: "border-sky-400/40", bg: "bg-sky-500/10", rail: "bg-sky-400", ring: "focus-visible:ring-sky-400", button: "bg-sky-600 hover:bg-sky-500" }
     : { active: "text-violet-300", border: "border-violet-400/40", bg: "bg-violet-500/10", rail: "bg-violet-400", ring: "focus-visible:ring-violet-400", button: "bg-violet-600 hover:bg-violet-500" };
 
@@ -237,7 +243,7 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
       if (!finalConfirmed) throw new Error("Confirme a validação final antes de enviar.");
 
       const completeDescription = [
-        `1. Identificação e objetivo\nSolicitante: ${requesterName.trim()}\nE-mail: ${requesterEmail.trim()}\nSetores: ${resolvedSectors.join(", ")}\nNome da rotina: ${title.trim()}\nQuem executa e valida: ${routineOwners.trim()}\nProblema a resolver: ${problem.trim()}\nResultado final esperado: ${expectedResult.trim()}\nPrioridade: ${PRIORITY_LABELS[priority]}\nMotivo da prioridade: ${priorityReason.trim()}\nData limite real: ${deadline || "Não informada"}`,
+        `1. Identificação e objetivo\n${isMaintenance ? `Manutenção do sistema: ${maintenanceSystem}\n` : ""}Solicitante: ${requesterName.trim()}\nE-mail: ${requesterEmail.trim()}\nSetores: ${resolvedSectors.join(", ")}\nNome da rotina: ${title.trim()}\nQuem executa e valida: ${routineOwners.trim()}\nProblema a resolver: ${problem.trim()}\nResultado final esperado: ${expectedResult.trim()}\nPrioridade: ${PRIORITY_LABELS[priority]}\nMotivo da prioridade: ${priorityReason.trim()}\nData limite real: ${deadline || "Não informada"}`,
         `2. Como a rotina funciona hoje?\nGatilhos: ${routineTriggers.join(", ")}\nCondição exata: ${triggerDetails.trim()}\nFrequência e horário: ${routineFrequency.trim()}\nProcesso passo a passo: ${processSteps.trim()}\nDecisões: ${decisionRules.trim()}\nCasos fora do fluxo normal: ${exceptionCases.trim()}\nTratamento de erros e pendências: ${errorHandling.trim()}`,
         `3. Entradas, sistemas e saídas\nOrigens dos dados: ${dataSources.join(", ")}\nDetalhes das origens: ${sourceDetails.trim()}\nCampos obrigatórios: ${requiredFields.trim()}\nSistemas e ordem de uso: ${systemsOrder.trim()}\nResultados a criar ou atualizar: ${outputTypes.join(", ")}\nDetalhes dos resultados: ${outputDetails.trim()}`,
         `4. Regras, volume e conferência\nVolume médio e pico: ${volumeAndPeak.trim()}\nPrazo máximo da execução: ${executionDeadline.trim() || "Não informado"}\nConferência do resultado: ${verificationMethod.trim()}\nAção quando itens falham: ${failureAction}\nDetalhes do tratamento de falhas: ${failureDetails.trim()}`,
@@ -342,9 +348,9 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className={`flex max-h-[92vh] w-[96vw] max-w-5xl flex-col overflow-hidden border ${accent.border} ${requestType === "Sistema" ? "bg-[#0c2034]" : "bg-[#1b1534]"}`}>
+      <DialogContent className={`flex max-h-[92vh] w-[96vw] max-w-5xl flex-col overflow-hidden border text-white [&_input]:text-black [&_textarea]:text-black ${accent.border} ${isMaintenance ? "bg-[#1d2654]" : requestType === "Sistema" ? "bg-[#0c2034]" : "bg-[#1b1534]"}`}>
         <DialogHeader>
-          <DialogTitle className={accent.active}>{requestType}</DialogTitle>
+          <DialogTitle className={accent.active}>{isMaintenance ? `Manutenção — ${maintenanceSystem}` : requestType}</DialogTitle>
           <DialogDescription>
             {requestType === "Sistema"
               ? "Descreva sua necessidade de sistema para a equipe de TI avaliar."

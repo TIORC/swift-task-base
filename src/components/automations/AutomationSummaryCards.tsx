@@ -18,15 +18,15 @@ const summaryItems: { key: string; label: string; icon: React.ElementType; filte
 
 export function AutomationSummaryCards({ automations }: Props) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
       {summaryItems.map(item => {
         const count = automations.filter(item.filter).length;
         return (
           <Card key={item.key} className="border-border/50">
-            <CardContent className="p-4 flex flex-col items-center gap-1.5">
-              <item.icon className={`h-5 w-5 ${item.accent}`} />
-              <span className="text-2xl font-bold text-foreground">{count}</span>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider text-center leading-tight">{item.label}</span>
+            <CardContent className="px-2.5 py-1.5 flex items-center justify-center gap-1.5">
+              <item.icon className={`h-3.5 w-3.5 shrink-0 ${item.accent}`} />
+              <span className="text-sm font-semibold text-foreground">{count}</span>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider leading-tight">{item.label}</span>
             </CardContent>
           </Card>
         );

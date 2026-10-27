@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Loader2, CheckCircle2, AlertTriangle, UserCheck } from "lucide-react";
+import { Loader2, CheckCircle2, AlertTriangle, UserCheck, Lock } from "lucide-react";
 import { RequestAutomationDialog } from "@/components/automations/RequestAutomationDialog";
 import { useSolicitante } from "@/hooks/useSolicitante";
 import { useTypewriter } from "@/hooks/useTypewriter";
@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { SECTORS, SECTOR_LABELS } from "@/types/sectors";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useAutomations } from "@/hooks/useAutomationsData";
 
 type RequestType = "Sistema" | "Automação";
 
@@ -264,6 +266,14 @@ export default function PublicAutomationRequestPage() {
   const { solicitante, isLoadingSolicitante, identify } = useSolicitante();
   const [requestType, setRequestType] = useState<RequestType | null>(null);
   const [cardsVisible, setCardsVisible] = useState(false);
+  // Manutenção: escolhe o sistema existente antes de abrir o formulário.
+  const [systemPickerOpen, setSystemPickerOpen] = useState(false);
+  const [maintenanceSystem, setMaintenanceSystem] = useState<string | null>(null);
+  // Sistemas = todas as automações cadastradas em /automacoes (qualquer status), sem repetir o título.
+  const { data: automationsList = [], isLoading: isLoadingSystems } = useAutomations();
+  const existingSystems = [...new Set(automationsList.map((a) => a.title))]
+    .sort((x, y) => x.localeCompare(y, "pt-BR"))
+    .map((name) => ({ id: name, name }));
 
   const [email, setEmail] = useState("");
   const [sector, setSector] = useState<string>(NO_SECTOR);
@@ -343,13 +353,17 @@ export default function PublicAutomationRequestPage() {
 
             {requestType ? (
               <RequestAutomationDialog
-                key={requestType}
+                key={maintenanceSystem ?? requestType}
                 openOnMount
                 hideTrigger
                 requestType={requestType}
+                maintenanceSystem={maintenanceSystem ?? undefined}
                 solicitanteEmail={solicitante?.email ?? email}
                 solicitanteSector={solicitante?.sector ?? (sector === NO_SECTOR ? "" : sector)}
-                onClose={() => setRequestType(null)}
+                onClose={() => {
+                  setRequestType(null);
+                  setMaintenanceSystem(null);
+                }}
                 onSubmitted={() => navigate("/k7f3q9x2/solicitacoes/acompanhar-minha-solicitacao", { replace: true })}
               />
             ) : (
@@ -378,13 +392,56 @@ export default function PublicAutomationRequestPage() {
                 </button>
               </div>
               <div className="flex w-full justify-center">
-                <div
-                  className={`group relative flex min-h-64 w-full items-end overflow-hidden rounded-2xl border border-indigo-300/20 bg-gradient-to-br from-[#122d48] via-[#1d2654] to-[#29234d] p-7 text-left shadow-[0_24px_70px_-35px_rgba(129,140,248,0.4)] transition-[opacity,transform] duration-700 ease-out delay-300 sm:w-[calc(50%-0.625rem)] ${cardsVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}`}
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  className={`group relative flex min-h-64 w-full cursor-not-allowed items-end overflow-hidden rounded-2xl border border-slate-500/30 bg-gradient-to-br from-[#3a3f4a] via-[#2e333d] to-[#262a33] p-7 text-left opacity-90 shadow-[0_24px_70px_-35px_rgba(0,0,0,0.6)] transition-[opacity,transform] duration-700 ease-out delay-300 sm:w-[calc(50%-0.625rem)] ${cardsVisible ? "translate-y-0 opacity-90" : "translate-y-8 opacity-0"}`}
                 >
                   <MaintenanceArtwork visible={cardsVisible} />
                   <span className="absolute inset-0 bg-gradient-to-t from-[#07111f]/70 via-transparent to-transparent" />
-                  <span className="relative z-10 max-w-xs text-xl font-bold uppercase leading-tight tracking-[0.12em] sm:text-2xl">Manutenção de Sistema Existente</span>
-                </div>
+                  {/* Faixa de canto no topo direito */}
+                  <span className="pointer-events-none absolute right-0 top-0 z-20 h-36 w-36 overflow-hidden">
+                    <span className="absolute -right-14 top-9 w-64 rotate-45 bg-amber-400 py-1.5 text-center text-[11px] font-extrabold uppercase tracking-wider text-slate-950 shadow-lg">
+                      Em desenvolvimento
+                    </span>
+                  </span>
+                  <span className="absolute left-4 top-4 z-20 grid h-9 w-9 place-items-center rounded-full border border-slate-400/40 bg-[#1f2329]/80 text-slate-300">
+                    <Lock className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <span className="relative z-10 max-w-xs text-xl font-bold uppercase leading-tight tracking-[0.12em] text-slate-300 sm:text-2xl">Modificação de Sistema</span>
+                </button>
+
+                <Dialog open={systemPickerOpen} onOpenChange={setSystemPickerOpen}>
+                  <DialogContent className="max-w-2xl border-indigo-400/40 bg-[#1d2654] text-white">
+                    <DialogHeader>
+                      <DialogTitle className="text-indigo-300">Qual sistema você deseja alterar?</DialogTitle>
+                      <DialogDescription className="text-slate-300">Escolha o sistema que precisa de manutenção.</DialogDescription>
+                    </DialogHeader>
+                    <div className="max-h-[70vh] space-y-2 overflow-y-auto scrollbar-thin">
+                      {isLoadingSystems ? (
+                        <Loader2 className="mx-auto h-6 w-6 animate-spin text-indigo-300" aria-hidden="true" />
+                      ) : existingSystems.length === 0 ? (
+                        <p className="py-4 text-center text-sm text-slate-400">Nenhum sistema cadastrado.</p>
+                      ) : (
+                        existingSystems.map((s) => (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => {
+                              setMaintenanceSystem(s.name);
+                              setRequestType("Sistema");
+                              setSystemPickerOpen(false);
+                            }}
+                            className="w-full rounded-lg border border-indigo-400/30 bg-indigo-500/10 px-4 py-3 text-left text-sm font-medium text-white transition-colors hover:bg-indigo-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+                          >
+                            {s.name}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
               <div className="flex justify-center">
                 <button type="button" onClick={() => navigate("/k7f3q9x2/solicitacoes/acompanhar-minha-solicitacao")} className="cursor-pointer text-sm font-medium text-amber-300 underline-offset-4 transition-colors hover:text-amber-200 hover:underline focus-visible:outline-none focus-visible:underline">

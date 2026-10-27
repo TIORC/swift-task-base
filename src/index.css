@@ -646,8 +646,8 @@ body[data-theme="almoxarifado"] :is(main, [role="dialog"], [role="alertdialog"])
     scrollbar-color: hsl(var(--primary)) transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
-    height: 8px;
+    width: 10px;
+    height: 14px;
   }
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;

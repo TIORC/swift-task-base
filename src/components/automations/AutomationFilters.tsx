@@ -66,7 +66,7 @@ export function AutomationFilters({
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="none">Sem responsável</SelectItem>
-            {profiles.map(p => (
+            {profiles.filter(p => p.full_name !== "Danicarla").map(p => (
               <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>
             ))}
           </SelectContent>
