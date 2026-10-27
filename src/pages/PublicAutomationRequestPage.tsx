@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Loader2, CheckCircle2, AlertTriangle, UserCheck, Lock } from "lucide-react";
+import { Loader2, CheckCircle2, AlertTriangle, UserCheck } from "lucide-react";
 import { RequestAutomationDialog } from "@/components/automations/RequestAutomationDialog";
 import { useSolicitante } from "@/hooks/useSolicitante";
 import { useTypewriter } from "@/hooks/useTypewriter";
@@ -268,10 +268,13 @@ export default function PublicAutomationRequestPage() {
   const [cardsVisible, setCardsVisible] = useState(false);
   // Manutenção: escolhe o sistema existente antes de abrir o formulário.
   const [systemPickerOpen, setSystemPickerOpen] = useState(false);
+  const [manualSystemName, setManualSystemName] = useState("");
   const [maintenanceSystem, setMaintenanceSystem] = useState<string | null>(null);
-  // Sistemas = todas as automações cadastradas em /automacoes (qualquer status), sem repetir o título.
+  // Sistemas = automações cadastradas em /automacoes (qualquer status) do setor do solicitante, sem repetir o título.
+  // Equipe (dev/admin/gestor) vê os sistemas de todos os setores, igual à função "solicitacoes".
   const { data: automationsList = [], isLoading: isLoadingSystems } = useAutomations();
-  const existingSystems = [...new Set(automationsList.map((a) => a.title))]
+  const seesAllSystems = !!solicitante?.role && ["dev", "admin", "gestor"].includes(solicitante.role);
+  const existingSystems = [...new Set(automationsList.filter((a) => seesAllSystems || (!!solicitante?.sector && a.sector === solicitante.sector)).map((a) => a.title))]
     .sort((x, y) => x.localeCompare(y, "pt-BR"))
     .map((name) => ({ id: name, name }));
 
@@ -394,33 +397,23 @@ export default function PublicAutomationRequestPage() {
               <div className="flex w-full justify-center">
                 <button
                   type="button"
-                  disabled
-                  aria-disabled="true"
-                  className={`group relative flex min-h-64 w-full cursor-not-allowed items-end overflow-hidden rounded-2xl border border-slate-500/30 bg-gradient-to-br from-[#3a3f4a] via-[#2e333d] to-[#262a33] p-7 text-left opacity-90 shadow-[0_24px_70px_-35px_rgba(0,0,0,0.6)] transition-[opacity,transform] duration-700 ease-out delay-300 sm:w-[calc(50%-0.625rem)] ${cardsVisible ? "translate-y-0 opacity-90" : "translate-y-8 opacity-0"}`}
+                  onClick={() => setSystemPickerOpen(true)}
+                  className={`group relative flex min-h-64 w-full cursor-pointer items-end overflow-hidden rounded-2xl border border-red-400/20 bg-gradient-to-br from-[#4a1a22] via-[#3a1419] to-[#2a0d12] p-7 text-left shadow-[0_24px_70px_-35px_rgba(220,38,38,0.45)] transition-[opacity,transform,border-color,box-shadow] duration-700 ease-out delay-300 hover:-translate-y-1 hover:border-red-300/50 hover:shadow-[0_30px_80px_-35px_rgba(220,38,38,0.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 sm:w-[calc(50%-0.625rem)] ${cardsVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}`}
                 >
                   <MaintenanceArtwork visible={cardsVisible} />
                   <span className="absolute inset-0 bg-gradient-to-t from-[#07111f]/70 via-transparent to-transparent" />
-                  {/* Faixa de canto no topo direito */}
-                  <span className="pointer-events-none absolute right-0 top-0 z-20 h-36 w-36 overflow-hidden">
-                    <span className="absolute -right-14 top-9 w-64 rotate-45 bg-amber-400 py-1.5 text-center text-[11px] font-extrabold uppercase tracking-wider text-slate-950 shadow-lg">
-                      Em desenvolvimento
-                    </span>
-                  </span>
-                  <span className="absolute left-4 top-4 z-20 grid h-9 w-9 place-items-center rounded-full border border-slate-400/40 bg-[#1f2329]/80 text-slate-300">
-                    <Lock className="h-4 w-4" aria-hidden="true" />
-                  </span>
                   <span className="relative z-10 max-w-xs text-xl font-bold uppercase leading-tight tracking-[0.12em] text-slate-300 sm:text-2xl">Modificação de Sistema</span>
                 </button>
 
                 <Dialog open={systemPickerOpen} onOpenChange={setSystemPickerOpen}>
-                  <DialogContent className="max-w-2xl border-indigo-400/40 bg-[#1d2654] text-white">
+                  <DialogContent className="max-w-2xl border-red-400/40 bg-[#2a0d12] text-white">
                     <DialogHeader>
-                      <DialogTitle className="text-indigo-300">Qual sistema você deseja alterar?</DialogTitle>
+                      <DialogTitle className="text-red-300">Qual sistema você deseja alterar?</DialogTitle>
                       <DialogDescription className="text-slate-300">Escolha o sistema que precisa de manutenção.</DialogDescription>
                     </DialogHeader>
-                    <div className="max-h-[70vh] space-y-2 overflow-y-auto scrollbar-thin">
+                    <div className="max-h-[60vh] space-y-2 overflow-y-auto [scrollbar-color:#7f1d1d_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-red-800 [&::-webkit-scrollbar-thumb:hover]:bg-red-700">
                       {isLoadingSystems ? (
-                        <Loader2 className="mx-auto h-6 w-6 animate-spin text-indigo-300" aria-hidden="true" />
+                        <Loader2 className="mx-auto h-6 w-6 animate-spin text-red-300" aria-hidden="true" />
                       ) : existingSystems.length === 0 ? (
                         <p className="py-4 text-center text-sm text-slate-400">Nenhum sistema cadastrado.</p>
                       ) : (
@@ -433,13 +426,46 @@ export default function PublicAutomationRequestPage() {
                               setRequestType("Sistema");
                               setSystemPickerOpen(false);
                             }}
-                            className="w-full rounded-lg border border-indigo-400/30 bg-indigo-500/10 px-4 py-3 text-left text-sm font-medium text-white transition-colors hover:bg-indigo-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+                            className="w-full rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-3 text-left text-sm font-medium text-white transition-colors hover:bg-red-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
                           >
                             {s.name}
                           </button>
                         ))
                       )}
                     </div>
+                    <form
+                      className="space-y-2 border-t border-red-400/30 pt-4"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const name = manualSystemName.trim();
+                        if (!name) return;
+                        setMaintenanceSystem(name);
+                        setRequestType("Sistema");
+                        setManualSystemName("");
+                        setSystemPickerOpen(false);
+                      }}
+                    >
+                      <label htmlFor="manual-system-name" className="text-sm font-medium text-slate-300">
+                        Não achou seu sistema? Digite ele aqui
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          id="manual-system-name"
+                          type="text"
+                          value={manualSystemName}
+                          onChange={(e) => setManualSystemName(e.target.value)}
+                          placeholder="Nome do sistema"
+                          className="min-w-0 flex-1 rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-2.5 text-sm text-white placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                        />
+                        <button
+                          type="submit"
+                          disabled={!manualSystemName.trim()}
+                          className="rounded-lg bg-red-700 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                        >
+                          Continuar
+                        </button>
+                      </div>
+                    </form>
                   </DialogContent>
                 </Dialog>
               </div>

@@ -54,6 +54,9 @@ export const TI_TEAM_IDS = Object.keys(TI_TEAM);
 
 export const XP_PER_TASK = 1;
 export const XP_PER_AUTOMATION = 50;
+/** Concluir uma solicitação de alteração vale este % do XP de uma automação (espelha xp_settings.xp_change_pct). */
+export const XP_CHANGE_PCT = 75;
+export const XP_PER_CHANGE = (XP_PER_AUTOMATION * XP_CHANGE_PCT) / 100;
 export const MEDAL_PER_TASKS = 30;
 export const MEDAL_PER_AUTOMATION = 1;
 export const MEDAL_ICON = "🏅";
@@ -75,6 +78,7 @@ export interface MonthlyMedal {
   month: number;
   tasksDone: number;
   autosDone: number;
+  changesDone: number;
   taskMedals: number;
   autoMedals: number;
   total: number;
@@ -104,6 +108,7 @@ function buildMonthly(raw: any): MonthlyMedal[] {
       const date = new Date(y, (mo || 1) - 1, 1);
       const tasksDone = Number(m.tasks) || 0;
       const autosDone = Number(m.autos) || 0;
+      const changesDone = Number(m.changes) || 0;
       const taskMedals = Math.floor(tasksDone / MEDAL_PER_TASKS);
       const autoMedals = autosDone * MEDAL_PER_AUTOMATION;
       return {
@@ -113,10 +118,11 @@ function buildMonthly(raw: any): MonthlyMedal[] {
         month: mo,
         tasksDone,
         autosDone,
+        changesDone,
         taskMedals,
         autoMedals,
         total: Number(m.medals) ?? taskMedals + autoMedals,
-        xp: tasksDone * XP_PER_TASK + autosDone * XP_PER_AUTOMATION,
+        xp: tasksDone * XP_PER_TASK + autosDone * XP_PER_AUTOMATION + changesDone * XP_PER_CHANGE,
       };
     })
     .sort((a, b) => (a.key < b.key ? 1 : -1));
@@ -249,6 +255,7 @@ export function useMyGamification() {
   const curY = now.getFullYear();
   const curM = now.getMonth() + 1;
   const currentMonth = mine.monthly.find((m) => m.year === curY && m.month === curM);
+  const changesDone = mine.monthly.reduce((sum, m) => sum + m.changesDone, 0);
 
   return {
     ...stats,
@@ -260,6 +267,7 @@ export function useMyGamification() {
       tasksOnlyDone: mine.tasks_done - mine.chamados_done,
       chamadosDone: mine.chamados_done,
       autosDone: mine.automations_done,
+      changesDone,
       level: getLevel(mine.total_xp),
       monthly: mine.monthly,
       medalsYear: mine.medals_year,

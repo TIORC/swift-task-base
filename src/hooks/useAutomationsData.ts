@@ -151,7 +151,7 @@ export function useUpdateAutomation() {
           event_type: "status_changed",
           description: `Status alterado para ${values.status}`,
           user_id: user!.id,
-          metadata: { new_status: values.status },
+          metadata: { new_status: values.status, old_status: current?.status ?? null },
         } as any);
         changes.push(`movida para ${values.status}`);
 

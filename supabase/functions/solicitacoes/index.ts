@@ -379,6 +379,63 @@ Deno.serve(async (req) => {
         ? (req.request_kind as string)
         : null;
       const senderName = typeof req.sender_name === "string" ? req.sender_name.trim().slice(0, 120) : claims.email;
+      const description = typeof req.description === "string" ? req.description : null;
+
+      // Manutenção: não cria automação nova. Sistema concluído volta para
+      // "Alteração solicitada" (o XP já ganho fica). Sistema em andamento
+      // continua no mesmo status; a alteração vira um evento e um alerta.
+      const maintenanceSystem = typeof req.maintenance_system === "string" ? req.maintenance_system.trim().slice(0, 200) : "";
+      if (maintenanceSystem) {
+        const canSeeAll = claims.role != null && SEE_ALL_ROLES.has(claims.role);
+        const { data: target, error: targetError } = await admin
+          .from("automations")
+          .select("id, status, sector, assigned_to")
+          .eq("title", maintenanceSystem)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (targetError) throw targetError;
+        const system = target as { id: string; status: string; sector: string | null; assigned_to: string | null } | null;
+        if (!system) return bad("Sistema não encontrado.");
+        if (!canSeeAll && system.sector !== claims.sector) return bad("Este sistema não pertence ao seu setor.");
+
+        const moved = system.status === "completed";
+        if (moved) {
+          const { error: updateError } = await admin
+            .from("automations")
+            .update({ status: "change_requested" })
+            .eq("id", system.id);
+          if (updateError) throw updateError;
+        }
+
+        await admin.from("automation_events").insert({
+          automation_id: system.id,
+          event_type: moved ? "status_changed" : "change_requested",
+          description: `Alteração solicitada por ${senderName}:\n${description ?? title}`,
+          user_id: solicitanteId,
+          metadata: { new_status: moved ? "change_requested" : system.status, old_status: system.status },
+        });
+
+        try {
+          const { data: gestorIds } = await admin.rpc("get_gestor_user_ids");
+          const recipients = new Set<string>(((gestorIds as string[] | null) ?? []));
+          if (system.assigned_to) recipients.add(system.assigned_to);
+          recipients.delete(solicitanteId);
+          if (recipients.size > 0) {
+            await admin.from("notifications").insert(
+              [...recipients].map((id) => ({
+                user_id: id,
+                type: "automation",
+                message: `${senderName} solicitou alteração no sistema "${maintenanceSystem}"`,
+                created_by: solicitanteId,
+              })),
+            );
+          }
+        } catch (notifyErr) {
+          console.error("[solicitacoes] falha ao notificar alteração", notifyErr);
+        }
+        return json({ id: system.id, moved });
+      }
 
       const { data: inserted, error } = await admin
         .from("automations")

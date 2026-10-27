@@ -14,6 +14,7 @@ import { AutomationDetailPanel } from "@/components/automations/AutomationDetail
 import { AutomationMetrics } from "@/components/automations/AutomationMetrics";
 import { CreateAutomationDialog } from "@/components/automations/CreateAutomationDialog";
 import { AutomationExport } from "@/components/automations/AutomationExport";
+import { ChangeAlertGate } from "@/components/automations/ChangeAlertGate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -151,6 +152,7 @@ export default function AutomacoesPage() {
 
   return (
     <div className="space-y-6">
+      <ChangeAlertGate />
       {/* Header */}
       <PageHeader
         title="Gestão de Automações"

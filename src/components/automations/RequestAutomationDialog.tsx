@@ -16,6 +16,7 @@ import {
 import { PRIORITY_LABELS, PRIORITY_OPTIONS } from "@/types/automation";
 import { solicitanteCall } from "@/lib/solicitacoesApi";
 import { Loader2, Lock, Paperclip, Send, X } from "lucide-react";
+import { motion } from "framer-motion";
 import { toast } from "sonner";
 
 const REQUEST_STATIONS = [
@@ -121,9 +122,13 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
     ],
     [
       { field: "routineTriggers", isEmpty: () => routineTriggers.length === 0, message: "Selecione ao menos um gatilho da rotina." },
-      { field: "triggerDetails", isEmpty: () => !triggerDetails.trim(), message: "Detalhe a condição exata que dispara a rotina." },
+      ...(isMaintenance ? [] : [
+        { field: "triggerDetails", isEmpty: () => !triggerDetails.trim(), message: "Detalhe a condição exata que dispara a rotina." },
+      ]),
       { field: "routineFrequency", isEmpty: () => !routineFrequency.trim(), message: "Informe a frequência e o horário da rotina." },
-      { field: "processSteps", isEmpty: () => !processSteps.trim(), message: "Descreva o processo do início ao fim." },
+      ...(isMaintenance ? [] : [
+        { field: "processSteps", isEmpty: () => !processSteps.trim(), message: "Descreva o processo do início ao fim." },
+      ]),
       { field: "decisionRules", isEmpty: () => !decisionRules.trim(), message: "Descreva as decisões tomadas durante o processo." },
       { field: "exceptionCases", isEmpty: () => !exceptionCases.trim(), message: "Informe os casos que fogem do fluxo normal." },
       { field: "errorHandling", isEmpty: () => !errorHandling.trim(), message: "Explique como erros e pendências são tratados." },
@@ -184,7 +189,7 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
       toast.error("Responda as perguntas obrigatórias marcadas com (*) para continuar.");
       return;
     }
-    goToStation(Math.min(REQUEST_STATIONS.length - 1, station + 1));
+    goToStation(visibleStations[Math.min(visibleStations.length - 1, visibleStations.indexOf(station) + 1)]);
   };
 
   useEffect(() => {
@@ -201,8 +206,12 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
     setFiles([]);
   };
 
+  // Manutenção usa só as estações 1 e 2; as demais não se aplicam.
+  const visibleStations = isMaintenance ? [0, 1] : REQUEST_STATIONS.map((_, i) => i);
+  const lastStation = visibleStations[visibleStations.length - 1];
+
   const accent = isMaintenance
-    ? { active: "text-indigo-300", border: "border-indigo-400/40", bg: "bg-indigo-500/10", rail: "bg-indigo-400", ring: "focus-visible:ring-indigo-400", button: "bg-indigo-600 hover:bg-indigo-500" }
+    ? { active: "text-red-300", border: "border-red-400/40", bg: "bg-red-500/10", rail: "bg-red-400", ring: "focus-visible:ring-red-400", button: "bg-red-800 hover:bg-red-700" }
     : requestType === "Sistema"
     ? { active: "text-sky-300", border: "border-sky-400/40", bg: "bg-sky-500/10", rail: "bg-sky-400", ring: "focus-visible:ring-sky-400", button: "bg-sky-600 hover:bg-sky-500" }
     : { active: "text-violet-300", border: "border-violet-400/40", bg: "bg-violet-500/10", rail: "bg-violet-400", ring: "focus-visible:ring-violet-400", button: "bg-violet-600 hover:bg-violet-500" };
@@ -228,6 +237,7 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
       const allFailures: Record<string, string> = {};
       let firstFailingStation = -1;
       requiredByStation.forEach((checks, index) => {
+        if (!visibleStations.includes(index)) return;
         const stationFails = checks.filter((check) => check.isEmpty());
         if (stationFails.length === 0) return;
         if (firstFailingStation === -1) firstFailingStation = index;
@@ -257,7 +267,8 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
         // os gestores.
         const { id } = await solicitanteCall<{ id: string }>("create", {
           request: {
-            title: title.trim(),
+            title: isMaintenance ? maintenanceSystem! : title.trim(),
+            maintenance_system: isMaintenance ? maintenanceSystem : undefined,
             description: completeDescription,
             objective: expectedResult.trim() || null,
             process_impact: expectedResult.trim() || null,
@@ -271,6 +282,36 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
       }
 
       if (!user) throw new Error("Não autenticado");
+      if (isMaintenance) {
+        const { data: target, error: findError } = await supabase
+          .from("automations")
+          .select("id, status")
+          .eq("title", maintenanceSystem!)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (findError) throw findError;
+        if (!target) throw new Error("Sistema não encontrado.");
+        const system = target as { id: string; status: string };
+        // Concluído volta para "Alteração solicitada"; em andamento só registra o evento.
+        const moved = system.status === "completed";
+        if (moved) {
+          const { error: updateError } = await supabase
+            .from("automations")
+            .update({ status: "change_requested" } as any)
+            .eq("id", system.id);
+          if (updateError) throw updateError;
+        }
+        await supabase.from("automation_events").insert({
+          automation_id: system.id,
+          event_type: moved ? "status_changed" : "change_requested",
+          description: `Alteração solicitada pelo colaborador:\n${completeDescription}`,
+          user_id: user.id,
+          metadata: { new_status: moved ? "change_requested" : system.status, old_status: system.status },
+        } as any);
+        return system.id;
+      }
+
       const { data, error } = await supabase
         .from("automations")
         .insert({
@@ -339,6 +380,28 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
 
   const uploading = create.isPending;
 
+  const attachmentsField = isPortal ? (
+    <p className="flex items-start gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs leading-relaxed text-white/60">
+      <Paperclip className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      Anexos (imagem, vídeo ou PDF) exigem login no sistema. Se precisar
+      enviar arquivos, mencione no chat da solicitação após o envio.
+    </p>
+  ) : (
+    <>
+    <Label className="block">Anexos (opcional)</Label>
+    <div className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed ${accent.border} ${accent.bg} px-4 py-5 text-center`} onClick={() => inputRef.current?.click()} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files); }}>
+      <Paperclip className={`h-5 w-5 ${accent.active}`} /><p className="text-xs text-white/65">Anexe documentos, imagens, vídeos ou PDF para contextualizar.</p>
+      <Button size="sm" variant="outline" type="button" className={`pointer-events-none h-7 text-xs ${isMaintenance ? "border-red-400/40 bg-red-950/60 text-white hover:bg-red-900 hover:text-white" : ""}`}>Escolher arquivos</Button>
+      <input ref={inputRef} type="file" multiple accept="image/*,video/*,application/pdf" hidden onChange={(e) => addFiles(e.target.files)} />
+    </div>
+    {files.length > 0 && <ul className="space-y-1">{files.map((f, i) => <li key={i} className="flex items-center gap-2 rounded-md border border-white/10 bg-black/10 px-2.5 py-1.5"><Paperclip className="h-3 w-3 shrink-0" /><span className="min-w-0 flex-1 truncate text-xs">{f.name}</span><span className="shrink-0 text-[10px]">{(f.size / 1024 / 1024).toFixed(1)} MB</span><button type="button" onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))} className="shrink-0 hover:text-red-300" aria-label={`Remover ${f.name}`}><X className="h-3.5 w-3.5" /></button></li>)}</ul>}
+    </>
+  );
+
+  const finalConfirmField = (
+    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 p-3 text-sm"><input type="checkbox" checked={finalConfirmed} onChange={(e) => setFinalConfirmed(e.target.checked)} className={`mt-0.5 h-4 w-4 accent-current ${accent.active}`} /><span>Revisei as informações e confirmo que representam minha necessidade.</span></label>
+  );
+
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { reset(); onClose?.(); } }}>
       {!hideTrigger && (
@@ -348,7 +411,7 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className={`flex max-h-[92vh] w-[96vw] max-w-5xl flex-col overflow-hidden border text-white [&_input]:text-black [&_textarea]:text-black ${accent.border} ${isMaintenance ? "bg-[#1d2654]" : requestType === "Sistema" ? "bg-[#0c2034]" : "bg-[#1b1534]"}`}>
+      <DialogContent className={`flex max-h-[92vh] w-[96vw] max-w-5xl flex-col overflow-hidden border text-white ${isMaintenance ? "[&_input]:bg-red-950/60 [&_input]:text-white [&_input]:border-red-400/30 [&_textarea]:bg-red-950/60 [&_textarea]:text-white [&_textarea]:border-red-400/30 [&_button[role=combobox]]:bg-red-950/60 [&_button[role=combobox]]:text-white [&_button[role=combobox]]:border-red-400/30 [&_input]:placeholder:text-slate-400 [&_textarea]:placeholder:text-slate-400" : "[&_input]:text-black [&_textarea]:text-black"} ${accent.border} ${isMaintenance ? "bg-[#2a0d12]" : requestType === "Sistema" ? "bg-[#0c2034]" : "bg-[#1b1534]"}`}>
         <DialogHeader>
           <DialogTitle className={accent.active}>{isMaintenance ? `Manutenção — ${maintenanceSystem}` : requestType}</DialogTitle>
           <DialogDescription>
@@ -366,16 +429,22 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
 
         <div className="grid min-h-0 flex-1 gap-5 overflow-hidden md:grid-cols-[245px_minmax(0,1fr)]">
           <nav aria-label="Etapas da solicitação" className="flex gap-2 overflow-x-auto pb-2 md:block md:overflow-y-auto md:border-r md:border-white/10 md:pr-4">
-            {REQUEST_STATIONS.map((name, index) => {
+            {visibleStations.map((index, position) => {
+              const name = REQUEST_STATIONS[index];
               const reached = index <= station;
               const locked = index > station;
               return (
                 <button key={name} type="button" onClick={() => requestStation(index)} aria-disabled={locked} aria-current={station === index ? "step" : undefined}
                   className={`relative flex min-w-[145px] items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs transition-colors md:mb-2 md:w-full ${station === index ? `${accent.bg} ${accent.active}` : locked ? "cursor-not-allowed text-white/25" : "text-white/55 hover:bg-white/5 hover:text-white/85"}`}>
-                  <span className={`relative z-10 grid h-7 w-7 shrink-0 place-items-center rounded-full border text-xs font-semibold ${reached ? `${accent.rail} border-transparent text-slate-950` : "border-white/25 bg-transparent text-white/55"}`}>{index + 1}</span>
+                  <motion.span
+                    animate={{ scale: [1, station === index ? 1.18 : 1.08, 1] }}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.92 }}
+                    transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut", delay: index * 0.2 }}
+                    className={`relative z-10 grid h-7 w-7 shrink-0 place-items-center rounded-full border text-xs font-semibold ${reached ? `${accent.rail} border-transparent text-slate-950` : "border-white/25 bg-transparent text-white/55"}`}>{index + 1}</motion.span>
                   <span className="leading-snug">{name}</span>
                   {locked && <Lock className="ml-auto h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
-                  {index < REQUEST_STATIONS.length - 1 && <span className={`absolute bottom-[-8px] left-[26px] hidden h-3 w-px md:block ${index < station ? accent.rail : "bg-white/15"}`} />}
+                  {position < visibleStations.length - 1 && <span className={`absolute bottom-[-8px] left-[26px] hidden h-3 w-px md:block ${index < station ? accent.rail : "bg-white/15"}`} />}
                 </button>
               );
             })}
@@ -383,10 +452,10 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
 
           <div className="flex min-h-0 flex-col overflow-hidden">
             <div className="mb-3 flex items-center justify-between">
-              <p className={`text-xs font-medium uppercase tracking-wider ${accent.active}`}>Estação {station + 1} de {REQUEST_STATIONS.length}</p>
-              <div className="flex gap-1" aria-hidden="true">{REQUEST_STATIONS.map((_, i) => <span key={i} className={`h-1 w-6 rounded-full ${i <= station ? accent.rail : "bg-white/15"}`} />)}</div>
+              <p className={`text-xs font-medium uppercase tracking-wider ${accent.active}`}>Estação {visibleStations.indexOf(station) + 1} de {visibleStations.length}</p>
+              <div className="flex gap-1" aria-hidden="true">{visibleStations.map((s) => <span key={s} className={`h-1 w-6 rounded-full ${s <= station ? accent.rail : "bg-white/15"}`} />)}</div>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto pr-2">
+            <div className={`min-h-0 flex-1 overflow-y-auto pr-2 ${isMaintenance ? "[scrollbar-color:#7f1d1d_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-red-800 [&::-webkit-scrollbar-thumb:hover]:bg-red-700" : ""}`}>
               <section className="space-y-4 pb-4">
                 {station === 0 && <>
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -398,7 +467,7 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
                     <div className="mt-2 grid gap-2 sm:grid-cols-3">
                       {REQUEST_SECTORS.map((item) => (
                         <label key={item} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-colors ${selectedSectors.includes(item) ? `${accent.border} ${accent.bg}` : "border-white/10 bg-black/10 hover:bg-white/5"}`}>
-                          <input type="checkbox" checked={selectedSectors.includes(item)} onChange={(e) => setSelectedSectors((prev) => e.target.checked ? [...prev, item] : prev.filter((s) => s !== item))} className="h-4 w-4" style={{ accentColor: requestType === "Sistema" ? "#38bdf8" : "#a78bfa" }} />
+                          <input type="checkbox" checked={selectedSectors.includes(item)} onChange={(e) => setSelectedSectors((prev) => e.target.checked ? [...prev, item] : prev.filter((s) => s !== item))} className="h-4 w-4" style={{ accentColor: isMaintenance ? "#f87171" : requestType === "Sistema" ? "#38bdf8" : "#a78bfa" }} />
                           {item}
                         </label>
                       ))}
@@ -407,7 +476,19 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
                     {selectedSectors.includes("Outro") && <Input aria-invalid={!!errors.otherSector} value={otherSector} onChange={(e) => setOtherSector(e.target.value)} placeholder="Digite o nome do setor" className={`mt-2 ${errors.otherSector ? invalidInput : ""}`} />}
                     <FieldError message={errors.otherSector} />
                   </div>
-                  <div><Label>Nome da rotina que deseja automatizar <span className="text-red-400">*</span></Label><Input required aria-invalid={!!errors.title} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Conferência de notificações do DTE" className={`mt-1 ${errors.title ? invalidInput : ""}`} /><FieldError message={errors.title} /></div>
+                  {isMaintenance ? (
+                    <div className="space-y-3">
+                      <div>
+                        <Label>Descreva quais as mudanças que o sistema precisa atender: <span className="text-red-400">*</span></Label>
+                        <Textarea required maxLength={6000} aria-invalid={!!errors.title} value={title} onChange={(e) => setTitle(e.target.value)} rows={6} placeholder="Descreva as mudanças necessárias no sistema (até 6000 caracteres)." className={`mt-1 ${errors.title ? invalidInput : ""}`} />
+                        <FieldError message={errors.title} />
+                      </div>
+                      <p className="text-xs text-white/65">Se for necessário, envie anexos ou vídeos comentados para facilitar a compreensão dos desenvolvedores.</p>
+                      {attachmentsField}
+                    </div>
+                  ) : (
+                    <div><Label>Nome da rotina que deseja automatizar <span className="text-red-400">*</span></Label><Input required aria-invalid={!!errors.title} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Conferência de notificações do DTE" className={`mt-1 ${errors.title ? invalidInput : ""}`} /><FieldError message={errors.title} /></div>
+                  )}
                   <div><Label>Quem executa a rotina hoje e quem valida o resultado? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.routineOwners} value={routineOwners} onChange={(e) => setRoutineOwners(e.target.value)} rows={3} placeholder="Informe funções e responsáveis, inclusive quando atravessa mais de um setor." className={`mt-1 ${errors.routineOwners ? invalidInput : ""}`} /><FieldError message={errors.routineOwners} /></div>
                   <div><Label>Qual problema a automação deve resolver? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.problem} value={problem} onChange={(e) => setProblem(e.target.value)} rows={3} placeholder="Diga o que consome tempo, gera erro, atrasa uma entrega ou dificulta o acompanhamento." className={`mt-1 ${errors.problem ? invalidInput : ""}`} /><FieldError message={errors.problem} /></div>
                   <div><Label>Qual resultado final espera receber? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.expectedResult} value={expectedResult} onChange={(e) => setExpectedResult(e.target.value)} rows={3} placeholder="Ex.: guias salvas por colaborador, relatório de empresas com erro, tarefa criada no Gestta ou aviso enviado." className={`mt-1 ${errors.expectedResult ? invalidInput : ""}`} /><FieldError message={errors.expectedResult} /></div>
@@ -424,16 +505,16 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       {ROUTINE_TRIGGERS.map((trigger) => (
                         <label key={trigger} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-colors ${routineTriggers.includes(trigger) ? `${accent.border} ${accent.bg}` : "border-white/10 bg-black/10 hover:bg-white/5"}`}>
-                          <input type="checkbox" checked={routineTriggers.includes(trigger)} onChange={(e) => setRoutineTriggers((prev) => e.target.checked ? [...prev, trigger] : prev.filter((item) => item !== trigger))} className="h-4 w-4" style={{ accentColor: requestType === "Sistema" ? "#38bdf8" : "#a78bfa" }} />
+                          <input type="checkbox" checked={routineTriggers.includes(trigger)} onChange={(e) => setRoutineTriggers((prev) => e.target.checked ? [...prev, trigger] : prev.filter((item) => item !== trigger))} className="h-4 w-4" style={{ accentColor: isMaintenance ? "#f87171" : requestType === "Sistema" ? "#38bdf8" : "#a78bfa" }} />
                           {trigger}
                         </label>
                       ))}
                     </div>
                     <FieldError message={errors.routineTriggers} />
                   </div>
-                  <div><Label>Detalhe a condição exata <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.triggerDetails} value={triggerDetails} onChange={(e) => setTriggerDetails(e.target.value)} rows={2} placeholder="Em que situação a rotina deve começar?" className={`mt-1 ${errors.triggerDetails ? invalidInput : ""}`} /><FieldError message={errors.triggerDetails} /></div>
+                  {!isMaintenance && <div><Label>Detalhe a condição exata <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.triggerDetails} value={triggerDetails} onChange={(e) => setTriggerDetails(e.target.value)} rows={2} placeholder="Em que situação a rotina deve começar?" className={`mt-1 ${errors.triggerDetails ? invalidInput : ""}`} /><FieldError message={errors.triggerDetails} /></div>}
                   <div><Label>Qual a frequência e em que horário deve ocorrer? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.routineFrequency} value={routineFrequency} onChange={(e) => setRoutineFrequency(e.target.value)} rows={3} placeholder="Informe dias úteis, fins de semana, feriados e competência, se aplicável." className={`mt-1 ${errors.routineFrequency ? invalidInput : ""}`} /><FieldError message={errors.routineFrequency} /></div>
-                  <div><Label>Descreva o processo do início ao fim, na ordem em que é realizado. <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.processSteps} value={processSteps} onChange={(e) => setProcessSteps(e.target.value)} rows={5} placeholder="Numere as etapas; informe telas, menus, cliques, cálculos, conferências e aprovações." className={`mt-1 ${errors.processSteps ? invalidInput : ""}`} /><FieldError message={errors.processSteps} /></div>
+                  {!isMaintenance && <div><Label>Descreva o processo do início ao fim, na ordem em que é realizado. <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.processSteps} value={processSteps} onChange={(e) => setProcessSteps(e.target.value)} rows={5} placeholder="Numere as etapas; informe telas, menus, cliques, cálculos, conferências e aprovações." className={`mt-1 ${errors.processSteps ? invalidInput : ""}`} /><FieldError message={errors.processSteps} /></div>}
                   <div><Label>Que decisões a pessoa toma durante o processo? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.decisionRules} value={decisionRules} onChange={(e) => setDecisionRules(e.target.value)} rows={4} placeholder="Para cada decisão, escreva: se acontecer X, faço Y; caso contrário, faço Z." className={`mt-1 ${errors.decisionRules ? invalidInput : ""}`} /><FieldError message={errors.decisionRules} /></div>
                   <div><Label>Quais casos fogem do fluxo normal? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.exceptionCases} value={exceptionCases} onChange={(e) => setExceptionCases(e.target.value)} rows={4} placeholder="Ex.: empresa inativa, ausência de movimento, senha vencida, cadastro duplicado, guia já emitida, portal indisponível ou documento ilegível." className={`mt-1 ${errors.exceptionCases ? invalidInput : ""}`} /><FieldError message={errors.exceptionCases} /></div>
                   <div><Label>O que acontece hoje quando há erro ou pendência? Quem resolve e em quanto tempo? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.errorHandling} value={errorHandling} onChange={(e) => setErrorHandling(e.target.value)} rows={4} placeholder="Descreva como o problema é identificado, encaminhado e resolvido." className={`mt-1 ${errors.errorHandling ? invalidInput : ""}`} /><FieldError message={errors.errorHandling} /></div>
@@ -444,7 +525,7 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       {DATA_SOURCES.map((source) => (
                         <label key={source} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-colors ${dataSources.includes(source) ? `${accent.border} ${accent.bg}` : "border-white/10 bg-black/10 hover:bg-white/5"}`}>
-                          <input type="checkbox" checked={dataSources.includes(source)} onChange={(e) => setDataSources((prev) => e.target.checked ? [...prev, source] : prev.filter((item) => item !== source))} className="h-4 w-4" style={{ accentColor: requestType === "Sistema" ? "#38bdf8" : "#a78bfa" }} />
+                          <input type="checkbox" checked={dataSources.includes(source)} onChange={(e) => setDataSources((prev) => e.target.checked ? [...prev, source] : prev.filter((item) => item !== source))} className="h-4 w-4" style={{ accentColor: isMaintenance ? "#f87171" : requestType === "Sistema" ? "#38bdf8" : "#a78bfa" }} />
                           {source}
                         </label>
                       ))}
@@ -459,7 +540,7 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       {OUTPUT_TYPES.map((output) => (
                         <label key={output} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-colors ${outputTypes.includes(output) ? `${accent.border} ${accent.bg}` : "border-white/10 bg-black/10 hover:bg-white/5"}`}>
-                          <input type="checkbox" checked={outputTypes.includes(output)} onChange={(e) => setOutputTypes((prev) => e.target.checked ? [...prev, output] : prev.filter((item) => item !== output))} className="h-4 w-4" style={{ accentColor: requestType === "Sistema" ? "#38bdf8" : "#a78bfa" }} />
+                          <input type="checkbox" checked={outputTypes.includes(output)} onChange={(e) => setOutputTypes((prev) => e.target.checked ? [...prev, output] : prev.filter((item) => item !== output))} className="h-4 w-4" style={{ accentColor: isMaintenance ? "#f87171" : requestType === "Sistema" ? "#38bdf8" : "#a78bfa" }} />
                           {output}
                         </label>
                       ))}
@@ -479,23 +560,7 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
                   <div><Label>Quais recibos, protocolos, valores e vencimentos precisam ser confrontados com a origem?</Label><Textarea value={receiptChecks} onChange={(e) => setReceiptChecks(e.target.value)} rows={3} placeholder="Informe quais dados precisam ser comparados com a fonte original." className="mt-1" /></div>
                   <div><Label>Quais informações precisam ser consultadas ou atualizadas em outros setores?</Label><Textarea value={departmentUpdates} onChange={(e) => setDepartmentUpdates(e.target.value)} rows={3} placeholder="Indique as informações e os setores envolvidos." className="mt-1" /></div>
                   <div><Label>Quem pode solicitar, aprovar, executar e visualizar o resultado?</Label><Textarea value={accessRoles} onChange={(e) => setAccessRoles(e.target.value)} rows={3} placeholder="Informe as pessoas ou funções envolvidas em cada etapa." className="mt-1" /></div>
-                  {isPortal ? (
-                    <p className="flex items-start gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs leading-relaxed text-white/60">
-                      <Paperclip className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                      Anexos (imagem, vídeo ou PDF) exigem login no sistema. Se precisar
-                      enviar arquivos, mencione no chat da solicitação após o envio.
-                    </p>
-                  ) : (
-                    <>
-                    <Label className="block">Anexos (opcional)</Label>
-                    <div className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed ${accent.border} ${accent.bg} px-4 py-5 text-center`} onClick={() => inputRef.current?.click()} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files); }}>
-                      <Paperclip className={`h-5 w-5 ${accent.active}`} /><p className="text-xs text-white/65">Anexe documentos, imagens, vídeos ou PDF para contextualizar.</p>
-                      <Button size="sm" variant="outline" type="button" className="pointer-events-none h-7 text-xs">Escolher arquivos</Button>
-                      <input ref={inputRef} type="file" multiple accept="image/*,video/*,application/pdf" hidden onChange={(e) => addFiles(e.target.files)} />
-                    </div>
-                    {files.length > 0 && <ul className="space-y-1">{files.map((f, i) => <li key={i} className="flex items-center gap-2 rounded-md border border-white/10 bg-black/10 px-2.5 py-1.5"><Paperclip className="h-3 w-3 shrink-0" /><span className="min-w-0 flex-1 truncate text-xs">{f.name}</span><span className="shrink-0 text-[10px]">{(f.size / 1024 / 1024).toFixed(1)} MB</span><button type="button" onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))} className="shrink-0 hover:text-red-300" aria-label={`Remover ${f.name}`}><X className="h-3.5 w-3.5" /></button></li>)}</ul>}
-                    </>
-                  )}
+                  {!isMaintenance && attachmentsField}
                 </>}
                 {station === 5 && <>
                   <div className={`rounded-xl border ${accent.border} ${accent.bg} p-4 text-sm`}>
@@ -505,13 +570,14 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
                   <div><Label>Se a automação funcionar perfeitamente, o que você conseguirá fazer ou deixar de fazer? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.automationImpact} value={automationImpact} onChange={(e) => setAutomationImpact(e.target.value)} rows={4} placeholder="Descreva o impacto esperado no seu trabalho." className={`mt-1 ${errors.automationImpact ? invalidInput : ""}`} /><FieldError message={errors.automationImpact} /></div>
                   <div><Label>Quais são três exemplos que a TI deve testar antes da entrega? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.acceptanceTests} value={acceptanceTests} onChange={(e) => setAcceptanceTests(e.target.value)} rows={4} placeholder="Inclua um caso comum, uma exceção e uma falha recuperável." className={`mt-1 ${errors.acceptanceTests ? invalidInput : ""}`} /><FieldError message={errors.acceptanceTests} /></div>
                   <div><Label>Você pode demonstrar o processo completo com um caso real e validar o resultado em teste? <span className="text-red-400">*</span></Label><Select value={demoAvailability} onValueChange={setDemoAvailability}><SelectTrigger aria-invalid={!!errors.demoAvailability} className={`mt-1 ${errors.demoAvailability ? invalidInput : ""}`}><SelectValue placeholder="Selecione uma opção" /></SelectTrigger><SelectContent>{DEMO_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select><FieldError message={errors.demoAvailability} /></div>
-                  <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 p-3 text-sm"><input type="checkbox" checked={finalConfirmed} onChange={(e) => setFinalConfirmed(e.target.checked)} className={`mt-0.5 h-4 w-4 accent-current ${accent.active}`} /><span>Revisei as informações e confirmo que representam minha necessidade.</span></label>
+                  {finalConfirmField}
                 </>}
+                {isMaintenance && station === lastStation && finalConfirmField}
               </section>
             </div>
             <DialogFooter className="mt-4 flex-row justify-between border-t border-white/10 pt-4 sm:justify-between">
-              <Button variant="ghost" disabled={uploading} onClick={() => station === 0 ? setOpen(false) : goToStation(station - 1)}>{station === 0 ? "Cancelar" : "Voltar"}</Button>
-              {station < REQUEST_STATIONS.length - 1 ? (
+              <Button variant="ghost" disabled={uploading} onClick={() => station === 0 ? setOpen(false) : goToStation(visibleStations[visibleStations.indexOf(station) - 1])}>{station === 0 ? "Cancelar" : "Voltar"}</Button>
+              {station < lastStation ? (
                 <Button className={accent.button} onClick={goNextStation}>Próxima estação</Button>
               ) : (
                 <Button className={accent.button} onClick={() => create.mutate()} disabled={uploading || !finalConfirmed}>{uploading && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}<Send className="mr-1.5 h-4 w-4" /> Enviar solicitação</Button>
