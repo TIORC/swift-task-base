@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { InventoryLocation, InventoryMovement } from "@/hooks/useInventory";
@@ -96,17 +95,6 @@ export function EntryFilters({ value, onChange, onSearch, onClear, canClear, loc
       className="space-y-3 rounded-md border border-gray-300 bg-white p-3 text-black"
     >
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
-        {field("Data de", <Input type="date" value={value.dateFrom} onChange={(e) => set({ dateFrom: e.target.value })} />)}
-        {field("Data até", <Input type="date" value={value.dateTo} onChange={(e) => set({ dateTo: e.target.value })} />)}
-        {field("Item", <Input placeholder="Nome do item" value={value.item} onChange={(e) => set({ item: e.target.value })} />)}
-        {field("Qtd", <Input type="number" min={0} placeholder="Exata" value={value.qtd} onChange={(e) => set({ qtd: e.target.value })} />)}
-        {field("Valor unit. mín.", <Input type="number" step="0.01" value={value.unitMin} onChange={(e) => set({ unitMin: e.target.value })} />)}
-        {field("Valor unit. máx.", <Input type="number" step="0.01" value={value.unitMax} onChange={(e) => set({ unitMax: e.target.value })} />)}
-        {field("Valor total mín.", <Input type="number" step="0.01" value={value.totalMin} onChange={(e) => set({ totalMin: e.target.value })} />)}
-        {field("Valor total máx.", <Input type="number" step="0.01" value={value.totalMax} onChange={(e) => set({ totalMax: e.target.value })} />)}
-        {field("Patrimônio", <Input value={value.patrimony} onChange={(e) => set({ patrimony: e.target.value })} />)}
-        {field("Fornecedor", <Input value={value.supplier} onChange={(e) => set({ supplier: e.target.value })} />)}
-        {field("Nota fiscal", <Input value={value.invoice} onChange={(e) => set({ invoice: e.target.value })} />)}
         {field("Local", (
           <Select value={value.location || "all"} onValueChange={(v) => set({ location: v === "all" ? "" : v })}>
             <SelectTrigger><SelectValue /></SelectTrigger>

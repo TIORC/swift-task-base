@@ -80,14 +80,14 @@ export function ExitFilters({ value, onChange, onSearch, onClear, canClear, show
       className="space-y-3 rounded-md border border-gray-300 bg-white p-3 text-black"
     >
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-4">
-        {field("Data de", <Input type="date" value={value.dateFrom} onChange={(e) => set({ dateFrom: e.target.value })} />)}
-        {field("Data até", <Input type="date" value={value.dateTo} onChange={(e) => set({ dateTo: e.target.value })} />)}
-        {field("Item", <Input placeholder="Nome do item" value={value.item} onChange={(e) => set({ item: e.target.value })} />)}
-        {field("Qtd", <Input type="number" min={0} placeholder="Exata" value={value.qtd} onChange={(e) => set({ qtd: e.target.value })} />)}
-        {field("Patrimônio", <Input value={value.patrimony} onChange={(e) => set({ patrimony: e.target.value })} />)}
-        {field("Responsável", <Input value={value.responsible} onChange={(e) => set({ responsible: e.target.value })} />)}
-        {field("Departamento", <Input value={value.department} onChange={(e) => set({ department: e.target.value })} />)}
-        {field("Motivo", <Input value={value.reason} onChange={(e) => set({ reason: e.target.value })} />)}
+        <div className="hidden">{field("Data de", <Input type="date" value={value.dateFrom} onChange={(e) => set({ dateFrom: e.target.value })} />)}</div>
+        <div className="hidden">{field("Data até", <Input type="date" value={value.dateTo} onChange={(e) => set({ dateTo: e.target.value })} />)}</div>
+        <div className="hidden">{field("Item", <Input placeholder="Nome do item" value={value.item} onChange={(e) => set({ item: e.target.value })} />)}</div>
+        <div className="hidden">{field("Qtd", <Input type="number" min={0} placeholder="Exata" value={value.qtd} onChange={(e) => set({ qtd: e.target.value })} />)}</div>
+        <div className="hidden">{field("Patrimônio", <Input value={value.patrimony} onChange={(e) => set({ patrimony: e.target.value })} />)}</div>
+        <div className="hidden">{field("Responsável", <Input value={value.responsible} onChange={(e) => set({ responsible: e.target.value })} />)}</div>
+        <div className="hidden">{field("Departamento", <Input value={value.department} onChange={(e) => set({ department: e.target.value })} />)}</div>
+        <div className="hidden">{field("Motivo", <Input value={value.reason} onChange={(e) => set({ reason: e.target.value })} />)}</div>
       </div>
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-gray-600">Mostrando {shown} de {total} saídas</p>

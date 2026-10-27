@@ -5,6 +5,10 @@ import type { LucideIcon } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -20,14 +24,18 @@ import {
   useInventoryDepartments, useSaveDepartment,
   useInventoryCollaborators, useInventorySettings, useUpdateInventorySettings, useRecoverDamaged,
   useDeactivateItem, useDeleteMovement, useDeleteAsset, useDeleteRequest,
+  useCanZerarEstoque, useZerarEstoque,
   useUpdateCategory, useDeleteCategory, useUpdateLocation, useDeleteLocation, useDeleteDepartment,
 } from "@/hooks/useInventory";
 import { ItemFormDialog } from "@/components/almoxarifado/ItemFormDialog";
+import { ColumnFilter } from "@/components/almoxarifado/ColumnFilter";
+import { OLD_ASSETS, type OldAsset } from "@/data/ativos-antigos";
 import { EntryDialog } from "@/components/almoxarifado/EntryDialog";
 import { EntryGrid } from "@/components/almoxarifado/EntryGrid";
 import { EntryFilters, EMPTY_ENTRY_FILTERS, filterEntries, hasActiveEntryFilters, type EntryFilterState } from "@/components/almoxarifado/EntryFilters";
 import { ExitGrid } from "@/components/almoxarifado/ExitGrid";
 import { AssetGrid } from "@/components/almoxarifado/AssetGrid";
+import { DashboardCharts } from "@/components/almoxarifado/DashboardCharts";
 import { ExitFilters, EMPTY_EXIT_FILTERS, filterExits, hasActiveExitFilters, type ExitFilterState } from "@/components/almoxarifado/ExitFilters";
 import { ExitDialog } from "@/components/almoxarifado/ExitDialog";
 import { StatusChangeDialog } from "@/components/almoxarifado/StatusChangeDialog";
@@ -97,6 +105,31 @@ function RowActionButton({
   );
 }
 
+const ENTRY_PAGE_SIZE = 30;
+const OLD_PAGE_SIZE = 30;
+const OLD_COLUMNS: { key: keyof OldAsset; label: string }[] = [
+  { key: "ativo", label: "Ativo" },
+  { key: "categoria", label: "Categoria" },
+  { key: "patrimonio", label: "Patrimônio" },
+  { key: "status", label: "Status" },
+  { key: "descricao", label: "Descrição" },
+  { key: "departamento", label: "Departamento" },
+  { key: "colaborador", label: "Colaborador Responsável" },
+  { key: "historico", label: "Histórico" },
+  { key: "observacao", label: "Observação" },
+];
+
+type OutColumn = "item" | "qtd" | "responsavel" | "departamento" | "patrimonio" | "motivo";
+const OUT_COLUMNS: OutColumn[] = ["item", "qtd", "responsavel", "departamento", "patrimonio", "motivo"];
+type EntryColumn = "item" | "qtd" | "valorUnit" | "valorTotal" | "patrimonio" | "local";
+const ENTRY_COLUMNS: EntryColumn[] = ["item", "qtd", "valorUnit", "valorTotal", "patrimonio", "local"];
+const ENTRY_COLUMN_LABELS: Record<EntryColumn, string> = {
+  item: "Item", qtd: "Qtd", valorUnit: "Valor unit.", valorTotal: "Valor total", patrimonio: "Patrimônio", local: "Local",
+};
+const OUT_COLUMN_LABELS: Record<OutColumn, string> = {
+  item: "Item", qtd: "Qtd", responsavel: "Responsável", departamento: "Departamento", patrimonio: "Patrimônio", motivo: "Motivo",
+};
+
 export default function Almoxarifado() {
   usePageTheme("almoxarifado");
   const canWrite = useCanWriteInventory();
@@ -118,7 +151,7 @@ export default function Almoxarifado() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [collabFilter, setCollabFilter] = useState("all");
   const [deptFilter, setDeptFilter] = useState("all");
-  const [outCollabFilter, setOutCollabFilter] = useState("all");
+  const [outColFilters, setOutColFilters] = useState<Partial<Record<OutColumn, string[]>>>({});
   const [outPage, setOutPage] = useState(1);
   const [outPageSize, setOutPageSize] = useState(100);
 
@@ -132,6 +165,9 @@ export default function Almoxarifado() {
   // entryDraft: o que está sendo digitado; entryFilters: o que foi pesquisado (aplicado à tabela).
   const [entryDraft, setEntryDraft] = useState<EntryFilterState>(EMPTY_ENTRY_FILTERS);
   const [entryFilters, setEntryFilters] = useState<EntryFilterState>(EMPTY_ENTRY_FILTERS);
+  const [entryColFilters, setEntryColFilters] = useState<Partial<Record<EntryColumn, string[]>>>({});
+  const [oldColFilters, setOldColFilters] = useState<Partial<Record<keyof OldAsset, string[]>>>({});
+  const [oldPage, setOldPage] = useState(1);
   const [lastCreatedItem, setLastCreatedItem] = useState<string | null>(null);
   const [exitDlg, setExitDlg] = useState<{ open: boolean; item?: InventoryItem | null }>({ open: false });
   const [statusDlg, setStatusDlg] = useState<{ open: boolean; item?: InventoryItem | null; mode: "damage" | "discard" }>({ open: false, mode: "damage" });
@@ -161,10 +197,47 @@ export default function Almoxarifado() {
   const collabDept = (id: string | null) => collaborators.find((c) => c.id === id)?.department ?? "—";
   const itemName = (id: string) => items.find((i) => i.id === id)?.name ?? "—";
   const entryMovements = useMemo(() => movements.filter((m) => m.type === "in"), [movements]);
-  const filteredEntries = useMemo(
-    () => filterEntries(entryMovements, entryFilters, itemName),
-    [entryMovements, entryFilters, items],
+  const entryColumnValue = (col: EntryColumn, m: InventoryMovement): string => {
+    switch (col) {
+      case "item": return itemName(m.item_id);
+      case "qtd": return String(m.quantity);
+      case "valorUnit": return currency(m.unit_price ?? 0);
+      case "valorTotal": return currency((m.unit_price ?? 0) * m.quantity);
+      case "patrimonio": return m.patrimony_number || "N/A";
+      case "local": return locName(m.to_location_id);
+    }
+  };
+  const entryColumnOptions = (col: EntryColumn) =>
+    Array.from(new Set(entryMovements.map((m) => entryColumnValue(col, m))))
+      .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" }));
+  const oldValue = (a: OldAsset, col: keyof OldAsset) => a[col] || (col === "patrimonio" ? "N/A" : "—");
+  const oldColumnOptions = (col: keyof OldAsset) =>
+    Array.from(new Set(OLD_ASSETS.map((a) => oldValue(a, col))))
+      .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" }));
+  const setOldColFilter = (col: keyof OldAsset, next: string[]) => {
+    setOldColFilters((prev) => ({ ...prev, [col]: next }));
+    setOldPage(1);
+  };
+  const oldFiltered = useMemo(
+    () => OLD_ASSETS.filter((a) => OLD_COLUMNS.every((c) => !oldColFilters[c.key]?.length || oldColFilters[c.key].includes(oldValue(a, c.key)))),
+    [oldColFilters],
   );
+  const oldPageCount = Math.max(1, Math.ceil(oldFiltered.length / OLD_PAGE_SIZE));
+  const currentOldPage = Math.min(oldPage, oldPageCount);
+  const oldPaged = oldFiltered.slice((currentOldPage - 1) * OLD_PAGE_SIZE, currentOldPage * OLD_PAGE_SIZE);
+  const setEntryColFilter = (col: EntryColumn, next: string[]) => {
+    setEntryColFilters((prev) => ({ ...prev, [col]: next }));
+    setEntryPage(1);
+  };
+  const filteredEntries = useMemo(
+    () => filterEntries(entryMovements, entryFilters, itemName)
+      .filter((m) => ENTRY_COLUMNS.every((col) => !entryColFilters[col]?.length || entryColFilters[col].includes(entryColumnValue(col, m)))),
+    [entryMovements, entryFilters, entryColFilters, items, locations],
+  );
+  const [entryPage, setEntryPage] = useState(1);
+  const entryPageCount = Math.max(1, Math.ceil(filteredEntries.length / ENTRY_PAGE_SIZE));
+  const currentEntryPage = Math.min(entryPage, entryPageCount);
+  const pageEntries = filteredEntries.slice((currentEntryPage - 1) * ENTRY_PAGE_SIZE, currentEntryPage * ENTRY_PAGE_SIZE);
   const outMovements = useMemo(() => movements
     .filter((m) => m.type === "out" || m.type === "assign")
     .slice()
@@ -175,14 +248,27 @@ export default function Almoxarifado() {
   const outLetters = Array.from(new Set(outMovements
     .map((m) => alphaInitial(collabName(m.collaborator_id)))
     .filter((letter) => /^[A-Z]$/.test(letter))));
+  const outColumnValue = (col: OutColumn, m: InventoryMovement): string => {
+    switch (col) {
+      case "item": return itemName(m.item_id);
+      case "qtd": return String(m.quantity);
+      case "responsavel": return collabName(m.collaborator_id);
+      case "departamento": return m.department ?? collabDept(m.collaborator_id);
+      case "patrimonio": return m.patrimony_number || "N/A";
+      case "motivo": return m.reason ?? "—";
+    }
+  };
+  const outColumnOptions = (col: OutColumn) =>
+    Array.from(new Set(outMovements.map((m) => outColumnValue(col, m))))
+      .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" }));
+  const setOutColFilter = (col: OutColumn, next: string[]) => {
+    setOutColFilters((prev) => ({ ...prev, [col]: next }));
+    setOutPage(1);
+  };
   const filteredOutMovements = useMemo(
-    () => filterExits(
-      outCollabFilter === "all" ? outMovements : outMovements.filter((m) => m.collaborator_id === outCollabFilter),
-      exitFilters,
-      itemName,
-      collabName,
-    ),
-    [outMovements, outCollabFilter, exitFilters, items, collaborators],
+    () => filterExits(outMovements, exitFilters, itemName, collabName)
+      .filter((m) => OUT_COLUMNS.every((col) => !outColFilters[col]?.length || outColFilters[col].includes(outColumnValue(col, m)))),
+    [outMovements, exitFilters, outColFilters, items, collaborators],
   );
   const outTotalPages = Math.max(1, Math.ceil(filteredOutMovements.length / outPageSize));
   const outSafePage = Math.min(outPage, outTotalPages);
@@ -232,86 +318,34 @@ export default function Almoxarifado() {
   const discardedItems = items.filter((i) => i.discarded_quantity > 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 [&_thead_th]:bg-[#002366] [&_thead_th]:!text-white [&_thead_th_*]:!text-white">
       <PageHeader
         title="Almoxarifado TI"
         description="Entrada, saída e controle de equipamentos, peças e materiais"
         icon={<Package className="h-6 w-6" />}
-        actions={
-          <>
-            <Button size="sm" variant="outline" className="border-white bg-[#050d20] text-white hover:bg-[#0c1d3d] hover:text-white" onClick={() => setTab("settings")}>
-              <Settings className="mr-2 h-4 w-4" /> Configurações
-            </Button>
-          </>
-
-        }
       />
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="items">Itens</TabsTrigger>
+          <TabsTrigger value="items" className="hidden">Itens</TabsTrigger>
           <TabsTrigger value="in">Entradas</TabsTrigger>
           <TabsTrigger value="out">Saídas</TabsTrigger>
-          <TabsTrigger value="assets">Patrimônios</TabsTrigger>
+          <TabsTrigger value="old-assets">Ativos Antigos</TabsTrigger>
+          <TabsTrigger value="assets" className="hidden">Patrimônios</TabsTrigger>
           <TabsTrigger value="damaged">Danificados</TabsTrigger>
-          <TabsTrigger value="discarded">Descartados</TabsTrigger>
-          <TabsTrigger value="restock">Reposição</TabsTrigger>
-          <TabsTrigger value="history">Histórico</TabsTrigger>
-          <TabsTrigger value="requests">Solicitações</TabsTrigger>
-          <TabsTrigger value="reports">Relatórios</TabsTrigger>
+          <TabsTrigger value="discarded" className="hidden">Descartados</TabsTrigger>
+          <TabsTrigger value="restock" className="hidden">Reposição</TabsTrigger>
+          <TabsTrigger value="history" className="hidden">Histórico</TabsTrigger>
+          <TabsTrigger value="requests" className="hidden">Solicitações</TabsTrigger>
+          <TabsTrigger value="reports" className="hidden">Relatórios</TabsTrigger>
           <TabsTrigger value="settings">Configurações</TabsTrigger>
           <TabsTrigger value="estoque">Estoque</TabsTrigger>
         </TabsList>
 
         {/* ---------------- DASHBOARD ---------------- */}
         <TabsContent value="dashboard" className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            <Kpi icon={<Boxes />} label="Itens cadastrados" value={activeItems.length} />
-            <Kpi icon={<DollarSign />} label="Valor total" value={currency(totalValue)} />
-            <Kpi icon={<Wrench />} label="Em uso" value={inUse} />
-            <Kpi icon={<AlertTriangle />} label="Danificados" value={damaged} />
-            <Kpi icon={<Trash2 />} label="Descartados" value={discarded} />
-            <Kpi icon={<ShoppingCart />} label="Alertas de estoque" value={lowStock.length} accent={lowStock.length > 0} />
-          </div>
-
-          <Card className="low-stock-card">
-            <CardHeader><CardTitle className="text-base">Itens abaixo do estoque mínimo</CardTitle></CardHeader>
-            <CardContent className="max-h-[22rem] overflow-y-auto">
-              {restock.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum item abaixo do estoque mínimo.</p> : (
-                <Table>
-                  <TableHeader><TableRow>
-                    <TableHead>Item</TableHead><TableHead>Disponível</TableHead><TableHead>Mínimo</TableHead><TableHead>Comprar</TableHead>
-                    {canManage && <TableHead className="text-right">Ações</TableHead>}
-                  </TableRow></TableHeader>
-                  <TableBody>
-                    {restock.map((r) => (
-                      <TableRow key={r.id}>
-                        <TableCell>{r.item}</TableCell>
-                        <TableCell className={r.disponivel === 0 ? "low-stock-zero" : undefined}>{r.disponivel}</TableCell>
-                        <TableCell>{r.minimo}</TableCell>
-                        <TableCell><Badge variant="outline" className="border-amber-300/50 bg-amber-400/20 text-black font-normal">{r.comprar}</Badge></TableCell>
-                        {canManage && (
-                          <TableCell>
-                            <RowActions
-                              editTitle="Editar item"
-                              onEdit={() => setItemDlg({ open: true, item: items.find((i) => i.id === r.id) })}
-                              deleteTitle="Desativar item"
-                              deleteDescription={`"${r.item}" deixa de aparecer no estoque e nas listas. O histórico é mantido.`}
-                              deleteLabel="Desativar"
-                              pending={deactivate.isPending}
-                              onDelete={() => deactivate.mutateAsync({ id: r.id })}
-                            />
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-
+          <DashboardCharts assets={assets} items={items} />
           <Card>
             <CardHeader><CardTitle className="text-base">Últimas movimentações</CardTitle></CardHeader>
             <CardContent className="max-h-[13rem] overflow-y-auto">
@@ -478,7 +512,7 @@ export default function Almoxarifado() {
             {canWrite && (
               <div className="flex gap-2">
                 {!entryGridOpen && (
-                  <Button size="sm" variant="outline" onClick={() => setEntryGridOpen(true)}>
+                  <Button size="sm" className="bg-green-600 text-white hover:bg-green-700 hover:text-white" onClick={() => setEntryGridOpen(true)}>
                     <Grid3x3 className="mr-2 h-4 w-4" /> Edição Estilo Excel
                   </Button>
                 )}
@@ -501,18 +535,6 @@ export default function Almoxarifado() {
               </CardContent>
             </Card>
           )}
-          {!(entryGridOpen && canWrite) && (
-            <EntryFilters
-              value={entryDraft}
-              onChange={setEntryDraft}
-              onSearch={() => setEntryFilters(entryDraft)}
-              onClear={() => { setEntryDraft(EMPTY_ENTRY_FILTERS); setEntryFilters(EMPTY_ENTRY_FILTERS); }}
-              canClear={hasActiveEntryFilters(entryDraft) || hasActiveEntryFilters(entryFilters)}
-              locations={locations}
-              shown={filteredEntries.length}
-              total={entryMovements.length}
-            />
-          )}
 
           {entryGridOpen && canWrite ? (
             <EntryGrid
@@ -524,14 +546,20 @@ export default function Almoxarifado() {
           <Card><CardContent className="p-0 overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Data</TableHead><TableHead>Item</TableHead><TableHead>Qtd</TableHead>
-                <TableHead>Valor unit.</TableHead><TableHead>Valor total</TableHead>
-<TableHead>Patrimônio</TableHead><TableHead>Fornecedor</TableHead>
-                    <TableHead>Nota fiscal</TableHead><TableHead>Local</TableHead>
+                <TableHead>Data</TableHead>
+                {ENTRY_COLUMNS.map((col) => (
+                  <ColumnFilter
+                    key={col}
+                    label={ENTRY_COLUMN_LABELS[col]}
+                    options={entryColumnOptions(col)}
+                    selected={entryColFilters[col] ?? []}
+                    onChange={(next) => setEntryColFilter(col, next)}
+                  />
+                ))}
                     {canManage && <TableHead className="text-right">Ações</TableHead>}
                   </TableRow></TableHeader>
                   <TableBody>
-                    {filteredEntries.map((m) => (
+                    {pageEntries.map((m) => (
                       <TableRow key={m.id}>
                         <TableCell className="whitespace-nowrap">{dateFmt(m.occurred_at ?? m.created_at)}</TableCell>
                         <TableCell>{itemName(m.item_id)}</TableCell>
@@ -539,8 +567,6 @@ export default function Almoxarifado() {
                         <TableCell>{currency(m.unit_price ?? 0)}</TableCell>
                         <TableCell>{currency((m.unit_price ?? 0) * m.quantity)}</TableCell>
                         <TableCell className="font-mono text-xs">{m.patrimony_number || "N/A"}</TableCell>
-                        <TableCell>{m.supplier ?? "—"}</TableCell>
-                        <TableCell>{m.invoice_number ?? "—"}</TableCell>
                         <TableCell>{locName(m.to_location_id)}</TableCell>
                         {canManage && (
                           <TableCell>
@@ -566,44 +592,27 @@ export default function Almoxarifado() {
             </Table>
           </CardContent></Card>
           )}
+          {!(entryGridOpen && canWrite) && entryPageCount > 1 && (
+            <div className="flex items-center justify-center gap-2 text-sm">
+              <Button variant="outline" size="sm" disabled={currentEntryPage <= 1} onClick={() => setEntryPage(currentEntryPage - 1)}>Anterior</Button>
+              <span className="text-muted-foreground">Página {currentEntryPage} de {entryPageCount}</span>
+              <Button variant="outline" size="sm" disabled={currentEntryPage >= entryPageCount} onClick={() => setEntryPage(currentEntryPage + 1)}>Próxima</Button>
+            </div>
+          )}
         </TabsContent>
 
         {/* ---------------- SAÍDAS ---------------- */}
         <TabsContent value="out" className="space-y-3">
-          <p className="text-sm text-muted-foreground">Toda saída exige um responsável. Registre a saída pela tela de Itens.</p>
+          <p className="hidden text-sm text-muted-foreground">Toda saída exige um responsável. Registre a saída pela tela de Itens.</p>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
             {canWrite && !outGridOpen && (
-              <Button size="sm" variant="outline" onClick={() => setOutGridOpen(true)}>
+              <Button size="sm" className="bg-green-600 text-white hover:bg-green-700 hover:text-white" onClick={() => setOutGridOpen(true)}>
                 <Grid3x3 className="mr-2 h-4 w-4" /> Edição Estilo Excel
               </Button>
             )}
-            <Select
-              value={outCollabFilter}
-              onValueChange={(v) => { setOutCollabFilter(v); setOutPage(1); }}
-            >
-              <SelectTrigger className="w-[240px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os responsáveis</SelectItem>
-                {collaborators.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {outCollabFilter !== "all" && (
-              <Button variant="outline" size="sm" onClick={() => { setOutCollabFilter("all"); setOutPage(1); }}>Limpar</Button>
-            )}
           </div>
 
-          {!(outGridOpen && canWrite) && (
-            <ExitFilters
-              value={exitDraft}
-              onChange={setExitDraft}
-              onSearch={() => { setExitFilters(exitDraft); setOutPage(1); }}
-              onClear={() => { setExitDraft(EMPTY_EXIT_FILTERS); setExitFilters(EMPTY_EXIT_FILTERS); setOutPage(1); }}
-              canClear={hasActiveExitFilters(exitDraft) || hasActiveExitFilters(exitFilters)}
-              shown={filteredOutMovements.length}
-              total={outMovements.length}
-            />
-          )}
 
           {outGridOpen && canWrite ? (
             <ExitGrid
@@ -629,9 +638,17 @@ export default function Almoxarifado() {
           <Card className="min-w-0 flex-1"><CardContent className="p-0 overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Data</TableHead><TableHead>Item</TableHead><TableHead>Qtd</TableHead>
-                <TableHead>Responsável</TableHead><TableHead>Departamento</TableHead>
-<TableHead>Patrimônio</TableHead><TableHead>Motivo</TableHead><TableHead>Status</TableHead>
+                <TableHead>Data</TableHead>
+                {(["item", "qtd", "responsavel", "departamento", "patrimonio", "motivo"] as const).map((col) => (
+                  <ColumnFilter
+                    key={col}
+                    label={OUT_COLUMN_LABELS[col]}
+                    options={outColumnOptions(col)}
+                    selected={outColFilters[col] ?? []}
+                    onChange={(next) => setOutColFilter(col, next)}
+                  />
+                ))}
+                <TableHead>Status</TableHead>
                 {canManage && <TableHead className="text-right">Ações</TableHead>}
               </TableRow></TableHeader>
               <TableBody>
@@ -665,11 +682,7 @@ export default function Almoxarifado() {
                 })}
                 {filteredOutMovements.length === 0 && (
                   <TableRow><TableCell colSpan={canManage ? 9 : 8} className="text-center text-muted-foreground py-6">
-                    {hasActiveExitFilters(exitFilters)
-                      ? "Nenhuma saída encontrada com esses filtros."
-                      : outCollabFilter === "all"
-                        ? "Nenhuma saída registrada."
-                        : `Nenhuma saída registrada para ${collabName(outCollabFilter)}.`}
+                    {outMovements.length === 0 ? "Nenhuma saída registrada." : "Nenhuma saída encontrada com esses filtros."}
                   </TableCell></TableRow>
                 )}
               </TableBody>
@@ -713,6 +726,56 @@ export default function Almoxarifado() {
             />
           ) : (
             <AssetTable assets={assets} items={items} locations={locations} collaborators={collaborators} canWrite={canWrite} canManage={canManage} onEdit={(a) => setAssetDlg({ open: true, asset: a })} onDelete={(a) => delAsset.mutate(a.id)} />
+          )}
+        </TabsContent>
+
+        {/* ATIVOS ANTIGOS */}
+        <TabsContent value="old-assets" className="space-y-3">
+          <Card><CardContent className="p-0 overflow-x-auto">
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Data</TableHead>
+                {OLD_COLUMNS.map((c) => (
+                  <ColumnFilter
+                    key={c.key}
+                    label={c.label}
+                    options={oldColumnOptions(c.key)}
+                    selected={oldColFilters[c.key] ?? []}
+                    onChange={(next) => setOldColFilter(c.key, next)}
+                  />
+                ))}
+              </TableRow></TableHeader>
+              <TableBody>
+                {oldPaged.length === 0 && (
+                  <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">
+                    {OLD_ASSETS.length === 0 ? "Nenhum ativo antigo registrado." : "Nenhum ativo encontrado com esses filtros."}
+                  </TableCell></TableRow>
+                )}
+                {oldPaged.map((a, i) => (
+                  <TableRow key={`${currentOldPage}-${i}`}>
+                    <TableCell className="whitespace-nowrap font-medium text-red-600">01/01/2020</TableCell>
+                    <TableCell>{a.ativo}</TableCell>
+                    <TableCell>{a.categoria}</TableCell>
+                    <TableCell className="font-mono text-xs">{a.patrimonio || "N/A"}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <Badge className="border-blue-600 bg-blue-600 font-normal text-white hover:bg-blue-600">{a.status}</Badge>
+                    </TableCell>
+                    <TableCell>{a.descricao || "—"}</TableCell>
+                    <TableCell>{a.departamento}</TableCell>
+                    <TableCell>{a.colaborador}</TableCell>
+                    <TableCell>{a.historico || "—"}</TableCell>
+                    <TableCell>{a.observacao || "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent></Card>
+          {oldPageCount > 1 && (
+            <div className="flex items-center justify-center gap-2 text-sm">
+              <Button variant="outline" size="sm" disabled={currentOldPage <= 1} onClick={() => setOldPage(currentOldPage - 1)}>Anterior</Button>
+              <span className="text-muted-foreground">Página {currentOldPage} de {oldPageCount}</span>
+              <Button variant="outline" size="sm" disabled={currentOldPage >= oldPageCount} onClick={() => setOldPage(currentOldPage + 1)}>Próxima</Button>
+            </div>
           )}
         </TabsContent>
 
@@ -1377,6 +1440,23 @@ function SettingsPanel({ canWrite, canManage }: { canWrite: boolean; canManage: 
   );
 }
 
+// Itens com o mesmo nome aparecem como uma linha só, com as quantidades somadas.
+function agruparPorNome(itens: InventoryItem[]) {
+  const grupos = new Map<string, { key: string; name: string; disponivel: number; emUso: number; itens: InventoryItem[] }>();
+  itens.forEach((item) => {
+    const key = (item.name ?? "").trim().toLowerCase();
+    const g = grupos.get(key);
+    if (g) {
+      g.disponivel += item.quantity;
+      g.emUso += item.in_use_quantity;
+      g.itens.push(item);
+    } else {
+      grupos.set(key, { key, name: item.name, disponivel: item.quantity, emUso: item.in_use_quantity, itens: [item] });
+    }
+  });
+  return [...grupos.values()];
+}
+
 function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
   canManage: boolean;
   onEditItem: (item: InventoryItem) => void;
@@ -1388,6 +1468,8 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
   const rows = useMemo(() => resumoEstoque(items), [items]);
   const [aberto, setAberto] = useState<Record<string, boolean>>({});
   const total = rows.reduce((acc, r) => acc + r.quantidade, 0);
+  const canZerar = useCanZerarEstoque();
+  const zerar = useZerarEstoque();
 
   return (
     <div className="space-y-3">
@@ -1395,9 +1477,33 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
         <p className="text-sm text-muted-foreground">
           Mesmo produto com marcas diferentes vira uma linha só. Total geral: <b>{total}</b>
         </p>
-        <Button variant="outline" size="sm" className="border-white bg-[#050d20] text-white hover:bg-[#0c1d3d] hover:text-white" onClick={() => downloadCsv(rows.map(({ tipo, quantidade }) => ({ tipo, quantidade })), "estoque.csv")}>
-          <Download className="mr-2 h-4 w-4" /> CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="border-white bg-[#050d20] text-white hover:bg-[#0c1d3d] hover:text-white" onClick={() => downloadCsv(rows.map(({ tipo, quantidade }) => ({ tipo, quantidade })), "estoque.csv")}>
+            <Download className="mr-2 h-4 w-4" /> CSV
+          </Button>
+          {canZerar && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" className="bg-red-900 text-white hover:bg-red-950" disabled={zerar.isPending}>Zerar Estoque</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Zerar o estoque?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    A quantidade disponível de todos os itens volta para 0. Cadastros, histórico e patrimônios são mantidos,
+                    e as quantidades anteriores ficam guardadas. Novas entradas começam a contar a partir de zero.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction className="bg-red-900 text-white hover:bg-red-950" onClick={() => zerar.mutate()}>
+                    Zerar estoque
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
       </div>
       <Card><CardContent className="p-0 overflow-x-auto">
         <Table>
@@ -1411,11 +1517,14 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
               const abertoRow = !!aberto[r.tipo];
               return (
                 <Fragment key={r.tipo}>
-                  <TableRow>
+                  <TableRow
+                    className={canManage ? "cursor-pointer hover:bg-muted/50" : undefined}
+                    onClick={canManage ? () => setAberto({ ...aberto, [r.tipo]: !abertoRow }) : undefined}
+                  >
                     <TableCell className="font-medium">{r.tipo}</TableCell>
                     <TableCell className="text-right">
                       {r.quantidade === 0 ? (
-                        <Badge variant="outline" className="border-red-300/50 bg-red-400/20 text-red-100 font-normal">Sem estoque</Badge>
+                        <Badge variant="outline" className="border-red-500/50 bg-red-400 text-black font-normal">Sem estoque</Badge>
                       ) : (
                         <span className="font-semibold">{r.quantidade}</span>
                       )}
@@ -1425,7 +1534,6 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
                         <Button
                           size="sm" variant="ghost" className="h-7 w-7"
                           title={abertoRow ? "Fechar" : "Ver itens deste tipo"}
-                          onClick={() => setAberto({ ...aberto, [r.tipo]: !abertoRow })}
                         >
                           <ChevronDown className={`h-4 w-4 transition-transform ${abertoRow ? "rotate-180" : ""}`} />
                         </Button>
@@ -1433,28 +1541,29 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
                     )}
                   </TableRow>
 
-                  {canManage && abertoRow && r.itens.map((item) => (
-                    <TableRow key={item.id} className="bg-muted/30">
+                  {canManage && abertoRow && agruparPorNome(r.itens).map((g) => (
+                    <TableRow key={g.key} className="bg-muted/30">
                       <TableCell className="pl-8">
-                        <span className="text-sm">{item.name}</span>
+                        <span className="text-sm">{g.name}</span>
                         <span className="ml-2 text-xs text-muted-foreground">
-                          disp. {item.quantity} · em uso {item.in_use_quantity}
-                          {item.min_stock > item.quantity && ` · mín. ${item.min_stock}`}
+                          disp. {g.disponivel} · em uso {g.emUso}
                         </span>
                       </TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">
-                        {item.quantity + item.in_use_quantity}
+                        {g.disponivel}
                       </TableCell>
                       <TableCell>
-                        <RowActions
-                          editTitle="Editar item"
-                          onEdit={() => onEditItem(item)}
-                          deleteTitle="Desativar item"
-                          deleteDescription={`"${item.name}" deixa de aparecer no estoque e nas listas. O histórico é mantido.`}
-                          deleteLabel="Desativar"
-                          pending={pending}
-                          onDelete={() => onToggleItem(item)}
-                        />
+                        {g.itens.length === 1 && (
+                          <RowActions
+                            editTitle="Editar item"
+                            onEdit={() => onEditItem(g.itens[0])}
+                            deleteTitle="Desativar item"
+                            deleteDescription={`"${g.name}" deixa de aparecer no estoque e nas listas. O histórico é mantido.`}
+                            deleteLabel="Desativar"
+                            pending={pending}
+                            onDelete={() => onToggleItem(g.itens[0])}
+                          />
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
