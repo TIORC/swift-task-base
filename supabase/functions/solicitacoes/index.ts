@@ -53,6 +53,7 @@ const SEE_ALL_ROLES = new Set(["dev", "admin", "gestor"]);
  * fazendo agora (task/automação em aberto) mais o histórico recente do board.
  */
 const TEAM_HISTORY_LIMIT = 5;
+const DEVELOPER_EMAILS = new Set(["welder@orcoma.com.br", "gabriel.anacleto@orcoma.com.br"]);
 
 /** Status de `tasks` em que a tarefa ainda está no fluxo (não concluída). */
 const OPEN_TASK_STATUSES = new Set(["backlog", "pending", "todo", "in_progress", "review"]);
@@ -442,7 +443,16 @@ Deno.serve(async (req) => {
       // {data:null,error}. Checar `error` explicitamente é o que impede uma aba
       // de voltar vazia em silêncio quando o RPC não existe.
       if (rosterError) throw new Error(`RPC ${rosterRpc} indisponível: ${rosterError.message}`);
-      const teamIds = [...new Set(((roster as string[] | null) ?? []).filter(Boolean))];
+      let teamIds = [...new Set(((roster as string[] | null) ?? []).filter(Boolean))];
+
+      // Trava por e-mail também aqui: a aba de desenvolvedores é só Welder e
+      // Gabriel, mesmo que o banco ainda devolva outros papéis `dev`.
+      if (isDevelopers) {
+        const users = await Promise.all(teamIds.map((id) => admin.auth.admin.getUserById(id)));
+        teamIds = teamIds.filter((_, i) =>
+          DEVELOPER_EMAILS.has((users[i].data.user?.email ?? "").toLowerCase()),
+        );
+      }
 
       if (teamIds.length === 0) {
         console.warn(`[solicitacoes] ${rosterRpc} devolveu lista vazia — aba ${action} sairá vazia`);

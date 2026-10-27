@@ -193,8 +193,14 @@ function RecentWorkList({ items }: { items: RecentWork[] }) {
   );
 }
 
+/** Ocultos da aba de desenvolvedores: são de Suporte/Infra, não de desenvolvimento. */
+const HIDDEN_DEVELOPER_NAMES = ["angel kauan", "sofia nardes", "danicarla"];
+
 function DeveloperStatusPanel() {
-  const { data: developers = [], isLoading, error } = useDeveloperStatuses();
+  const { data: allDevelopers = [], isLoading, error } = useDeveloperStatuses();
+  const developers = allDevelopers.filter(
+    (developer) => !HIDDEN_DEVELOPER_NAMES.includes(developer.name.trim().toLowerCase()),
+  );
 
   return (
     <section className="space-y-4">
