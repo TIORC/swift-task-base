@@ -55,7 +55,7 @@ const sinceLabel = (startedAt: string) => format(new Date(startedAt), "dd/MM/yyy
 
 /** Base do card de status. A cor da borda vem de baixo, conforme o status. */
 const STATUS_CARD_BASE =
-  "group relative overflow-hidden rounded-lg border bg-gradient-to-b from-card to-card/60 px-4 pb-4 pt-4 text-card-foreground shadow-[0_8px_24px_-16px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,255,255,0.03)] transition-all duration-200 hover:shadow-md";
+  "group relative overflow-hidden rounded-lg border bg-gradient-to-b from-[#161c28] to-[#0f141e] px-4 pb-4 pt-4 text-slate-100 shadow-[0_8px_24px_-16px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,255,255,0.03)] transition-all duration-200 hover:shadow-md";
 
 /** Só o contorno muda: verde em andamento, vermelho parado. */
 const STATUS_CARD_BORDER = {
@@ -397,7 +397,14 @@ export default function TrackMyAutomationRequestsPage() {
   const assigneeName: Record<string, string> = teamNames;
 
   return (
-    <main className="min-h-screen bg-[#07111f] px-5 py-10 text-white">
+    <main
+      className="min-h-screen bg-[#07111f] px-5 py-10 text-white"
+      style={{
+        "--foreground": "0 0% 100%",
+        "--card-foreground": "0 0% 100%",
+        "--muted-foreground": "215 20% 75%",
+      } as React.CSSProperties}
+    >
       <section className="mx-auto w-full max-w-3xl space-y-6">
           <header className="flex items-center gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-xl border border-sky-300/20 bg-sky-400/10 text-sky-200"><ClipboardList className="h-5 w-5" /></span>
@@ -425,7 +432,7 @@ export default function TrackMyAutomationRequestsPage() {
               const assignee = request.assigned_to ? assigneeName[request.assigned_to] : null;
               const kind = requestKind(request.request_kind);
               return (
-                <article key={request.id} className="group relative overflow-hidden rounded-lg border border-border bg-gradient-to-b from-card to-card/60 px-4 pb-3.5 pt-4 text-card-foreground shadow-[0_8px_24px_-16px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,255,255,0.03)] transition-all duration-200 hover:border-primary/40 hover:shadow-md">
+                <article key={request.id} className="group relative overflow-hidden rounded-lg border border-border bg-gradient-to-b from-[#161c28] to-[#0f141e] px-4 pb-3.5 pt-4 text-slate-100shadow-[0_8px_24px_-16px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,255,255,0.03)] transition-all duration-200 hover:border-primary/40 hover:shadow-md">
                   <div className="mb-2 flex flex-wrap items-center gap-1.5 pr-2">
                     <span className={"inline-flex items-center rounded-full px-[7px] py-1 text-[10px] font-bold leading-none text-white " + (STATUS_FILL[status] || "bg-primary")}>{STATUS_LABELS[status] || status}</span>
                     {kind && (
