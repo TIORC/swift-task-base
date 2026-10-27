@@ -118,8 +118,9 @@ export function AppSidebar() {
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton asChild isActive={active}>
                         <NavLink
-                          to={item.url}
+                          to={item.url === "/almoxarifado" ? "/almoxarifado?tela=cheia" : item.url}
                           end={item.url === "/"}
+                          {...(item.url === "/almoxarifado" ? { target: "_blank", rel: "noreferrer" } : {})}
                           className="rounded-lg transition-all duration-150 hover:bg-sidebar-accent"
                           activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                         >
