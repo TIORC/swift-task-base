@@ -192,6 +192,13 @@ const ManagerDashboard = () => {
       .sort((a, b) => b.efficiency - a.efficiency);
   }, [filteredTasks, profiles]);
 
+  // Performance por Usuário: só estas pessoas aparecem na tabela.
+  const visibleUserStats = useMemo(() => {
+    const norm = (v: string) => v.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    const allowed = ["welder silva santos", "gabriel anacleto", "sofia nardes", "angel kauan"];
+    return userStats.filter((u) => allowed.some((n) => norm(u.name).includes(n)));
+  }, [userStats]);
+
   const statusData = useMemo(() => {
     const statusMap = Object.fromEntries(COLUMNS.map(c => [c.status, c.title]));
     const base: { key: string; name: string; value: number }[] = COLUMNS.map(col => ({
@@ -479,11 +486,11 @@ const ManagerDashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {userStats.length > 0 ? (
+          {visibleUserStats.length > 0 ? (
             <div className="space-y-3">
-              {userStats.map((u, i) => {
+              {visibleUserStats.map((u, i) => {
                 const isBest = i === 0 && u.done > 0;
-                const isWorst = i === userStats.length - 1 && userStats.length > 1;
+                const isWorst = i === visibleUserStats.length - 1 && visibleUserStats.length > 1;
                 const isOverloaded = u.inProgress >= 5;
                 return (
                   <div key={u.id} className="flex items-center gap-3 rounded-xl bg-muted/30 p-3 hover:bg-muted/50 transition-colors">

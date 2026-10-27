@@ -1398,6 +1398,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          images: string[]
           mentions: string[]
           task_id: string
           user_id: string
@@ -1406,6 +1407,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          images?: string[]
           mentions?: string[]
           task_id: string
           user_id?: string
@@ -1414,6 +1416,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          images?: string[]
           mentions?: string[]
           task_id?: string
           user_id?: string
@@ -1442,6 +1445,7 @@ export type Database = {
           status: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at: string
+          xp: number
         }
         Insert: {
           completed_at?: string | null
@@ -1456,6 +1460,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at?: string
+          xp?: number
         }
         Update: {
           completed_at?: string | null
@@ -1470,6 +1475,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
           updated_at?: string
+          xp?: number
         }
         Relationships: []
       }

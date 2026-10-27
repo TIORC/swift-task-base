@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,16 +23,28 @@ import {
   useKanbanUpdateTask,
 } from "@/hooks/useKanbanTasks";
 import { getKanbanFileUrl, useUploadKanbanAttachments } from "@/hooks/useKanbanAttachments";
+import { storageSafeName } from "@/lib/attachment-types";
 import { useAddChecklistItems } from "@/hooks/useKanbanChecklist";
 import { KanbanAttachments } from "@/components/KanbanAttachments";
 import { KanbanChecklist, PendingChecklistItem } from "@/components/KanbanChecklist";
 import { KanbanCoverPicker } from "@/components/KanbanCoverPicker";
 import { labelFor } from "@/lib/kanban-labels";
-import { Trash2 } from "lucide-react";
+import { ImagePlus, Smile, Trash2, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 
 // Limite por tarefa; o banco também impede a partir do mesmo número (ver migração de comentários).
 const MAX_COMMENTS = 1000;
+
+const MAX_COMMENT_IMAGES = 5;
+const MAX_COMMENT_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+const COMMENT_IMAGE_FALLBACK = "📷 Imagem";
+
+const EMOJIS = [
+  "😀","😂","😊","😍","🤔","😅","😉","🙂","😎","🥳","😢","😡",
+  "👍","👎","👏","🙏","💪","👀","🔥","✅","❌","⚠️","❓","❗",
+  "🎉","🚀","💡","📌","📎","📅","⏰","🐛","🔧","💬","❤️","⭐",
+];
 
 const PRIORITIES = [
   { v: "low", l: "Baixa" }, { v: "medium", l: "Média" }, { v: "high", l: "Alta" }, { v: "urgent", l: "Urgente" },
@@ -61,6 +73,7 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
   const [priority, setPriority] = useState("medium");
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [due, setDue] = useState("");
+  const [xp, setXp] = useState(1);
   const [comment, setComment] = useState("");
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingChecklist, setPendingChecklist] = useState<PendingChecklistItem[]>([]);
@@ -73,6 +86,7 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
     setPriority(task?.priority ?? "medium");
     setAssigneeIds(task?.assignee_ids ?? []);
     setDue(task?.due_date ?? "");
+    setXp(task?.xp ?? 1);
     setComment("");
     setPendingFiles([]);
     setPendingChecklist([]);
@@ -107,6 +121,32 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
     [profileList]
   );
   const nameOf = (id: string) => profileNames[id] ?? "—";
+
+  // Chat: sempre mostra o comentário mais recente e evita envio duplicado.
+  const [sending, setSending] = useState(false);
+  const [commentImages, setCommentImages] = useState<File[]>([]);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const imagePreviews = useMemo(() => commentImages.map((f) => URL.createObjectURL(f)), [commentImages]);
+  useEffect(() => () => imagePreviews.forEach((u) => URL.revokeObjectURL(u)), [imagePreviews]);
+  useEffect(() => { if (open) setCommentImages([]); }, [open, task?.id]);
+
+  const addCommentImages = (files: File[]) => {
+    const images = files.filter((f) => f.type.startsWith("image/"));
+    if (images.length === 0) return;
+    if (images.some((f) => f.size > MAX_COMMENT_IMAGE_SIZE)) {
+      toast.error("Cada imagem pode ter no máximo 10MB.");
+      return;
+    }
+    if (commentImages.length + images.length > MAX_COMMENT_IMAGES) {
+      toast.error(`No máximo ${MAX_COMMENT_IMAGES} imagens por comentário.`);
+    }
+    setCommentImages((prev) => [...prev, ...images].slice(0, MAX_COMMENT_IMAGES));
+  };
+  const listRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [comments.length, open, task?.id]);
 
   // Menções: "@" abre a lista de pessoas; o texto guarda "@Nome" e a lista guarda os ids.
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -151,6 +191,7 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
       priority: priority as any,
       assignee_ids: assigneeIds,
       due_date: due || null,
+      xp: Math.min(50, Math.max(1, Math.round(xp) || 1)),
     };
     if (task) {
       await update.mutateAsync({ id: task.id, ...row });
@@ -163,22 +204,43 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
   };
 
   const addComment = async () => {
-    if (!comment.trim() || !task || !user) return;
+    if (sending || (!comment.trim() && commentImages.length === 0) || !task || !user) return;
     if (comments.length >= MAX_COMMENTS) {
       toast.error(`Limite de ${MAX_COMMENTS} comentários por tarefa atingido.`);
       return;
     }
-    const content = comment.trim();
+    const content = comment.trim() || COMMENT_IMAGE_FALLBACK;
+    setSending(true);
+    const imagePaths: string[] = [];
+    try {
+      for (const [i, file] of commentImages.entries()) {
+        const path = `${user.id}/kanban/${task.id}/comments/${Date.now()}_${i}_${storageSafeName(file.name || "print.png")}`;
+        const { error: upErr } = await supabase.storage.from("task-attachments").upload(path, file, { upsert: false });
+        if (upErr) throw upErr;
+        imagePaths.push(path);
+      }
+    } catch (e) {
+      toast.error((e as Error).message);
+      setSending(false);
+      return;
+    }
     const mentions = profileList
       .filter((p) => p.full_name && content.includes(`@${p.full_name}`))
       .map((p) => p.id);
     const { error } = await supabase
       .from("kanban_task_comments")
-      .insert({ task_id: task.id, user_id: user.id, content, mentions });
+      .insert({ task_id: task.id, user_id: user.id, content, mentions, images: imagePaths });
     if (error) {
       toast.error(error.message);
+      setSending(false);
       return;
     }
+    setComment("");
+    setCommentImages([]);
+    setMentionQuery(null);
+    setSending(false);
+    qc.invalidateQueries({ queryKey: ["kanban-comments", task.id] });
+    qc.invalidateQueries({ queryKey: ["kanban-tasks"] });
     const author = nameOf(user.id);
     for (const uid of mentions.filter((id) => id !== user.id)) {
       await supabase.from("notifications").insert({
@@ -189,10 +251,6 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
         created_by: user.id,
       });
     }
-    setComment("");
-    setMentionQuery(null);
-    qc.invalidateQueries({ queryKey: ["kanban-comments", task.id] });
-    qc.invalidateQueries({ queryKey: ["kanban-tasks"] });
   };
 
   const busy = create.isPending || update.isPending;
@@ -207,11 +265,11 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`kanban-scroll ${task ? "max-w-5xl" : "max-w-lg"} max-h-[90vh] overflow-y-auto overflow-x-hidden p-0`}>
+      <DialogContent className={`kanban-scroll ${task ? "w-[96vw] max-w-[1500px]" : "max-w-lg"} max-h-[90vh] overflow-y-auto overflow-x-hidden p-0`}>
         {task && <KanbanCoverPicker task={task} readOnly={readOnly} />}
         <div className="space-y-4 p-6">
         <DialogHeader><DialogTitle>{task ? "Tarefa do Kanban" : "Nova tarefa do Kanban"}</DialogTitle></DialogHeader>
-        <div className={task ? "grid gap-6 md:grid-cols-[1fr_300px]" : ""}>
+        <div className={task ? "grid gap-6 lg:grid-cols-[minmax(0,1fr)_clamp(340px,34%,540px)]" : ""}>
         <div className="min-w-0 space-y-4">
         <fieldset disabled={readOnly} className="space-y-3">
           <div><Label>Título*</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
@@ -253,6 +311,12 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
               {assigneeIds.length === 0 && <p className="pt-1 text-[11px] text-muted-foreground">Sem responsável: a tarefa fica aberta para todos.</p>}
             </div>
             <div><Label>Prazo</Label><Input type="date" value={due} onChange={(e) => setDue(e.target.value)} /></div>
+            <div><Label>XP da tarefa (1 a 50)</Label>
+              <Input type="number" min={1} max={50} value={xp} onChange={(e) => setXp(Number(e.target.value))} onBlur={() => setXp((v) => Math.min(50, Math.max(1, Math.round(v) || 1)))} />
+              <p className="pt-1 text-[11px] text-muted-foreground">
+                {assigneeIds.length > 1 ? `Dividido entre ${assigneeIds.length} responsáveis: ${(xp / assigneeIds.length).toFixed(1).replace(".0", "")} XP para cada.` : "Dividido igualmente entre os responsáveis."}
+              </p>
+            </div>
           </div>
         </fieldset>
 
@@ -284,30 +348,136 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
         </div>
 
         {task && (
-          <aside className="space-y-3 md:-mr-6 md:border-l md:border-border md:pl-6">
+          <aside className="space-y-3 border-t border-border pt-4 lg:-mr-6 lg:border-l lg:border-t-0 lg:pt-0 lg:pl-6">
             <h4 className="text-sm font-semibold">
               Comentários e atividade
               <span className="ml-1 text-xs font-normal text-muted-foreground">({comments.length}/{MAX_COMMENTS})</span>
             </h4>
-            <div className="relative flex gap-2">
-              <Input
+            <div ref={listRef} className="max-h-[60vh] space-y-3 overflow-y-auto pr-1 lg:max-h-none lg:h-[calc(90vh-14rem)]">
+              {comments.map((c) => (
+                <div key={c.id} className="flex gap-2">
+                  <div
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold"
+                    style={{ backgroundColor: labelFor(nameOf(c.user_id)).bg, color: labelFor(nameOf(c.user_id)).text }}
+                  >
+                    {nameOf(c.user_id).split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs">
+                      <span className="font-semibold">{nameOf(c.user_id)}</span>{" "}
+                      <span className="text-muted-foreground">{format(new Date(c.created_at), "dd/MM/yyyy HH:mm")}</span>
+                    </p>
+                    <div className="space-y-2 rounded-lg bg-muted/50 p-2 text-sm">
+                      {!((c.images ?? []).length > 0 && c.content === COMMENT_IMAGE_FALLBACK) && (
+                        <p className="whitespace-pre-wrap break-words">{renderContent(c.content, c.mentions ?? [])}</p>
+                      )}
+                      {(c.images ?? []).length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {(c.images ?? []).map((path) => (
+                            <a key={path} href={getKanbanFileUrl(path)} target="_blank" rel="noreferrer">
+                              <img
+                                src={getKanbanFileUrl(path)}
+                                alt="Print do comentário"
+                                loading="lazy"
+                                className="max-h-48 max-w-full rounded-md border border-border object-contain"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {comments.length === 0 && <p className="text-xs text-muted-foreground">Nenhum comentário ainda.</p>}
+            </div>
+            {commentImages.length > 0 && (
+              <div className="flex flex-wrap gap-2 border-t border-border pt-3">
+                {imagePreviews.map((url, i) => (
+                  <div key={url} className="relative h-16 w-16 overflow-hidden rounded-md border border-border">
+                    <img src={url} alt="Prévia do print" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setCommentImages((prev) => prev.filter((_, j) => j !== i))}
+                      className="absolute right-0 top-0 rounded-bl bg-background/80 p-0.5 text-foreground hover:text-destructive"
+                      aria-label="Remover imagem"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className={`relative flex items-end gap-2 ${commentImages.length > 0 ? "" : "border-t border-border pt-3"}`}>
+              <Textarea
                 value={comment}
                 onChange={(e) => onCommentChange(e.target.value)}
                 disabled={comments.length >= MAX_COMMENTS}
-                placeholder={comments.length >= MAX_COMMENTS ? "Limite de comentários atingido" : "Escreva um comentário... use @ para marcar alguém"}
+                rows={2}
+                onPaste={(e) => {
+                  const files = Array.from(e.clipboardData.files);
+                  if (files.some((f) => f.type.startsWith("image/"))) {
+                    e.preventDefault();
+                    addCommentImages(files);
+                  }
+                }}
+                className="min-h-[44px] max-h-32 resize-none"
+                placeholder={comments.length >= MAX_COMMENTS ? "Limite de comentários atingido" : "Comentário... (@ marca, Shift+Enter pula linha)"}
                 onKeyDown={(e) => {
                   if (e.key === "Escape") setMentionQuery(null);
-                  if (e.key === "Enter" && suggestions.length > 0 && mentionQuery !== null) {
+                  if (e.key === "Enter" && !e.shiftKey && suggestions.length > 0 && mentionQuery !== null) {
                     e.preventDefault();
                     pickMention(suggestions[0].full_name!);
                     return;
                   }
-                  if (e.key === "Enter") addComment();
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    addComment();
+                  }
                 }}
               />
-              <Button variant="outline" onClick={addComment} disabled={comments.length >= MAX_COMMENTS}>Enviar</Button>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => { addCommentImages(Array.from(e.target.files ?? [])); e.target.value = ""; }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                title="Anexar print (ou cole com Ctrl+V)"
+                disabled={comments.length >= MAX_COMMENTS || commentImages.length >= MAX_COMMENT_IMAGES}
+                onClick={() => imageInputRef.current?.click()}
+              >
+                <ImagePlus className="h-4 w-4" />
+              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="outline" size="icon" title="Emojis" disabled={comments.length >= MAX_COMMENTS}>
+                    <Smile className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-64 p-2">
+                  <div className="grid grid-cols-6 gap-1">
+                    {EMOJIS.map((e) => (
+                      <button
+                        key={e}
+                        type="button"
+                        onClick={() => setComment((c) => c + e)}
+                        className="rounded p-1 text-xl leading-none hover:bg-muted"
+                      >
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Button onClick={addComment} disabled={sending || (!comment.trim() && commentImages.length === 0) || comments.length >= MAX_COMMENTS}>Enviar</Button>
               {suggestions.length > 0 && (
-                <ul className="absolute left-0 right-16 top-full z-50 mt-1 overflow-hidden rounded-md border border-border bg-popover shadow-md">
+                <ul className="absolute left-0 right-16 bottom-full z-50 mb-1 overflow-hidden rounded-md border border-border bg-popover shadow-md">
                   {suggestions.map((p) => (
                     <li key={p.id}>
                       <button
@@ -322,26 +492,6 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
                   ))}
                 </ul>
               )}
-            </div>
-            <div className="max-h-[60vh] space-y-3 overflow-y-auto md:max-h-none md:h-[calc(90vh-11rem)]">
-              {comments.map((c) => (
-                <div key={c.id} className="flex gap-2">
-                  <div
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold"
-                    style={{ backgroundColor: labelFor(nameOf(c.user_id)).bg, color: labelFor(nameOf(c.user_id)).text }}
-                  >
-                    {nameOf(c.user_id).split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs">
-                      <span className="font-semibold">{nameOf(c.user_id)}</span>{" "}
-                      <span className="text-muted-foreground">{format(new Date(c.created_at), "dd/MM/yyyy HH:mm")}</span>
-                    </p>
-                    <p className="whitespace-pre-wrap break-words rounded-lg bg-muted/50 p-2 text-sm">{renderContent(c.content, c.mentions ?? [])}</p>
-                  </div>
-                </div>
-              ))}
-              {comments.length === 0 && <p className="text-xs text-muted-foreground">Nenhum comentário ainda.</p>}
             </div>
           </aside>
         )}
