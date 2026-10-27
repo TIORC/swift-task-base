@@ -122,7 +122,8 @@ function buildMonthly(raw: any): MonthlyMedal[] {
         taskMedals,
         autoMedals,
         total: Number(m.medals) ?? taskMedals + autoMedals,
-        xp: tasksDone * XP_PER_TASK + autosDone * XP_PER_AUTOMATION + changesDone * XP_PER_CHANGE,
+        // XP já calculado no banco: cada automação vale o XP definido pelo líder, dividido entre os responsáveis.
+        xp: Number(m.xp) || 0,
       };
     })
     .sort((a, b) => (a.key < b.key ? 1 : -1));

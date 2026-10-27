@@ -30,7 +30,7 @@ import { ptBR } from "date-fns/locale";
 import {
   CheckCircle2, Clock, Code2, FileText, History,
   Lock, MessageSquare, Paperclip, Play, Plus, Square, Timer, X,
-  Sparkles, RefreshCcw, Unlock, CalendarClock, Check, User,
+  Sparkles, RefreshCcw, Unlock, CalendarClock, Check, User, Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -46,6 +46,7 @@ const TIMELINE_META: Record<string, { label: string; color: string; Icon: Lucide
 
 const MODAL_TABS: { value: string; label: string; Icon: LucideIcon }[] = [
   { value: "details", label: "Dados", Icon: FileText },
+  { value: "responsaveis", label: "Responsáveis", Icon: Users },
   { value: "tarefas", label: "Tarefas", Icon: Code2 },
   { value: "comments", label: "Chat", Icon: MessageSquare },
   { value: "files", label: "Anexos", Icon: Paperclip },
@@ -59,6 +60,8 @@ import { AutomationAttachments } from "@/components/automations/AutomationAttach
 import { useAuth } from "@/hooks/useAuth";
 import { useAssignableDevelopers } from "@/hooks/useAssignableDevelopers";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useAutomationTeam, useAutomationAssignments, useSetAutomationAssignments } from "@/hooks/useAutomationAssignees";
+import { labelFor } from "@/lib/kanban-labels";
 
 interface Props {
   automation: Automation | null;
@@ -85,6 +88,15 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
   const createTimeLog = useCreateTimeLog();
   const { data: xpSettings } = useXpSettings();
   const assignable = useAssignableDevelopers(profiles);
+  const { data: team = [] } = useAutomationTeam();
+  const { data: assignments = [] } = useAutomationAssignments(automation?.id);
+  const setAssignees = useSetAutomationAssignments();
+  const saveAssignments = (next: { user_id: string; xp: number }[]) => {
+    if (!automation) return;
+    setAssignees.mutate({ automationId: automation.id, assignments: next });
+  };
+  // Só o líder convida responsáveis e define o XP da automação.
+  const canEditTeam = profile === "lider" || profile === "admin";
 
   const [newSubtask, setNewSubtask] = useState("");
   const [newBlockerType, setNewBlockerType] = useState("other");
@@ -315,22 +327,6 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                       </Select>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground">Responsável</label>
-                      {canReassign && !isReadOnly ? (
-                        <Select value={a.assigned_to || ""} onValueChange={v => handleUpdate({ assigned_to: v || null })}>
-                          <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                          <SelectContent>
-                            {assignable.options.map(p => (
-                              <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <p className="text-sm mt-1.5 text-foreground">{a.assigned_to ? (profileMap[a.assigned_to] || "—") : "Não atribuído"}</p>
-                      )}
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Gestor atribui a qualquer desenvolvedor; desenvolvedor só a si mesmo.</p>
-                    </div>
-                    <div>
                       <label className="text-xs font-medium text-muted-foreground">Tipo</label>
                       <Select
                         value={kind ?? "none"}
@@ -484,6 +480,68 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
             </TabsContent>
 
             {/* ─── Tarefas Tab (do desenvolvedor) ─── */}
+            <TabsContent value="responsaveis" className="mt-4 space-y-4">
+              <div className="max-w-xl space-y-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Responsáveis</p>
+                  <p className="text-[11px] text-muted-foreground">Só o líder convida responsáveis (Welder e Gabriel).</p>
+                </div>
+                <ul className="divide-y divide-border rounded-xl border border-border">
+                  {team.map(p => {
+                    const assignment = assignments.find(x => x.user_id === p.id);
+                    const on = !!assignment;
+                    const style = labelFor(p.full_name ?? "");
+                    return (
+                      <li key={p.id} className="flex flex-wrap items-center gap-3 p-3">
+                        {canEditTeam && !isReadOnly ? (
+                          <button
+                            type="button"
+                            disabled={setAssignees.isPending}
+                            onClick={() => saveAssignments(on
+                              ? assignments.filter(x => x.user_id !== p.id)
+                              : [...assignments, { user_id: p.id, xp: 50 }])}
+                            className={`rounded px-2.5 py-1 text-xs font-semibold transition-opacity disabled:cursor-not-allowed ${on ? "" : "opacity-40 hover:opacity-70"}`}
+                            style={{ backgroundColor: style.bg, color: style.text }}
+                          >
+                            {on && "✓ "}{p.full_name || "Sem nome"}
+                          </button>
+                        ) : (
+                          <span
+                            className={`rounded px-2.5 py-1 text-xs font-semibold ${on ? "" : "opacity-40"}`}
+                            style={{ backgroundColor: style.bg, color: style.text }}
+                          >
+                            {on && "✓ "}{p.full_name || "Sem nome"}
+                          </span>
+                        )}
+                        {assignment && (
+                          <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>Quanto de XP ele receberá ao concluir essa tarefa? (1 a 50)</span>
+                            {canEditTeam && !isReadOnly ? (
+                              <Input
+                                key={`${p.id}-${assignment.xp}`}
+                                type="number"
+                                min={1}
+                                max={50}
+                                defaultValue={assignment.xp}
+                                className="h-8 w-20"
+                                onBlur={e => {
+                                  const v = Math.min(50, Math.max(1, Math.round(Number(e.target.value)) || 1));
+                                  if (v !== assignment.xp) saveAssignments(assignments.map(x => x.user_id === p.id ? { ...x, xp: v } : x));
+                                }}
+                              />
+                            ) : (
+                              <span className="font-semibold text-foreground">{assignment.xp} XP</span>
+                            )}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+                {assignments.length === 0 && <p className="text-sm text-muted-foreground">Não atribuído</p>}
+              </div>
+            </TabsContent>
+
             <TabsContent value="tarefas" className="mt-4 space-y-3">
               <div className="mb-1 flex items-center justify-between gap-2">
                 <div className="text-[13px] font-bold text-foreground">Tarefas técnicas</div>

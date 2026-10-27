@@ -1,4 +1,4 @@
-import { useRanking, useMyGamification, LEVELS, MEDAL_ICON, MEDAL_PER_TASKS, TI_TEAM, TI_TEAM_IDS, XP_CHANGE_PCT, XP_PER_AUTOMATION, XP_PER_CHANGE, XP_PER_TASK } from "@/hooks/useGamification";
+import { useRanking, useMyGamification, LEVELS, MEDAL_ICON, MEDAL_PER_TASKS, TI_TEAM, TI_TEAM_IDS, XP_CHANGE_PCT, XP_PER_AUTOMATION, XP_PER_TASK } from "@/hooks/useGamification";
 import { useTeamMetrics } from "@/hooks/useTeamMetrics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -55,7 +55,7 @@ const Ranking = () => {
           <Card className="shadow-card bg-primary/5 border-primary/20">
             <CardContent className="py-3 px-5 text-xs text-muted-foreground">
               <span className="font-medium text-foreground">Regra de XP:</span>{" "}
-              cada tarefa/chamado concluído = <strong>{XP_PER_TASK} XP</strong>, cada automação concluída = <strong>{XP_PER_AUTOMATION} XP</strong>, cada alteração de sistema concluída = <strong>{XP_PER_CHANGE} XP</strong> ({XP_CHANGE_PCT}% de uma automação).
+              cada tarefa/chamado concluído = <strong>{XP_PER_TASK} XP</strong>, cada automação concluída vale o XP que o líder definiu para cada responsável (de 1 a <strong>{XP_PER_AUTOMATION} XP</strong>); cada alteração concluída vale {XP_CHANGE_PCT}% desse XP.
               Welder e Angel recebem XP inicial pelo tempo de TI.
             </CardContent>
           </Card>
@@ -209,8 +209,8 @@ const Ranking = () => {
                       </div>
                       <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                         <span><CheckCircle2 className="inline h-3.5 w-3.5 mr-0.5" />{myData.tasksDone} tarefas (+{myData.tasksDone * XP_PER_TASK} XP)</span>
-                        <span><Bot className="inline h-3.5 w-3.5 mr-0.5" />{myData.autosDone} automações (+{myData.autosDone * XP_PER_AUTOMATION} XP)</span>
-                        {myData.changesDone > 0 && <span>{myData.changesDone} alterações (+{myData.changesDone * XP_PER_CHANGE} XP)</span>}
+                        <span><Bot className="inline h-3.5 w-3.5 mr-0.5" />{myData.autosDone} automações</span>
+                        {myData.changesDone > 0 && <span>{myData.changesDone} alterações concluídas</span>}
                         {myData.seedXp > 0 && <span>+{myData.seedXp} XP inicial</span>}
                       </div>
                     </div>

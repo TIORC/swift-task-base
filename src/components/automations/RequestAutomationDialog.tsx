@@ -363,14 +363,18 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
           // erro já exibido pelo hook; segue com os demais arquivos.
         }
       }
-      // Notifica os gestores via DB (realtime) e dispara alert card imediato.
-      notifyNewRequest.mutate({ automationId: id, title: title.trim(), kind: requestType });
-      alertGestorsOnNewRequest({
-        requesterName: requesterName.trim() || profile?.full_name || user?.email || "Alguém",
-        title: title.trim(),
-        kind: requestType,
-      });
-      toast.success("Solicitação enviada para a equipe de TI!");
+      // Manutenção não cria solicitação nova: o alerta para os devs vem de automation_events
+      // (ChangeAlertGate), então não há aviso de "nova solicitação" aqui.
+      if (!isMaintenance) {
+        // Notifica os gestores via DB (realtime) e dispara alert card imediato.
+        notifyNewRequest.mutate({ automationId: id, title: title.trim(), kind: requestType });
+        alertGestorsOnNewRequest({
+          requesterName: requesterName.trim() || profile?.full_name || user?.email || "Alguém",
+          title: title.trim(),
+          kind: requestType,
+        });
+      }
+      toast.success(isMaintenance ? "Alteração registrada para a equipe de TI!" : "Solicitação enviada para a equipe de TI!");
       reset();
       setOpen(false);
       onSubmitted?.(id);
