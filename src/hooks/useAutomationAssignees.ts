@@ -48,6 +48,26 @@ export function useAutomationAssignments(automationId: string | undefined) {
   });
 }
 
+/** Responsáveis de todas as automações de uma vez (ids por automação), para os cards do quadro. */
+export function useAllAutomationAssignees() {
+  return useQuery({
+    queryKey: ["automation-assignees-all"],
+    queryFn: async (): Promise<Record<string, string[]>> => {
+      // A tabela ainda não está nos tipos gerados do Supabase, por isso o cast.
+      const { data, error } = await (supabase as any)
+        .from("automation_assignees")
+        .select("automation_id, user_id, created_at")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      const byAutomation: Record<string, string[]> = {};
+      (data ?? []).forEach((r: { automation_id: string; user_id: string }) => {
+        (byAutomation[r.automation_id] ??= []).push(r.user_id);
+      });
+      return byAutomation;
+    },
+  });
+}
+
 /** Grava a lista de responsáveis com o XP de cada um (só líder ou admin; o servidor confere). */
 export function useSetAutomationAssignments() {
   const qc = useQueryClient();
@@ -62,6 +82,7 @@ export function useSetAutomationAssignments() {
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["automation-assignees", vars.automationId] });
+      qc.invalidateQueries({ queryKey: ["automation-assignees-all"] });
       qc.invalidateQueries({ queryKey: ["automations"] });
     },
     onError: (e: Error) => toast.error(e.message),

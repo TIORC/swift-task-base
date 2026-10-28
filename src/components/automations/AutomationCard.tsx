@@ -40,6 +40,7 @@ interface Props {
   automation: Automation;
   onClick: () => void;
   profileName?: string;
+  assigneeNames?: string[];
   profileMap?: Record<string, string>;
   pendingCount?: number;
   canEditTitle?: boolean;
@@ -91,7 +92,11 @@ function avatarColor(name?: string | null) {
   return "bg-gradient-to-br from-primary to-violet-500";
 }
 
-export function AutomationCard({ automation: a, onClick, profileName, profileMap, pendingCount = 0, canEditTitle }: Props) {
+function firstName(name: string) {
+  return name.trim().split(/\s+/)[0] || name;
+}
+
+export function AutomationCard({ automation: a, onClick, profileName, assigneeNames, profileMap, pendingCount = 0, canEditTitle }: Props) {
   const { data: totals } = useAutomationTotalMinutes();
   const { data: latestEvents } = useLatestAutomationEvents();
   const { data: latestComments } = useLatestAutomationComments();
@@ -290,11 +295,12 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
       {/* Barra única de conclusão (Execução) — percentual informado pela equipe,
           independente da quantidade de tarefas técnicas. */}
       <div className="rounded-lg border border-border/70 bg-primary/[0.05] p-3 mb-3">
-        <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1 gap-2">
+        <div className="relative flex items-center justify-between text-[10px] text-muted-foreground mb-1 gap-2">
           <span className="hidden items-center gap-1 min-w-0">
             <Code2 className="h-2.5 w-2.5 shrink-0" />
             <span className="truncate">Execução</span>
           </span>
+          <span className="absolute inset-x-0 text-center text-[8px] font-semibold tracking-widest text-blue-600 dark:text-white pointer-events-none">PROGRESSO</span>
           <b className={`font-semibold tabular-nums shrink-0 ml-auto ${PROGRESS_BAND_TEXT[execBand]}`}>{execPct}%</b>
         </div>
         <div className={`h-2 overflow-hidden rounded-full m-progress-track ${PROGRESS_BAND_TRACK[execBand]}`}>
@@ -365,24 +371,47 @@ export function AutomationCard({ automation: a, onClick, profileName, profileMap
 
       {/* Rodapé: avatar + responsável + ver detalhes */}
       <div className="flex items-center justify-between gap-2 pt-2.5 mt-1.5 border-t border-border/60">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className={`h-[21px] w-[21px] shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${avatarColor(profileName)}`}>
-            {initials(profileName)}
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] font-medium text-foreground truncate">
-              {profileName ? (
+        {assigneeNames && assigneeNames.length > 1 ? (
+          // Vários responsáveis: o círculo é dividido ao meio, uma metade por pessoa, com os primeiros nomes.
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="h-[21px] w-[21px] shrink-0 rounded-full overflow-hidden flex">
+              <div className={`h-full w-1/2 flex items-center justify-center text-[10px] font-bold text-white ${avatarColor(assigneeNames[0])}`}>
+                {initials(assigneeNames[0]).charAt(0)}
+              </div>
+              <div className={`h-full w-1/2 flex items-center justify-center text-[10px] font-bold text-white ${avatarColor(assigneeNames[1])}`}>
+                {initials(assigneeNames[1]).charAt(0)}
+              </div>
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] font-medium text-foreground truncate">
                 <span className="flex items-center gap-1">
                   <User className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{profileName}</span>
+                  <span className="truncate">{assigneeNames.map(firstName).join("/")}</span>
                 </span>
-              ) : (
-                "Não atribuído"
-              )}
+              </div>
+              <div className="text-[9px] text-muted-foreground truncate">Responsáveis</div>
             </div>
-            <div className="text-[9px] text-muted-foreground truncate">Responsável</div>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center gap-2 min-w-0">
+            <div className={`h-[21px] w-[21px] shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${avatarColor(profileName)}`}>
+              {initials(profileName)}
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] font-medium text-foreground truncate">
+                {profileName ? (
+                  <span className="flex items-center gap-1">
+                    <User className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
+                    <span className="truncate">{profileName}</span>
+                  </span>
+                ) : (
+                  "Não atribuído"
+                )}
+              </div>
+              <div className="text-[9px] text-muted-foreground truncate">Responsável</div>
+            </div>
+          </div>
+        )}
         <span className="flex items-center gap-1 shrink-0 text-[10px] font-semibold text-primary cursor-pointer">
           Ver detalhes
           <ArrowRight className="h-2.5 w-2.5" />

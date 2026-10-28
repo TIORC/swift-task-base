@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useCreateBlocker } from "@/hooks/useAutomationsData";
+import { useAllAutomationAssignees } from "@/hooks/useAutomationAssignees";
 
 interface Props {
   automations: Automation[];
@@ -50,6 +51,13 @@ export function AutomationBoard({ automations, onSelect, profileMap, blockerCoun
   const [reason, setReason] = useState<PendingReason>("approval");
   const [reasonDesc, setReasonDesc] = useState("");
   const createBlocker = useCreateBlocker();
+  const { data: assigneesByAutomation } = useAllAutomationAssignees();
+
+  // Nomes dos responsáveis de cada automação; sem lista nova, usa o responsável antigo (assigned_to).
+  const assigneeNamesOf = (a: Automation) => {
+    const ids = assigneesByAutomation?.[a.id] ?? (a.assigned_to ? [a.assigned_to] : []);
+    return ids.map(id => profileMap[id]).filter((name): name is string => !!name);
+  };
 
   const handleDragEnd = (result: DropResult) => {
     if (isReadOnly || !result.destination || !onStatusChange) return;
@@ -118,6 +126,7 @@ export function AutomationBoard({ automations, onSelect, profileMap, blockerCoun
                                       automation={a}
                                       onClick={() => onSelect(a)}
                                       profileName={a.assigned_to ? profileMap[a.assigned_to] : undefined}
+                                      assigneeNames={assigneeNamesOf(a)}
                                       profileMap={profileMap}
                                       pendingCount={blockerCounts?.[a.id] || 0}
                                       canEditTitle={canEditTitle}
