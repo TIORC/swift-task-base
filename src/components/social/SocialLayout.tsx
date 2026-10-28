@@ -180,6 +180,7 @@ export function SocialLayout({ children }: { children: ReactNode }) {
             <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
             <div className="flex items-center gap-2">
               <NotificationBell />
+              <NotificationBell onlyMentions />
               <ThemeToggle />
             </div>
           </header>

@@ -25,6 +25,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </div>
             <div className="flex items-center gap-2">
               <NotificationBell />
+              <NotificationBell onlyMentions />
               <ThemeToggle />
             </div>
           </header>

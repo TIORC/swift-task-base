@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { useNotifications, useMarkAsRead, useMarkAllAsRead, Notification } from "@/hooks/useNotifications";
 import type { Task } from "@/hooks/useTasks";
 import { supabase } from "@/integrations/supabase/client";
-import { useUnreadCount } from "@/hooks/useNotifications";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,11 +21,16 @@ const typeConfig: Record<string, { icon: typeof AtSign; label: string; className
   approval: { icon: ShieldCheck, label: "Aprovação", className: "bg-warning/10 text-warning" },
 };
 
-export function NotificationBell() {
-  const { data: notifications } = useNotifications();
+// onlyMentions: sino separado só com as menções; o sino geral continua com tudo.
+export function NotificationBell({ onlyMentions = false }: { onlyMentions?: boolean }) {
+  const { data: allNotifications } = useNotifications();
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
-  const unreadCount = useUnreadCount();
+  const notifications = onlyMentions
+    ? allNotifications?.filter((n) => n.type === "mention")
+    : allNotifications;
+  const unreadCount = notifications?.filter((n) => !n.read).length ?? 0;
+  const BellIcon = onlyMentions ? AtSign : Bell;
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
@@ -61,7 +65,7 @@ export function NotificationBell() {
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-foreground transition-colors">
-            <Bell className="h-4.5 w-4.5" />
+            <BellIcon className="h-4.5 w-4.5" />
             {unreadCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 z-10 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-bold leading-none text-destructive-foreground shadow-md ring-2 ring-background animate-pulse">
                 {unreadCount > 9 ? "9+" : unreadCount}
@@ -71,7 +75,7 @@ export function NotificationBell() {
         </PopoverTrigger>
         <PopoverContent align="end" className="w-96 p-0" sideOffset={8}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <h3 className="text-sm font-semibold text-foreground">Notificações</h3>
+            <h3 className="text-sm font-semibold text-foreground">{onlyMentions ? "Menções" : "Notificações"}</h3>
             {unreadCount > 0 && (
               <Button
                 variant="ghost"
