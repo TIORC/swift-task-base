@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EditRecurrenceSection } from "@/components/EditRecurrenceSection";
+import { TaskChecklist } from "@/components/TaskChecklist";
 import { useUpdateTask, useDeleteTask, useAssignableProfiles, type Task } from "@/hooks/useTasks";
 import { Repeat, Search, Trash2, Pencil, Clock, Calendar as CalendarIcon, User, History } from "lucide-react";
 import { toast } from "sonner";
@@ -244,6 +245,8 @@ export default function RecurringTasksAdmin() {
               </Button>
 
               <EditRecurrenceSection task={editing as any} />
+
+              <TaskChecklist taskId={editing.id} />
 
               <HistoryPanel taskId={editing.id} />
             </div>
