@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckSquare, Trash2, Plus, AlertTriangle } from "lucide-react";
+import { CheckSquare, Trash2, Plus, AlertTriangle, Pencil } from "lucide-react";
 import {
   useAddTaskChecklistItem,
   useDeleteTaskChecklistItem,
   useTaskChecklist,
   useToggleTaskChecklistItem,
+  useUpdateTaskChecklistItemContent,
 } from "@/hooks/useTaskChecklist";
 
 interface TaskChecklistProps {
@@ -20,7 +21,18 @@ export function TaskChecklist({ taskId, readOnly }: TaskChecklistProps) {
   const add = useAddTaskChecklistItem();
   const toggle = useToggleTaskChecklistItem();
   const remove = useDeleteTaskChecklistItem();
+  const updateContent = useUpdateTaskChecklistItemContent();
   const [newItem, setNewItem] = useState("");
+  const [editing, setEditing] = useState<{ id: string; value: string } | null>(null);
+
+  const saveEdit = () => {
+    if (!editing) return;
+    const item = items.find((i) => i.id === editing.id);
+    const content = editing.value.trim();
+    setEditing(null);
+    if (!item || !content || content === item.content) return;
+    updateContent.mutate({ id: item.id, taskId, content });
+  };
 
   const doneCount = items.filter((i) => i.done).length;
   const percent = items.length ? Math.round((doneCount / items.length) * 100) : 0;
@@ -72,9 +84,33 @@ export function TaskChecklist({ taskId, readOnly }: TaskChecklistProps) {
               onChange={() => toggle.mutate({ id: item.id, taskId, done: !item.done })}
               className="h-4 w-4 shrink-0 cursor-pointer accent-green-600 disabled:cursor-not-allowed"
             />
-            <span className={`flex-1 min-w-0 break-words text-sm ${item.done ? "text-muted-foreground line-through" : "text-foreground"}`}>
-              {item.content}
-            </span>
+            {editing?.id === item.id ? (
+              <Input
+                autoFocus
+                value={editing.value}
+                onChange={(e) => setEditing({ id: item.id, value: e.target.value })}
+                onBlur={saveEdit}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                  if (e.key === "Escape") setEditing(null);
+                }}
+                className="h-7 flex-1 min-w-0 text-sm"
+              />
+            ) : (
+              <span className={`flex-1 min-w-0 break-words text-sm ${item.done ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                {item.content}
+              </span>
+            )}
+            {!readOnly && editing?.id !== item.id && (
+              <button
+                type="button"
+                title="Editar item"
+                onClick={() => setEditing({ id: item.id, value: item.content })}
+                className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            )}
             {!readOnly && (
               <button
                 type="button"

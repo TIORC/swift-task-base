@@ -31,7 +31,17 @@ import { TaskDependencies } from "@/components/TaskDependencies";
 import { TaskTimeline } from "@/components/TaskTimeline";
 import { CloseTicketDialog } from "@/components/CloseTicketDialog";
 import { TimeLogsEditor } from "@/components/TimeLogsEditor";
+import { useAuth } from "@/hooks/useAuth";
 
+
+// Quem pode editar o checklist de tarefas recorrentes mesmo em modo somente leitura.
+const RECURRING_CHECKLIST_EDITOR_EMAILS = [
+  "angel.kauan@orcoma.com.br",
+  "sofia.nardes@orcoma.com.br",
+  "gabriel.anacleto@orcoma.com.br",
+  "timaracas@orcoma.com.br",
+  "welder@orcoma.com.br",
+];
 
 const priorityOptions = [
   { value: "low", label: "Baixa" },
@@ -48,12 +58,16 @@ interface TaskDetailDialogProps {
 }
 
 export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskDetailDialogProps) {
+  const { user } = useAuth();
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
   const { data: profiles } = useAssignableProfiles();
   const logResponsibility = useLogResponsibilityChange();
   const { isRunning, elapsed, start, stop } = useTimeTracker(task?.id ?? null);
   const { logs, userSummaries, totalMinutes } = useTaskTimeLogs(open && task ? task.id : null);
+  const isRecurringTaskRecord = !!(task as any)?.is_recurring_template || !!(task as any)?.recurrence_type
+    || (Array.isArray((task as any)?.recurrence_days) && (task as any).recurrence_days.length > 0);
+  const canEditRecurringChecklist = RECURRING_CHECKLIST_EDITOR_EMAILS.includes((user?.email ?? "").trim().toLowerCase());
 
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState("");
@@ -269,7 +283,10 @@ export function TaskDetailDialog({ task, open, onOpenChange, isReadOnly }: TaskD
               {(task as any).is_recurring_template && (
                 <EditRecurrenceSection task={task as any} />
               )}
-              <TaskChecklist taskId={task.id} readOnly={isReadOnly} />
+              <TaskChecklist
+                taskId={task.id}
+                readOnly={isReadOnly && !(isRecurringTaskRecord && canEditRecurringChecklist)}
+              />
               <TaskAttachments taskId={task.id} />
               {userSummaries.length > 0 && (
                 <div className="space-y-2">

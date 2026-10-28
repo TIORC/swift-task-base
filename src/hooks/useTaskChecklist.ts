@@ -52,6 +52,21 @@ export function useToggleTaskChecklistItem() {
   });
 }
 
+export function useUpdateTaskChecklistItemContent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, content }: { id: string; taskId: string; content: string }) => {
+      const { error } = await supabase
+        .from("task_checklist_items")
+        .update({ content: content.trim() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => invalidateChecklist(qc, vars.taskId),
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 export function useDeleteTaskChecklistItem() {
   const qc = useQueryClient();
   return useMutation({
