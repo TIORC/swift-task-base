@@ -415,7 +415,7 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className={`flex max-h-[92vh] w-[96vw] max-w-5xl flex-col overflow-hidden border text-white ${isMaintenance ? "[&_input]:bg-red-950/60 [&_input]:text-white [&_input]:border-red-400/30 [&_textarea]:bg-red-950/60 [&_textarea]:text-white [&_textarea]:border-red-400/30 [&_button[role=combobox]]:bg-red-950/60 [&_button[role=combobox]]:text-white [&_button[role=combobox]]:border-red-400/30 [&_input]:placeholder:text-slate-400 [&_textarea]:placeholder:text-slate-400" : "[&_input]:text-black [&_textarea]:text-black"} ${accent.border} ${isMaintenance ? "bg-[#2a0d12]" : requestType === "Sistema" ? "bg-[#0c2034]" : "bg-[#1b1534]"}`}>
+      <DialogContent className={`flex max-h-[92vh] w-[96vw] max-w-5xl flex-col overflow-hidden border text-white ${isMaintenance ? "[&_input]:bg-red-950/60 [&_input]:text-white [&_input]:border-red-400/30 [&_textarea]:bg-red-950/60 [&_textarea]:text-white [&_textarea]:border-red-400/30 [&_button[role=combobox]]:bg-red-950/60 [&_button[role=combobox]]:text-white [&_button[role=combobox]]:border-red-400/30 [&_input]:placeholder:text-slate-400 [&_textarea]:placeholder:text-slate-400" : "[&_input]:text-white [&_textarea]:text-white"} ${accent.border} ${isMaintenance ? "bg-[#2a0d12]" : requestType === "Sistema" ? "bg-[#0c2034]" : "bg-[#1b1534]"}`}>
         <DialogHeader>
           <DialogTitle className={accent.active}>{isMaintenance ? `Manutenção — ${maintenanceSystem}` : requestType}</DialogTitle>
           <DialogDescription>

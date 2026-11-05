@@ -1125,6 +1125,7 @@ export type Database = {
           status_from: string | null
           status_to: string | null
           supplier: string | null
+          source_movement_id: string | null
           to_location_id: string | null
           type: string
           unit_price: number
@@ -1150,6 +1151,7 @@ export type Database = {
           serial_number?: string | null
           status_from?: string | null
           status_to?: string | null
+          source_movement_id?: string | null
           supplier?: string | null
           to_location_id?: string | null
           type: string
@@ -1176,6 +1178,7 @@ export type Database = {
           serial_number?: string | null
           status_from?: string | null
           status_to?: string | null
+          source_movement_id?: string | null
           supplier?: string | null
           to_location_id?: string | null
           type?: string

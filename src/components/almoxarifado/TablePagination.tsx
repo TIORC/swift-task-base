@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
+export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
 interface Props {
   page: number;

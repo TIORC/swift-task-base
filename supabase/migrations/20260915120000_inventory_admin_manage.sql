@@ -22,6 +22,20 @@ AS $function$
   );
 $function$;
 
+-- Re-executável: remove as policies deste script antes de recriá-las.
+DROP POLICY IF EXISTS "inv_categories_admin"       ON public.inventory_categories;
+DROP POLICY IF EXISTS "inv_locations_admin"        ON public.inventory_locations;
+DROP POLICY IF EXISTS "inv_items_admin"            ON public.inventory_items;
+DROP POLICY IF EXISTS "inv_assets_admin"           ON public.inventory_assets;
+DROP POLICY IF EXISTS "inv_collab_admin"           ON public.inventory_collaborators;
+DROP POLICY IF EXISTS "inv_settings_admin"         ON public.inventory_settings;
+DROP POLICY IF EXISTS "inv_departments_admin"      ON public.inventory_departments;
+DROP POLICY IF EXISTS "inv_requests_admin_update"  ON public.inventory_requests;
+DROP POLICY IF EXISTS "inv_requests_admin_delete"  ON public.inventory_requests;
+DROP POLICY IF EXISTS "inv_movements_admin_insert" ON public.inventory_movements;
+DROP POLICY IF EXISTS "inv_movements_admin_update" ON public.inventory_movements;
+DROP POLICY IF EXISTS "inv_movements_admin_delete" ON public.inventory_movements;
+
 -- ---------- categorias / locais / itens / patrimônios / colaboradores / setores / config ----------
 DROP POLICY IF EXISTS "ti write categories"   ON public.inventory_categories;
 DROP POLICY IF EXISTS "ti write locations"    ON public.inventory_locations;

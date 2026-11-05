@@ -95,6 +95,7 @@ export interface InventoryMovement {
   status_to: string | null;
   performed_by: string;
   created_at: string;
+  source_movement_id: string | null; // entrada de origem, quando a saída veio de uma entrada
 }
 
 export interface InventoryCollaborator {
@@ -1060,6 +1061,7 @@ export interface ExitPayload {
   exit_date: string;
   notes?: string | null;
   unit_price: number;
+  source_movement_id?: string | null; // entrada de origem, quando a saída vem de uma entrada
 }
 
 export function useRegisterExit() {
@@ -1121,7 +1123,7 @@ export function useRegisterExit() {
       }
 
 
-      const { error } = await supabase.from("inventory_movements").insert({
+      const { data: created, error } = await supabase.from("inventory_movements").insert({
         item_id: p.item_id,
         type: "out",
         quantity: p.quantity,
@@ -1137,8 +1139,10 @@ export function useRegisterExit() {
         status_from: "available",
         status_to: "in_use",
         performed_by: user.id,
-      });
+        ...(p.source_movement_id ? { source_movement_id: p.source_movement_id } : {}),
+      }).select("id").single();
       if (error) throw error;
+      return created.id as string;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["inventory"] }); toast.success("Saída registrada"); },
     onError: (e: any) => toast.error(e.message ?? "Erro ao registrar saída"),

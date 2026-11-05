@@ -26,14 +26,16 @@ import {
   useDeactivateItem, useDeleteMovement, useDeleteAsset, useDeleteRequest,
   useCanZerarEstoque, useZerarEstoque,
   useUpdateCategory, useDeleteCategory, useUpdateLocation, useDeleteLocation, useDeleteDepartment,
+  useSaveEntryBatch, useSaveExitBatch, useUpdateItem,
 } from "@/hooks/useInventory";
 import { ItemFormDialog } from "@/components/almoxarifado/ItemFormDialog";
 import { ColumnFilter } from "@/components/almoxarifado/ColumnFilter";
 import { OLD_ASSETS, type OldAsset } from "@/data/ativos-antigos";
-import { EntryDialog } from "@/components/almoxarifado/EntryDialog";
-import { EntryGrid } from "@/components/almoxarifado/EntryGrid";
+import { PURCHASED_NOTE } from "@/components/almoxarifado/EntryDialog";
+import { EditableCell } from "@/components/almoxarifado/EditableCell";
+import { SendToExitDialog } from "@/components/almoxarifado/SendToExitDialog";
+import { toast } from "sonner";
 import { EntryFilters, EMPTY_ENTRY_FILTERS, filterEntries, hasActiveEntryFilters, type EntryFilterState } from "@/components/almoxarifado/EntryFilters";
-import { ExitGrid } from "@/components/almoxarifado/ExitGrid";
 import { AssetGrid } from "@/components/almoxarifado/AssetGrid";
 import { DashboardCharts } from "@/components/almoxarifado/DashboardCharts";
 import { ExitFilters, EMPTY_EXIT_FILTERS, filterExits, hasActiveExitFilters, type ExitFilterState } from "@/components/almoxarifado/ExitFilters";
@@ -53,7 +55,28 @@ import { usePageTheme } from "@/hooks/usePageTheme";
 
 const currency = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const dateFmt = (s: string) => new Date(s).toLocaleString("pt-BR");
-const alphaInitial = (name: string) => name.trim().charAt(0).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+// Data/hora no formato da célula editável: dd/mm/aaaa hh:mm (hora local).
+const brDateTime = (iso: string) => {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+const parseBrDateTime = (s: string): string | null => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})$/.exec(s.trim());
+  if (!m) return null;
+  const [d, mo, y, h, mi] = m.slice(1).map(Number);
+  const date = new Date(y, mo - 1, d, h, mi);
+  return date.getDate() === d ? date.toISOString() : null;
+};
+// Separa o texto de "comprado" das observações gravadas na movimentação.
+const splitEntryNotes = (notes: string | null) => {
+  const raw = notes ?? "";
+  if (!raw.startsWith(PURCHASED_NOTE)) return { purchased: false, obs: raw };
+  return { purchased: true, obs: raw.slice(PURCHASED_NOTE.length).replace(/^ — /, "") };
+};
+// Texto sem acento e sem maiúsculas, para comparar nas buscas.
+const normalizeSearch = (s: string) => s.trim().normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const alphaInitial =(name: string) => name.trim().charAt(0).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 
 const MOV_LABELS: Record<MovementType, string> = {
   in: "Entrada", out: "Saída", transfer: "Transferência", damage: "Dano",
@@ -106,18 +129,8 @@ function RowActionButton({
 }
 
 const ENTRY_PAGE_SIZE = 30;
-const OLD_PAGE_SIZE = 30;
-const OLD_COLUMNS: { key: keyof OldAsset; label: string }[] = [
-  { key: "ativo", label: "Ativo" },
-  { key: "categoria", label: "Categoria" },
-  { key: "patrimonio", label: "Patrimônio" },
-  { key: "status", label: "Status" },
-  { key: "descricao", label: "Descrição" },
-  { key: "departamento", label: "Departamento" },
-  { key: "colaborador", label: "Colaborador Responsável" },
-  { key: "historico", label: "Histórico" },
-  { key: "observacao", label: "Observação" },
-];
+// Uma linha da aba Saídas: ou uma saída do sistema (mov) ou um ativo antigo (old).
+type OutRow = { key: string; responsible: string; mov?: InventoryMovement; old?: OldAsset };
 
 type OutColumn = "item" | "qtd" | "responsavel" | "departamento" | "patrimonio" | "motivo";
 const OUT_COLUMNS: OutColumn[] = ["item", "qtd", "responsavel", "departamento", "patrimonio", "motivo"];
@@ -155,9 +168,9 @@ export default function Almoxarifado() {
   const [outPage, setOutPage] = useState(1);
   const [outPageSize, setOutPageSize] = useState(100);
 
-  const [entryOpen, setEntryOpen] = useState(false);
-  const [entryGridOpen, setEntryGridOpen] = useState(false);
-  const [outGridOpen, setOutGridOpen] = useState(false);
+  const saveEntryBatch = useSaveEntryBatch();
+  const saveExitBatch = useSaveExitBatch();
+  const updateItem = useUpdateItem();
   const [assetGridOpen, setAssetGridOpen] = useState(false);
   // Saídas: rascunho digitado e filtro pesquisado (mesmo padrão das entradas).
   const [exitDraft, setExitDraft] = useState<ExitFilterState>(EMPTY_EXIT_FILTERS);
@@ -166,8 +179,10 @@ export default function Almoxarifado() {
   const [entryDraft, setEntryDraft] = useState<EntryFilterState>(EMPTY_ENTRY_FILTERS);
   const [entryFilters, setEntryFilters] = useState<EntryFilterState>(EMPTY_ENTRY_FILTERS);
   const [entryColFilters, setEntryColFilters] = useState<Partial<Record<EntryColumn, string[]>>>({});
-  const [oldColFilters, setOldColFilters] = useState<Partial<Record<keyof OldAsset, string[]>>>({});
-  const [oldPage, setOldPage] = useState(1);
+  const [outSearch, setOutSearch] = useState("");
+  const outTerm = normalizeSearch(outSearch);
+  // Os ativos antigos vêm do arquivo fixo; as edições ficam nesta lista até recarregar a página.
+  const [oldData, setOldData] = useState<OldAsset[]>(OLD_ASSETS);
   const [lastCreatedItem, setLastCreatedItem] = useState<string | null>(null);
   const [exitDlg, setExitDlg] = useState<{ open: boolean; item?: InventoryItem | null }>({ open: false });
   const [statusDlg, setStatusDlg] = useState<{ open: boolean; item?: InventoryItem | null; mode: "damage" | "discard" }>({ open: false, mode: "damage" });
@@ -175,6 +190,7 @@ export default function Almoxarifado() {
   const [itemDlg, setItemDlg] = useState<{ open: boolean; item?: InventoryItem | null }>({ open: false });
   const [assetDlg, setAssetDlg] = useState<{ open: boolean; asset?: InventoryAsset | null }>({ open: false });
   const [movDlg, setMovDlg] = useState<{ open: boolean; movement?: InventoryMovement | null }>({ open: false });
+  const [sendEntry, setSendEntry] = useState<InventoryMovement | null>(null);
   const [detail, setDetail] = useState<InventoryItem | null>(null);
 
   const includeDamaged = settings?.include_damaged_in_value ?? true;
@@ -196,7 +212,15 @@ export default function Almoxarifado() {
   const collabName = (id: string | null) => collaborators.find((c) => c.id === id)?.full_name ?? "—";
   const collabDept = (id: string | null) => collaborators.find((c) => c.id === id)?.department ?? "—";
   const itemName = (id: string) => items.find((i) => i.id === id)?.name ?? "—";
-  const entryMovements = useMemo(() => movements.filter((m) => m.type === "in"), [movements]);
+  // Entradas que já foram mandadas para saída somem da lista (continuam no histórico e no estoque).
+  const sentEntryIds = useMemo(
+    () => new Set(movements.map((m) => m.source_movement_id).filter((id): id is string => !!id)),
+    [movements],
+  );
+  const entryMovements = useMemo(
+    () => movements.filter((m) => m.type === "in" && !sentEntryIds.has(m.id)),
+    [movements, sentEntryIds],
+  );
   const entryColumnValue = (col: EntryColumn, m: InventoryMovement): string => {
     switch (col) {
       case "item": return itemName(m.item_id);
@@ -210,44 +234,133 @@ export default function Almoxarifado() {
   const entryColumnOptions = (col: EntryColumn) =>
     Array.from(new Set(entryMovements.map((m) => entryColumnValue(col, m))))
       .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" }));
-  const oldValue = (a: OldAsset, col: keyof OldAsset) => a[col] || (col === "patrimonio" ? "N/A" : "—");
-  const oldColumnOptions = (col: keyof OldAsset) =>
-    Array.from(new Set(OLD_ASSETS.map((a) => oldValue(a, col))))
-      .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" }));
-  const setOldColFilter = (col: keyof OldAsset, next: string[]) => {
-    setOldColFilters((prev) => ({ ...prev, [col]: next }));
-    setOldPage(1);
+  // Ordem alfabética pelo colaborador responsável; sem responsável vai para o fim.
+  const oldFiltered = useMemo(() => {
+    return oldData
+      .filter((a) => !outTerm || [...Object.values(a), "01/01/2020"].some((v) => normalizeSearch(v).includes(outTerm)))
+      .sort((a, b) => {
+        if (!a.colaborador !== !b.colaborador) return a.colaborador ? -1 : 1;
+        return a.colaborador.localeCompare(b.colaborador, "pt-BR", { sensitivity: "base" })
+          || a.ativo.localeCompare(b.ativo, "pt-BR", { sensitivity: "base" });
+      });
+  }, [oldData, outTerm]);
+  // Nome do item danificado: grava o nome do próprio item.
+  const saveDamagedName = (i: InventoryItem, raw: string) => {
+    const name = raw.trim();
+    if (!name) { toast.error("Informe o nome do item"); return; }
+    updateItem.mutate({ id: i.id, name });
   };
-  const oldFiltered = useMemo(
-    () => OLD_ASSETS.filter((a) => OLD_COLUMNS.every((c) => !oldColFilters[c.key]?.length || oldColFilters[c.key].includes(oldValue(a, c.key)))),
-    [oldColFilters],
-  );
-  const oldPageCount = Math.max(1, Math.ceil(oldFiltered.length / OLD_PAGE_SIZE));
-  const currentOldPage = Math.min(oldPage, oldPageCount);
-  const oldPaged = oldFiltered.slice((currentOldPage - 1) * OLD_PAGE_SIZE, currentOldPage * OLD_PAGE_SIZE);
+  const saveOldCell = (a: OldAsset, col: keyof OldAsset, value: string) =>
+    setOldData((prev) => prev.map((x) => (x === a ? { ...x, [col]: value.trim() } : x)));
   const setEntryColFilter = (col: EntryColumn, next: string[]) => {
     setEntryColFilters((prev) => ({ ...prev, [col]: next }));
     setEntryPage(1);
   };
   const filteredEntries = useMemo(
     () => filterEntries(entryMovements, entryFilters, itemName)
-      .filter((m) => ENTRY_COLUMNS.every((col) => !entryColFilters[col]?.length || entryColFilters[col].includes(entryColumnValue(col, m)))),
+      .filter((m) => ENTRY_COLUMNS.every((col) => !entryColFilters[col]?.length || entryColFilters[col].includes(entryColumnValue(col, m))))
+      .sort((a, b) => new Date(b.occurred_at ?? b.created_at).getTime() - new Date(a.occurred_at ?? a.created_at).getTime()),
     [entryMovements, entryFilters, entryColFilters, items, locations],
   );
   const [entryPage, setEntryPage] = useState(1);
   const entryPageCount = Math.max(1, Math.ceil(filteredEntries.length / ENTRY_PAGE_SIZE));
   const currentEntryPage = Math.min(entryPage, entryPageCount);
   const pageEntries = filteredEntries.slice((currentEntryPage - 1) * ENTRY_PAGE_SIZE, currentEntryPage * ENTRY_PAGE_SIZE);
+  // Grava uma célula da entrada: só essa linha vai para o banco, com a mesma checagem de conflito da planilha.
+  const saveEntryCell = async (m: InventoryMovement, field: "date" | "name" | "quantity" | "unit_price" | "patrimony", raw: string) => {
+    const item = items.find((i) => i.id === m.item_id);
+    const value = raw.trim();
+    const { purchased, obs } = splitEntryNotes(m.notes);
+    const next = {
+      name: item?.name ?? "", quantity: m.quantity, unitPrice: m.unit_price ?? 0,
+      occurredAt: m.occurred_at ?? m.created_at, patrimony: m.patrimony_number ?? null,
+    };
+    if (field === "date") {
+      const iso = parseBrDateTime(value);
+      if (!iso) { toast.error("Data inválida. Use dd/mm/aaaa hh:mm"); return; }
+      next.occurredAt = iso;
+    }
+    if (field === "name") {
+      if (!value) { toast.error("Informe o nome do item"); return; }
+      next.name = value;
+    }
+    if (field === "quantity") {
+      const qty = Number(value);
+      if (!Number.isInteger(qty) || qty < 1) { toast.error("Quantidade deve ser um número inteiro maior que zero"); return; }
+      next.quantity = qty;
+    }
+    if (field === "unit_price") {
+      const price = Number(value.replace(",", "."));
+      if (!value || Number.isNaN(price) || price < 0) { toast.error("Valor unitário inválido"); return; }
+      next.unitPrice = price;
+    }
+    if (field === "patrimony") next.patrimony = value || null;
+
+    let res;
+    try {
+      res = await saveEntryBatch.mutateAsync([{
+        kind: "update", id: m.id, name: next.name, quantity: next.quantity, unit_price: next.unitPrice,
+        occurred_at: next.occurredAt, notes: obs.trim() || null, brand: item?.brand ?? null, model: item?.model ?? null,
+        patrimony_number: next.patrimony, purchased,
+        original: {
+          name: item?.name ?? "", quantity: m.quantity, unit_price: m.unit_price ?? 0, occurred_at: m.occurred_at ?? m.created_at,
+          notes: m.notes ?? null, brand: item?.brand ?? null, model: item?.model ?? null, patrimony_number: m.patrimony_number ?? null,
+        },
+      }]);
+    } catch {
+      return; // o hook já mostra o erro do banco
+    }
+    if (!res.ok) toast.error("Esta entrada foi alterada por outra pessoa. Recarregue a tela e tente de novo.");
+  };
+
+  // Grava uma célula da saída: só essa linha vai para o banco.
+  const saveExitCell = async (m: InventoryMovement, field: "date" | "name" | "quantity" | "department" | "patrimony" | "reason", raw: string) => {
+    const item = items.find((i) => i.id === m.item_id);
+    const value = raw.trim();
+    const occurredOrig = m.occurred_at ?? m.created_at;
+    if (!m.collaborator_id) { toast.error("Esta saída não tem responsável. Edite pelo ícone de lápis."); return; }
+    const next = {
+      name: item?.name ?? "", quantity: m.quantity, occurredAt: occurredOrig,
+      department: m.department ?? null, patrimony: m.patrimony_number ?? null, reason: m.reason ?? null,
+    };
+    if (field === "date") {
+      const iso = parseBrDateTime(value);
+      if (!iso) { toast.error("Data inválida. Use dd/mm/aaaa hh:mm"); return; }
+      next.occurredAt = iso;
+    }
+    if (field === "name") {
+      if (!value) { toast.error("Informe o nome do item"); return; }
+      next.name = value;
+    }
+    if (field === "quantity") {
+      const qty = Number(value);
+      if (!Number.isInteger(qty) || qty < 1) { toast.error("Quantidade deve ser um número inteiro maior que zero"); return; }
+      next.quantity = qty;
+    }
+    if (field === "department") next.department = value || null;
+    if (field === "patrimony") next.patrimony = value || null;
+    if (field === "reason") next.reason = value || null;
+
+    let res;
+    try {
+      res = await saveExitBatch.mutateAsync([{
+        kind: "update", id: m.id, name: next.name, quantity: next.quantity, occurred_at: next.occurredAt,
+        collaborator_id: m.collaborator_id, department: next.department, reason: next.reason,
+        patrimony_number: next.patrimony, notes: m.notes ?? null,
+        original: {
+          name: item?.name ?? "", quantity: m.quantity, occurred_at: occurredOrig, collaborator_id: m.collaborator_id,
+          department: m.department ?? null, reason: m.reason ?? null, patrimony_number: m.patrimony_number ?? null, notes: m.notes ?? null,
+        },
+      }]);
+    } catch {
+      return; // o hook já mostra o erro do banco
+    }
+    if (!res.ok) toast.error("Esta saída foi alterada por outra pessoa. Recarregue a tela e tente de novo.");
+  };
   const outMovements = useMemo(() => movements
     .filter((m) => m.type === "out" || m.type === "assign")
     .slice()
-    .sort((a, b) => {
-      const byCollaborator = collabName(a.collaborator_id).localeCompare(collabName(b.collaborator_id), "pt-BR", { sensitivity: "base" });
-      return byCollaborator || itemName(a.item_id).localeCompare(itemName(b.item_id), "pt-BR", { sensitivity: "base" });
-    }), [movements, collaborators, items]);
-  const outLetters = Array.from(new Set(outMovements
-    .map((m) => alphaInitial(collabName(m.collaborator_id)))
-    .filter((letter) => /^[A-Z]$/.test(letter))));
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()), [movements, collaborators, items]);
   const outColumnValue = (col: OutColumn, m: InventoryMovement): string => {
     switch (col) {
       case "item": return itemName(m.item_id);
@@ -267,19 +380,45 @@ export default function Almoxarifado() {
   };
   const filteredOutMovements = useMemo(
     () => filterExits(outMovements, exitFilters, itemName, collabName)
-      .filter((m) => OUT_COLUMNS.every((col) => !outColFilters[col]?.length || outColFilters[col].includes(outColumnValue(col, m)))),
-    [outMovements, exitFilters, outColFilters, items, collaborators],
+      .filter((m) => OUT_COLUMNS.every((col) => !outColFilters[col]?.length || outColFilters[col].includes(outColumnValue(col, m))))
+      .filter((m) => !outTerm || [
+        itemName(m.item_id), String(m.quantity), collabName(m.collaborator_id),
+        m.department ?? collabDept(m.collaborator_id), m.patrimony_number ?? "", m.reason ?? "",
+        dateFmt(m.occurred_at ?? m.created_at),
+      ].some((v) => normalizeSearch(v).includes(outTerm))),
+    [outMovements, exitFilters, outColFilters, outTerm, items, collaborators],
   );
-  const outTotalPages = Math.max(1, Math.ceil(filteredOutMovements.length / outPageSize));
+  // Ativos antigos entram no fim da lista (data 01/01/2020), depois das saídas do sistema.
+  const outRows = useMemo<OutRow[]>(() => [
+    ...filteredOutMovements.map((m) => ({ key: m.id, responsible: collabName(m.collaborator_id), mov: m })),
+    ...oldFiltered.map((a, i) => ({ key: `old-${i}`, responsible: a.colaborador, old: a })),
+  ], [filteredOutMovements, oldFiltered, collaborators]);
+  const outLetters = Array.from(new Set(outRows
+    .map((r) => alphaInitial(r.responsible))
+    .filter((letter) => /^[A-Z]$/.test(letter))));
+  const outTotalPages = Math.max(1, Math.ceil(outRows.length / outPageSize));
   const outSafePage = Math.min(outPage, outTotalPages);
-  const pagedOutMovements = useMemo(
-    () => filteredOutMovements.slice((outSafePage - 1) * outPageSize, outSafePage * outPageSize),
-    [filteredOutMovements, outSafePage, outPageSize],
+  const pagedOutRows = useMemo(
+    () => outRows.slice((outSafePage - 1) * outPageSize, outSafePage * outPageSize),
+    [outRows, outSafePage, outPageSize],
   );
   // O índice A-Z rola a página: com a lista paginada o destino pode estar em outra
   // página, então o índice procurado define a página antes do scrollIntoView.
+  // Cada letra tem uma única linha marcada: a primeira que aparece na lista.
+  const outLetterFirstIds = useMemo(() => {
+    const seen = new Set<string>();
+    const ids = new Set<string>();
+    for (const r of outRows) {
+      const letter = alphaInitial(r.responsible);
+      if (/^[A-Z]$/.test(letter) && !seen.has(letter)) {
+        seen.add(letter);
+        ids.add(r.key);
+      }
+    }
+    return ids;
+  }, [outRows]);
   const jumpToOutLetter = (letter: string) => {
-    const index = filteredOutMovements.findIndex((m) => alphaInitial(collabName(m.collaborator_id)) === letter);
+    const index = outRows.findIndex((r) => alphaInitial(r.responsible) === letter);
     if (index < 0) return;
     setOutPage(Math.floor(index / outPageSize) + 1);
     setTimeout(() => document.getElementById(`out-letter-${letter}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
@@ -331,7 +470,6 @@ export default function Almoxarifado() {
           <TabsTrigger value="items" className="hidden">Itens</TabsTrigger>
           <TabsTrigger value="in">Entradas</TabsTrigger>
           <TabsTrigger value="out">Saídas</TabsTrigger>
-          <TabsTrigger value="old-assets">Ativos Antigos</TabsTrigger>
           <TabsTrigger value="assets" className="hidden">Patrimônios</TabsTrigger>
           <TabsTrigger value="damaged">Danificados</TabsTrigger>
           <TabsTrigger value="discarded" className="hidden">Descartados</TabsTrigger>
@@ -511,12 +649,10 @@ export default function Almoxarifado() {
             </div>
             {canWrite && (
               <div className="flex gap-2">
-                {!entryGridOpen && (
-                  <Button size="sm" className="bg-green-600 text-white hover:bg-green-700 hover:text-white" onClick={() => setEntryGridOpen(true)}>
-                    <Grid3x3 className="mr-2 h-4 w-4" /> Edição Estilo Excel
-                  </Button>
-                )}
-                <Button size="sm" onClick={() => setEntryOpen(true)}><Plus className="mr-2 h-4 w-4" /> Nova entrada</Button>
+                <div className="flex items-center gap-2 rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">!</span>
+                  Clique na célula para modificar
+                </div>
               </div>
             )}
           </div>
@@ -536,13 +672,6 @@ export default function Almoxarifado() {
             </Card>
           )}
 
-          {entryGridOpen && canWrite ? (
-            <EntryGrid
-              movements={movements.filter((m) => m.type === "in")}
-              items={items}
-              onExit={() => setEntryGridOpen(false)}
-            />
-          ) : (
           <Card><CardContent className="p-0 overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
@@ -561,15 +690,35 @@ export default function Almoxarifado() {
                   <TableBody>
                     {pageEntries.map((m) => (
                       <TableRow key={m.id}>
-                        <TableCell className="whitespace-nowrap">{dateFmt(m.occurred_at ?? m.created_at)}</TableCell>
-                        <TableCell>{itemName(m.item_id)}</TableCell>
-                        <TableCell>{m.quantity}</TableCell>
-                        <TableCell>{currency(m.unit_price ?? 0)}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <EditableCell disabled={!canWrite} value={brDateTime(m.occurred_at ?? m.created_at)} display={dateFmt(m.occurred_at ?? m.created_at)} onSave={(v) => saveEntryCell(m, "date", v)} />
+                        </TableCell>
+                        <TableCell>
+                          <EditableCell disabled={!canWrite} value={itemName(m.item_id)} display={itemName(m.item_id)} onSave={(v) => saveEntryCell(m, "name", v)} />
+                        </TableCell>
+                        <TableCell>
+                          <EditableCell disabled={!canWrite} value={String(m.quantity)} display={m.quantity} onSave={(v) => saveEntryCell(m, "quantity", v)} />
+                        </TableCell>
+                        <TableCell>
+                          <EditableCell disabled={!canWrite} value={String(m.unit_price ?? 0)} display={currency(m.unit_price ?? 0)} onSave={(v) => saveEntryCell(m, "unit_price", v)} />
+                        </TableCell>
                         <TableCell>{currency((m.unit_price ?? 0) * m.quantity)}</TableCell>
-                        <TableCell className="font-mono text-xs">{m.patrimony_number || "N/A"}</TableCell>
+                        <TableCell>
+                          <EditableCell disabled={!canWrite} className="font-mono text-xs" value={m.patrimony_number ?? ""} display={m.patrimony_number || "N/A"} onSave={(v) => saveEntryCell(m, "patrimony", v)} />
+                        </TableCell>
                         <TableCell>{locName(m.to_location_id)}</TableCell>
                         {canManage && (
                           <TableCell>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                aria-label="Mandar para saídas"
+                                title="Mandar para saídas"
+                                onClick={() => setSendEntry(m)}
+                                className="flex h-7 w-7 items-center justify-center rounded text-blue-600 hover:bg-blue-50"
+                              >
+                                <Send className="h-4 w-4" />
+                              </button>
                             <RowActions
                               editTitle="Editar entrada"
                               onEdit={() => setMovDlg({ open: true, movement: m })}
@@ -579,6 +728,7 @@ export default function Almoxarifado() {
                               pending={delMovement.isPending}
                               onDelete={() => delMovement.mutateAsync(m.id)}
                             />
+                            </div>
                           </TableCell>
                         )}
                       </TableRow>
@@ -591,8 +741,7 @@ export default function Almoxarifado() {
               </TableBody>
             </Table>
           </CardContent></Card>
-          )}
-          {!(entryGridOpen && canWrite) && entryPageCount > 1 && (
+          {entryPageCount > 1 && (
             <div className="flex items-center justify-center gap-2 text-sm">
               <Button variant="outline" size="sm" disabled={currentEntryPage <= 1} onClick={() => setEntryPage(currentEntryPage - 1)}>Anterior</Button>
               <span className="text-muted-foreground">Página {currentEntryPage} de {entryPageCount}</span>
@@ -606,22 +755,18 @@ export default function Almoxarifado() {
           <p className="hidden text-sm text-muted-foreground">Toda saída exige um responsável. Registre a saída pela tela de Itens.</p>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
-            {canWrite && !outGridOpen && (
-              <Button size="sm" className="bg-green-600 text-white hover:bg-green-700 hover:text-white" onClick={() => setOutGridOpen(true)}>
-                <Grid3x3 className="mr-2 h-4 w-4" /> Edição Estilo Excel
-              </Button>
+            <div className="relative min-w-[220px] max-w-md flex-1">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input className="pl-8" placeholder="Buscar saídas e ativos: patrimônio, colaborador, departamento, equipamento..." value={outSearch} onChange={(e) => setOutSearch(e.target.value)} />
+            </div>
+            {canWrite && (
+              <div className="flex items-center gap-2 rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">!</span>
+                Clique na célula para modificar
+              </div>
             )}
           </div>
 
-
-          {outGridOpen && canWrite ? (
-            <ExitGrid
-              movements={outMovements}
-              items={items}
-              collaborators={collaborators}
-              onExit={() => setOutGridOpen(false)}
-            />
-          ) : (
           <>
           <div className="flex min-w-0 flex-col gap-2 md:flex-row md:gap-3">
           <nav aria-label="Índice alfabético de responsáveis" className="scrollbar-thin flex shrink-0 gap-1 overflow-x-auto pb-1 md:sticky md:top-4 md:max-h-[70vh] md:flex-col md:overflow-y-auto md:overflow-x-hidden md:pb-0">
@@ -639,7 +784,7 @@ export default function Almoxarifado() {
             <Table>
               <TableHeader><TableRow>
                 <TableHead>Data</TableHead>
-                {(["item", "qtd", "responsavel", "departamento", "patrimonio", "motivo"] as const).map((col) => (
+                {(["item", "qtd", "responsavel", "departamento", "patrimonio"] as const).map((col) => (
                   <ColumnFilter
                     key={col}
                     label={OUT_COLUMN_LABELS[col]}
@@ -652,18 +797,49 @@ export default function Almoxarifado() {
                 {canManage && <TableHead className="text-right">Ações</TableHead>}
               </TableRow></TableHeader>
               <TableBody>
-                {pagedOutMovements.map((m, index) => {
-                  const responsibleLetter = alphaInitial(collabName(m.collaborator_id));
-                  const previousLetter = index > 0 ? alphaInitial(collabName(pagedOutMovements[index - 1].collaborator_id)) : "";
-                  const firstOfLetter = /^[A-Z]$/.test(responsibleLetter) && responsibleLetter !== previousLetter;
-                  return <TableRow key={m.id} id={firstOfLetter ? `out-letter-${responsibleLetter}` : undefined}>
-                    <TableCell className="whitespace-nowrap">{dateFmt(m.created_at)}</TableCell>
-                    <TableCell>{itemName(m.item_id)}</TableCell>
-                    <TableCell>{m.quantity}</TableCell>
+                {pagedOutRows.map((r) => {
+                  const rowId = outLetterFirstIds.has(r.key) ? `out-letter-${alphaInitial(r.responsible)}` : undefined;
+                  if (r.old) {
+                    const a = r.old;
+                    return <TableRow key={r.key} id={rowId}>
+                      <TableCell className="whitespace-nowrap font-medium text-red-600">01/01/2020</TableCell>
+                      <TableCell>
+                        <EditableCell disabled={!canWrite} value={a.ativo} display={a.ativo} onSave={(v) => saveOldCell(a, "ativo", v)} />
+                      </TableCell>
+                      <TableCell>1</TableCell>
+                      <TableCell>
+                        <EditableCell disabled={!canWrite} value={a.colaborador} display={a.colaborador} onSave={(v) => saveOldCell(a, "colaborador", v)} />
+                      </TableCell>
+                      <TableCell>
+                        <EditableCell disabled={!canWrite} value={a.departamento} display={a.departamento} onSave={(v) => saveOldCell(a, "departamento", v)} />
+                      </TableCell>
+                      <TableCell>
+                        <EditableCell disabled={!canWrite} className="font-mono text-xs" value={a.patrimonio} display={a.patrimonio || "N/A"} onSave={(v) => saveOldCell(a, "patrimonio", v)} />
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <EditableCell disabled={!canWrite} value={a.status} display={<Badge className="border-blue-600 bg-blue-600 font-normal text-white hover:bg-blue-600">{a.status}</Badge>} onSave={(v) => saveOldCell(a, "status", v)} />
+                      </TableCell>
+                      {canManage && <TableCell />}
+                    </TableRow>;
+                  }
+                  const m = r.mov!;
+                  return <TableRow key={r.key} id={rowId}>
+                    <TableCell className="whitespace-nowrap">
+                      <EditableCell disabled={!canWrite} value={brDateTime(m.occurred_at ?? m.created_at)} display={dateFmt(m.occurred_at ?? m.created_at)} onSave={(v) => saveExitCell(m, "date", v)} />
+                    </TableCell>
+                    <TableCell>
+                      <EditableCell disabled={!canWrite} value={itemName(m.item_id)} display={itemName(m.item_id)} onSave={(v) => saveExitCell(m, "name", v)} />
+                    </TableCell>
+                    <TableCell>
+                      <EditableCell disabled={!canWrite} value={String(m.quantity)} display={m.quantity} onSave={(v) => saveExitCell(m, "quantity", v)} />
+                    </TableCell>
                     <TableCell>{collabName(m.collaborator_id)}</TableCell>
-                    <TableCell>{m.department ?? collabDept(m.collaborator_id)}</TableCell>
-                    <TableCell className="font-mono text-xs">{m.patrimony_number || "N/A"}</TableCell>
-                    <TableCell className="max-w-[240px] truncate">{m.reason ?? "—"}</TableCell>
+                    <TableCell>
+                      <EditableCell disabled={!canWrite} value={m.department ?? collabDept(m.collaborator_id)} display={m.department ?? collabDept(m.collaborator_id)} onSave={(v) => saveExitCell(m, "department", v)} />
+                    </TableCell>
+                    <TableCell>
+                      <EditableCell disabled={!canWrite} className="font-mono text-xs" value={m.patrimony_number ?? ""} display={m.patrimony_number || "N/A"} onSave={(v) => saveExitCell(m, "patrimony", v)} />
+                    </TableCell>
                     <TableCell><StatusTag status="in_use" /></TableCell>
                     {canManage && (
                       <TableCell>
@@ -680,9 +856,9 @@ export default function Almoxarifado() {
                     )}
                   </TableRow>;
                 })}
-                {filteredOutMovements.length === 0 && (
-                  <TableRow><TableCell colSpan={canManage ? 9 : 8} className="text-center text-muted-foreground py-6">
-                    {outMovements.length === 0 ? "Nenhuma saída registrada." : "Nenhuma saída encontrada com esses filtros."}
+                {outRows.length === 0 && (
+                  <TableRow><TableCell colSpan={canManage ? 8 : 7} className="text-center text-muted-foreground py-6">
+                    {outMovements.length === 0 && oldData.length === 0 ? "Nenhuma saída registrada." : "Nenhuma saída encontrada com esses filtros."}
                   </TableCell></TableRow>
                 )}
               </TableBody>
@@ -693,13 +869,12 @@ export default function Almoxarifado() {
           <TablePagination
             page={outSafePage}
             pageSize={outPageSize}
-            total={filteredOutMovements.length}
+            total={outRows.length}
             noun="saídas"
             onPageChange={setOutPage}
             onPageSizeChange={(n) => { setOutPageSize(n); setOutPage(1); }}
           />
           </>
-          )}
         </TabsContent>
 
         {/* PATRIMÔNIOS */}
@@ -729,58 +904,16 @@ export default function Almoxarifado() {
           )}
         </TabsContent>
 
-        {/* ATIVOS ANTIGOS */}
-        <TabsContent value="old-assets" className="space-y-3">
-          <Card><CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader><TableRow>
-                <TableHead>Data</TableHead>
-                {OLD_COLUMNS.map((c) => (
-                  <ColumnFilter
-                    key={c.key}
-                    label={c.label}
-                    options={oldColumnOptions(c.key)}
-                    selected={oldColFilters[c.key] ?? []}
-                    onChange={(next) => setOldColFilter(c.key, next)}
-                  />
-                ))}
-              </TableRow></TableHeader>
-              <TableBody>
-                {oldPaged.length === 0 && (
-                  <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">
-                    {OLD_ASSETS.length === 0 ? "Nenhum ativo antigo registrado." : "Nenhum ativo encontrado com esses filtros."}
-                  </TableCell></TableRow>
-                )}
-                {oldPaged.map((a, i) => (
-                  <TableRow key={`${currentOldPage}-${i}`}>
-                    <TableCell className="whitespace-nowrap font-medium text-red-600">01/01/2020</TableCell>
-                    <TableCell>{a.ativo}</TableCell>
-                    <TableCell>{a.categoria}</TableCell>
-                    <TableCell className="font-mono text-xs">{a.patrimonio || "N/A"}</TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      <Badge className="border-blue-600 bg-blue-600 font-normal text-white hover:bg-blue-600">{a.status}</Badge>
-                    </TableCell>
-                    <TableCell>{a.descricao || "—"}</TableCell>
-                    <TableCell>{a.departamento}</TableCell>
-                    <TableCell>{a.colaborador}</TableCell>
-                    <TableCell>{a.historico || "—"}</TableCell>
-                    <TableCell>{a.observacao || "—"}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent></Card>
-          {oldPageCount > 1 && (
-            <div className="flex items-center justify-center gap-2 text-sm">
-              <Button variant="outline" size="sm" disabled={currentOldPage <= 1} onClick={() => setOldPage(currentOldPage - 1)}>Anterior</Button>
-              <span className="text-muted-foreground">Página {currentOldPage} de {oldPageCount}</span>
-              <Button variant="outline" size="sm" disabled={currentOldPage >= oldPageCount} onClick={() => setOldPage(currentOldPage + 1)}>Próxima</Button>
-            </div>
-          )}
-        </TabsContent>
-
         {/* DANIFICADOS */}
         <TabsContent value="damaged" className="space-y-3">
+          {canWrite && (
+            <div className="flex justify-end">
+              <div className="flex items-center gap-2 rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">!</span>
+                Clique na célula para modificar
+              </div>
+            </div>
+          )}
           <Card><CardContent className="p-0">
             <Table>
               <TableHeader><TableRow>
@@ -791,7 +924,9 @@ export default function Almoxarifado() {
           <TableBody>
             {damagedItems.map((i) => (
               <TableRow key={i.id}>
-                <TableCell className="font-medium">{i.name}</TableCell>
+                <TableCell className="font-medium">
+                  <EditableCell disabled={!canWrite} value={i.name} display={i.name} onSave={(v) => saveDamagedName(i, v)} />
+                </TableCell>
                 <TableCell>{i.damaged_quantity}</TableCell>
                 <TableCell>{collabName(i.responsible_collaborator_id)}</TableCell>
                 <TableCell><StatusTag status="damaged" /></TableCell>
@@ -1011,7 +1146,6 @@ export default function Almoxarifado() {
         </TabsContent>
       </Tabs>
 
-      <EntryDialog open={entryOpen} onOpenChange={setEntryOpen} onCreated={(id) => setLastCreatedItem(id)} />
       <ExitDialog open={exitDlg.open} onOpenChange={(v) => setExitDlg({ open: v, item: v ? exitDlg.item : null })} item={exitDlg.item} />
       <StatusChangeDialog open={statusDlg.open} mode={statusDlg.mode}
         onOpenChange={(v) => setStatusDlg({ ...statusDlg, open: v })} item={statusDlg.item} />
@@ -1019,6 +1153,12 @@ export default function Almoxarifado() {
         onOpenChange={(v) => setUpgradeDlg({ open: v, item: v ? upgradeDlg.item : null })} item={upgradeDlg.item} />
       <ItemFormDialog open={itemDlg.open} onOpenChange={(v) => setItemDlg({ open: v, item: v ? itemDlg.item : null })} item={itemDlg.item} />
       <AssetFormDialog open={assetDlg.open} onOpenChange={(v) => setAssetDlg({ open: v, asset: v ? assetDlg.asset : null })} asset={assetDlg.asset} />
+      <SendToExitDialog
+        open={!!sendEntry}
+        onOpenChange={(v) => { if (!v) setSendEntry(null); }}
+        entry={sendEntry}
+        item={items.find((i) => i.id === sendEntry?.item_id)}
+      />
       <MovementFormDialog open={movDlg.open} onOpenChange={(v) => setMovDlg({ open: v, movement: v ? movDlg.movement : null })} movement={movDlg.movement} />
 
       <Dialog open={!!detail} onOpenChange={(v) => !v && setDetail(null)}>
