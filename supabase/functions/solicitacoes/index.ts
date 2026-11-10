@@ -531,13 +531,13 @@ Deno.serve(async (req) => {
       const [devLogs, taskLogs, tasks, automations] = await Promise.all([
         admin
           .from("automation_time_logs")
-          .select("user_id, started_at, ended_at")
+          .select("user_id, started_at, ended_at, automation_id")
           .in("user_id", teamIds)
           .gte("started_at", sinceIso)
           .order("started_at", { ascending: false }),
         admin
           .from("time_logs")
-          .select("user_id, started_at, ended_at")
+          .select("user_id, started_at, ended_at, task_id")
           .in("user_id", teamIds)
           .gte("started_at", sinceIso)
           .order("started_at", { ascending: false }),
@@ -562,7 +562,13 @@ Deno.serve(async (req) => {
           : Promise.resolve({ data: null }),
       ]);
 
-      type StatusLog = { user_id: string; started_at: string; ended_at: string | null };
+      type StatusLog = {
+        user_id: string;
+        started_at: string;
+        ended_at: string | null;
+        task_id?: string | null;
+        automation_id?: string | null;
+      };
       type TaskRow = { id: string; title: string; status: string; assigned_to: string | null; updated_at: string };
       type AutomationRow = {
         id: string;
@@ -579,6 +585,53 @@ Deno.serve(async (req) => {
       ];
       const taskRows = (((tasks.data ?? []) as unknown) as TaskRow[]).filter((t) => t.assigned_to);
       const automationRows = (((automations.data ?? []) as unknown) as AutomationRow[]).filter((a) => a.assigned_to);
+
+      // Cronômetro aberto de cada pessoa (o log sem ended_at mais recente, entre
+      // tarefas e automações). É ele que diz no que a pessoa está trabalhando de fato.
+      const runningByUser = new Map<string, StatusLog>();
+      if (isDevelopers) {
+        for (const id of teamIds) {
+          const open = allLogs
+            .filter((log) => log.user_id === id && !log.ended_at)
+            .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())[0];
+          if (open) runningByUser.set(id, open);
+        }
+      }
+      const runningTaskIds = [...runningByUser.values()].map((l) => l.task_id).filter(Boolean) as string[];
+      const runningAutomationIds = [...runningByUser.values()].map((l) => l.automation_id).filter(Boolean) as string[];
+      const [runningTasks, runningAutomations] = await Promise.all([
+        isDevelopers && runningTaskIds.length
+          ? admin.from("tasks").select("id, title, status").in("id", runningTaskIds)
+          : Promise.resolve({ data: null }),
+        isDevelopers && runningAutomationIds.length
+          ? admin.from("automations").select("id, title, status, progress_percent").in("id", runningAutomationIds)
+          : Promise.resolve({ data: null }),
+      ]);
+      const runningTaskById = new Map(
+        (((runningTasks.data ?? []) as unknown) as { id: string; title: string; status: string }[]).map((t) => [t.id, t]),
+      );
+      const runningAutomationById = new Map(
+        (((runningAutomations.data ?? []) as unknown) as {
+          id: string;
+          title: string;
+          status: string;
+          progress_percent: number | null;
+        }[]).map((a) => [a.id, a]),
+      );
+      const resolveTimerWork = (log: StatusLog | undefined) => {
+        if (!log) return null;
+        if (log.automation_id) {
+          const a = runningAutomationById.get(log.automation_id);
+          return a
+            ? { kind: "automacao" as const, title: a.title, status: a.status, progress: a.progress_percent ?? null }
+            : null;
+        }
+        if (log.task_id) {
+          const t = runningTaskById.get(log.task_id);
+          return t ? { kind: "tarefa" as const, title: t.title, status: t.status, progress: null } : null;
+        }
+        return null;
+      };
 
       const entries = teamIds.map((id) => {
         const mine = allLogs.filter((log) => log.user_id === id);
@@ -635,6 +688,8 @@ Deno.serve(async (req) => {
           working: latest ? !latest.ended_at : false,
           lastStart: latest?.started_at ?? null,
           dev: true,
+          // Item do cronômetro aberto: "no que está trabalhando agora" de verdade.
+          timerWork: resolveTimerWork(runningByUser.get(id)),
           currentTask: openTask
             ? { kind: "tarefa" as const, title: openTask.title, status: openTask.status }
             : null,

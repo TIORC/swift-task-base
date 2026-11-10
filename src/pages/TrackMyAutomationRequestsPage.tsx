@@ -85,6 +85,8 @@ interface StatusEntry {
   lastStart: string | null;
   /** true quando a entrada veio da aba de desenvolvedores (papel `dev`). */
   dev?: boolean;
+  /** Item do cronômetro aberto: no que a pessoa está trabalhando de fato. */
+  timerWork?: { kind: "tarefa" | "automacao"; title: string; status: string; progress?: number | null } | null;
   /** Trabalho em aberto, se houver. */
   currentTask?: { title: string; status: string } | null;
   currentAutomation?: { title: string; status: string; progress?: number | null } | null;
@@ -145,6 +147,10 @@ function CurrentWork({ developer }: { developer: StatusEntry }) {
     status: string;
     progress?: number | null;
   }[];
+
+  // O que está em desenvolvimento aparece primeiro; o resto mantém a ordem original.
+  const IN_PROGRESS = new Set(["development", "in_progress"]);
+  lines.sort((a, b) => Number(IN_PROGRESS.has(b.status)) - Number(IN_PROGRESS.has(a.status)));
 
   if (lines.length === 0) {
     return <p className="mt-2 text-xs text-muted-foreground/80">Nenhuma tarefa atribuída no momento.</p>;
@@ -230,7 +236,17 @@ function DeveloperStatusPanel() {
                 <div className="flex items-start gap-2 text-sm">
                   <CircleDot className="mt-0.5 h-4 w-4 shrink-0 animate-pulse text-emerald-500" />
                   <div>
-                    <p><span className="font-medium">Em desenvolvimento</span>{developer.activity ? <>: <span className="font-semibold">{developer.activity}</span></> : "."}</p>
+                    {developer.timerWork ? (
+                      <>
+                        <p><span className="font-medium">Trabalhando agora em</span>: <span className="font-semibold">{developer.timerWork.title}</span></p>
+                        <p className="text-xs text-muted-foreground">
+                          {developer.timerWork.kind === "automacao" ? "Automação" : "Tarefa"} · {WORK_STATUS_LABEL[developer.timerWork.status] || developer.timerWork.status}
+                          {developer.timerWork.progress != null && ` · ${developer.timerWork.progress}%`}
+                        </p>
+                      </>
+                    ) : (
+                      <p><span className="font-medium">Em desenvolvimento</span>{developer.activity ? <>: <span className="font-semibold">{developer.activity}</span></> : "."}</p>
+                    )}
                     {developer.activityContext && <p className="text-xs text-muted-foreground">Automação: {developer.activityContext}</p>}
                     {developer.lastStart && (
                       <p className="mt-1 text-xs text-muted-foreground">
