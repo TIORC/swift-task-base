@@ -24,7 +24,7 @@ export function SolicitanteChat({ automationId, counterpartName }: Props) {
 
   const commentsQuery = useQuery({
     queryKey: ["solicitante-comments", automationId],
-    refetchInterval: 15000,
+    refetchInterval: 30000,
     queryFn: async () => {
       const { comments } = await solicitanteCall<{ comments: SolicitanteComment[] }>("comments:list", {
         automation_id: automationId,
