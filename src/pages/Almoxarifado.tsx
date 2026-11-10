@@ -30,7 +30,8 @@ import {
 } from "@/hooks/useInventory";
 import { ItemFormDialog } from "@/components/almoxarifado/ItemFormDialog";
 import { ColumnFilter } from "@/components/almoxarifado/ColumnFilter";
-import { OLD_ASSETS, type OldAsset } from "@/data/ativos-antigos";
+import { type OldAsset } from "@/data/ativos-antigos";
+import { ContainerPanel } from "@/components/almoxarifado/ContainerPanel";
 import { PURCHASED_NOTE } from "@/components/almoxarifado/EntryDialog";
 import { EditableCell } from "@/components/almoxarifado/EditableCell";
 import { SendToExitDialog } from "@/components/almoxarifado/SendToExitDialog";
@@ -48,6 +49,9 @@ import { MovementFormDialog } from "@/components/almoxarifado/MovementFormDialog
 import { RowActions } from "@/components/almoxarifado/RowActions";
 import { TablePagination } from "@/components/almoxarifado/TablePagination";
 import { StockBadge, StatusTag, ItemStatusTags } from "@/components/almoxarifado/StockBadge";
+import { MovementTextCell } from "@/components/almoxarifado/MovementTextCell";
+import { NewLedgerRow } from "@/components/almoxarifado/NewLedgerRow";
+import { CategoryCell } from "@/components/almoxarifado/CategoryCell";
 import type { InventoryItem, InventoryAsset, InventoryMovement, InventoryRequest, InventoryLocation, InventoryCollaborator, MovementType } from "@/hooks/useInventory";
 import { SECTORS } from "@/types/sectors";
 import { agruparPorTipo, resumoEstoque } from "@/lib/inventory-stock";
@@ -128,6 +132,21 @@ function RowActionButton({
   );
 }
 
+// Botão com rótulo visível, usado nos cartões do celular (onde não há coluna para o texto).
+function MobileAction({ icon: Icon, label, onClick }: { icon: LucideIcon; label: string; onClick: () => void }) {
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={onClick}
+      className="h-8 gap-1.5 px-2.5 text-xs border-blue-300 bg-blue-200 text-black shadow-sm hover:bg-blue-300 hover:text-black"
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      {label}
+    </Button>
+  );
+}
+
 const ENTRY_PAGE_SIZE = 30;
 // Uma linha da aba Saídas: ou uma saída do sistema (mov) ou um ativo antigo (old).
 type OutRow = { key: string; responsible: string; mov?: InventoryMovement; old?: OldAsset };
@@ -138,6 +157,12 @@ type EntryColumn = "item" | "qtd" | "valorUnit" | "valorTotal" | "patrimonio" | 
 const ENTRY_COLUMNS: EntryColumn[] = ["item", "qtd", "valorUnit", "valorTotal", "patrimonio", "local"];
 const ENTRY_COLUMN_LABELS: Record<EntryColumn, string> = {
   item: "Item", qtd: "Qtd", valorUnit: "Valor unit.", valorTotal: "Valor total", patrimonio: "Patrimônio", local: "Local",
+};
+type LedgerColumn = "item" | "categoria" | "patrimonio" | "tipo" | "data" | "departamento" | "es" | "observacao";
+const LEDGER_COLUMNS: LedgerColumn[] = ["item", "categoria", "patrimonio", "tipo", "data", "departamento", "es", "observacao"];
+const LEDGER_COLUMN_LABELS: Record<LedgerColumn, string> = {
+  item: "Equipamento", categoria: "Categoria", patrimonio: "Patrimônio", tipo: "Tipo de controle",
+  data: "Data", departamento: "Departamento/Saídas", es: "E&S", observacao: "Observação",
 };
 const OUT_COLUMN_LABELS: Record<OutColumn, string> = {
   item: "Item", qtd: "Qtd", responsavel: "Responsável", departamento: "Departamento", patrimonio: "Patrimônio", motivo: "Motivo",
@@ -182,7 +207,9 @@ export default function Almoxarifado() {
   const [outSearch, setOutSearch] = useState("");
   const outTerm = normalizeSearch(outSearch);
   // Os ativos antigos vêm do arquivo fixo; as edições ficam nesta lista até recarregar a página.
-  const [oldData, setOldData] = useState<OldAsset[]>(OLD_ASSETS);
+  // Os ativos antigos foram para o Container: a lista de saídas começa vazia.
+  const [oldData, setOldData] = useState<OldAsset[]>([]);
+  const canZerar = useCanZerarEstoque();
   const [lastCreatedItem, setLastCreatedItem] = useState<string | null>(null);
   const [exitDlg, setExitDlg] = useState<{ open: boolean; item?: InventoryItem | null }>({ open: false });
   const [statusDlg, setStatusDlg] = useState<{ open: boolean; item?: InventoryItem | null; mode: "damage" | "discard" }>({ open: false, mode: "damage" });
@@ -266,14 +293,52 @@ export default function Almoxarifado() {
   const entryPageCount = Math.max(1, Math.ceil(filteredEntries.length / ENTRY_PAGE_SIZE));
   const currentEntryPage = Math.min(entryPage, entryPageCount);
   const pageEntries = filteredEntries.slice((currentEntryPage - 1) * ENTRY_PAGE_SIZE, currentEntryPage * ENTRY_PAGE_SIZE);
+  // Aba Entradas e Saídas (tabela): entradas e saídas juntas, mais recentes primeiro.
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const [ledgerPageSize, setLedgerPageSize] = useState(25);
+  const [ledgerColFilters, setLedgerColFilters] = useState<Partial<Record<LedgerColumn, string[]>>>({});
+  const showLedgerActions = canWrite || canManage;
+  const ledgerObs = (m: InventoryMovement) => (m.type === "in" ? splitEntryNotes(m.notes).obs : (m.notes ?? m.reason ?? ""));
+  const ledgerValue = (col: LedgerColumn, m: InventoryMovement): string => {
+    const isIn = m.type === "in";
+    switch (col) {
+      case "item": return itemName(m.item_id);
+      case "categoria": return catName(items.find((i) => i.id === m.item_id)?.category_id ?? null);
+      case "patrimonio": return m.patrimony_number || "N/A";
+      case "tipo": return isIn ? "Entradas" : "Saídas";
+      case "data": return dateFmt(m.occurred_at ?? m.created_at);
+      case "departamento": return m.department ?? collabDept(m.collaborator_id);
+      case "es": return m.es_text || (isIn ? "Estoque" : collabName(m.collaborator_id));
+      case "observacao": return ledgerObs(m);
+    }
+  };
+  const ledgerAll = useMemo(() => movements
+    .filter((m) => m.type === "in" || m.type === "out" || m.type === "assign")
+    .slice()
+    .sort((a, b) => new Date(b.occurred_at ?? b.created_at).getTime() - new Date(a.occurred_at ?? a.created_at).getTime()),
+    [movements]);
+  const ledgerColumnOptions = (col: LedgerColumn) =>
+    Array.from(new Set(ledgerAll.map((m) => ledgerValue(col, m))))
+      .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" }));
+  const setLedgerColFilter = (col: LedgerColumn, next: string[]) => {
+    setLedgerColFilters((prev) => ({ ...prev, [col]: next }));
+    setLedgerPage(1);
+  };
+  // Filtro estilo Excel: cada coluna marcada restringe as linhas aos valores escolhidos.
+  const ledgerRows = useMemo(() => ledgerAll.filter((m) =>
+    LEDGER_COLUMNS.every((col) => !ledgerColFilters[col]?.length || ledgerColFilters[col].includes(ledgerValue(col, m)))),
+    [ledgerAll, ledgerColFilters, items, categories, collaborators]);
+  const ledgerPageCount = Math.max(1, Math.ceil(ledgerRows.length / ledgerPageSize));
+  const currentLedgerPage = Math.min(ledgerPage, ledgerPageCount);
+  const pageLedgerRows = ledgerRows.slice((currentLedgerPage - 1) * ledgerPageSize, currentLedgerPage * ledgerPageSize);
   // Grava uma célula da entrada: só essa linha vai para o banco, com a mesma checagem de conflito da planilha.
-  const saveEntryCell = async (m: InventoryMovement, field: "date" | "name" | "quantity" | "unit_price" | "patrimony", raw: string) => {
+  const saveEntryCell = async (m: InventoryMovement, field: "date" | "name" | "quantity" | "unit_price" | "patrimony" | "obs", raw: string) => {
     const item = items.find((i) => i.id === m.item_id);
     const value = raw.trim();
     const { purchased, obs } = splitEntryNotes(m.notes);
     const next = {
       name: item?.name ?? "", quantity: m.quantity, unitPrice: m.unit_price ?? 0,
-      occurredAt: m.occurred_at ?? m.created_at, patrimony: m.patrimony_number ?? null,
+      occurredAt: m.occurred_at ?? m.created_at, patrimony: m.patrimony_number ?? null, notes: obs,
     };
     if (field === "date") {
       const iso = parseBrDateTime(value);
@@ -295,12 +360,13 @@ export default function Almoxarifado() {
       next.unitPrice = price;
     }
     if (field === "patrimony") next.patrimony = value || null;
+    if (field === "obs") next.notes = value;
 
     let res;
     try {
       res = await saveEntryBatch.mutateAsync([{
         kind: "update", id: m.id, name: next.name, quantity: next.quantity, unit_price: next.unitPrice,
-        occurred_at: next.occurredAt, notes: obs.trim() || null, brand: item?.brand ?? null, model: item?.model ?? null,
+        occurred_at: next.occurredAt, notes: next.notes.trim() || null, brand: item?.brand ?? null, model: item?.model ?? null,
         patrimony_number: next.patrimony, purchased,
         original: {
           name: item?.name ?? "", quantity: m.quantity, unit_price: m.unit_price ?? 0, occurred_at: m.occurred_at ?? m.created_at,
@@ -314,14 +380,14 @@ export default function Almoxarifado() {
   };
 
   // Grava uma célula da saída: só essa linha vai para o banco.
-  const saveExitCell = async (m: InventoryMovement, field: "date" | "name" | "quantity" | "department" | "patrimony" | "reason", raw: string) => {
+  const saveExitCell = async (m: InventoryMovement, field: "date" | "name" | "quantity" | "department" | "patrimony" | "reason" | "notes", raw: string) => {
     const item = items.find((i) => i.id === m.item_id);
     const value = raw.trim();
     const occurredOrig = m.occurred_at ?? m.created_at;
     if (!m.collaborator_id) { toast.error("Esta saída não tem responsável. Edite pelo ícone de lápis."); return; }
     const next = {
       name: item?.name ?? "", quantity: m.quantity, occurredAt: occurredOrig,
-      department: m.department ?? null, patrimony: m.patrimony_number ?? null, reason: m.reason ?? null,
+      department: m.department ?? null, patrimony: m.patrimony_number ?? null, reason: m.reason ?? null, notes: m.notes ?? null,
     };
     if (field === "date") {
       const iso = parseBrDateTime(value);
@@ -340,13 +406,14 @@ export default function Almoxarifado() {
     if (field === "department") next.department = value || null;
     if (field === "patrimony") next.patrimony = value || null;
     if (field === "reason") next.reason = value || null;
+    if (field === "notes") next.notes = value || null;
 
     let res;
     try {
       res = await saveExitBatch.mutateAsync([{
         kind: "update", id: m.id, name: next.name, quantity: next.quantity, occurred_at: next.occurredAt,
         collaborator_id: m.collaborator_id, department: next.department, reason: next.reason,
-        patrimony_number: next.patrimony, notes: m.notes ?? null,
+        patrimony_number: next.patrimony, notes: next.notes,
         original: {
           name: item?.name ?? "", quantity: m.quantity, occurred_at: occurredOrig, collaborator_id: m.collaborator_id,
           department: m.department ?? null, reason: m.reason ?? null, patrimony_number: m.patrimony_number ?? null, notes: m.notes ?? null,
@@ -465,11 +532,12 @@ export default function Almoxarifado() {
       />
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="flex flex-wrap h-auto">
+        {/* No celular as abas rolam na horizontal: alinhadas à esquerda para a primeira não ficar cortada. */}
+        <TabsList className="flex h-auto w-full max-w-full justify-start overflow-x-auto scrollbar-thin md:flex-wrap md:justify-center">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="items" className="hidden">Itens</TabsTrigger>
-          <TabsTrigger value="in">Entradas</TabsTrigger>
-          <TabsTrigger value="out">Saídas</TabsTrigger>
+          <TabsTrigger value="in">Entradas e Saídas</TabsTrigger>
+          <TabsTrigger value="out" className="hidden">Saídas</TabsTrigger>
           <TabsTrigger value="assets" className="hidden">Patrimônios</TabsTrigger>
           <TabsTrigger value="damaged">Danificados</TabsTrigger>
           <TabsTrigger value="discarded" className="hidden">Descartados</TabsTrigger>
@@ -479,6 +547,7 @@ export default function Almoxarifado() {
           <TabsTrigger value="reports" className="hidden">Relatórios</TabsTrigger>
           <TabsTrigger value="settings">Configurações</TabsTrigger>
           <TabsTrigger value="estoque">Estoque</TabsTrigger>
+          <TabsTrigger value="container">Container</TabsTrigger>
         </TabsList>
 
         {/* ---------------- DASHBOARD ---------------- */}
@@ -486,7 +555,7 @@ export default function Almoxarifado() {
           <DashboardCharts assets={assets} items={items} />
           <Card>
             <CardHeader><CardTitle className="text-base">Últimas movimentações</CardTitle></CardHeader>
-            <CardContent className="max-h-[13rem] overflow-y-auto">
+            <CardContent className="max-h-[13rem] overflow-auto">
               <Table>
                 <TableHeader><TableRow>
                   <TableHead>Data</TableHead><TableHead>Tipo</TableHead><TableHead>Item</TableHead><TableHead>Qtd</TableHead><TableHead>Motivo</TableHead>
@@ -542,8 +611,8 @@ export default function Almoxarifado() {
           </div>
 
           <p className="text-xs text-muted-foreground">Itens são criados apenas pela tela de Entradas. Use “Atualizar” para registrar uma mudança no item — a atualização fica gravada no histórico.</p>
-          <Card>
-            <CardContent className="p-0">
+          <div className="hidden md:block"><Card>
+            <CardContent className="p-0 overflow-x-auto">
               <Table className="min-w-[880px]">
                 <TableHeader><TableRow>
                   <TableHead>Item</TableHead><TableHead>Categoria</TableHead>
@@ -637,12 +706,77 @@ export default function Almoxarifado() {
                 </TableBody>
               </Table>
             </CardContent>
-          </Card>
+          </Card></div>
+
+          <div className="space-y-2 md:hidden">
+            {filteredItems.map((i) => {
+              const total = i.quantity + i.in_use_quantity + i.damaged_quantity;
+              return (
+                <Card key={i.id}>
+                  <CardContent className="space-y-2 p-3 text-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 font-medium">
+                        <span className="flex items-center gap-1.5 break-words">
+                          {i.name}
+                          {i.upgrade_count > 0 && (
+                            <Badge variant="outline" className="shrink-0 font-normal">
+                              <Wrench className="mr-1 h-3 w-3" />{i.upgrade_count}
+                            </Badge>
+                          )}
+                        </span>
+                        <p className="text-xs text-muted-foreground">{catName(i.category_id)}</p>
+                      </div>
+                      <div className="shrink-0"><ItemStatusTags item={i} /></div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-xs">
+                      <div><p className="text-muted-foreground">Total</p><p className="text-sm">{total}</p></div>
+                      <div><p className="text-muted-foreground">Disp.</p><p className="text-sm">{i.quantity}</p></div>
+                      <div><p className="text-muted-foreground">Em uso</p><p className="text-sm">{i.in_use_quantity}</p></div>
+                      <div><p className="text-muted-foreground">Danif.</p><p className={`text-sm ${i.damaged_quantity > 0 ? "text-red-600" : ""}`}>{i.damaged_quantity}</p></div>
+                      <div><p className="text-muted-foreground">Descart.</p><p className="text-sm">{i.discarded_quantity}</p></div>
+                      <div><p className="text-muted-foreground">Mín.</p><p className="text-sm">{i.min_stock}</p></div>
+                      <div><p className="text-muted-foreground">Valor unit.</p><p className="text-sm">{currency(i.unit_price)}</p></div>
+                      <div className="col-span-2"><p className="text-muted-foreground">Valor total</p><p className="text-sm">{currency(total * i.unit_price)}</p></div>
+                      <div className="col-span-3"><p className="text-muted-foreground">Responsável · Local</p><p className="text-sm">{collabName(i.responsible_collaborator_id)} · {locName(i.location_id)}</p></div>
+                      <div className="col-span-3"><p className="text-muted-foreground">Patrimônio</p><p className="font-mono text-xs">{itemPatrimonies(i.id)}</p></div>
+                    </div>
+                    <div className="flex flex-wrap justify-end gap-1.5 border-t pt-2">
+                      <MobileAction icon={Package} label="Detalhes" onClick={() => setDetail(i)} />
+                      {canWrite && (
+                        <>
+                          <MobileAction icon={Wrench} label="Atualizar" onClick={() => setUpgradeDlg({ open: true, item: i })} />
+                          <MobileAction icon={Send} label="Saída" onClick={() => setExitDlg({ open: true, item: i })} />
+                          <MobileAction icon={AlertTriangle} label="Danificado" onClick={() => setStatusDlg({ open: true, item: i, mode: "damage" })} />
+                          <MobileAction icon={Trash2} label="Descartar" onClick={() => setStatusDlg({ open: true, item: i, mode: "discard" })} />
+                        </>
+                      )}
+                      {canManage && (
+                        <RowActions
+                          editTitle="Editar item"
+                          onEdit={() => setItemDlg({ open: true, item: i })}
+                          deleteTitle={i.status === "active" ? "Desativar item" : "Reativar item"}
+                          deleteDescription={i.status === "active"
+                            ? `"${i.name}" deixa de aparecer no estoque e nas listas. O histórico é mantido.`
+                            : `"${i.name}" volta a aparecer no estoque e nas listas.`}
+                          deleteLabel={i.status === "active" ? "Desativar" : "Reativar"}
+                          pending={deactivate.isPending}
+                          onDelete={() => deactivate.mutateAsync({ id: i.id, reactivate: i.status !== "active" })}
+                        />
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+            {filteredItems.length === 0 && (
+              <p className="py-6 text-center text-sm text-muted-foreground">Nenhum item. Registre uma entrada para começar.</p>
+            )}
+          </div>
         </TabsContent>
 
         {/* ---------------- ENTRADAS ---------------- */}
         <TabsContent value="in" className="space-y-3">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-sm text-muted-foreground">Histórico de entradas</h2>
               <p className="text-xs text-muted-foreground">Entradas são somente para itens comprados. A data da chegada fica registrada e o item entra em estoque.</p>
@@ -672,44 +806,138 @@ export default function Almoxarifado() {
             </Card>
           )}
 
-          <Card><CardContent className="p-0 overflow-x-auto">
-            <Table>
+          <div className="space-y-2 md:hidden">
+            <div className="flex flex-wrap gap-2">
+              <span className="self-center text-xs text-muted-foreground">Filtrar:</span>
+              {ENTRY_COLUMNS.map((col) => (
+                <ColumnFilter
+                  key={col}
+                  inline
+                  label={ENTRY_COLUMN_LABELS[col]}
+                  options={entryColumnOptions(col)}
+                  selected={entryColFilters[col] ?? []}
+                  onChange={(next) => setEntryColFilter(col, next)}
+                />
+              ))}
+            </div>
+            {pageEntries.map((m) => (
+              <Card key={m.id}>
+                <CardContent className="space-y-2 p-3 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 font-medium">
+                      <EditableCell disabled={!canWrite} value={itemName(m.item_id)} display={itemName(m.item_id)} onSave={(v) => saveEntryCell(m, "name", v)} />
+                    </div>
+                    <div className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
+                      <EditableCell disabled={!canWrite} value={brDateTime(m.occurred_at ?? m.created_at)} display={dateFmt(m.occurred_at ?? m.created_at)} onSave={(v) => saveEntryCell(m, "date", v)} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                    <div><p className="text-muted-foreground">Qtd</p>
+                      <EditableCell disabled={!canWrite} value={String(m.quantity)} display={m.quantity} onSave={(v) => saveEntryCell(m, "quantity", v)} />
+                    </div>
+                    <div><p className="text-muted-foreground">Valor unit.</p>
+                      <EditableCell disabled={!canWrite} value={String(m.unit_price ?? 0)} display={currency(m.unit_price ?? 0)} onSave={(v) => saveEntryCell(m, "unit_price", v)} />
+                    </div>
+                    <div><p className="text-muted-foreground">Valor total</p><p>{currency((m.unit_price ?? 0) * m.quantity)}</p></div>
+                    <div><p className="text-muted-foreground">Local</p><p>{locName(m.to_location_id)}</p></div>
+                    <div className="col-span-2"><p className="text-muted-foreground">Patrimônio</p>
+                      <EditableCell disabled={!canWrite} className="font-mono text-xs" value={m.patrimony_number ?? ""} display={m.patrimony_number || "N/A"} onSave={(v) => saveEntryCell(m, "patrimony", v)} />
+                    </div>
+                  </div>
+                  {canManage && (
+                    <div className="flex flex-wrap justify-end gap-1.5 border-t pt-2">
+                      <MobileAction icon={Send} label="Mandar para saídas" onClick={() => setSendEntry(m)} />
+                      <RowActions
+                        editTitle="Editar entrada"
+                        onEdit={() => setMovDlg({ open: true, movement: m })}
+                        deleteTitle="Excluir entrada"
+                        deleteDescription="A quantidade desta entrada volta para o estoque do item."
+                        deleteLabel="Excluir"
+                        pending={delMovement.isPending}
+                        onDelete={() => delMovement.mutateAsync(m.id)}
+                      />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+            {filteredEntries.length === 0 && (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                {entryMovements.length === 0 ? "Nenhuma entrada registrada." : "Nenhuma entrada encontrada com esses filtros."}
+              </p>
+            )}
+          </div>
+
+          <div className="hidden md:block"><Card><CardContent className="p-0 overflow-x-auto">
+            {/* Grade de planilha: bordas em todas as células, como no Excel. */}
+            <Table className="[&_td]:border [&_td]:border-slate-300 [&_th]:border [&_th]:border-slate-500">
               <TableHeader><TableRow>
-                <TableHead>Data</TableHead>
-                {ENTRY_COLUMNS.map((col) => (
+                {LEDGER_COLUMNS.map((col) => (
                   <ColumnFilter
                     key={col}
-                    label={ENTRY_COLUMN_LABELS[col]}
-                    options={entryColumnOptions(col)}
-                    selected={entryColFilters[col] ?? []}
-                    onChange={(next) => setEntryColFilter(col, next)}
+                    label={LEDGER_COLUMN_LABELS[col]}
+                    options={ledgerColumnOptions(col)}
+                    selected={ledgerColFilters[col] ?? []}
+                    onChange={(next) => setLedgerColFilter(col, next)}
                   />
                 ))}
-                    {canManage && <TableHead className="text-right">Ações</TableHead>}
-                  </TableRow></TableHeader>
-                  <TableBody>
-                    {pageEntries.map((m) => (
-                      <TableRow key={m.id}>
-                        <TableCell className="whitespace-nowrap">
-                          <EditableCell disabled={!canWrite} value={brDateTime(m.occurred_at ?? m.created_at)} display={dateFmt(m.occurred_at ?? m.created_at)} onSave={(v) => saveEntryCell(m, "date", v)} />
-                        </TableCell>
+                <TableHead className="min-w-[260px]">Entrega</TableHead>
+                {showLedgerActions && <TableHead className="text-right">Ações</TableHead>}
+              </TableRow></TableHeader>
+              <TableBody>
+                {canWrite && (
+                  <NewLedgerRow items={items} collaborators={collaborators} categories={categories} />
+                )}
+                {pageLedgerRows.map((m) => {
+                  const isIn = m.type === "in";
+                  const item = items.find((i) => i.id === m.item_id);
+                  const obs = ledgerObs(m);
+                  return (
+                    <TableRow key={m.id}>
+                      <TableCell className="font-medium">
+                        <EditableCell disabled={!canWrite} value={itemName(m.item_id)} display={itemName(m.item_id)}
+                          onSave={(v) => (isIn ? saveEntryCell(m, "name", v) : saveExitCell(m, "name", v))} />
+                      </TableCell>
+                      <TableCell>
+                        <CategoryCell itemId={m.item_id} categoryId={item?.category_id ?? null} categories={categories} disabled={!canWrite} />
+                      </TableCell>
+                      <TableCell>
+                        <EditableCell disabled={!canWrite} className="font-mono text-xs" value={m.patrimony_number ?? ""} display={m.patrimony_number || "N/A"}
+                          onSave={(v) => (isIn ? saveEntryCell(m, "patrimony", v) : saveExitCell(m, "patrimony", v))} />
+                      </TableCell>
+                      <TableCell className={`text-center font-semibold text-white ${isIn ? "bg-green-600" : "bg-red-600"}`}>
+                        {isIn ? "Entradas" : "Saídas"}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <EditableCell disabled={!canWrite} value={brDateTime(m.occurred_at ?? m.created_at)} display={dateFmt(m.occurred_at ?? m.created_at)}
+                          onSave={(v) => (isIn ? saveEntryCell(m, "date", v) : saveExitCell(m, "date", v))} />
+                      </TableCell>
+                      <TableCell>
+                        {/* Entrada não tem departamento próprio: só a saída é editável aqui. */}
+                        <EditableCell disabled={!canWrite || isIn} value={m.department ?? ""} display={m.department ?? collabDept(m.collaborator_id)}
+                          onSave={(v) => saveExitCell(m, "department", v)} />
+                      </TableCell>
+                      <TableCell>
+                        <MovementTextCell
+                          movementId={m.id}
+                          field="es_text"
+                          value={m.es_text ?? ""}
+                          placeholder={isIn ? "Estoque" : collabName(m.collaborator_id)}
+                          disabled={!canWrite}
+                          className="min-w-[160px]"
+                        />
+                      </TableCell>
+                      <TableCell className="max-w-[220px]">
+                        <EditableCell disabled={!canWrite} value={obs} display={obs || "—"}
+                          onSave={(v) => (isIn ? saveEntryCell(m, "obs", v) : saveExitCell(m, "notes", v))} />
+                      </TableCell>
+                      <TableCell>
+                        <MovementTextCell movementId={m.id} field="delivery_text" value={m.delivery_text ?? ""} disabled={!canWrite} />
+                      </TableCell>
+                      {showLedgerActions && (
                         <TableCell>
-                          <EditableCell disabled={!canWrite} value={itemName(m.item_id)} display={itemName(m.item_id)} onSave={(v) => saveEntryCell(m, "name", v)} />
-                        </TableCell>
-                        <TableCell>
-                          <EditableCell disabled={!canWrite} value={String(m.quantity)} display={m.quantity} onSave={(v) => saveEntryCell(m, "quantity", v)} />
-                        </TableCell>
-                        <TableCell>
-                          <EditableCell disabled={!canWrite} value={String(m.unit_price ?? 0)} display={currency(m.unit_price ?? 0)} onSave={(v) => saveEntryCell(m, "unit_price", v)} />
-                        </TableCell>
-                        <TableCell>{currency((m.unit_price ?? 0) * m.quantity)}</TableCell>
-                        <TableCell>
-                          <EditableCell disabled={!canWrite} className="font-mono text-xs" value={m.patrimony_number ?? ""} display={m.patrimony_number || "N/A"} onSave={(v) => saveEntryCell(m, "patrimony", v)} />
-                        </TableCell>
-                        <TableCell>{locName(m.to_location_id)}</TableCell>
-                        {canManage && (
-                          <TableCell>
-                            <div className="flex items-center gap-1">
+                          <div className="flex items-center justify-end gap-1">
+                            {canManage && isIn && (
                               <button
                                 type="button"
                                 aria-label="Mandar para saídas"
@@ -719,30 +947,44 @@ export default function Almoxarifado() {
                               >
                                 <Send className="h-4 w-4" />
                               </button>
-                            <RowActions
-                              editTitle="Editar entrada"
+                            )}
+                            {canManage && <RowActions
+                              editTitle={isIn ? "Editar entrada" : "Editar saída"}
                               onEdit={() => setMovDlg({ open: true, movement: m })}
-                              deleteTitle="Excluir entrada"
-                              deleteDescription="A quantidade desta entrada volta para o estoque do item."
+                              deleteTitle={isIn ? "Excluir entrada" : "Excluir saída"}
+                              deleteDescription={isIn
+                                ? "A quantidade desta entrada volta para o estoque do item."
+                                : "A quantidade desta saída volta para o estoque do item."}
                               deleteLabel="Excluir"
                               pending={delMovement.isPending}
                               onDelete={() => delMovement.mutateAsync(m.id)}
-                            />
-                            </div>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
-                    {filteredEntries.length === 0 && (
-                      <TableRow><TableCell colSpan={canManage ? 10 : 9} className="text-center text-muted-foreground py-6">
-                        {entryMovements.length === 0 ? "Nenhuma entrada registrada." : "Nenhuma entrada encontrada com esses filtros."}
-                      </TableCell></TableRow>
-                    )}
+                            />}
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
+                {ledgerRows.length === 0 && (
+                  <TableRow><TableCell colSpan={showLedgerActions ? 10 : 9} className="text-center text-muted-foreground py-6">
+                    {ledgerAll.length === 0 ? "Nenhuma movimentação registrada." : "Nenhuma movimentação encontrada com esses filtros."}
+                  </TableCell></TableRow>
+                )}
               </TableBody>
             </Table>
-          </CardContent></Card>
+          </CardContent></Card></div>
+          <div className="hidden md:block">
+            <TablePagination
+              page={currentLedgerPage}
+              pageSize={ledgerPageSize}
+              total={ledgerRows.length}
+              noun="movimentações"
+              onPageChange={setLedgerPage}
+              onPageSizeChange={(n) => { setLedgerPageSize(n); setLedgerPage(1); }}
+            />
+          </div>
           {entryPageCount > 1 && (
-            <div className="flex items-center justify-center gap-2 text-sm">
+            <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
               <Button variant="outline" size="sm" disabled={currentEntryPage <= 1} onClick={() => setEntryPage(currentEntryPage - 1)}>Anterior</Button>
               <span className="text-muted-foreground">Página {currentEntryPage} de {entryPageCount}</span>
               <Button variant="outline" size="sm" disabled={currentEntryPage >= entryPageCount} onClick={() => setEntryPage(currentEntryPage + 1)}>Próxima</Button>
@@ -780,7 +1022,7 @@ export default function Almoxarifado() {
             })}
           </nav>
           
-          <Card className="min-w-0 flex-1"><CardContent className="p-0 overflow-x-auto">
+          <div className="hidden min-w-0 flex-1 md:block"><Card className="min-w-0 flex-1"><CardContent className="p-0 overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
                 <TableHead>Data</TableHead>
@@ -864,6 +1106,104 @@ export default function Almoxarifado() {
               </TableBody>
             </Table>
           </CardContent></Card>
+          </div>
+          </div>
+
+          <div className="space-y-2 md:hidden">
+            <div className="flex flex-wrap gap-2">
+              <span className="self-center text-xs text-muted-foreground">Filtrar:</span>
+              {(["item", "qtd", "responsavel", "departamento", "patrimonio"] as const).map((col) => (
+                <ColumnFilter
+                  key={col}
+                  inline
+                  label={OUT_COLUMN_LABELS[col]}
+                  options={outColumnOptions(col)}
+                  selected={outColFilters[col] ?? []}
+                  onChange={(next) => setOutColFilter(col, next)}
+                />
+              ))}
+            </div>
+            {pagedOutRows.map((r) => {
+              const rowId = outLetterFirstIds.has(r.key) ? `out-letter-${alphaInitial(r.responsible)}` : undefined;
+              if (r.old) {
+                const a = r.old;
+                return (
+                  <Card key={r.key} id={rowId}>
+                    <CardContent className="space-y-2 p-3 text-sm">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 font-medium">
+                          <EditableCell disabled={!canWrite} value={a.ativo} display={a.ativo} onSave={(v) => saveOldCell(a, "ativo", v)} />
+                        </div>
+                        <span className="shrink-0 whitespace-nowrap text-xs font-medium text-red-600">01/01/2020</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                        <div><p className="text-muted-foreground">Responsável</p>
+                          <EditableCell disabled={!canWrite} value={a.colaborador} display={a.colaborador} onSave={(v) => saveOldCell(a, "colaborador", v)} />
+                        </div>
+                        <div><p className="text-muted-foreground">Departamento</p>
+                          <EditableCell disabled={!canWrite} value={a.departamento} display={a.departamento} onSave={(v) => saveOldCell(a, "departamento", v)} />
+                        </div>
+                        <div><p className="text-muted-foreground">Patrimônio</p>
+                          <EditableCell disabled={!canWrite} className="font-mono text-xs" value={a.patrimonio} display={a.patrimonio || "N/A"} onSave={(v) => saveOldCell(a, "patrimonio", v)} />
+                        </div>
+                        <div><p className="text-muted-foreground">Status</p>
+                          <EditableCell disabled={!canWrite} value={a.status} display={<Badge className="border-blue-600 bg-blue-600 font-normal text-white hover:bg-blue-600">{a.status}</Badge>} onSave={(v) => saveOldCell(a, "status", v)} />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              }
+              const m = r.mov!;
+              return (
+                <Card key={r.key} id={rowId}>
+                  <CardContent className="space-y-2 p-3 text-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 font-medium">
+                        <EditableCell disabled={!canWrite} value={itemName(m.item_id)} display={itemName(m.item_id)} onSave={(v) => saveExitCell(m, "name", v)} />
+                      </div>
+                      <div className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
+                        <EditableCell disabled={!canWrite} value={brDateTime(m.occurred_at ?? m.created_at)} display={dateFmt(m.occurred_at ?? m.created_at)} onSave={(v) => saveExitCell(m, "date", v)} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                      <div><p className="text-muted-foreground">Qtd</p>
+                        <EditableCell disabled={!canWrite} value={String(m.quantity)} display={m.quantity} onSave={(v) => saveExitCell(m, "quantity", v)} />
+                      </div>
+                      <div><p className="text-muted-foreground">Responsável</p><p>{collabName(m.collaborator_id)}</p></div>
+                      <div><p className="text-muted-foreground">Departamento</p>
+                        <EditableCell disabled={!canWrite} value={m.department ?? collabDept(m.collaborator_id)} display={m.department ?? collabDept(m.collaborator_id)} onSave={(v) => saveExitCell(m, "department", v)} />
+                      </div>
+                      <div><p className="text-muted-foreground">Patrimônio</p>
+                        <EditableCell disabled={!canWrite} className="font-mono text-xs" value={m.patrimony_number ?? ""} display={m.patrimony_number || "N/A"} onSave={(v) => saveExitCell(m, "patrimony", v)} />
+                      </div>
+                      <div className="col-span-2"><p className="text-muted-foreground">Motivo</p>
+                        <EditableCell disabled={!canWrite} value={m.reason ?? ""} display={m.reason ?? "—"} onSave={(v) => saveExitCell(m, "reason", v)} />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 border-t pt-2">
+                      <StatusTag status="in_use" />
+                      {canManage && (
+                        <RowActions
+                          editTitle="Editar saída"
+                          onEdit={() => setMovDlg({ open: true, movement: m })}
+                          deleteTitle="Excluir saída"
+                          deleteDescription="A quantidade sai de em uso e volta para o disponível do item."
+                          deleteLabel="Excluir"
+                          pending={delMovement.isPending}
+                          onDelete={() => delMovement.mutateAsync(m.id)}
+                        />
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+            {outRows.length === 0 && (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                {outMovements.length === 0 && oldData.length === 0 ? "Nenhuma saída registrada." : "Nenhuma saída encontrada com esses filtros."}
+              </p>
+            )}
           </div>
 
           <TablePagination
@@ -1143,6 +1483,11 @@ export default function Almoxarifado() {
             onEditItem={(item) => setItemDlg({ open: true, item })}
             onToggleItem={(item) => deactivate.mutate({ id: item.id })}
           />
+        </TabsContent>
+
+        {/* CONTAINER (dados descartados) */}
+        <TabsContent value="container" className="space-y-3">
+          <ContainerPanel canArchive={canZerar} />
         </TabsContent>
       </Tabs>
 
@@ -1645,7 +1990,61 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
           )}
         </div>
       </div>
-      <Card><CardContent className="p-0 overflow-x-auto">
+      <div className="space-y-2 md:hidden">
+        {rows.map((r) => {
+          const abertoRow = !!aberto[r.tipo];
+          return (
+            <Card key={r.tipo}>
+              <CardContent className="p-0">
+                <button
+                  type="button"
+                  disabled={!canManage}
+                  onClick={canManage ? () => setAberto({ ...aberto, [r.tipo]: !abertoRow }) : undefined}
+                  className="flex w-full items-center justify-between gap-3 p-3 text-left disabled:cursor-default"
+                >
+                  <span className="min-w-0 break-words font-medium">{r.tipo}</span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    {r.quantidade === 0 ? (
+                      <Badge variant="outline" className="border-red-500/50 bg-red-400 text-black font-normal">Sem estoque</Badge>
+                    ) : (
+                      <span className="font-semibold">{r.quantidade}</span>
+                    )}
+                    {canManage && <ChevronDown className={`h-4 w-4 transition-transform ${abertoRow ? "rotate-180" : ""}`} />}
+                  </span>
+                </button>
+                {canManage && abertoRow && (
+                  <div className="space-y-2 border-t p-3">
+                    {agruparPorNome(r.itens).map((g) => (
+                      <div key={g.key} className="flex items-center justify-between gap-2 text-sm">
+                        <div className="min-w-0">
+                          <p className="break-words">{g.name}</p>
+                          <p className="text-xs text-muted-foreground">disp. {g.disponivel} · em uso {g.emUso}</p>
+                        </div>
+                        {g.itens.length === 1 && (
+                          <RowActions
+                            editTitle="Editar item"
+                            onEdit={() => onEditItem(g.itens[0])}
+                            deleteTitle="Desativar item"
+                            deleteDescription={`"${g.name}" deixa de aparecer no estoque e nas listas. O histórico é mantido.`}
+                            deleteLabel="Desativar"
+                            pending={pending}
+                            onDelete={() => onToggleItem(g.itens[0])}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+        {rows.length === 0 && (
+          <p className="py-6 text-center text-sm text-muted-foreground">Nenhum item cadastrado. Registre uma entrada para começar.</p>
+        )}
+      </div>
+
+      <div className="hidden md:block"><Card><CardContent className="p-0 overflow-x-auto">
         <Table>
           <TableHeader><TableRow>
             <TableHead>Tipo</TableHead>
@@ -1715,7 +2114,7 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
             )}
           </TableBody>
         </Table>
-      </CardContent></Card>
+      </CardContent></Card></div>
     </div>
   );
 }

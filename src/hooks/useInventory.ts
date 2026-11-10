@@ -79,6 +79,8 @@ export interface InventoryMovement {
   quantity: number;
   reason: string | null;
   notes: string | null;
+  delivery_text: string | null; // campo "Entrega" (até 5000 caracteres)
+  es_text: string | null; // campo "E&S" escrito (até 1000 caracteres)
   upgrade_details: ItemUpgradeDetails | null;
   from_location_id: string | null;
   to_location_id: string | null;
@@ -460,6 +462,27 @@ export function useCreateMovement() {
       toast.success("Movimentação registrada");
     },
     onError: (e: any) => toast.error(e.message ?? "Erro na movimentação"),
+  });
+}
+
+// Grava só o campo "Entrega" de uma movimentação (entrada ou saída).
+// Campos de texto livre da tela Entradas e Saídas (limites iguais aos do banco).
+export const MOVEMENT_TEXT_LIMITS = { delivery_text: 5000, es_text: 1000 } as const;
+export type MovementTextField = keyof typeof MOVEMENT_TEXT_LIMITS;
+export function useUpdateMovementText() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, field, value: raw }: { id: string; field: MovementTextField; value: string }) => {
+      const value = raw.trim() || null;
+      const max = MOVEMENT_TEXT_LIMITS[field];
+      if (value && value.length > max) throw new Error(`Máximo de ${max} caracteres`);
+      const { error } = await supabase.from("inventory_movements")
+        .update({ [field]: value } as never)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["inventory"] }),
+    onError: (e: any) => toast.error(e.message ?? "Erro ao salvar o campo"),
   });
 }
 
@@ -1367,5 +1390,65 @@ export function useZerarEstoque() {
       toast.success(count > 0 ? `Estoque zerado: ${count} item(ns) atualizado(s)` : "Nenhum item com estoque para zerar");
     },
     onError: (e: any) => toast.error(e.message ?? "Não foi possível zerar o estoque"),
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Container (dados descartados)                                       */
+/* ------------------------------------------------------------------ */
+
+export interface InventoryContainerBatch {
+  id: string;
+  performed_by_email: string | null;
+  counts: Record<string, number>;
+  snapshot: Record<string, Record<string, unknown>[]>;
+  created_at: string;
+}
+
+/** Lotes arquivados no container, do mais recente para o mais antigo. */
+export function useInventoryContainer() {
+  return useQuery({
+    queryKey: ["inventory", "container"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("inventory_container")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as InventoryContainerBatch[];
+    },
+  });
+}
+
+/** Copia todos os dados do almoxarifado para o container e limpa as tabelas ativas. */
+export function useArquivarAlmoxarifado() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await (supabase as any).rpc("arquivar_almoxarifado");
+      if (error) throw error;
+      return data as { id: string; counts: Record<string, number> };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+      toast.success("Almoxarifado limpo. Os dados foram guardados no Container.");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Não foi possível limpar o almoxarifado"),
+  });
+}
+
+/** Restaura um lote do Container para o almoxarifado (só se o almoxarifado estiver vazio). */
+export function useRecuperarAlmoxarifado() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (batchId: string) => {
+      const { error } = await (supabase as any).rpc("recuperar_almoxarifado", { _batch: batchId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+      toast.success("Almoxarifado recuperado a partir do lote do Container.");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Não foi possível recuperar o almoxarifado"),
   });
 }

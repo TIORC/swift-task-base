@@ -83,6 +83,7 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
   const [exceptionCases, setExceptionCases] = useState("");
   const [errorHandling, setErrorHandling] = useState("");
   const [dataSources, setDataSources] = useState<string[]>([]);
+  const [otherDataSource, setOtherDataSource] = useState("");
   const [sourceDetails, setSourceDetails] = useState("");
   const [requiredFields, setRequiredFields] = useState("");
   const [systemsOrder, setSystemsOrder] = useState("");
@@ -94,6 +95,7 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
   const [failureAction, setFailureAction] = useState("");
   const [failureDetails, setFailureDetails] = useState("");
   const [receiptChecks, setReceiptChecks] = useState("");
+  const [hasAccessLevels, setHasAccessLevels] = useState("");
   const [departmentUpdates, setDepartmentUpdates] = useState("");
   const [accessRoles, setAccessRoles] = useState("");
   const [automationImpact, setAutomationImpact] = useState("");
@@ -115,41 +117,60 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
       { field: "selectedSectors", isEmpty: () => selectedSectors.length === 0, message: "Selecione ao menos um setor." },
       { field: "otherSector", isEmpty: () => selectedSectors.includes("Outro") && !otherSector.trim(), message: "Informe o nome do outro setor." },
       { field: "title", isEmpty: () => title.trim().length < 5, message: "Informe o nome da rotina com pelo menos 5 caracteres." },
-      { field: "routineOwners", isEmpty: () => !routineOwners.trim(), message: "Informe quem executa a rotina e quem valida o resultado." },
-      { field: "problem", isEmpty: () => !problem.trim(), message: "Descreva qual problema a automação deve resolver." },
+      ...(isMaintenance ? [] : [
+        { field: "routineOwners", isEmpty: () => !routineOwners.trim(), message: "Informe quem executa a rotina e quem valida o resultado." },
+        { field: "problem", isEmpty: () => !problem.trim(), message: "Descreva qual problema a automação deve resolver." },
+      ]),
       { field: "expectedResult", isEmpty: () => !expectedResult.trim(), message: "Descreva o resultado final esperado." },
       { field: "priorityReason", isEmpty: () => !priorityReason.trim(), message: "Explique o motivo da prioridade escolhida." },
     ],
     [
-      { field: "routineTriggers", isEmpty: () => routineTriggers.length === 0, message: "Selecione ao menos um gatilho da rotina." },
-      ...(isMaintenance ? [] : [
+      ...(requestType === "Sistema" ? [] : [
+        { field: "routineTriggers", isEmpty: () => routineTriggers.length === 0, message: "Selecione ao menos um gatilho da rotina." },
+      ]),
+      ...(isMaintenance || requestType === "Sistema" ? [] : [
         { field: "triggerDetails", isEmpty: () => !triggerDetails.trim(), message: "Detalhe a condição exata que dispara a rotina." },
       ]),
-      { field: "routineFrequency", isEmpty: () => !routineFrequency.trim(), message: "Informe a frequência e o horário da rotina." },
+      ...(requestType === "Sistema" ? [] : [
+        { field: "routineFrequency", isEmpty: () => !routineFrequency.trim(), message: "Informe a frequência e o horário da rotina." },
+      ]),
       ...(isMaintenance ? [] : [
         { field: "processSteps", isEmpty: () => !processSteps.trim(), message: "Descreva o processo do início ao fim." },
       ]),
-      { field: "decisionRules", isEmpty: () => !decisionRules.trim(), message: "Descreva as decisões tomadas durante o processo." },
-      { field: "exceptionCases", isEmpty: () => !exceptionCases.trim(), message: "Informe os casos que fogem do fluxo normal." },
-      { field: "errorHandling", isEmpty: () => !errorHandling.trim(), message: "Explique como erros e pendências são tratados." },
+      ...(requestType === "Sistema" ? [] : [
+        { field: "decisionRules", isEmpty: () => !decisionRules.trim(), message: "Descreva as decisões tomadas durante o processo." },
+        { field: "exceptionCases", isEmpty: () => !exceptionCases.trim(), message: "Informe os casos que fogem do fluxo normal." },
+      ]),
+      ...(requestType === "Sistema" ? [] : [
+        { field: "errorHandling", isEmpty: () => !errorHandling.trim(), message: "Explique como erros e pendências são tratados." },
+      ]),
     ],
     [
       { field: "dataSources", isEmpty: () => dataSources.length === 0, message: "Selecione ao menos uma origem de dados." },
-      { field: "sourceDetails", isEmpty: () => !sourceDetails.trim(), message: "Detalhe a origem dos dados e onde encontrá-los." },
-      { field: "requiredFields", isEmpty: () => !requiredFields.trim(), message: "Informe os campos obrigatórios para iniciar cada caso." },
-      { field: "systemsOrder", isEmpty: () => !systemsOrder.trim(), message: "Informe os sistemas usados e a ordem de utilização." },
-      { field: "outputTypes", isEmpty: () => outputTypes.length === 0, message: "Selecione ao menos um resultado a criar ou atualizar." },
+      { field: "otherDataSource", isEmpty: () => dataSources.includes("Outro") && !otherDataSource.trim(), message: "Escreva qual é a outra origem dos dados." },
+      ...(requestType === "Sistema" ? [] : [
+        { field: "sourceDetails", isEmpty: () => !sourceDetails.trim(), message: "Detalhe a origem dos dados e onde encontrá-los." },
+      ]),
+      ...(requestType === "Sistema" ? [] : [
+        { field: "requiredFields", isEmpty: () => !requiredFields.trim(), message: "Informe os campos obrigatórios para iniciar cada caso." },
+        { field: "systemsOrder", isEmpty: () => !systemsOrder.trim(), message: "Informe os sistemas usados e a ordem de utilização." },
+      ]),
+      ...(requestType === "Sistema" ? [] : [
+        { field: "outputTypes", isEmpty: () => outputTypes.length === 0, message: "Selecione ao menos um resultado a criar ou atualizar." },
+      ]),
       { field: "outputDetails", isEmpty: () => !outputDetails.trim(), message: "Detalhe o que deve ser criado ou atualizado ao final." },
     ],
     [
-      { field: "volumeAndPeak", isEmpty: () => !volumeAndPeak.trim(), message: "Informe o volume médio e o pico da rotina." },
+      { field: "hasAccessLevels", isEmpty: () => requestType === "Sistema" && !hasAccessLevels, message: "Informe se haverá níveis de acesso no sistema." },
+      { field: "accessLevelDetails", isEmpty: () => requestType === "Sistema" && hasAccessLevels === "Sim" && !receiptChecks.trim(), message: "Defina os níveis de acesso, quem acessa o quê e as limitações dos outros níveis." },
+      { field: "volumeAndPeak",isEmpty: () => !volumeAndPeak.trim(), message: requestType === "Sistema" ? "Selecione com qual frequência o sistema será utilizado." : "Informe o volume médio e o pico da rotina." },
       { field: "verificationMethod", isEmpty: () => !verificationMethod.trim(), message: "Descreva como o resultado é conferido." },
       { field: "failureAction", isEmpty: () => !failureAction, message: "Escolha o que deve acontecer quando parte dos itens falha." },
       { field: "failureDetails", isEmpty: () => !failureDetails.trim(), message: "Defina tentativas, prazo e informações do relatório de falhas." },
     ],
     [],
     [
-      { field: "automationImpact", isEmpty: () => !automationImpact.trim(), message: "Descreva o que mudará quando a automação funcionar." },
+      { field: "automationImpact", isEmpty: () => !automationImpact.trim(), message: requestType === "Sistema" ? "Descreva a dor que o sistema vai solucionar." : "Descreva o que mudará quando a automação funcionar." },
       { field: "acceptanceTests", isEmpty: () => !acceptanceTests.trim(), message: "Informe três exemplos para a TI testar antes da entrega." },
       { field: "demoAvailability", isEmpty: () => !demoAvailability, message: "Informe se pode demonstrar e validar o processo em teste." },
     ],
@@ -201,7 +222,7 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
     setTitle(""); setRequesterName(""); setRequesterEmail(""); setSelectedSectors([]); setOtherSector("");
     setRoutineOwners(""); setProblem(""); setExpectedResult(""); setPriorityReason(""); setDeadline(""); setPriority("medium");
     setRoutineTriggers([]); setTriggerDetails(""); setRoutineFrequency(""); setProcessSteps(""); setDecisionRules(""); setExceptionCases(""); setErrorHandling("");
-    setStation(0); setDataSources([]); setSourceDetails(""); setRequiredFields(""); setSystemsOrder(""); setOutputTypes([]); setOutputDetails(""); setVolumeAndPeak(""); setExecutionDeadline(""); setVerificationMethod(""); setFailureAction(""); setFailureDetails(""); setReceiptChecks(""); setDepartmentUpdates(""); setAccessRoles(""); setAutomationImpact(""); setAcceptanceTests(""); setDemoAvailability(""); setFinalConfirmed(false);
+    setStation(0); setDataSources([]); setOtherDataSource(""); setSourceDetails(""); setRequiredFields(""); setSystemsOrder(""); setOutputTypes([]); setOutputDetails(""); setVolumeAndPeak(""); setExecutionDeadline(""); setVerificationMethod(""); setFailureAction(""); setFailureDetails(""); setReceiptChecks(""); setHasAccessLevels(""); setDepartmentUpdates(""); setAccessRoles(""); setAutomationImpact(""); setAcceptanceTests(""); setDemoAvailability(""); setFinalConfirmed(false);
     setErrors({});
     setFiles([]);
   };
@@ -219,8 +240,8 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
   const addFiles = (list: FileList | null) => {
     if (!list) return;
     Array.from(list).forEach((file) => {
-      if (!isAllowedAttachment(file)) {
-        toast.error(`"${file.name}": apenas imagens, vídeos ou PDF.`);
+      if (!isAllowedAttachment(file, { office: requestType === "Sistema" })) {
+        toast.error(`"${file.name}": apenas imagens, vídeos, PDF${requestType === "Sistema" ? ", Word ou Excel" : ""}.`);
         return;
       }
       if (file.size > MAX_ATTACHMENT_MB * 1024 * 1024) {
@@ -255,9 +276,9 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
       const completeDescription = [
         `1. Identificação e objetivo\n${isMaintenance ? `Manutenção do sistema: ${maintenanceSystem}\n` : ""}Solicitante: ${requesterName.trim()}\nE-mail: ${requesterEmail.trim()}\nSetores: ${resolvedSectors.join(", ")}\nNome da rotina: ${title.trim()}\nQuem executa e valida: ${routineOwners.trim()}\nProblema a resolver: ${problem.trim()}\nResultado final esperado: ${expectedResult.trim()}\nPrioridade: ${PRIORITY_LABELS[priority]}\nMotivo da prioridade: ${priorityReason.trim()}\nData limite real: ${deadline || "Não informada"}`,
         `2. Como a rotina funciona hoje?\nGatilhos: ${routineTriggers.join(", ")}\nCondição exata: ${triggerDetails.trim()}\nFrequência e horário: ${routineFrequency.trim()}\nProcesso passo a passo: ${processSteps.trim()}\nDecisões: ${decisionRules.trim()}\nCasos fora do fluxo normal: ${exceptionCases.trim()}\nTratamento de erros e pendências: ${errorHandling.trim()}`,
-        `3. Entradas, sistemas e saídas\nOrigens dos dados: ${dataSources.join(", ")}\nDetalhes das origens: ${sourceDetails.trim()}\nCampos obrigatórios: ${requiredFields.trim()}\nSistemas e ordem de uso: ${systemsOrder.trim()}\nResultados a criar ou atualizar: ${outputTypes.join(", ")}\nDetalhes dos resultados: ${outputDetails.trim()}`,
+        `3. Entradas, sistemas e saídas\nOrigens dos dados: ${dataSources.map((item) => item === "Outro" ? `Outro: ${otherDataSource.trim()}` : item).join(", ")}\nDetalhes das origens: ${sourceDetails.trim()}\nCampos obrigatórios: ${requiredFields.trim()}\nSistemas e ordem de uso: ${systemsOrder.trim()}\nResultados a criar ou atualizar: ${outputTypes.join(", ")}\nDetalhes dos resultados: ${outputDetails.trim()}`,
         `4. Regras, volume e conferência\nVolume médio e pico: ${volumeAndPeak.trim()}\nPrazo máximo da execução: ${executionDeadline.trim() || "Não informado"}\nConferência do resultado: ${verificationMethod.trim()}\nAção quando itens falham: ${failureAction}\nDetalhes do tratamento de falhas: ${failureDetails.trim()}`,
-        `5. Perguntas por setor (${effectiveSector || "Setor não informado"})\nRecibos, protocolos, valores e vencimentos a confrontar: ${receiptChecks.trim() || "Não informado"}\nInformações consultadas ou atualizadas em outros setores: ${departmentUpdates.trim() || "Não informado"}\nQuem pode solicitar, aprovar, executar e visualizar: ${accessRoles.trim() || "Não informado"}`,
+        `5. Perguntas por setor (${effectiveSector || "Setor não informado"})\n${requestType === "Sistema" ? `Níveis de acesso: ${hasAccessLevels || "Não informado"}${hasAccessLevels === "Sim" ? `\nDetalhes dos níveis de acesso: ${receiptChecks.trim() || "Não informado"}` : ""}` : `Recibos, protocolos, valores e vencimentos a confrontar: ${receiptChecks.trim() || "Não informado"}`}\nInformações consultadas ou atualizadas em outros setores: ${departmentUpdates.trim() || "Não informado"}\nQuem pode solicitar, aprovar, executar e visualizar: ${accessRoles.trim() || "Não informado"}`,
         `6. Validação final pelo solicitante\nImpacto esperado: ${automationImpact.trim()}\nExemplos de teste: ${acceptanceTests.trim()}\nDemonstração e validação em teste: ${demoAvailability}`,
       ].join("\n\n");
 
@@ -358,7 +379,7 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
       // Envia os anexos após a automação existir (imagens, vídeos e PDFs).
       for (const file of files) {
         try {
-          await upload.mutateAsync({ automationId: id, file });
+          await upload.mutateAsync({ automationId: id, file, office: requestType === "Sistema" });
         } catch {
           // erro já exibido pelo hook; segue com os demais arquivos.
         }
@@ -394,9 +415,9 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
     <>
     <Label className="block">Anexos (opcional)</Label>
     <div className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed ${accent.border} ${accent.bg} px-4 py-5 text-center`} onClick={() => inputRef.current?.click()} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files); }}>
-      <Paperclip className={`h-5 w-5 ${accent.active}`} /><p className="text-xs text-white/65">Anexe documentos, imagens, vídeos ou PDF para contextualizar.</p>
+      <Paperclip className={`h-5 w-5 ${accent.active}`} /><p className="text-xs text-white/65">{requestType === "Sistema" ? "Anexe documentos, imagens, vídeos, PDF, Word ou Excel para contextualizar." : "Anexe documentos, imagens, vídeos ou PDF para contextualizar."}</p>
       <Button size="sm" variant="outline" type="button" className={`pointer-events-none h-7 text-xs ${isMaintenance ? "border-red-400/40 bg-red-950/60 text-white hover:bg-red-900 hover:text-white" : ""}`}>Escolher arquivos</Button>
-      <input ref={inputRef} type="file" multiple accept="image/*,video/*,application/pdf" hidden onChange={(e) => addFiles(e.target.files)} />
+      <input ref={inputRef} type="file" multiple accept={requestType === "Sistema" ? "image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx" : "image/*,video/*,application/pdf"} hidden onChange={(e) => addFiles(e.target.files)} />
     </div>
     {files.length > 0 && <ul className="space-y-1">{files.map((f, i) => <li key={i} className="flex items-center gap-2 rounded-md border border-white/10 bg-black/10 px-2.5 py-1.5"><Paperclip className="h-3 w-3 shrink-0" /><span className="min-w-0 flex-1 truncate text-xs">{f.name}</span><span className="shrink-0 text-[10px]">{(f.size / 1024 / 1024).toFixed(1)} MB</span><button type="button" onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))} className="shrink-0 hover:text-red-300" aria-label={`Remover ${f.name}`}><X className="h-3.5 w-3.5" /></button></li>)}</ul>}
     </>
@@ -491,10 +512,10 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
                       {attachmentsField}
                     </div>
                   ) : (
-                    <div><Label>Nome da rotina que deseja automatizar <span className="text-red-400">*</span></Label><Input required aria-invalid={!!errors.title} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Conferência de notificações do DTE" className={`mt-1 ${errors.title ? invalidInput : ""}`} /><FieldError message={errors.title} /></div>
+                    <div><Label>{requestType === "Sistema" ? "Qual é o objetivo principal do sistema ou funcionalidade?" : "Nome da rotina que deseja automatizar"} <span className="text-red-400">*</span></Label><Input required maxLength={requestType === "Sistema" ? 50000 : undefined} aria-invalid={!!errors.title} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={requestType === "Sistema" ? "Texto de até 50000 caracteres" : "Ex.: Conferência de notificações do DTE"} className={`mt-1 ${errors.title ? invalidInput : ""}`} /><FieldError message={errors.title} /></div>
                   )}
-                  <div><Label>Quem executa a rotina hoje e quem valida o resultado? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.routineOwners} value={routineOwners} onChange={(e) => setRoutineOwners(e.target.value)} rows={3} placeholder="Informe funções e responsáveis, inclusive quando atravessa mais de um setor." className={`mt-1 ${errors.routineOwners ? invalidInput : ""}`} /><FieldError message={errors.routineOwners} /></div>
-                  <div><Label>Qual problema a automação deve resolver? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.problem} value={problem} onChange={(e) => setProblem(e.target.value)} rows={3} placeholder="Diga o que consome tempo, gera erro, atrasa uma entrega ou dificulta o acompanhamento." className={`mt-1 ${errors.problem ? invalidInput : ""}`} /><FieldError message={errors.problem} /></div>
+                  {!isMaintenance && <div><Label>Quem executa a rotina hoje e quem valida o resultado? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.routineOwners} value={routineOwners} onChange={(e) => setRoutineOwners(e.target.value)} rows={3} placeholder="Informe funções e responsáveis, inclusive quando atravessa mais de um setor." className={`mt-1 ${errors.routineOwners ? invalidInput : ""}`} /><FieldError message={errors.routineOwners} /></div>}
+                  {!isMaintenance && <div><Label>{requestType === "Sistema" ? "Qual problema o sistema deve resolver?" : "Qual problema a automação deve resolver?"} <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.problem} value={problem} onChange={(e) => setProblem(e.target.value)} rows={3} placeholder="Diga o que consome tempo, gera erro, atrasa uma entrega ou dificulta o acompanhamento." className={`mt-1 ${errors.problem ? invalidInput : ""}`} /><FieldError message={errors.problem} /></div>}
                   <div><Label>Qual resultado final espera receber? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.expectedResult} value={expectedResult} onChange={(e) => setExpectedResult(e.target.value)} rows={3} placeholder="Ex.: guias salvas por colaborador, relatório de empresas com erro, tarefa criada no Gestta ou aviso enviado." className={`mt-1 ${errors.expectedResult ? invalidInput : ""}`} /><FieldError message={errors.expectedResult} /></div>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div><Label>Qual a prioridade? <span className="text-red-400">*</span></Label><Select value={priority} onValueChange={setPriority}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent>{PRIORITY_OPTIONS.map((p) => <SelectItem key={p} value={p}>{PRIORITY_LABELS[p]}</SelectItem>)}</SelectContent></Select></div>
@@ -504,24 +525,24 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
                   <p className="text-xs font-semibold text-red-400">Lembrando que o prazo escolhido não significa que vai ser resolvido nesse prazo.</p>
                 </>}
                 {station === 1 && <>
-                  <div>
+                  {requestType !== "Sistema" && <div>
                     <Label>O que dispara a rotina? <span className="text-red-400">*</span></Label>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       {ROUTINE_TRIGGERS.map((trigger) => (
                         <label key={trigger} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-colors ${routineTriggers.includes(trigger) ? `${accent.border} ${accent.bg}` : "border-white/10 bg-black/10 hover:bg-white/5"}`}>
-                          <input type="checkbox" checked={routineTriggers.includes(trigger)} onChange={(e) => setRoutineTriggers((prev) => e.target.checked ? [...prev, trigger] : prev.filter((item) => item !== trigger))} className="h-4 w-4" style={{ accentColor: isMaintenance ? "#f87171" : requestType === "Sistema" ? "#38bdf8" : "#a78bfa" }} />
+                          <input type="checkbox" checked={routineTriggers.includes(trigger)} onChange={(e) => setRoutineTriggers((prev) => e.target.checked ? [...prev, trigger] : prev.filter((item) => item !== trigger))} className="h-4 w-4" style={{ accentColor: isMaintenance ? "#f87171" : "#a78bfa" }} />
                           {trigger}
                         </label>
                       ))}
                     </div>
                     <FieldError message={errors.routineTriggers} />
-                  </div>
-                  {!isMaintenance && <div><Label>Detalhe a condição exata <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.triggerDetails} value={triggerDetails} onChange={(e) => setTriggerDetails(e.target.value)} rows={2} placeholder="Em que situação a rotina deve começar?" className={`mt-1 ${errors.triggerDetails ? invalidInput : ""}`} /><FieldError message={errors.triggerDetails} /></div>}
-                  <div><Label>Qual a frequência e em que horário deve ocorrer? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.routineFrequency} value={routineFrequency} onChange={(e) => setRoutineFrequency(e.target.value)} rows={3} placeholder="Informe dias úteis, fins de semana, feriados e competência, se aplicável." className={`mt-1 ${errors.routineFrequency ? invalidInput : ""}`} /><FieldError message={errors.routineFrequency} /></div>
+                  </div>}
+                  {!isMaintenance && requestType !== "Sistema" && <div><Label>Detalhe a condição exata <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.triggerDetails} value={triggerDetails} onChange={(e) => setTriggerDetails(e.target.value)} rows={2} placeholder="Em que situação a rotina deve começar?" className={`mt-1 ${errors.triggerDetails ? invalidInput : ""}`} /><FieldError message={errors.triggerDetails} /></div>}
+                  {requestType !== "Sistema" && <div><Label>Qual a frequência e em que horário deve ocorrer? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.routineFrequency} value={routineFrequency} onChange={(e) => setRoutineFrequency(e.target.value)} rows={3} placeholder="Informe dias úteis, fins de semana, feriados e competência, se aplicável." className={`mt-1 ${errors.routineFrequency ? invalidInput : ""}`} /><FieldError message={errors.routineFrequency} /></div>}
                   {!isMaintenance && <div><Label>Descreva o processo do início ao fim, na ordem em que é realizado. <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.processSteps} value={processSteps} onChange={(e) => setProcessSteps(e.target.value)} rows={5} placeholder="Numere as etapas; informe telas, menus, cliques, cálculos, conferências e aprovações." className={`mt-1 ${errors.processSteps ? invalidInput : ""}`} /><FieldError message={errors.processSteps} /></div>}
-                  <div><Label>Que decisões a pessoa toma durante o processo? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.decisionRules} value={decisionRules} onChange={(e) => setDecisionRules(e.target.value)} rows={4} placeholder="Para cada decisão, escreva: se acontecer X, faço Y; caso contrário, faço Z." className={`mt-1 ${errors.decisionRules ? invalidInput : ""}`} /><FieldError message={errors.decisionRules} /></div>
-                  <div><Label>Quais casos fogem do fluxo normal? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.exceptionCases} value={exceptionCases} onChange={(e) => setExceptionCases(e.target.value)} rows={4} placeholder="Ex.: empresa inativa, ausência de movimento, senha vencida, cadastro duplicado, guia já emitida, portal indisponível ou documento ilegível." className={`mt-1 ${errors.exceptionCases ? invalidInput : ""}`} /><FieldError message={errors.exceptionCases} /></div>
-                  <div><Label>O que acontece hoje quando há erro ou pendência? Quem resolve e em quanto tempo? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.errorHandling} value={errorHandling} onChange={(e) => setErrorHandling(e.target.value)} rows={4} placeholder="Descreva como o problema é identificado, encaminhado e resolvido." className={`mt-1 ${errors.errorHandling ? invalidInput : ""}`} /><FieldError message={errors.errorHandling} /></div>
+                  {requestType !== "Sistema" && <div><Label>Que decisões a pessoa toma durante o processo? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.decisionRules} value={decisionRules} onChange={(e) => setDecisionRules(e.target.value)} rows={4} placeholder="Para cada decisão, escreva: se acontecer X, faço Y; caso contrário, faço Z." className={`mt-1 ${errors.decisionRules ? invalidInput : ""}`} /><FieldError message={errors.decisionRules} /></div>}
+                  {requestType !== "Sistema" && <div><Label>Quais casos fogem do fluxo normal? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.exceptionCases} value={exceptionCases} onChange={(e) => setExceptionCases(e.target.value)} rows={4} placeholder="Ex.: empresa inativa, ausência de movimento, senha vencida, cadastro duplicado, guia já emitida, portal indisponível ou documento ilegível." className={`mt-1 ${errors.exceptionCases ? invalidInput : ""}`} /><FieldError message={errors.exceptionCases} /></div>}
+                  {requestType === "Sistema" ? <div><Label>Há algum anexo ou documento feito sobre esse sistema? Isso ajuda os desenvolvedores a compreender melhor como o sistema vai funcionar</Label>{attachmentsField}</div> : <div><Label>O que acontece hoje quando há erro ou pendência? Quem resolve e em quanto tempo? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.errorHandling} value={errorHandling} onChange={(e) => setErrorHandling(e.target.value)} rows={4} placeholder="Descreva como o problema é identificado, encaminhado e resolvido." className={`mt-1 ${errors.errorHandling ? invalidInput : ""}`} /><FieldError message={errors.errorHandling} /></div>}
                 </>}
                 {station === 2 && <>
                   <div>
@@ -535,43 +556,73 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
                       ))}
                     </div>
                     <FieldError message={errors.dataSources} />
+                    {dataSources.includes("Outro") && <div className="mt-2"><Label>Escreva qual é a outra origem dos dados. <span className="text-red-400">*</span></Label><Input aria-invalid={!!errors.otherDataSource} value={otherDataSource} onChange={(e) => setOtherDataSource(e.target.value)} placeholder="Ex.: WhatsApp, Google Drive, sistema de terceiros" className={`mt-1 ${errors.otherDataSource ? invalidInput : ""}`} /><FieldError message={errors.otherDataSource} /></div>}
                   </div>
-                  <div><Label>Informe nome do arquivo, aba/colunas, pasta, endereço ou tela. <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.sourceDetails} value={sourceDetails} onChange={(e) => setSourceDetails(e.target.value)} rows={3} placeholder="Detalhe onde encontrar os dados de entrada." className={`mt-1 ${errors.sourceDetails ? invalidInput : ""}`} /><FieldError message={errors.sourceDetails} /></div>
-                  <div><Label>Quais campos são obrigatórios para iniciar cada caso? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.requiredFields} value={requiredFields} onChange={(e) => setRequiredFields(e.target.value)} rows={3} placeholder="Ex.: CNPJ, razão social, competência, responsável, matrícula, prazo." className={`mt-1 ${errors.requiredFields ? invalidInput : ""}`} /><FieldError message={errors.requiredFields} /></div>
-                  <div><Label>Quais sistemas são usados e em que ordem? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.systemsOrder} value={systemsOrder} onChange={(e) => setSystemsOrder(e.target.value)} rows={4} placeholder="Informe o nome e a finalidade de cada sistema, inclusive Domínio, Gestta, Onvio, SEFAZ e portais específicos." className={`mt-1 ${errors.systemsOrder ? invalidInput : ""}`} /><FieldError message={errors.systemsOrder} /></div>
-                  <div>
+                  {requestType !== "Sistema" && <div><Label>Informe nome do arquivo, aba/colunas, pasta, endereço ou tela. <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.sourceDetails} value={sourceDetails} onChange={(e) => setSourceDetails(e.target.value)} rows={3} placeholder="Detalhe onde encontrar os dados de entrada." className={`mt-1 ${errors.sourceDetails ? invalidInput : ""}`} /><FieldError message={errors.sourceDetails} /></div>}
+                  {requestType !== "Sistema" && <div><Label>Quais campos são obrigatórios para iniciar cada caso? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.requiredFields} value={requiredFields} onChange={(e) => setRequiredFields(e.target.value)} rows={3} placeholder="Ex.: CNPJ, razão social, competência, responsável, matrícula, prazo." className={`mt-1 ${errors.requiredFields ? invalidInput : ""}`} /><FieldError message={errors.requiredFields} /></div>}
+                  {requestType !== "Sistema" && <div><Label>Quais sistemas são usados e em que ordem? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.systemsOrder} value={systemsOrder} onChange={(e) => setSystemsOrder(e.target.value)} rows={4} placeholder="Informe o nome e a finalidade de cada sistema, inclusive Domínio, Gestta, Onvio, SEFAZ e portais específicos." className={`mt-1 ${errors.systemsOrder ? invalidInput : ""}`} /><FieldError message={errors.systemsOrder} /></div>}
+                  {requestType !== "Sistema" && <div>
                     <Label>O que deve ser criado ou atualizado ao final? <span className="text-red-400">*</span></Label>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       {OUTPUT_TYPES.map((output) => (
                         <label key={output} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-colors ${outputTypes.includes(output) ? `${accent.border} ${accent.bg}` : "border-white/10 bg-black/10 hover:bg-white/5"}`}>
-                          <input type="checkbox" checked={outputTypes.includes(output)} onChange={(e) => setOutputTypes((prev) => e.target.checked ? [...prev, output] : prev.filter((item) => item !== output))} className="h-4 w-4" style={{ accentColor: isMaintenance ? "#f87171" : requestType === "Sistema" ? "#38bdf8" : "#a78bfa" }} />
+                          <input type="checkbox" checked={outputTypes.includes(output)} onChange={(e) => setOutputTypes((prev) => e.target.checked ? [...prev, output] : prev.filter((item) => item !== output))} className="h-4 w-4" style={{ accentColor: isMaintenance ? "#f87171" : "#a78bfa" }} />
                           {output}
                         </label>
                       ))}
                     </div>
                     <FieldError message={errors.outputTypes} />
-                  </div>
+                  </div>}
                   <div><Label>Informe campos, nome do arquivo e padrão de pasta. <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.outputDetails} value={outputDetails} onChange={(e) => setOutputDetails(e.target.value)} rows={3} placeholder="Descreva o conteúdo e onde salvar ou registrar cada resultado." className={`mt-1 ${errors.outputDetails ? invalidInput : ""}`} /><FieldError message={errors.outputDetails} /></div>
                 </>}
                 {station === 3 && <>
-                  <div><Label>Qual o volume médio e o pico? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.volumeAndPeak} value={volumeAndPeak} onChange={(e) => setVolumeAndPeak(e.target.value)} rows={3} placeholder="Informe itens por execução, execuções por dia/mês e tempo gasto hoje em cada execução." className={`mt-1 ${errors.volumeAndPeak ? invalidInput : ""}`} /><FieldError message={errors.volumeAndPeak} /></div>
-                  <div><Label>Qual o prazo máximo para concluir uma execução?</Label><Input value={executionDeadline} onChange={(e) => setExecutionDeadline(e.target.value)} placeholder="Há horário limite para enviar, consultar ou protocolar?" className="mt-1" /></div>
+                  {requestType === "Sistema" ? <div>
+                    <Label>Com qual frequência o sistema será utilizado? <span className="text-red-400">*</span></Label>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      {["Bem Pouco", "Pouco", "Razoavelmente", "Diariamente"].map((option) => (
+                        <label key={option} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-colors ${volumeAndPeak === option ? `${accent.border} ${accent.bg}` : "border-white/10 bg-black/10 hover:bg-white/5"}`}>
+                          <input type="checkbox" checked={volumeAndPeak === option} onChange={(e) => setVolumeAndPeak(e.target.checked ? option : "")} className="h-4 w-4" style={{ accentColor: isMaintenance ? "#f87171" : "#38bdf8" }} />
+                          {option}
+                        </label>
+                      ))}
+                    </div>
+                    <FieldError message={errors.volumeAndPeak} />
+                  </div> : <div><Label>Qual o volume médio e o pico? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.volumeAndPeak} value={volumeAndPeak} onChange={(e) => setVolumeAndPeak(e.target.value)} rows={3} placeholder="Informe itens por execução, execuções por dia/mês e tempo gasto hoje em cada execução." className={`mt-1 ${errors.volumeAndPeak ? invalidInput : ""}`} /><FieldError message={errors.volumeAndPeak} /></div>}
+                  {requestType !== "Sistema" && <div><Label>Qual o prazo máximo para concluir uma execução?</Label><Input value={executionDeadline} onChange={(e) => setExecutionDeadline(e.target.value)} placeholder="Há horário limite para enviar, consultar ou protocolar?" className="mt-1" /></div>}
                   <div><Label>Como você confere que o resultado está correto? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.verificationMethod} value={verificationMethod} onChange={(e) => setVerificationMethod(e.target.value)} rows={4} placeholder="Informe totais esperados, reconciliação, amostra, recibo, status no sistema e pessoa responsável pela conferência." className={`mt-1 ${errors.verificationMethod ? invalidInput : ""}`} /><FieldError message={errors.verificationMethod} /></div>
                   <div><Label>O que deve acontecer quando parte dos itens falha? <span className="text-red-400">*</span></Label><Select value={failureAction} onValueChange={setFailureAction}><SelectTrigger aria-invalid={!!errors.failureAction} className={`mt-1 ${errors.failureAction ? invalidInput : ""}`}><SelectValue placeholder="Selecione uma ação" /></SelectTrigger><SelectContent>{FAILURE_ACTIONS.map((action) => <SelectItem key={action} value={action}>{action}</SelectItem>)}</SelectContent></Select><FieldError message={errors.failureAction} /></div>
                   <div><Label>Detalhes do tratamento de falhas <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.failureDetails} value={failureDetails} onChange={(e) => setFailureDetails(e.target.value)} rows={4} placeholder="Defina número de tentativas, prazo e informação que deve constar no relatório." className={`mt-1 ${errors.failureDetails ? invalidInput : ""}`} /><FieldError message={errors.failureDetails} /></div>
                 </>}
                 {station === 4 && <>
-                  <div><Label>Quais recibos, protocolos, valores e vencimentos precisam ser confrontados com a origem?</Label><Textarea value={receiptChecks} onChange={(e) => setReceiptChecks(e.target.value)} rows={3} placeholder="Informe quais dados precisam ser comparados com a fonte original." className="mt-1" /></div>
-                  <div><Label>Quais informações precisam ser consultadas ou atualizadas em outros setores?</Label><Textarea value={departmentUpdates} onChange={(e) => setDepartmentUpdates(e.target.value)} rows={3} placeholder="Indique as informações e os setores envolvidos." className="mt-1" /></div>
+                  {requestType === "Sistema" ? <div className="space-y-3">
+                    <div>
+                      <Label>Haverá níveis de acesso no sistema? <span className="text-red-400">*</span></Label>
+                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                        {["Sim", "Não"].map((option) => (
+                          <label key={option} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-colors ${hasAccessLevels === option ? `${accent.border} ${accent.bg}` : "border-white/10 bg-black/10 hover:bg-white/5"}`}>
+                            <input type="checkbox" checked={hasAccessLevels === option} onChange={(e) => setHasAccessLevels(e.target.checked ? option : "")} className="h-4 w-4" style={{ accentColor: isMaintenance ? "#f87171" : "#38bdf8" }} />
+                            {option}
+                          </label>
+                        ))}
+                      </div>
+                      <FieldError message={errors.hasAccessLevels} />
+                    </div>
+                    {hasAccessLevels === "Sim" && <div>
+                      <Label>Se sim, defina quais serão os níveis de acesso, quem terá acesso a o que, quais as limitações dos outros níveis. <span className="text-red-400">*</span></Label>
+                      <Textarea required aria-invalid={!!errors.accessLevelDetails} value={receiptChecks} onChange={(e) => setReceiptChecks(e.target.value)} rows={4} placeholder="Ex.: Administrador: tudo; Financeiro: visualiza e aprova pagamentos; Operador: apenas lança dados." className={`mt-1 ${errors.accessLevelDetails ? invalidInput : ""}`} />
+                      <FieldError message={errors.accessLevelDetails} />
+                    </div>}
+                  </div> : <div><Label>Quais recibos, protocolos, valores e vencimentos precisam ser confrontados com a origem?</Label><Textarea value={receiptChecks} onChange={(e) => setReceiptChecks(e.target.value)} rows={3} placeholder="Informe quais dados precisam ser comparados com a fonte original." className="mt-1" /></div>}
+                  {requestType !== "Sistema" && <div><Label>Quais informações precisam ser consultadas ou atualizadas em outros setores?</Label><Textarea value={departmentUpdates} onChange={(e) => setDepartmentUpdates(e.target.value)} rows={3} placeholder="Indique as informações e os setores envolvidos." className="mt-1" /></div>}
                   <div><Label>Quem pode solicitar, aprovar, executar e visualizar o resultado?</Label><Textarea value={accessRoles} onChange={(e) => setAccessRoles(e.target.value)} rows={3} placeholder="Informe as pessoas ou funções envolvidas em cada etapa." className="mt-1" /></div>
-                  {!isMaintenance && attachmentsField}
+                  {!isMaintenance && requestType !== "Sistema" && attachmentsField}
                 </>}
                 {station === 5 && <>
                   <div className={`rounded-xl border ${accent.border} ${accent.bg} p-4 text-sm`}>
                     <p className="font-semibold">Revise sua solicitação</p>
                     <dl className="mt-3 space-y-2 text-xs text-white/70"><div><dt className="inline font-medium text-white">Solicitante: </dt><dd className="inline">{requesterName || "Não informado"} ({requesterEmail || "sem e-mail"})</dd></div><div><dt className="inline font-medium text-white">Rotina: </dt><dd className="inline">{title || "Não informado"}</dd></div><div><dt className="inline font-medium text-white">Setor: </dt><dd className="inline">{resolvedSectors.join(", ") || "Não informado"}</dd></div><div><dt className="inline font-medium text-white">Resultado esperado: </dt><dd className="inline">{expectedResult || "Não informado"}</dd></div><div><dt className="inline font-medium text-white">Prioridade: </dt><dd className="inline">{PRIORITY_LABELS[priority]}{deadline ? ` — prazo ${deadline}` : ""}</dd></div></dl>
                   </div>
-                  <div><Label>Se a automação funcionar perfeitamente, o que você conseguirá fazer ou deixar de fazer? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.automationImpact} value={automationImpact} onChange={(e) => setAutomationImpact(e.target.value)} rows={4} placeholder="Descreva o impacto esperado no seu trabalho." className={`mt-1 ${errors.automationImpact ? invalidInput : ""}`} /><FieldError message={errors.automationImpact} /></div>
+                  <div><Label>{requestType === "Sistema" ? "Qual dor esse sistema vai solucionar em seu departamento caso ele funcione perfeitamente?" : "Se a automação funcionar perfeitamente, o que você conseguirá fazer ou deixar de fazer?"} <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.automationImpact} value={automationImpact} onChange={(e) => setAutomationImpact(e.target.value)} rows={4} placeholder="Descreva o impacto esperado no seu trabalho." className={`mt-1 ${errors.automationImpact ? invalidInput : ""}`} /><FieldError message={errors.automationImpact} /></div>
                   <div><Label>Quais são três exemplos que a TI deve testar antes da entrega? <span className="text-red-400">*</span></Label><Textarea required aria-invalid={!!errors.acceptanceTests} value={acceptanceTests} onChange={(e) => setAcceptanceTests(e.target.value)} rows={4} placeholder="Inclua um caso comum, uma exceção e uma falha recuperável." className={`mt-1 ${errors.acceptanceTests ? invalidInput : ""}`} /><FieldError message={errors.acceptanceTests} /></div>
                   <div><Label>Você pode demonstrar o processo completo com um caso real e validar o resultado em teste? <span className="text-red-400">*</span></Label><Select value={demoAvailability} onValueChange={setDemoAvailability}><SelectTrigger aria-invalid={!!errors.demoAvailability} className={`mt-1 ${errors.demoAvailability ? invalidInput : ""}`}><SelectValue placeholder="Selecione uma opção" /></SelectTrigger><SelectContent>{DEMO_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select><FieldError message={errors.demoAvailability} /></div>
                   {finalConfirmField}

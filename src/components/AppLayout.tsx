@@ -23,11 +23,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="min-h-screen flex w-full">
         {!fullScreen && <AppSidebar />}
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-14 flex items-center justify-between border-b border-border px-4 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+          <header className="h-14 flex items-center justify-between gap-2 border-b border-border px-3 sm:px-4 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
             <div className="flex items-center gap-3">
               {!fullScreen && <SidebarTrigger className="text-muted-foreground hover:text-foreground transition-colors" />}
             </div>
-            <div className="flex-1 flex justify-center px-4 min-w-0">
+            <div className="flex-1 flex justify-center px-1 sm:px-4 min-w-0">
               <AnimatePresence mode="wait" initial={false}>
                 {isRunning ? (
                   <motion.div
@@ -51,7 +51,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     >
                       <Smile className="h-4 w-4 shrink-0" />
                     </motion.span>
-                    Muito bem! Você está executando suas atividades!
+                    <span className="hidden sm:inline">Muito bem! Você está executando suas atividades!</span>
+                    <span className="sm:hidden">Em atividade!</span>
                   </motion.div>
                 ) : (
                   <motion.div
@@ -78,7 +79,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     >
                       <Frown className="h-4 w-4 shrink-0" />
                     </motion.span>
-                    Atenção! Você está sem uma tarefa ativa. Escolha uma tarefa para continuar suas atividades.
+                    <span className="hidden sm:inline">Atenção! Você está sem uma tarefa ativa. Escolha uma tarefa para continuar suas atividades.</span>
+                    <span className="sm:hidden">Sem tarefa ativa!</span>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -89,7 +91,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <ThemeToggle />
             </div>
           </header>
-          <main className="flex-1 p-6 overflow-auto animate-fade-in">{children}</main>
+          {/* Tela cheia no celular: menos margem lateral para aproveitar os 360px de largura. */}
+          <main className={`flex-1 overflow-auto animate-fade-in ${fullScreen ? "p-3 sm:p-4 md:p-6" : "p-6"}`}>{children}</main>
         </div>
         <ChatWidget context="ti" />
         <CoffeeButton />

@@ -2,14 +2,25 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2, Send, MessageSquare } from "lucide-react";
+import { Loader2, Send, MessageSquare, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { solicitanteCall, type SolicitanteComment } from "@/lib/solicitacoesApi";
 
 interface Props {
   automationId: string;
   counterpartName?: string | null;
+  /** Cor forte do card: azul para Sistema, roxo para Automação. */
+  tone?: "sistema" | "automacao";
+  /** Nome de cada usuário (team-names). */
+  authorNames?: Record<string, string>;
+  /** Quem está logado no portal: a sua mensagem usa o próprio setor. */
+  solicitante?: { id: string; sector: string } | null;
 }
+
+const TONE_CARD: Record<NonNullable<Props["tone"]>, string> = {
+  sistema: "border-blue-700 bg-gradient-to-br from-blue-900 to-slate-950 text-white",
+  automacao: "border-purple-800 bg-gradient-to-br from-purple-900 to-slate-950 text-white",
+};
 
 /**
  * Chat do portal do solicitante: MESMA conversa da tabela automation_comments,
@@ -17,7 +28,7 @@ interface Props {
  * tem sessão e a RLS barra anon). Sem realtime (precisaria de sessão); usa
  * sondagem curta igual ao restante da rota.
  */
-export function SolicitanteChat({ automationId, counterpartName }: Props) {
+export function SolicitanteChat({ automationId, counterpartName, tone, authorNames, solicitante }: Props) {
   const qc = useQueryClient();
   const [content, setContent] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
@@ -68,7 +79,7 @@ export function SolicitanteChat({ automationId, counterpartName }: Props) {
   };
 
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+    <div className={`rounded-lg border p-3 ${tone ? TONE_CARD[tone] : "border-white/10 bg-white/[0.03]"}`}>
       <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-white/70">
         <MessageSquare className="h-3.5 w-3.5" />
         Conversa com os Desenvolvedores
@@ -85,10 +96,15 @@ export function SolicitanteChat({ automationId, counterpartName }: Props) {
             <div key={day.label} className="space-y-2">
               <p className="text-center text-[10px] uppercase tracking-wide text-white/35">{day.label}</p>
               {day.items.map((comment) => {
-                const mine = true; // portal do solicitante: a conversa exibida é só a dele
+                const mine = comment.user_id === solicitante?.id;
+                // Quem não é o solicitante é da equipe de TI.
+                const authorLabel = mine
+                  ? `${authorNames?.[comment.user_id] ?? "Você"} - ${solicitante?.sector ?? ""}`
+                  : `${authorNames?.[comment.user_id] ?? "Equipe de TI"} - TI`;
                 return (
                   <div key={`${comment.automation_id}-${comment.created_at}-${comment.user_id}`} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[85%] ${mine ? "items-end" : "items-start"}`}>
+                      <p className={`mb-0.5 flex items-center gap-1 px-1 text-[10px] font-semibold text-white/75 ${mine ? "justify-end" : "justify-start"}`}><User className="h-3 w-3 shrink-0" aria-hidden />{authorLabel}</p>
                       <div className="rounded-xl rounded-br-sm bg-sky-500/90 px-3 py-2 text-sm leading-snug text-white">
                         <p className="whitespace-pre-wrap break-words">{comment.content}</p>
                         <p className="mt-0.5 text-right text-[9px] tabular-nums text-white/70">

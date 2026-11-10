@@ -58,7 +58,21 @@ function readToken(): string | null {
 export async function solicitacoesCall<T>(payload: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke("solicitacoes", { body: payload });
   if (error) {
+    // Em respostas não-2xx o supabase-js deixa `data` nulo e o corpo JSON
+    // da função (ex.: "E-mail não cadastrado como solicitante") fica em
+    // `error.context`. Lê-lo aqui para não cair na mensagem genérica.
+    let serverMessage: string | undefined;
+    const context = (error as { context?: Response }).context;
+    if (context && typeof context.json === "function") {
+      try {
+        const body = (await context.clone().json()) as { error?: string } | null;
+        serverMessage = body?.error;
+      } catch {
+        serverMessage = undefined;
+      }
+    }
     const message =
+      serverMessage ||
       (data as { error?: string } | null)?.error ||
       (error as { message?: string }).message ||
       "Falha ao falar com o servidor.";

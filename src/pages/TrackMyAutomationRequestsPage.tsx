@@ -5,12 +5,12 @@ import { ptBR } from "date-fns/locale";
 import { useSolicitante } from "@/hooks/useSolicitante";
 import {
   solicitanteCall,
-  type SolicitanteCommentSummary,
   type SolicitanteRequest,
 } from "@/lib/solicitacoesApi";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SolicitanteChat } from "@/components/automations/SolicitanteChat";
-import { Loader2, ClipboardList, CircleDot, Code2, Headset, MessageSquare, User, MonitorSmartphone, Workflow } from "lucide-react";
+import { Loader2, ClipboardList, CircleDot, Code2, Headset, User, MonitorSmartphone, Workflow } from "lucide-react";
 import {
   PRIORITY_LABELS,
   STATUS_LABELS,
@@ -336,10 +336,7 @@ function RequestProgress({ percent, status }: { percent: number; status: string 
   return (
     <div className="mb-3 rounded-lg border border-white/10 bg-white/5 p-3">
       <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] text-white/60">
-        <span className="flex min-w-0 items-center gap-1">
-          <Code2 className="h-2.5 w-2.5 shrink-0" />
-          <span className="truncate">Andamento da automação</span>
-        </span>
+        <span />
         <b className={`shrink-0 text-sm font-bold tabular-nums ${PROGRESS_BAND_TEXT[band]}`}>{percent}%</b>
       </div>
       <div className={`relative h-2.5 overflow-hidden rounded-full m-progress-track ${PROGRESS_BAND_TRACK[band]}`}>
@@ -348,8 +345,58 @@ function RequestProgress({ percent, status }: { percent: number; status: string 
           <span key={step} aria-hidden className="absolute top-0 h-full w-px bg-white/25" style={{ left: `${step}%` }} />
         ))}
       </div>
-      <p className="mt-1.5 text-[10px] text-white/50">{progressNote(percent, status)}</p>
     </div>
+  );
+}
+
+/** Detalhes do pedido em um card: progresso e descrição à esquerda, chat com o histórico à direita. */
+function RequestDetailDialog({ request, assigneeName, authorNames, solicitante, onClose }: { request: SolicitanteRequest | null; assigneeName: string | null; authorNames: Record<string, string>; solicitante: { id: string; sector: string } | null; onClose: () => void }) {
+  if (!request) return null;
+  const status = request.status as AutomationStatus;
+  const percent = computeExecutionPercent(request);
+  const kind = requestKind(request.request_kind);
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className={`max-h-[90vh] max-w-5xl overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full ${kind === "Automação" ? "border-[#2e2470] bg-[#1b1442] [scrollbar-color:#6b21a8_transparent] [&::-webkit-scrollbar-thumb]:bg-purple-700" : "border-[#1d4a63] bg-[#0c2536] [scrollbar-color:#1d4ed8_transparent] [&::-webkit-scrollbar-thumb]:bg-blue-700"}`}>
+        <DialogHeader>
+          <DialogTitle className="pr-6 text-left text-base">{request.title}</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="min-w-0 space-y-4">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className={"inline-flex items-center rounded-full px-[7px] py-1 text-[10px] font-bold leading-none text-white " + (STATUS_FILL[status] || "bg-primary")}>{STATUS_LABELS[status] || status}</span>
+              {kind && (
+                <span className={"inline-flex items-center gap-1 rounded-full border px-[7px] py-1 text-[10px] font-semibold leading-none " + REQUEST_KIND_BADGE[kind]}>
+                  {kind === "Sistema" ? <MonitorSmartphone className="h-2.5 w-2.5" /> : <Workflow className="h-2.5 w-2.5" />}
+                  {REQUEST_KIND_LABELS[kind]}
+                </span>
+              )}
+              <Badge variant="outline" className="px-1.5 py-0 text-[10px]">{PRIORITY_LABELS[request.priority] || request.priority}</Badge>
+              {request.sector && <Badge variant="outline" className="px-1.5 py-0 text-[10px]">{request.sector}</Badge>}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Enviada em {new Date(request.created_at).toLocaleDateString("pt-BR")}
+              {request.updated_at && request.updated_at !== request.created_at && (
+                <> · atualizada {formatDistanceToNow(new Date(request.updated_at), { locale: ptBR, addSuffix: true })}</>
+              )}
+            </p>
+            <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <User className="h-3 w-3 shrink-0" />
+              <span>Responsável:</span>
+              {assigneeName ? <b className="font-semibold text-white/85">{assigneeName}</b> : <span className="text-white/50">ainda não atribuído</span>}
+            </p>
+            <RequestProgress percent={percent} status={status} />
+            <div>
+              <p className="mb-1.5 text-xs font-medium text-white/70">Descrição do pedido</p>
+              <p className="whitespace-pre-wrap border-l-2 border-primary/40 pl-3 text-xs leading-relaxed text-muted-foreground">{request.description}</p>
+            </div>
+          </div>
+          <div className="min-w-0">
+            <SolicitanteChat automationId={request.id} counterpartName={assigneeName} tone={kind === "Automação" ? "automacao" : "sistema"} authorNames={authorNames} solicitante={solicitante} />
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -359,7 +406,7 @@ export default function TrackMyAutomationRequestsPage() {
   const { solicitante, isLoadingSolicitante } = useSolicitante();
   const isTeamMember = !!solicitante && solicitante.role != null && SEE_ALL_ROLES.has(solicitante.role);
   const [activeView, setActiveView] = useState<"tracking" | "developers" | "support">("tracking");
-  const [openChatId, setOpenChatId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const { data: requests = [], isLoading, error } = useQuery({
     queryKey: ["solicitante-requests", solicitante?.id],
     enabled: !!solicitante?.id,
@@ -372,21 +419,6 @@ export default function TrackMyAutomationRequestsPage() {
     },
   });
 
-  // Último comentário de cada solicitação: alimenta o aviso de mensagem nova no
-  // botão do chat sem abrir uma conversa por card. Via função, filtrado pelo
-  // solicitante — nunca vaza conversa de outra pessoa.
-  const { data: commentSummaries } = useQuery({
-    queryKey: ["solicitante-comments", "summaries", requests.map((r) => r.id).sort().join(",")],
-    enabled: requests.length > 0,
-    refetchInterval: 60000,
-    queryFn: async (): Promise<Record<string, SolicitanteCommentSummary>> => {
-      const { summaries } = await solicitanteCall<{ summaries: Record<string, SolicitanteCommentSummary> }>(
-        "comments:list",
-        { automation_ids: requests.map((r) => r.id) },
-      );
-      return summaries;
-    },
-  });
 
   // Nome do responsável, para o cabeçalho da conversa.
   // Usa a ação team-names (todos os usuários) e NÃO as abas de status: estas
@@ -434,11 +466,10 @@ export default function TrackMyAutomationRequestsPage() {
             {requests.map((request) => {
               const status = request.status as AutomationStatus;
               const percent = computeExecutionPercent(request);
-              const latest = commentSummaries?.[request.id];
               const assignee = request.assigned_to ? assigneeName[request.assigned_to] : null;
               const kind = requestKind(request.request_kind);
               return (
-                <article key={request.id} className="group relative overflow-hidden rounded-lg border border-border bg-gradient-to-b from-[#161c28] to-[#0f141e] px-4 pb-3.5 pt-4 text-slate-100shadow-[0_8px_24px_-16px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,255,255,0.03)] transition-all duration-200 hover:border-primary/40 hover:shadow-md">
+                <article key={request.id} role="button" tabIndex={0} onClick={() => setSelectedId(request.id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedId(request.id); } }} className={`group relative cursor-pointer overflow-hidden rounded-lg border px-4 pb-3.5 pt-4 text-slate-100 shadow-[0_8px_24px_-16px_rgba(0,0,0,0.45)] transition-all duration-200 hover:brightness-125 ${kind === "Automação" ? "border-[#2e2470] bg-[#1b1442]" : kind === "Sistema" ? "border-[#1d4a63] bg-[#0c2536]" : "border-border bg-gradient-to-b from-[#161c28] to-[#0f141e]"}`}>
                   <div className="mb-2 flex flex-wrap items-center gap-1.5 pr-2">
                     <span className={"inline-flex items-center rounded-full px-[7px] py-1 text-[10px] font-bold leading-none text-white " + (STATUS_FILL[status] || "bg-primary")}>{STATUS_LABELS[status] || status}</span>
                     {kind && (
@@ -468,45 +499,20 @@ export default function TrackMyAutomationRequestsPage() {
                     )}
                   </p>
                   <RequestProgress percent={percent} status={status} />
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setOpenChatId(openChatId === request.id ? null : request.id)}
-                      aria-expanded={openChatId === request.id}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs font-medium text-white/80 transition-colors hover:border-sky-300/40 hover:text-white"
-                    >
-                      <MessageSquare className="h-3.5 w-3.5" />
-                      Conversar com os Desenvolvedores
-                      {latest && <span className="tabular-nums text-white/45">({latest.total})</span>}
-                      {/* Mensagem da última mensagem é da equipe: alguém respondeu. */}
-                      {latest && latest.lastAuthor !== solicitante?.id && (
-                        <span className="ml-0.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                      )}
-                    </button>
-                    {latest && (
-                      <span className="truncate text-[10px] text-white/40">
-                        {latest.lastAuthor === solicitante?.id ? "Você: " : `${latest.lastAuthorName ?? "Equipe de TI"}: `}
-                        {latest.lastContent}
-                      </span>
-                    )}
-                  </div>
-                  {openChatId === request.id && (
-                    <div className="mb-3">
-                      <SolicitanteChat
-                        automationId={request.id}
-                        counterpartName={request.assigned_to ? assigneeName[request.assigned_to] ?? null : null}
-                      />
-                    </div>
-                  )}
-                  <details>
-                    <summary className="cursor-pointer text-xs font-medium text-primary underline-offset-4 hover:underline">Ver informações da solicitação</summary>
-                    <p className="mt-3 whitespace-pre-wrap border-l-2 border-primary/40 pl-3 text-xs leading-relaxed text-muted-foreground">{request.description}</p>
-                  </details>
+                  <p className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-white/25 bg-white/15 px-3 py-1.5 text-xs font-semibold text-white shadow-sm">Clique para ver os detalhes e conversar</p>
                 </article>
               );
             })}
           </div>
         )}
+
+        <RequestDetailDialog
+          request={requests.find((r) => r.id === selectedId) ?? null}
+          assigneeName={(() => { const r = requests.find((item) => item.id === selectedId); return r?.assigned_to ? assigneeName[r.assigned_to] ?? null : null; })()}
+          authorNames={assigneeName}
+          solicitante={solicitante ? { id: solicitante.id, sector: solicitante.sector } : null}
+          onClose={() => setSelectedId(null)}
+        />
 
         {/* Sem identificação válida, a tela volta para a "Identifique-se". */}
         {!isLoadingSolicitante && !solicitante && (

@@ -8,11 +8,19 @@ const BUCKET = "task-attachments";
 export const MAX_ATTACHMENT_MB = 80;
 const ALLOWED_PREFIXES = ["image/", "video/"];
 const ALLOWED_EXACT = ["application/pdf"];
+const OFFICE_EXACT = [
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+];
+const OFFICE_EXT = /\.(docx?|xlsx?)$/i;
 
-export function isAllowedAttachment(file: File) {
-  return (
+export function isAllowedAttachment(file: File, { office = false }: { office?: boolean } = {}) {
+  if (
     ALLOWED_PREFIXES.some((p) => file.type.startsWith(p)) || ALLOWED_EXACT.includes(file.type)
-  );
+  ) return true;
+  return office && (OFFICE_EXACT.includes(file.type) || OFFICE_EXT.test(file.name));
 }
 
 export function attachmentPublicUrl(path: string) {
@@ -40,10 +48,10 @@ export function useUploadAutomationAttachment() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ automationId, file }: { automationId: string; file: File }) => {
+    mutationFn: async ({ automationId, file, office = false }: { automationId: string; file: File; office?: boolean }) => {
       if (!user) throw new Error("Não autenticado");
-      if (!isAllowedAttachment(file)) {
-        throw new Error("Formato não permitido. Envie imagem, vídeo ou PDF.");
+      if (!isAllowedAttachment(file, { office })) {
+        throw new Error(`Formato não permitido. Envie imagem, vídeo ou PDF${office ? ", Word ou Excel" : ""}.`);
       }
       if (file.size > MAX_ATTACHMENT_MB * 1024 * 1024) {
         throw new Error(`Arquivo muito grande (limite de ${MAX_ATTACHMENT_MB} MB).`);
