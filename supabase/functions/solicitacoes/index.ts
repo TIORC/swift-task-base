@@ -253,7 +253,11 @@ Deno.serve(async (req) => {
           "id, title, description, status, priority, sector, created_at, updated_at, progress_percent, assigned_to, request_kind",
         );
       if (!canSeeAll) {
-        baseQuery = baseQuery.or(`created_by.eq.${solicitanteId},requester_id.eq.${solicitanteId}`);
+        // Solicitante vê as próprias solicitações e os sistemas do seu setor (mesma tag, ex.: DF).
+        const sectorFilter = claims.sector ? `,sector.eq."${claims.sector.replace(/"/g, "")}"` : "";
+        baseQuery = baseQuery.or(
+          `created_by.eq.${solicitanteId},requester_id.eq.${solicitanteId}${sectorFilter}`,
+        );
       }
       const { data, error } = await baseQuery.order("created_at", { ascending: false });
       if (error) throw error;
