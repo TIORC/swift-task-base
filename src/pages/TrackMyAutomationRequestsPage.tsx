@@ -114,7 +114,7 @@ const WORK_STATUS_LABEL: Record<string, string> = {
 function useDeveloperStatuses() {
   return useQuery({
     queryKey: ["solicitante-developer-status"],
-    refetchInterval: 15000,
+    refetchInterval: 60000,
     queryFn: async (): Promise<StatusEntry[]> => {
       const { developers } = await solicitanteCall<{ developers: StatusEntry[] }>("developer-status");
       return developers;
@@ -270,7 +270,7 @@ function DeveloperStatusPanel() {
 function useSupportTechnicianStatuses() {
   return useQuery({
     queryKey: ["solicitante-support-status"],
-    refetchInterval: 15000,
+    refetchInterval: 60000,
     queryFn: async (): Promise<StatusEntry[]> => {
       const { technicians } = await solicitanteCall<{ technicians: StatusEntry[] }>("support-status");
       return technicians;
@@ -365,7 +365,7 @@ export default function TrackMyAutomationRequestsPage() {
     enabled: !!solicitante?.id,
     // A equipe de TI atualiza o percentual em /automacoes; a cada 30s esta tela
     // busca o valor atual para que o solicitante veja a mudança sem recarregar.
-    refetchInterval: 30000,
+    refetchInterval: 60000,
     queryFn: async (): Promise<SolicitanteRequest[]> => {
       const { requests } = await solicitanteCall<{ requests: SolicitanteRequest[] }>("list");
       return requests;
@@ -378,7 +378,7 @@ export default function TrackMyAutomationRequestsPage() {
   const { data: commentSummaries } = useQuery({
     queryKey: ["solicitante-comments", "summaries", requests.map((r) => r.id).sort().join(",")],
     enabled: requests.length > 0,
-    refetchInterval: 20000,
+    refetchInterval: 60000,
     queryFn: async (): Promise<Record<string, SolicitanteCommentSummary>> => {
       const { summaries } = await solicitanteCall<{ summaries: Record<string, SolicitanteCommentSummary> }>(
         "comments:list",

@@ -23,7 +23,7 @@ export function useAutomationComments(automationId: string | null, options?: { l
     enabled: !!automationId,
     // Rede de segurança: o realtime é o caminho normal, mas se o canal cair
     // (rede instável, hibernação da aba) a conversa ainda se atualiza sozinha.
-    refetchInterval: options?.live ? 15000 : false,
+    refetchInterval: options?.live ? 30000 : false,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("automation_comments")
@@ -88,7 +88,7 @@ export function useAutomationCommentSummaries(automationIds: string[]) {
     queryKey: ["automation_comments", "summaries", key],
     enabled: automationIds.length > 0,
     // O realtime da conversa aberta cobre o caso comum; a Sondagem cobre o resto.
-    refetchInterval: 20000,
+    refetchInterval: 60000,
     queryFn: async (): Promise<Record<string, CommentSummary>> => {
       const { data, error } = await supabase
         .from("automation_comments")
