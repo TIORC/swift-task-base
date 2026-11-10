@@ -43,7 +43,7 @@ export function useAutomationAssignments(automationId: string | undefined) {
         .eq("automation_id", automationId!)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data ?? []).map((r) => ({ user_id: r.user_id, xp: r.xp }));
+      return (data ?? []).map((r: any) => ({ user_id: r.user_id, xp: r.xp }));
     },
   });
 }
