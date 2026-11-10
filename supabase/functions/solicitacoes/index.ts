@@ -116,7 +116,7 @@ async function verifyToken(token: string, secret: string): Promise<SolicitanteCl
   if (!payload || !sig) return null;
   try {
     const key = await hmacKey(secret, "verify");
-    const ok = await crypto.subtle.verify("HMAC", key, b64urlDecode(sig), new TextEncoder().encode(payload));
+    const ok = await crypto.subtle.verify("HMAC", key, b64urlDecode(sig) as BufferSource, new TextEncoder().encode(payload));
     if (!ok) return null;
     const claims = JSON.parse(new TextDecoder().decode(b64urlDecode(payload))) as SolicitanteClaims;
     if (!claims?.sub || !claims?.exp || claims.exp < Date.now()) return null;

@@ -37,13 +37,13 @@ export function useAutomationAssignments(automationId: string | undefined) {
     queryKey: ["automation-assignees", automationId],
     enabled: !!automationId,
     queryFn: async (): Promise<AutomationAssignment[]> => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("automation_assignees")
         .select("user_id, xp, created_at")
         .eq("automation_id", automationId!)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data ?? []).map((r) => ({ user_id: r.user_id, xp: r.xp }));
+      return (data ?? []).map((r: any) => ({ user_id: r.user_id, xp: r.xp }));
     },
   });
 }
