@@ -52,6 +52,35 @@ export type Database = {
           },
         ]
       }
+      automation_assignees: {
+        Row: {
+          automation_id: string
+          created_at: string
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          automation_id: string
+          created_at?: string
+          user_id: string
+          xp?: number
+        }
+        Update: {
+          automation_id?: string
+          created_at?: string
+          user_id?: string
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_assignees_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       automation_attachments: {
         Row: {
           automation_id: string
@@ -136,6 +165,32 @@ export type Database = {
             columns: ["automation_id"]
             isOneToOne: false
             referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_change_acks: {
+        Row: {
+          acknowledged_at: string
+          event_id: string
+          user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string
+          event_id: string
+          user_id: string
+        }
+        Update: {
+          acknowledged_at?: string
+          event_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_change_acks_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "automation_events"
             referencedColumns: ["id"]
           },
         ]
@@ -946,6 +1001,33 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_container: {
+        Row: {
+          counts: Json
+          created_at: string
+          id: string
+          performed_by: string | null
+          performed_by_email: string | null
+          snapshot: Json
+        }
+        Insert: {
+          counts?: Json
+          created_at?: string
+          id?: string
+          performed_by?: string | null
+          performed_by_email?: string | null
+          snapshot?: Json
+        }
+        Update: {
+          counts?: Json
+          created_at?: string
+          id?: string
+          performed_by?: string | null
+          performed_by_email?: string | null
+          snapshot?: Json
+        }
+        Relationships: []
+      }
       inventory_departments: {
         Row: {
           active: boolean
@@ -1110,7 +1192,9 @@ export type Database = {
           collaborator_id: string | null
           created_at: string
           damaged_from: number
+          delivery_text: string | null
           department: string | null
+          es_text: string | null
           from_location_id: string | null
           id: string
           invoice_number: string | null
@@ -1122,10 +1206,10 @@ export type Database = {
           quantity: number
           reason: string | null
           serial_number: string | null
+          source_movement_id: string | null
           status_from: string | null
           status_to: string | null
           supplier: string | null
-          source_movement_id: string | null
           to_location_id: string | null
           type: string
           unit_price: number
@@ -1137,7 +1221,9 @@ export type Database = {
           collaborator_id?: string | null
           created_at?: string
           damaged_from?: number
+          delivery_text?: string | null
           department?: string | null
+          es_text?: string | null
           from_location_id?: string | null
           id?: string
           invoice_number?: string | null
@@ -1149,9 +1235,9 @@ export type Database = {
           quantity?: number
           reason?: string | null
           serial_number?: string | null
+          source_movement_id?: string | null
           status_from?: string | null
           status_to?: string | null
-          source_movement_id?: string | null
           supplier?: string | null
           to_location_id?: string | null
           type: string
@@ -1164,7 +1250,9 @@ export type Database = {
           collaborator_id?: string | null
           created_at?: string
           damaged_from?: number
+          delivery_text?: string | null
           department?: string | null
+          es_text?: string | null
           from_location_id?: string | null
           id?: string
           invoice_number?: string | null
@@ -1176,9 +1264,9 @@ export type Database = {
           quantity?: number
           reason?: string | null
           serial_number?: string | null
+          source_movement_id?: string | null
           status_from?: string | null
           status_to?: string | null
-          source_movement_id?: string | null
           supplier?: string | null
           to_location_id?: string | null
           type?: string
@@ -1212,6 +1300,13 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_source_movement_id_fkey"
+            columns: ["source_movement_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_movements"
             referencedColumns: ["id"]
           },
           {
@@ -1288,6 +1383,30 @@ export type Database = {
           id?: boolean
           include_damaged_in_value?: boolean
           updated_at?: string
+        }
+        Relationships: []
+      }
+      inventory_stock_resets: {
+        Row: {
+          created_at: string
+          id: string
+          performed_by: string | null
+          performed_by_email: string | null
+          snapshot: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          performed_by?: string | null
+          performed_by_email?: string | null
+          snapshot?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          performed_by?: string | null
+          performed_by_email?: string | null
+          snapshot?: Json
         }
         Relationships: []
       }
@@ -2768,6 +2887,66 @@ export type Database = {
         }
         Relationships: []
       }
+      tarefas_gestta: {
+        Row: {
+          baixado: string
+          cliente: string
+          cnpj_cpf: string
+          competencia: string
+          data_conclusao: string | null
+          data_legal: string | null
+          departamento: string
+          feito_atrasado: string
+          feito_com_multa: string
+          id: string
+          importado_em: string
+          nome: string
+          origem: string
+          responsavel: string
+          status: string
+          tipo: string
+          vencimento: string | null
+        }
+        Insert: {
+          baixado?: string
+          cliente?: string
+          cnpj_cpf?: string
+          competencia?: string
+          data_conclusao?: string | null
+          data_legal?: string | null
+          departamento?: string
+          feito_atrasado?: string
+          feito_com_multa?: string
+          id: string
+          importado_em?: string
+          nome?: string
+          origem?: string
+          responsavel?: string
+          status?: string
+          tipo?: string
+          vencimento?: string | null
+        }
+        Update: {
+          baixado?: string
+          cliente?: string
+          cnpj_cpf?: string
+          competencia?: string
+          data_conclusao?: string | null
+          data_legal?: string | null
+          departamento?: string
+          feito_atrasado?: string
+          feito_com_multa?: string
+          id?: string
+          importado_em?: string
+          nome?: string
+          origem?: string
+          responsavel?: string
+          status?: string
+          tipo?: string
+          vencimento?: string | null
+        }
+        Relationships: []
+      }
       task_attachments: {
         Row: {
           created_at: string
@@ -3435,6 +3614,12 @@ export type Database = {
           user_id: string
         }[]
       }
+      acknowledge_change_alerts: { Args: never; Returns: number }
+      arquivar_almoxarifado: { Args: never; Returns: Json }
+      automation_set_assignees: {
+        Args: { _automation_id: string; _user_ids: string[]; _xp: number[] }
+        Returns: undefined
+      }
       award_xp: {
         Args: { _action: string; _task_id: string; _user_id: string }
         Returns: undefined
@@ -3447,6 +3632,7 @@ export type Database = {
         Args: { _automation_id: string; _user: string }
         Returns: boolean
       }
+      can_manage_recurring_tasks: { Args: { _uid: string }; Returns: boolean }
       can_view_automation: {
         Args: { _automation_id: string; _user: string }
         Returns: boolean
@@ -3513,12 +3699,26 @@ export type Database = {
         Args: { _conv: string; _user: string }
         Returns: boolean
       }
+      is_staff: { Args: { _user_id: string }; Returns: boolean }
+      is_super_deleter: { Args: never; Returns: boolean }
       kanban_can_delete: { Args: { _task_id: string }; Returns: boolean }
       kanban_can_edit: { Args: { _task_id: string }; Returns: boolean }
       kanban_set_assignees: {
         Args: { _task_id: string; _user_ids: string[] }
         Returns: undefined
       }
+      pending_change_alerts: {
+        Args: never
+        Returns: {
+          automation_id: string
+          created_at: string
+          description: string
+          event_id: string
+          requester: string
+          title: string
+        }[]
+      }
+      recuperar_almoxarifado: { Args: { _batch: string }; Returns: Json }
       rename_automation: {
         Args: { _automation_id: string; _new_title: string }
         Returns: Json
@@ -3536,7 +3736,6 @@ export type Database = {
       }
       save_entry_batch: { Args: { _rows: Json }; Returns: Json }
       save_exit_batch: { Args: { _rows: Json }; Returns: Json }
-      save_asset_batch: { Args: { _rows: Json }; Returns: Json }
       task_time_totals: {
         Args: never
         Returns: {
@@ -3546,6 +3745,7 @@ export type Database = {
       }
       user_client_ids: { Args: { _user_id: string }; Returns: string[] }
       user_sector_codes: { Args: { _user_id: string }; Returns: string[] }
+      zerar_estoque: { Args: never; Returns: number }
     }
     Enums: {
       app_role: "admin" | "member" | "dev" | "lider" | "gestor" | "suporte"
