@@ -85,6 +85,13 @@
       "when": 1791995141979,
       "tag": "0011_notifications_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794309890151,
+      "tag": "0012_tighten_shared_read_policies",
+      "breakpoints": true
     }
   ]
 }
