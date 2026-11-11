@@ -218,6 +218,9 @@ Deno.serve(async (req) => {
     if (!requester) {
       return json({ error: "E-mail não cadastrado como solicitante" }, 403);
     }
+    // Setor vigente na whitelist: o do token pode estar defasado (ex.: mudou de
+    // "Fiscal" para "DF" depois do login), então ele nunca é a fonte do filtro.
+    const currentSector = ((requester as { sector?: string }).sector ?? claims.sector ?? "").replace(/"/g, "").trim();
 
     if (action === "me") {
       return json({
@@ -235,14 +238,16 @@ Deno.serve(async (req) => {
     const belongsToSolicitante = async (automationId: string) => {
       const { data } = await admin
         .from("automations")
-        .select("id, created_by, requester_id")
+        .select("id, created_by, requester_id, sector")
         .eq("id", automationId)
         .maybeSingle();
       if (!data) return null;
       if (claims.role != null && SEE_ALL_ROLES.has(claims.role)) return data;
-      const d = data as { created_by: string | null; requester_id: string | null };
+      const d = data as { created_by: string | null; requester_id: string | null; sector: string | null };
       const owner = d.created_by ?? d.requester_id;
-      return owner === solicitanteId ? data : null;
+      if (owner === solicitanteId) return data;
+      // Sistemas/automações do mesmo setor também são do solicitante (leitura e chat).
+      return currentSector && d.sector?.trim().toLowerCase() === currentSector.toLowerCase() ? data : null;
     };
 
     if (action === "list") {
@@ -254,7 +259,7 @@ Deno.serve(async (req) => {
         );
       if (!canSeeAll) {
         // Solicitante vê as próprias solicitações e os sistemas do seu setor (mesma tag, ex.: DF).
-        const sectorFilter = claims.sector ? `,sector.eq."${claims.sector.replace(/"/g, "")}"` : "";
+        const sectorFilter = currentSector ? `,sector.ilike."${currentSector}"` : "";
         baseQuery = baseQuery.or(
           `created_by.eq.${solicitanteId},requester_id.eq.${solicitanteId}${sectorFilter}`,
         );
@@ -280,7 +285,7 @@ Deno.serve(async (req) => {
             .from("automations")
             .select("id")
             .in("id", automationIds)
-            .or(`created_by.eq.${solicitanteId},requester_id.eq.${solicitanteId}`);
+            .or(`created_by.eq.${solicitanteId},requester_id.eq.${solicitanteId}${currentSector ? `,sector.ilike."${currentSector}"` : ""}`);
       const ownedIds = new Set((((owned ?? []) as unknown) as { id: string }[]).map((r) => r.id));
       if (ownedIds.size === 0) return json({ comments: [], summaries: {} });
 
@@ -401,7 +406,7 @@ Deno.serve(async (req) => {
         if (targetError) throw targetError;
         const system = target as { id: string; status: string; sector: string | null; assigned_to: string | null } | null;
         if (!system) return bad("Sistema não encontrado.");
-        if (!canSeeAll && system.sector !== claims.sector) return bad("Este sistema não pertence ao seu setor.");
+        if (!canSeeAll && system.sector !== currentSector) return bad("Este sistema não pertence ao seu setor.");
 
         const moved = system.status === "completed";
         if (moved) {

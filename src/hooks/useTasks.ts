@@ -22,16 +22,37 @@ export const COLUMNS: { status: TaskStatus; title: string }[] = [
   { status: "discarded", title: "Descartado" },
 ];
 
+// O PostgREST corta cada requisição em 1000 linhas (db-max-rows). Buscamos em blocos
+// até acabar, com teto de 100.000 registros para não travar a tela.
+const PAGE_SIZE = 1000;
+const MAX_ROWS = 100_000;
+
+async function fetchAllPages<T>(
+  fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; from < MAX_ROWS; from += PAGE_SIZE) {
+    const { data, error } = await fetchPage(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) break;
+  }
+  return rows;
+}
+
 export function useTasks() {
   return useQuery({
     queryKey: ["tasks"],
     queryFn: async () => {
-      const { data: tasks, error } = await supabase
-        .from("tasks")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
+      const tasks = await fetchAllPages((from, to) =>
+        supabase
+          .from("tasks")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(from, to),
+      );
 
       // Fetch profiles for assigned users
       const userIds = [...new Set(tasks.map((t) => t.assigned_to).filter(Boolean))] as string[];
@@ -49,10 +70,16 @@ export function useTasks() {
       }
 
       // Horas já somadas no servidor (um total por tarefa)
-      const { data: totals } = await supabase.rpc("task_time_totals");
+      // Também paginado: sem isso as horas das tarefas além da 1000ª ficariam zeradas.
+      const totals = await fetchAllPages<{ task_id: string; total_minutes: number | string }>((from, to) =>
+        supabase
+          .rpc("task_time_totals")
+          .order("task_id", { ascending: true })
+          .range(from, to) as unknown as PromiseLike<{ data: { task_id: string; total_minutes: number | string }[] | null; error: unknown }>,
+      );
 
       const timeMap: Record<string, number> = {};
-      (totals as { task_id: string; total_minutes: number | string }[] | null)?.forEach((r) => {
+      totals.forEach((r) => {
         timeMap[r.task_id] = Number(r.total_minutes) || 0;
       });
 

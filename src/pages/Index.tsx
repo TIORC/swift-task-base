@@ -176,6 +176,8 @@ const Dashboard = () => {
     fontSize: "12px",
     boxShadow: "var(--shadow-lg)",
   };
+  // O Recharts pinta o nome/valor do item com a cor padrão (escura), que some no modo dark.
+  const tooltipTextStyle = { color: "hsl(var(--foreground))" };
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -256,7 +258,7 @@ const Dashboard = () => {
                     <Pie data={statusData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value" stroke="none">
                       {statusData.map((d) => <Cell key={d.key} fill={STATUS_COLORS[d.key]} />)}
                     </Pie>
-                    <Tooltip contentStyle={tooltipStyle} />
+                    <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipTextStyle} labelStyle={tooltipTextStyle} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap gap-3 mt-2">
@@ -288,7 +290,7 @@ const Dashboard = () => {
                 <BarChart data={timePerUser} layout="vertical" margin={{ left: 10 }}>
                   <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                   <YAxis type="category" dataKey="name" tick={{ fill: "hsl(var(--foreground))", fontSize: 11 }} width={60} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`${value}h`, "Tempo"]} />
+                  <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipTextStyle} labelStyle={tooltipTextStyle} formatter={(value: number) => [`${value}h`, "Tempo"]} />
                   <Bar dataKey="hours" fill="hsl(230, 80%, 60%)" radius={[0, 6, 6, 0]} />
                 </BarChart>
               </ResponsiveContainer>
