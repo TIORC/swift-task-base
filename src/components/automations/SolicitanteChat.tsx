@@ -2,9 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2, Send, MessageSquare, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2, MessageSquare, User } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { solicitanteCall, type SolicitanteComment } from "@/lib/solicitacoesApi";
+import { attachmentPublicUrl } from "@/hooks/useAutomationAttachments";
+import { ChatComposer, CHAT_IMAGE_FALLBACK } from "@/components/automations/ChatComposer";
 
 interface Props {
   automationId: string;
@@ -30,7 +33,7 @@ const TONE_CARD: Record<NonNullable<Props["tone"]>, string> = {
  */
 export function SolicitanteChat({ automationId, counterpartName, tone, authorNames, solicitante }: Props) {
   const qc = useQueryClient();
-  const [content, setContent] = useState("");
+  const [busy, setBusy] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   const commentsQuery = useQuery({
@@ -47,14 +50,42 @@ export function SolicitanteChat({ automationId, counterpartName, tone, authorNam
   const isLoading = commentsQuery.isLoading;
 
   const createComment = useMutation({
-    mutationFn: async (text: string) =>
-      solicitanteCall("comments:create", { automation_id: automationId, content: text }),
+    mutationFn: async ({ text, images }: { text: string; images: string[] }) =>
+      solicitanteCall("comments:create", { automation_id: automationId, content: text, images }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["solicitante-comments", automationId] });
       qc.invalidateQueries({ queryKey: ["solicitante-comments", "summaries"] });
-      setContent("");
     },
   });
+
+  /** Envia cada print direto ao bucket por URL assinada: o visitante não tem sessão. */
+  const uploadImages = async (files: File[]) => {
+    const paths: string[] = [];
+    for (const file of files) {
+      const { path, token } = await solicitanteCall<{ path: string; token: string }>("comments:upload-url", {
+        automation_id: automationId,
+        file_name: file.name || "print.png",
+      });
+      const { error } = await supabase.storage.from("task-attachments").uploadToSignedUrl(path, token, file);
+      if (error) throw error;
+      paths.push(path);
+    }
+    return paths;
+  };
+
+  const send = async (text: string, files: File[]) => {
+    setBusy(true);
+    try {
+      const images = files.length > 0 ? await uploadImages(files) : [];
+      await createComment.mutateAsync({ text: text || CHAT_IMAGE_FALLBACK, images });
+      return true;
+    } catch (e) {
+      toast.error((e as Error).message);
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
 
   // Agrupa por dia: numa conversa longa, saber "quando" importa tanto quanto "quem".
   const days = useMemo(() => {
@@ -71,12 +102,6 @@ export function SolicitanteChat({ automationId, counterpartName, tone, authorNam
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [comments?.length]);
-
-  const submit = () => {
-    const text = content.trim();
-    if (!text || createComment.isPending) return;
-    createComment.mutate(text);
-  };
 
   return (
     <div className={`rounded-lg border p-3 ${tone ? TONE_CARD[tone] : "border-white/10 bg-white/[0.03]"}`}>
@@ -106,7 +131,23 @@ export function SolicitanteChat({ automationId, counterpartName, tone, authorNam
                     <div className={`max-w-[85%] ${mine ? "items-end" : "items-start"}`}>
                       <p className={`mb-0.5 flex items-center gap-1 px-1 text-[10px] font-semibold text-white/75 ${mine ? "justify-end" : "justify-start"}`}><User className="h-3 w-3 shrink-0" aria-hidden />{authorLabel}</p>
                       <div className="rounded-xl rounded-br-sm bg-sky-500/90 px-3 py-2 text-sm leading-snug text-white">
-                        <p className="whitespace-pre-wrap break-words">{comment.content}</p>
+                        {!((comment.images ?? []).length > 0 && comment.content === "📷 Imagem") && (
+                          <p className="whitespace-pre-wrap break-words">{comment.content}</p>
+                        )}
+                        {(comment.images ?? []).length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {(comment.images ?? []).map((path) => (
+                              <a key={path} href={attachmentPublicUrl(path)} target="_blank" rel="noreferrer">
+                                <img
+                                  src={attachmentPublicUrl(path)}
+                                  alt="Print enviado"
+                                  loading="lazy"
+                                  className="max-h-40 max-w-full rounded-md border border-white/20 object-contain"
+                                />
+                              </a>
+                            ))}
+                          </div>
+                        )}
                         <p className="mt-0.5 text-right text-[9px] tabular-nums text-white/70">
                           {format(new Date(comment.created_at), "HH:mm")}
                         </p>
@@ -126,32 +167,7 @@ export function SolicitanteChat({ automationId, counterpartName, tone, authorNam
         <div ref={endRef} />
       </div>
 
-      <div className="flex items-end gap-2">
-        <textarea
-          value={content}
-          onChange={(event) => setContent(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              submit();
-            }
-          }}
-          rows={2}
-          maxLength={2000}
-          placeholder="Escreva sua mensagem…"
-          className="min-h-[2.5rem] flex-1 resize-none rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm text-white placeholder:text-white/35 focus:border-sky-300/40 focus:outline-none"
-        />
-        <Button
-          size="icon"
-          onClick={submit}
-          disabled={!content.trim() || createComment.isPending}
-          aria-label="Enviar mensagem"
-          className="h-10 w-10 shrink-0 rounded-lg bg-sky-500 hover:bg-sky-400"
-        >
-          {createComment.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-        </Button>
-      </div>
-      <p className="mt-1 text-[10px] text-white/35">Enter envia · Shift+Enter quebra a linha</p>
+      <ChatComposer variant="dark" placeholder="Escreva sua mensagem…" busy={busy} onSend={send} />
     </div>
   );
 }

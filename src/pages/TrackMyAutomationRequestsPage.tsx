@@ -373,7 +373,7 @@ function RequestDetailDialog({ request, assigneeName, authorNames, solicitante, 
   const kind = requestKind(request.request_kind);
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className={`max-h-[90vh] max-w-5xl overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full ${kind === "Automação" ? "border-[#2e2470] bg-[#1b1442] [scrollbar-color:#6b21a8_transparent] [&::-webkit-scrollbar-thumb]:bg-purple-700" : "border-[#1d4a63] bg-[#0c2536] [scrollbar-color:#1d4ed8_transparent] [&::-webkit-scrollbar-thumb]:bg-blue-700"}`}>
+      <DialogContent className={`dark text-foreground max-h-[90vh] max-w-5xl overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full ${kind === "Automação" ? "border-[#2e2470] bg-[#1b1442] [scrollbar-color:#6b21a8_transparent] [&::-webkit-scrollbar-thumb]:bg-purple-700" : "border-[#1d4a63] bg-[#0c2536] [scrollbar-color:#1d4ed8_transparent] [&::-webkit-scrollbar-thumb]:bg-blue-700"}`}>
         <DialogHeader>
           <DialogTitle className="pr-6 text-left text-base">{request.title}</DialogTitle>
         </DialogHeader>

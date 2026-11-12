@@ -37,6 +37,8 @@ export interface SolicitanteComment {
   user_id: string;
   content: string;
   created_at: string;
+  /** Caminhos dos prints no bucket task-attachments (URL pública). */
+  images?: string[] | null;
 }
 
 export interface SolicitanteCommentSummary {

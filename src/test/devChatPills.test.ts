@@ -71,7 +71,7 @@ describe("markRead / openWindowList", () => {
 });
 
 describe("mergeComment", () => {
-  const base = { automation_id: "a1", user_id: "u", mentions: [], profile: null };
+  const base = { automation_id: "a1", user_id: "u", mentions: [], images: [], profile: null };
   it("não duplica uma mensagem já presente e ordena por data", () => {
     const first = { ...base, id: "1", content: "a", created_at: "2026-11-12T10:00:00.000Z" };
     const later = { ...base, id: "2", content: "b", created_at: "2026-11-12T11:00:00.000Z" };

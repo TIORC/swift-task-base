@@ -312,7 +312,7 @@ Deno.serve(async (req) => {
 
       const { data: comments, error } = await admin
         .from("automation_comments")
-        .select("automation_id, user_id, content, created_at")
+        .select("automation_id, user_id, content, created_at, images")
         .in("automation_id", [...ownedIds])
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -343,9 +343,32 @@ Deno.serve(async (req) => {
       return json({ comments: rows, summaries: enriched });
     }
 
+    // Prepara um envio direto ao bucket (URL assinada): o visitante não tem sessão,
+    // então quem grava no storage é a função. O caminho fica preso à pasta do solicitante.
+    if (action === "comments:upload-url") {
+      const automationId = typeof body.automation_id === "string" ? body.automation_id : "";
+      if (!automationId) return bad("Informe automation_id.");
+      const owned = await belongsToSolicitante(automationId);
+      if (!owned) return json({ error: "Solicitação não encontrada." }, 404);
+      const fileName = typeof body.file_name === "string" ? body.file_name : "print.png";
+      const safeName = fileName.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/_+/g, "_").slice(-80) || "print.png";
+      const path = `${solicitanteId}/automations/${automationId}/comments/${Date.now()}_${crypto.randomUUID().slice(0, 8)}_${safeName}`;
+      const { data: signed, error: signError } = await admin.storage.from("task-attachments").createSignedUploadUrl(path);
+      if (signError || !signed) return json({ error: "Não foi possível preparar o envio do anexo." }, 500);
+      return json({ path: signed.path, token: signed.token });
+    }
+
     if (action === "comments:create") {
       const automationId = typeof body.automation_id === "string" ? body.automation_id : "";
-      const content = typeof body.content === "string" ? body.content.trim().slice(0, 2000) : "";
+      // Imagens só são aceitas da própria pasta do solicitante e desta automação.
+      const rawImages = Array.isArray(body.images) ? (body.images as unknown[]) : [];
+      const imagePrefix = `${solicitanteId}/automations/${automationId}/comments/`;
+      const images = rawImages.filter(
+        (p): p is string => typeof p === "string" && p.startsWith(imagePrefix) && !p.includes(".."),
+      );
+      if (rawImages.length > 5 || images.length !== rawImages.length) return bad("Anexo inválido.");
+      const typed = typeof body.content === "string" ? body.content.trim().slice(0, 2000) : "";
+      const content = typed || (images.length > 0 ? "📷 Imagem" : "");
       if (!automationId) return bad("Informe automation_id.");
       if (!content) return bad("Escreva sua mensagem.");
       const owned = await belongsToSolicitante(automationId);
@@ -353,7 +376,7 @@ Deno.serve(async (req) => {
 
       const { data: inserted, error } = await admin
         .from("automation_comments")
-        .insert({ automation_id: automationId, user_id: solicitanteId, content, mentions: [] })
+        .insert({ automation_id: automationId, user_id: solicitanteId, content, mentions: [], images })
         .select("id")
         .single();
       if (error) throw error;
@@ -412,6 +435,7 @@ Deno.serve(async (req) => {
             automation_id: automationId,
             user_id: solicitanteId,
             content,
+            images,
             created_at: new Date().toISOString(),
           },
         });

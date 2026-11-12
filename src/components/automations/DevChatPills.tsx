@@ -1,19 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Loader2, Minus, Send, X } from "lucide-react";
+import { ExternalLink, Loader2, Minus, X } from "lucide-react";
 import { format } from "date-fns";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
   type AutomationComment,
+  uploadAutomationCommentImages,
   useAutomationComments,
   useCreateAutomationComment,
 } from "@/hooks/useAutomationComments";
+import { attachmentPublicUrl } from "@/hooks/useAutomationAttachments";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { playChatSound, primeChatSound } from "@/lib/chatSound";
 import {
   type ChatPill,
   isChatPillPayload,
@@ -23,6 +26,7 @@ import {
   receivePill,
   toAutomationComment,
 } from "@/lib/devChatPills";
+import { ChatComposer, CHAT_IMAGE_FALLBACK } from "@/components/automations/ChatComposer";
 
 const initials = (name: string) =>
   name.split(" ").filter(Boolean).map((s) => s[0]).join("").slice(0, 2).toUpperCase() || "?";
@@ -64,10 +68,15 @@ export function DevChatPills() {
           (old) => (old ? mergeComment(old, comment) : old),
         );
         setPills((prev) => receivePill(prev, payload, openRef.current));
+        playChatSound();
       })
       .subscribe();
 
+    // O navegador só libera o som após um gesto do usuário: o primeiro clique na página prepara o áudio.
+    document.addEventListener("pointerdown", primeChatSound, { once: true });
+
     return () => {
+      document.removeEventListener("pointerdown", primeChatSound);
       supabase.removeChannel(channel);
     };
   }, [userId, qc]);
@@ -98,19 +107,19 @@ export function DevChatPills() {
               type="button"
               onClick={() => openChat(pill.automationId)}
               title={pill.title}
-              className="flex max-w-[230px] items-center gap-2 rounded-full border border-border bg-card py-1 pl-1 pr-3 text-left shadow-lg transition-colors hover:bg-muted/60 animate-in fade-in slide-in-from-bottom-2"
+              className="flex max-w-[300px] items-center gap-3 rounded-full border border-border bg-card py-1.5 pl-1.5 pr-5 text-left shadow-lg transition-colors hover:bg-muted/60 animate-in fade-in slide-in-from-bottom-2"
             >
-              <Avatar className="h-9 w-9 shrink-0">
-                <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
+              <Avatar className="h-12 w-12 shrink-0">
+                <AvatarFallback className="bg-primary/15 text-sm font-semibold text-primary">
                   {initials(pill.senderName)}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold leading-tight">{pill.senderName}</p>
-                <p className="truncate text-[10px] leading-tight text-muted-foreground">{pill.lastContent}</p>
+                <p className="truncate text-sm font-semibold leading-tight">{pill.senderName}</p>
+                <p className="truncate text-xs leading-tight text-muted-foreground">{pill.title}</p>
               </div>
               {pill.unread > 0 && (
-                <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                <span className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-bold text-destructive-foreground">
                   {pill.unread > 99 ? "99+" : pill.unread}
                 </span>
               )}
@@ -157,7 +166,7 @@ function DevChatWindow({ pill, onMinimize, onDismiss, onOpenAutomation }: Window
   // Sem `live`: nenhuma assinatura de banco aberta por janela; novas mensagens entram pelo broadcast.
   const { data: comments, isLoading } = useAutomationComments(pill.automationId);
   const createComment = useCreateAutomationComment();
-  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const list = comments ?? [];
 
@@ -166,13 +175,31 @@ function DevChatWindow({ pill, onMinimize, onDismiss, onOpenAutomation }: Window
     if (el) el.scrollTop = el.scrollHeight;
   }, [list.length]);
 
-  const submit = () => {
-    const content = text.trim();
-    if (!content || createComment.isPending) return;
-    createComment.mutate(
-      { automationId: pill.automationId, content, mentions: [] },
-      { onSuccess: () => setText("") },
-    );
+  /** Sobe os prints (sessão do dev) e grava o comentário. Devolve true quando enviou. */
+  const send = async (text: string, files: File[]) => {
+    if (!user) return false;
+    setBusy(true);
+    try {
+      let images: string[] = [];
+      try {
+        images = files.length > 0 ? await uploadAutomationCommentImages(pill.automationId, user.id, files) : [];
+      } catch (e) {
+        toast.error(`Não foi possível enviar a imagem: ${(e as Error).message}`);
+        return false;
+      }
+      await createComment.mutateAsync({
+        automationId: pill.automationId,
+        content: text || CHAT_IMAGE_FALLBACK,
+        mentions: [],
+        images,
+      });
+      return true;
+    } catch {
+      // O erro do envio já aparece em toast pelo hook.
+      return false;
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -201,6 +228,8 @@ function DevChatWindow({ pill, onMinimize, onDismiss, onOpenAutomation }: Window
         ) : (
           list.map((comment) => {
             const mine = comment.user_id === user?.id;
+            const images = comment.images ?? [];
+            const onlyImage = images.length > 0 && comment.content === CHAT_IMAGE_FALLBACK;
             return (
               <div key={comment.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
                 <div
@@ -214,7 +243,23 @@ function DevChatWindow({ pill, onMinimize, onDismiss, onOpenAutomation }: Window
                       {comment.profile?.full_name || pill.senderName}
                     </p>
                   )}
-                  <p className="whitespace-pre-wrap break-words leading-relaxed">{comment.content}</p>
+                  {!onlyImage && (
+                    <p className="whitespace-pre-wrap break-words leading-relaxed">{comment.content}</p>
+                  )}
+                  {images.length > 0 && (
+                    <div className={cn("flex flex-wrap gap-1.5", !onlyImage && "mt-2")}>
+                      {images.map((path) => (
+                        <a key={path} href={attachmentPublicUrl(path)} target="_blank" rel="noreferrer">
+                          <img
+                            src={attachmentPublicUrl(path)}
+                            alt="Print enviado"
+                            loading="lazy"
+                            className="max-h-40 max-w-full rounded-md border border-border object-contain"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                   <p className={cn("mt-1 text-[9px] tabular-nums", mine ? "text-primary-foreground/70" : "text-muted-foreground")}>
                     {format(new Date(comment.created_at), "HH:mm")}
                   </p>
@@ -225,24 +270,9 @@ function DevChatWindow({ pill, onMinimize, onDismiss, onOpenAutomation }: Window
         )}
       </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
-        className="flex items-center gap-2 border-t border-border bg-card p-2"
-      >
-        <Input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Responder ao solicitante…"
-          maxLength={2000}
-          className="h-9"
-        />
-        <Button type="submit" size="icon" className="h-9 w-9 shrink-0" disabled={!text.trim() || createComment.isPending}>
-          {createComment.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-        </Button>
-      </form>
+      <div className="border-t border-border bg-card p-2">
+        <ChatComposer placeholder="Responder ao solicitante…" busy={busy} onSend={send} />
+      </div>
     </div>
   );
 }

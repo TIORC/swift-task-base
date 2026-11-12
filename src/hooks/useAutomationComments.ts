@@ -3,6 +3,22 @@ import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { storageSafeName } from "@/lib/attachment-types";
+
+/** Mesmo bucket dos anexos do Kanban; caminho <user_id>/automations/<automation_id>/comments/... */
+const COMMENT_BUCKET = "task-attachments";
+
+/** Envia os prints de um comentário e devolve os caminhos guardados em `images`. */
+export async function uploadAutomationCommentImages(automationId: string, userId: string, files: File[]): Promise<string[]> {
+  const paths: string[] = [];
+  for (const [i, file] of files.entries()) {
+    const path = `${userId}/automations/${automationId}/comments/${Date.now()}_${i}_${storageSafeName(file.name || "print.png")}`;
+    const { error } = await supabase.storage.from(COMMENT_BUCKET).upload(path, file, { upsert: false });
+    if (error) throw error;
+    paths.push(path);
+  }
+  return paths;
+}
 
 export interface AutomationComment {
   id: string;
@@ -10,6 +26,8 @@ export interface AutomationComment {
   user_id: string;
   content: string;
   mentions: string[];
+  /** Caminhos no bucket task-attachments (prints do comentário). */
+  images: string[];
   created_at: string;
   profile?: { full_name: string | null; avatar_url: string | null } | null;
 }
@@ -41,6 +59,7 @@ export function useAutomationComments(automationId: string | null, options?: { l
       return (data as any[]).map((c) => ({
         ...c,
         mentions: (c.mentions as string[]) || [],
+        images: (c.images as string[]) || [],
         profile: map[c.user_id] || null,
       })) as AutomationComment[];
     },
@@ -190,11 +209,12 @@ export function useCreateAutomationComment() {
       automationId,
       content,
       mentions,
-    }: { automationId: string; content: string; mentions: string[] }) => {
+      images = [],
+    }: { automationId: string; content: string; mentions: string[]; images?: string[] }) => {
       if (!user) throw new Error("Não autenticado");
       const { data, error } = await (supabase as any)
         .from("automation_comments")
-        .insert({ automation_id: automationId, user_id: user.id, content, mentions })
+        .insert({ automation_id: automationId, user_id: user.id, content, mentions, images })
         .select()
         .single();
       if (error) throw error;

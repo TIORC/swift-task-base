@@ -19,6 +19,7 @@ export interface ChatPillPayload {
     user_id: string;
     content: string;
     created_at: string;
+    images?: string[];
   };
 }
 
@@ -84,6 +85,7 @@ export function toAutomationComment(payload: ChatPillPayload): AutomationComment
     user_id: payload.comment.user_id,
     content: payload.comment.content,
     mentions: [],
+    images: payload.comment.images ?? [],
     created_at: payload.comment.created_at,
     profile: { full_name: payload.sender_name, avatar_url: null },
   };
