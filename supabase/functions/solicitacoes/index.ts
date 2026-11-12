@@ -371,8 +371,6 @@ Deno.serve(async (req) => {
       const snippet = content.replace(/\s+/g, " ").trim().slice(0, 80);
       const label = autoRow?.title || "uma automação";
       const notifRows: { user_id: string; type: string; message: string; created_by: string }[] = [];
-      // Quem deve ver a pílula flutuante em tempo real (mesmos destinatários da notificação).
-      const pillRecipients: string[] = [];
       const assignedTo = autoRow?.assigned_to ?? null;
       if (assignedTo && assignedTo !== solicitanteId) {
         notifRows.push({
@@ -381,7 +379,6 @@ Deno.serve(async (req) => {
           message: `${senderName} escreveu no chat de "${label}": "${snippet}"`,
           created_by: solicitanteId,
         });
-        pillRecipients.push(assignedTo);
       } else if (!assignedTo) {
         const { data: gestorIds } = await admin.rpc("get_gestor_user_ids");
         for (const gestorId of ((gestorIds as string[] | null) ?? [])) {
@@ -392,13 +389,21 @@ Deno.serve(async (req) => {
             message: `${senderName} escreveu no chat de "${label}" (sem responsável definido): "${snippet}"`,
             created_by: solicitanteId,
           });
-          pillRecipients.push(gestorId);
         }
       }
       if (notifRows.length > 0) await admin.from("notifications").insert(notifRows);
 
       const commentId = ((inserted as unknown) as { id: string }).id;
       try {
+        // A pílula vai SEMPRE para Welder e Gabriel, independente do responsável da
+        // automação. Mesma trava por e-mail usada na aba de desenvolvedores.
+        const { data: devRoster, error: devRosterError } = await admin.rpc("get_developer_user_ids" as "get_developer_user_ids");
+        if (devRosterError) throw new Error(`get_developer_user_ids: ${devRosterError.message}`);
+        const devIds = [...new Set(((devRoster as string[] | null) ?? []).filter(Boolean))];
+        const devUsers = await Promise.all(devIds.map((id) => admin.auth.admin.getUserById(id)));
+        const pillRecipients = devIds.filter(
+          (id, i) => id !== solicitanteId && DEVELOPER_EMAILS.has((devUsers[i].data.user?.email ?? "").toLowerCase()),
+        );
         await broadcastDevChat(pillRecipients, {
           automation_id: automationId,
           automation_title: label,
