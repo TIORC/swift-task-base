@@ -33,6 +33,7 @@ export interface SolicitanteRequest {
 }
 
 export interface SolicitanteComment {
+  id?: string;
   automation_id: string;
   user_id: string;
   content: string;

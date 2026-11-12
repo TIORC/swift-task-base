@@ -310,12 +310,21 @@ Deno.serve(async (req) => {
       const ownedIds = new Set((((owned ?? []) as unknown) as { id: string }[]).map((r) => r.id));
       if (ownedIds.size === 0) return json({ comments: [], summaries: {} });
 
-      const { data: comments, error } = await admin
+      const after = typeof body.after === "string" ? body.after : null;
+      if (after && !Number.isFinite(Date.parse(after))) return bad("Data de mensagem inválida.");
+      let commentsQuery = admin
         .from("automation_comments")
-        .select("automation_id, user_id, content, created_at, images")
+        .select("id, automation_id, user_id, content, created_at, images")
         .in("automation_id", [...ownedIds])
         .order("created_at", { ascending: true });
+      // Inclui a fronteira e o cliente remove duplicadas por ID, inclusive
+      // mensagens gravadas no mesmo instante. Não baixa o histórico de novo.
+      if (after) commentsQuery = commentsQuery.gte("created_at", after);
+      const { data: comments, error } = await commentsQuery;
       if (error) throw error;
+      if (body.conversation_only === true && automationIds.length === 1) {
+        return json({ comments: comments ?? [] });
+      }
 
       const rows = ((comments ?? []) as unknown) as { automation_id: string; user_id: string; content: string; created_at: string }[];
       const summaries: Record<string, { total: number; lastAuthor: string | null; lastContent: string | null }> = {};
@@ -351,6 +360,10 @@ Deno.serve(async (req) => {
       const owned = await belongsToSolicitante(automationId);
       if (!owned) return json({ error: "Solicitação não encontrada." }, 404);
       const fileName = typeof body.file_name === "string" ? body.file_name : "print.png";
+      if (typeof body.file_type !== "string" || !body.file_type.startsWith("image/")) return bad("Envie apenas imagens.");
+      if (typeof body.file_size !== "number" || !Number.isFinite(body.file_size) || body.file_size <= 0 || body.file_size > 10 * 1024 * 1024) {
+        return bad("Cada imagem pode ter no máximo 10MB.");
+      }
       const safeName = fileName.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/_+/g, "_").slice(-80) || "print.png";
       const path = `${solicitanteId}/automations/${automationId}/comments/${Date.now()}_${crypto.randomUUID().slice(0, 8)}_${safeName}`;
       const { data: signed, error: signError } = await admin.storage.from("task-attachments").createSignedUploadUrl(path);
