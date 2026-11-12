@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { solicitanteCall, type SolicitanteComment } from "@/lib/solicitacoesApi";
 import { attachmentPublicUrl } from "@/hooks/useAutomationAttachments";
 import { ChatComposer, CHAT_IMAGE_FALLBACK } from "@/components/automations/ChatComposer";
+import { CHAT_POLL_INTERVAL_MS, mergeSolicitanteComments } from "@/lib/solicitanteChat";
 
 interface Props {
   automationId: string;
@@ -28,8 +29,7 @@ const TONE_CARD: Record<NonNullable<Props["tone"]>, string> = {
 /**
  * Chat do portal do solicitante: MESMA conversa da tabela automation_comments,
  * mas lida/escrita SOMENTE via Edge Function "solicitacoes" (o visitante não
- * tem sessão e a RLS barra anon). Sem realtime (precisaria de sessão); usa
- * sondagem curta igual ao restante da rota.
+ * tem sessão e a RLS barra anon). Busca só mensagens novas na conversa visível.
  */
 export function SolicitanteChat({ automationId, counterpartName, tone, authorNames, solicitante }: Props) {
   const qc = useQueryClient();
@@ -37,13 +37,18 @@ export function SolicitanteChat({ automationId, counterpartName, tone, authorNam
   const endRef = useRef<HTMLDivElement>(null);
 
   const commentsQuery = useQuery({
-    queryKey: ["solicitante-comments", automationId],
-    refetchInterval: 30000,
+    queryKey: ["solicitante-comments", automationId, solicitante?.id],
+    refetchInterval: CHAT_POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
+      const previous = qc.getQueryData<SolicitanteComment[]>(["solicitante-comments", automationId, solicitante?.id]) ?? [];
       const { comments } = await solicitanteCall<{ comments: SolicitanteComment[] }>("comments:list", {
         automation_id: automationId,
+        conversation_only: true,
+        after: previous.at(-1)?.created_at,
       });
-      return comments;
+      return mergeSolicitanteComments(previous, comments);
     },
   });
   const comments = commentsQuery.data ?? [];
@@ -65,6 +70,8 @@ export function SolicitanteChat({ automationId, counterpartName, tone, authorNam
       const { path, token } = await solicitanteCall<{ path: string; token: string }>("comments:upload-url", {
         automation_id: automationId,
         file_name: file.name || "print.png",
+        file_type: file.type,
+        file_size: file.size,
       });
       const { error } = await supabase.storage.from("task-attachments").uploadToSignedUrl(path, token, file);
       if (error) throw error;
@@ -127,7 +134,7 @@ export function SolicitanteChat({ automationId, counterpartName, tone, authorNam
                   ? `${authorNames?.[comment.user_id] ?? "Você"} - ${solicitante?.sector ?? ""}`
                   : `${authorNames?.[comment.user_id] ?? "Equipe de TI"} - TI`;
                 return (
-                  <div key={`${comment.automation_id}-${comment.created_at}-${comment.user_id}`} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                  <div key={comment.id ?? `${comment.automation_id}-${comment.created_at}-${comment.user_id}`} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[85%] ${mine ? "items-end" : "items-start"}`}>
                       <p className={`mb-0.5 flex items-center gap-1 px-1 text-[10px] font-semibold text-white/75 ${mine ? "justify-end" : "justify-start"}`}><User className="h-3 w-3 shrink-0" aria-hidden />{authorLabel}</p>
                       <div className="rounded-xl rounded-br-sm bg-sky-500/90 px-3 py-2 text-sm leading-snug text-white">

@@ -1,5 +1,9 @@
 # Roadmap — Gestor de Demandas M7
 
+## Chat de acompanhamento (12/11)
+- [ ] Publicar e verificar envio de imagens e emojis pelo solicitante.
+- [ ] Atualizar somente mensagens novas na conversa aberta, pausando consultas na aba oculta.
+
 ## Fase 1 (plano aprovado)
 - [x] Natureza da demanda (Comercial / Onboarding / Recorrente / Avulsa) + filtros
 - [x] Funis de status por natureza (board Comercial & Onboarding)
