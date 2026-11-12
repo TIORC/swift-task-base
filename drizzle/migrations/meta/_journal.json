@@ -92,6 +92,13 @@
       "when": 1794309890151,
       "tag": "0012_tighten_shared_read_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794515752668,
+      "tag": "0013_fix_hippocampus_vault_crypto_schema",
+      "breakpoints": true
     }
   ]
 }
