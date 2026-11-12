@@ -396,14 +396,13 @@ Deno.serve(async (req) => {
       const commentId = ((inserted as unknown) as { id: string }).id;
       try {
         // A pílula vai SEMPRE para Welder e Gabriel, independente do responsável da
-        // automação. Mesma trava por e-mail usada na aba de desenvolvedores.
-        const { data: devRoster, error: devRosterError } = await admin.rpc("get_developer_user_ids" as "get_developer_user_ids");
-        if (devRosterError) throw new Error(`get_developer_user_ids: ${devRosterError.message}`);
-        const devIds = [...new Set(((devRoster as string[] | null) ?? []).filter(Boolean))];
-        const devUsers = await Promise.all(devIds.map((id) => admin.auth.admin.getUserById(id)));
-        const pillRecipients = devIds.filter(
-          (id, i) => id !== solicitanteId && DEVELOPER_EMAILS.has((devUsers[i].data.user?.email ?? "").toLowerCase()),
-        );
+        // automação. Identifica por e-mail (não depende do papel em user_roles) e
+        // inclui o remetente, caso ele seja um dos dois.
+        const { data: usersPage, error: usersError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+        if (usersError) throw new Error(`listUsers: ${usersError.message}`);
+        const pillRecipients = (usersPage?.users ?? [])
+          .filter((u) => DEVELOPER_EMAILS.has((u.email ?? "").toLowerCase()))
+          .map((u) => u.id);
         await broadcastDevChat(pillRecipients, {
           automation_id: automationId,
           automation_title: label,
