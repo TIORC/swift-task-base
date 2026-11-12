@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { motion } from "framer-motion";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useHippocampus, useAllHippocampusUsers, type HippocampusType, type HippocampusNote } from "@/hooks/useHippocampus";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useAuth } from "@/hooks/useAuth";
+import { HippocampusVaultDialog, VAULT_MEMBER_EMAILS } from "@/components/HippocampusVaultDialog";
 import { Lightbulb, Sparkles, AlertTriangle, Bell, Link2, Lock, StickyNote, Pin, Archive, Trash2, Eye, EyeOff, Copy, Users, Search } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -31,7 +34,7 @@ function typeMeta(t: HippocampusType) {
   return TYPES.find((x) => x.key === t) ?? TYPES[6];
 }
 
-function NoteCard({ note, onUpdate, onDelete, readOnly }: { note: HippocampusNote; onUpdate?: (patch: Partial<HippocampusNote>) => void; onDelete?: () => void; readOnly?: boolean }) {
+function NoteCard({ note, onUpdate, onDelete, readOnly, large }: { note: HippocampusNote; onUpdate?: (patch: Partial<HippocampusNote>) => void; onDelete?: () => void; readOnly?: boolean; large?: boolean }) {
   const meta = typeMeta(note.type);
   const Icon = meta.icon;
   const [revealed, setRevealed] = useState(false);
@@ -39,8 +42,8 @@ function NoteCard({ note, onUpdate, onDelete, readOnly }: { note: HippocampusNot
   const showMasked = isVault && !revealed;
 
   return (
-    <Card className={note.is_pinned ? "border-primary/60 shadow-md" : ""}>
-      <CardContent className="p-4 space-y-2">
+    <Card className={`${note.is_pinned ? "border-primary/60 shadow-md" : ""} ${large ? "sm:col-span-2 lg:col-span-3" : ""}`}>
+      <CardContent className={large ? "p-6 space-y-3" : "p-4 space-y-2"}>
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <Icon className={`h-4 w-4 shrink-0 ${meta.color}`} />
@@ -61,8 +64,8 @@ function NoteCard({ note, onUpdate, onDelete, readOnly }: { note: HippocampusNot
             </div>
           )}
         </div>
-        {note.title && <h3 className="font-semibold text-sm break-words">{note.title}</h3>}
-        <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+        {note.title && <h3 className={`font-semibold break-words ${large ? "text-lg" : "text-sm"}`}>{note.title}</h3>}
+        <div className={`text-muted-foreground whitespace-pre-wrap break-words ${large ? "text-base leading-relaxed min-h-[4rem]" : "text-sm"}`}>
           {showMasked ? "••••••••••••" : note.content}
         </div>
         {isVault && (
@@ -96,6 +99,70 @@ function NoteCard({ note, onUpdate, onDelete, readOnly }: { note: HippocampusNot
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function VaultHero({ active, onOpen }: { active: boolean; onOpen: () => void }) {
+  const [hover, setHover] = useState(false);
+  const open = hover || active;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      aria-label="Abrir cofre"
+      className="w-full flex items-center justify-center py-2"
+    >
+      <svg viewBox="0 0 160 120" className="h-32 w-44" aria-hidden="true">
+        <defs>
+          <radialGradient id="hipo-vault-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#fca5a5" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#7f1d1d" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        {/* carcaça */}
+        <rect x="8" y="6" width="144" height="108" rx="12" fill="#2a0508" stroke="#fecaca" strokeWidth="3" />
+        {/* luz interna, aparece com a porta aberta */}
+        <motion.rect
+          x="22" y="18" width="116" height="84" rx="6"
+          fill="url(#hipo-vault-glow)"
+          animate={{ opacity: open ? 1 : 0 }}
+          transition={{ duration: 0.4 }}
+        />
+        {/* porta: gira para a esquerda ao abrir */}
+        <motion.g
+          animate={{ scaleX: open ? 0.22 : 1 }}
+          transition={{ type: "spring", stiffness: 180, damping: 18 }}
+          style={{ originX: 0, originY: 0.5 }}
+        >
+          <rect x="22" y="18" width="116" height="84" rx="6" fill="#b91c1c" stroke="#fee2e2" strokeWidth="1.5" />
+          <rect x="30" y="26" width="100" height="68" rx="4" fill="none" stroke="#fecaca" strokeOpacity="0.6" strokeWidth="1" />
+          {[[36, 32], [36, 88], [124, 32], [124, 88]].map(([x, y]) => (
+            <circle key={`${x}-${y}`} cx={x} cy={y} r="2.5" fill="#fca5a5" />
+          ))}
+          {/* mostrador que gira ao abrir */}
+          <motion.g
+            animate={{ rotate: open ? 360 : 0 }}
+            transition={{ duration: 1.2, ease: "easeInOut" }}
+            style={{ originX: 0.5, originY: 0.5 }}
+          >
+            <circle cx="80" cy="60" r="16" fill="#7f1d1d" stroke="#fecaca" strokeWidth="2" />
+            <line x1="80" y1="44" x2="80" y2="76" stroke="#fecaca" strokeWidth="2" strokeLinecap="round" />
+            <line x1="64" y1="60" x2="96" y2="60" stroke="#fecaca" strokeWidth="2" strokeLinecap="round" />
+            <circle cx="80" cy="60" r="4" fill="#fecaca" />
+          </motion.g>
+        </motion.g>
+        {/* luz indicadora */}
+        <motion.circle
+          cx="134" cy="12" r="3" fill="#ef4444"
+          animate={{ opacity: [0.3, 1, 0.3] }}
+          transition={{ duration: 1.6, repeat: Infinity }}
+        />
+      </svg>
+
+    </button>
   );
 }
 
@@ -148,6 +215,9 @@ function QuickCapture({ onCreate }: { onCreate: (content: string, type: Hippocam
 
 function HippocampusView({ targetUserId, readOnly, userLabel }: { targetUserId?: string; readOnly?: boolean; userLabel?: string }) {
   const { notes, loading, create, update, remove } = useHippocampus(targetUserId);
+  const { user } = useAuth();
+  const canSeeVault = VAULT_MEMBER_EMAILS.includes((user?.email ?? "").toLowerCase());
+  const [vaultOpen, setVaultOpen] = useState(false);
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
 
@@ -171,6 +241,13 @@ function HippocampusView({ targetUserId, readOnly, userLabel }: { targetUserId?:
           Visualizando Hipocampo de: <strong>{userLabel}</strong>
         </div>
       )}
+      {!targetUserId && canSeeVault && (
+        <>
+          <VaultHero active={vaultOpen} onOpen={() => setVaultOpen(true)} />
+          <HippocampusVaultDialog open={vaultOpen} onOpenChange={setVaultOpen} />
+        </>
+      )}
+
       {!readOnly && (
         <QuickCapture onCreate={async (content, type) => {
           try { await create({ content, type }); toast.success("Guardado no Hipocampo"); }
@@ -207,6 +284,7 @@ function HippocampusView({ targetUserId, readOnly, userLabel }: { targetUserId?:
               key={n.id}
               note={n}
               readOnly={readOnly}
+              large={n.type === "vault" || n.is_sensitive}
               onUpdate={(patch) => update(n.id, patch).catch((e) => toast.error(e.message))}
               onDelete={() => { if (confirm("Excluir esta anotação?")) remove(n.id).catch((e) => toast.error(e.message)); }}
             />
