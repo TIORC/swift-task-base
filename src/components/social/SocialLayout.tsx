@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useProfile } from "@/hooks/useProfile";
 import { NotificationRealtimeAlert } from "@/hooks/useNotificationRealtimeAlert";
 import { ChatRealtimeAlert } from "@/hooks/useChatRealtimeAlert";
+import { DevChatPills } from "@/components/automations/DevChatPills";
 import {
   Sidebar,
   SidebarContent,
@@ -187,6 +188,7 @@ export function SocialLayout({ children }: { children: ReactNode }) {
           <main className="flex-1 p-6 overflow-auto animate-fade-in">{children}</main>
         </div>
         <ChatWidget context="social" />
+        <DevChatPills />
       </div>
     </SidebarProvider>
   );

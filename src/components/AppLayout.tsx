@@ -7,6 +7,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { NotificationRealtimeAlert } from "@/hooks/useNotificationRealtimeAlert";
 import { ChatRealtimeAlert } from "@/hooks/useChatRealtimeAlert";
 import { ChatWidget } from "@/components/chat/ChatWidget";
+import { DevChatPills } from "@/components/automations/DevChatPills";
 import { CoffeeButton } from "@/components/CoffeeButton";
 import { useGlobalTimer } from "@/hooks/useGlobalTimer";
 import { Frown, Smile } from "lucide-react";
@@ -95,6 +96,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <main className={`flex-1 overflow-auto animate-fade-in ${fullScreen ? "p-3 sm:p-4 md:p-6" : "p-6"}`}>{children}</main>
         </div>
         <ChatWidget context="ti" />
+        <DevChatPills />
         <CoffeeButton />
       </div>
     </SidebarProvider>

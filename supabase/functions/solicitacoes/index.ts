@@ -136,6 +136,27 @@ function json(body: unknown, status = 200) {
 const bad = (message: string, status = 400) => json({ error: message }, status);
 const needValidToken = () => json({ error: "Identificação inválida ou expirada. Identifique-se novamente." }, 401);
 
+/**
+ * Entrega em tempo real ao app do dev por Realtime Broadcast (websocket).
+ * Não lê nem grava no Postgres: o payload vai direto para o canal privado
+ * `dev-chat:<user_id>`, que só o próprio usuário consegue assinar (policy em
+ * realtime.messages — ver migration 20261112130000_dev_chat_pill_realtime.sql).
+ */
+async function broadcastDevChat(userIds: string[], payload: Record<string, unknown>) {
+  const unique = [...new Set(userIds)];
+  if (unique.length === 0) return;
+  const url = Deno.env.get("SUPABASE_URL")!;
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const res = await fetch(`${url}/realtime/v1/api/broadcast`, {
+    method: "POST",
+    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messages: unique.map((uid) => ({ topic: `dev-chat:${uid}`, event: "chat_pill", payload, private: true })),
+    }),
+  });
+  if (!res.ok) console.error("[solicitacoes] broadcast dev-chat falhou", res.status, await res.text());
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -350,6 +371,8 @@ Deno.serve(async (req) => {
       const snippet = content.replace(/\s+/g, " ").trim().slice(0, 80);
       const label = autoRow?.title || "uma automação";
       const notifRows: { user_id: string; type: string; message: string; created_by: string }[] = [];
+      // Quem deve ver a pílula flutuante em tempo real (mesmos destinatários da notificação).
+      const pillRecipients: string[] = [];
       const assignedTo = autoRow?.assigned_to ?? null;
       if (assignedTo && assignedTo !== solicitanteId) {
         notifRows.push({
@@ -358,6 +381,7 @@ Deno.serve(async (req) => {
           message: `${senderName} escreveu no chat de "${label}": "${snippet}"`,
           created_by: solicitanteId,
         });
+        pillRecipients.push(assignedTo);
       } else if (!assignedTo) {
         const { data: gestorIds } = await admin.rpc("get_gestor_user_ids");
         for (const gestorId of ((gestorIds as string[] | null) ?? [])) {
@@ -368,10 +392,30 @@ Deno.serve(async (req) => {
             message: `${senderName} escreveu no chat de "${label}" (sem responsável definido): "${snippet}"`,
             created_by: solicitanteId,
           });
+          pillRecipients.push(gestorId);
         }
       }
       if (notifRows.length > 0) await admin.from("notifications").insert(notifRows);
-      return json({ id: ((inserted as unknown) as { id: string }).id });
+
+      const commentId = ((inserted as unknown) as { id: string }).id;
+      try {
+        await broadcastDevChat(pillRecipients, {
+          automation_id: automationId,
+          automation_title: label,
+          sender_name: senderName,
+          comment: {
+            id: commentId,
+            automation_id: automationId,
+            user_id: solicitanteId,
+            content,
+            created_at: new Date().toISOString(),
+          },
+        });
+      } catch (broadcastErr) {
+        // A notificação persistida já avisa o dev; a pílula é um bônus em tempo real.
+        console.error("[solicitacoes] falha ao enviar pílula do chat", broadcastErr);
+      }
+      return json({ id: commentId });
     }
 
     if (action === "create") {
