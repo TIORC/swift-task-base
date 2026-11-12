@@ -862,6 +862,51 @@ export type Database = {
         }
         Relationships: []
       }
+      hippocampus_vault_config: {
+        Row: {
+          id: boolean
+          key_hash: string
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          key_hash: string
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          key_hash?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      hippocampus_vault_items: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory_assets: {
         Row: {
           acquired_at: string | null
@@ -3697,6 +3742,54 @@ export type Database = {
         Returns: boolean
       }
       has_ti_write: { Args: { _user_id: string }; Returns: boolean }
+      hippocampus_vault_add: {
+        Args: { p_content: string; p_keyword: string; p_title: string }
+        Returns: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          title: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "hippocampus_vault_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      hippocampus_vault_check_member: { Args: never; Returns: undefined }
+      hippocampus_vault_delete: {
+        Args: { p_id: string; p_keyword: string }
+        Returns: undefined
+      }
+      hippocampus_vault_list: {
+        Args: { p_keyword: string }
+        Returns: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          title: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "hippocampus_vault_items"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      hippocampus_vault_set_keyword: {
+        Args: { p_keyword: string }
+        Returns: undefined
+      }
+      hippocampus_vault_status: { Args: never; Returns: boolean }
+      hippocampus_vault_verify: {
+        Args: { p_keyword: string }
+        Returns: undefined
+      }
       is_automation_requester: { Args: { _user_id: string }; Returns: boolean }
       is_chat_participant: {
         Args: { _conv: string; _user: string }
