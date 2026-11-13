@@ -4,6 +4,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Almoxarifado no modo Mobile: some a barra superior do app (a classe é colocada no body pela página). */
+body.almox-mobile-view header.app-header,
+body.almox-mobile-view .app-float-btn {
+  display: none;
+}
+
+/* Em tela de celular a página do Almoxarifado sempre some com a barra superior e os botões flutuantes. */
+@media (max-width: 767px) {
+  body.almox-page header.app-header,
+  body.almox-page .app-float-btn {
+    display: none;
+  }
+}
+
 /* A coluna fixa de ações acompanha o gradiente azul do restante do card. */
 body[data-theme="almoxarifado"] main [class*="sticky"][class*="right-0"] {
   background-color: #0c1d3d;

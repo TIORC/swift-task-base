@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { PageHeader } from "@/components/PageHeader";
 import { Package, Plus, AlertTriangle, Boxes, DollarSign, Wrench, Trash2, Search, ShoppingCart, Send, Settings, Download, History, ChevronDown, Grid3x3 } from "lucide-react";
@@ -228,6 +228,17 @@ export default function Almoxarifado() {
 
   const [tab, setTab] = useState("dashboard");
   const [viewMode, setViewMode] = useState<ViewMode>("desktop");
+  // Barra superior do app: some no modo Mobile e, em telas de celular, sempre nesta página (ver index.css).
+  useEffect(() => {
+    document.body.classList.add("almox-page");
+    return () => {
+      document.body.classList.remove("almox-page");
+      document.body.classList.remove("almox-mobile-view");
+    };
+  }, []);
+  useEffect(() => {
+    document.body.classList.toggle("almox-mobile-view", viewMode === "mobile");
+  }, [viewMode]);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [collabFilter, setCollabFilter] = useState("all");
@@ -572,7 +583,7 @@ export default function Almoxarifado() {
       transition={{ type: "spring", stiffness: 260, damping: 30 }}
       className="mx-auto w-full space-y-6 [&_thead_th]:bg-[#002366] [&_thead_th]:!text-white [&_thead_th_*]:!text-white"
     >
-      <div className={viewMode === "mobile" ? "hidden" : undefined}>
+      <div className={viewMode === "mobile" ? "hidden" : "max-md:hidden"}>
       <PageHeader
         title="Almoxarifado TI"
         description="Entrada, saída e controle de equipamentos, peças e materiais"
@@ -580,18 +591,17 @@ export default function Almoxarifado() {
       />
       </div>
 
-      <div className="flex justify-center">
+      <div className="flex justify-center max-md:hidden">
         <ViewModeToggle value={viewMode} onChange={setViewMode} />
       </div>
 
       {/* Botão Mobile do topo: formulário no tamanho de celular. */}
-      {viewMode === "mobile" && (
-        <div className="mb-4">
-          <MobileEntryForm categories={categories} tiName={mobileTiName} />
-        </div>
-      )}
+      {/* Em tela de celular o formulário ocupa a tela inteira; no desktop aparece só com o toggle Mobile. */}
+      <div className={viewMode === "mobile" ? "mb-4" : "hidden max-md:block"}>
+        <MobileEntryForm categories={categories} tiName={mobileTiName} />
+      </div>
 
-      <Tabs value={tab} onValueChange={setTab} className={viewMode === "mobile" ? "hidden" : undefined}>
+      <Tabs value={tab} onValueChange={setTab} className={viewMode === "mobile" ? "hidden" : "max-md:hidden"}>
         {/* No celular as abas rolam na horizontal: alinhadas à esquerda para a primeira não ficar cortada. */}
         <TabsList className="flex h-auto w-full max-w-full justify-start overflow-x-auto scrollbar-thin md:flex-wrap md:justify-center">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>

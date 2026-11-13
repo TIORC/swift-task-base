@@ -67,8 +67,8 @@ export function MobileEntryForm({ categories, tiName }: Pick<Props, "categories"
   };
 
   return (
-    <div className="mx-auto w-[366px] max-w-full overflow-hidden rounded-[32px] border-[10px] border-slate-900 bg-white shadow-xl">
-        <div className="flex h-[600px] flex-col">
+    <div className="mx-auto w-[366px] max-w-full overflow-hidden rounded-[32px] border-[10px] border-slate-900 bg-white shadow-xl max-md:w-full max-md:rounded-none max-md:border-0 max-md:shadow-none">
+        <div className="flex h-[100dvh] flex-col md:h-[600px]">
           <div className="flex shrink-0 items-center gap-2 border-b bg-[#002366] px-4 py-3 text-white">
             <Smartphone className="h-4 w-4" />
             <span className="text-sm font-semibold">Lançamento TI</span>

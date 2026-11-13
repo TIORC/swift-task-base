@@ -79,7 +79,7 @@ export function CoffeeButton() {
       disabled={busy}
       title={hasActiveCoffee ? "Concluir pausa de café" : "Iniciar pausa para café"}
       className={cn(
-        "fixed bottom-24 right-6 z-40 flex items-center gap-2 rounded-full shadow-lg border transition-all",
+        "app-float-btn fixed bottom-24 right-6 z-40 flex items-center gap-2 rounded-full shadow-lg border transition-all",
         "px-4 py-3 font-medium text-sm",
         hasActiveCoffee
           ? "bg-amber-500 text-white border-amber-600 hover:bg-amber-600"
