@@ -35,6 +35,9 @@ import { type OldAsset } from "@/data/ativos-antigos";
 import { ContainerPanel } from "@/components/almoxarifado/ContainerPanel";
 import { PURCHASED_NOTE } from "@/components/almoxarifado/EntryDialog";
 import { EditableCell } from "@/components/almoxarifado/EditableCell";
+import { MobileEntryForm, PendingList } from "@/components/almoxarifado/MobileEntryPanel";
+import { useProfile } from "@/hooks/useProfile";
+import { useAuth } from "@/hooks/useAuth";
 import { SendToExitDialog } from "@/components/almoxarifado/SendToExitDialog";
 import { toast } from "sonner";
 import { EntryFilters, EMPTY_ENTRY_FILTERS, filterEntries, hasActiveEntryFilters, type EntryFilterState } from "@/components/almoxarifado/EntryFilters";
@@ -178,7 +181,7 @@ function ViewModeToggle({ value, onChange }: { value: ViewMode; onChange: (v: Vi
     { key: "mobile", label: "Mobile" },
   ];
   return (
-    <div className="relative inline-flex rounded-full border bg-muted p-1">
+    <div className="relative inline-flex rounded-full border bg-white p-1 shadow-sm">
       {modes.map((m) => {
         const active = value === m.key;
         return (
@@ -186,7 +189,7 @@ function ViewModeToggle({ value, onChange }: { value: ViewMode; onChange: (v: Vi
             key={m.key}
             type="button"
             onClick={() => onChange(m.key)}
-            className={`relative rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${active ? "text-white" : "text-muted-foreground hover:text-foreground"}`}
+            className={`relative isolate rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${active ? "text-white" : "text-slate-700 hover:text-slate-900"}`}
           >
             {active && (
               <motion.span
@@ -207,6 +210,10 @@ export default function Almoxarifado() {
   usePageTheme("almoxarifado");
   const canWrite = useCanWriteInventory();
   const canManage = useCanManageInventory();
+  // Nome do TI para o lançamento pelo celular: vem da conta logada.
+  const { profile } = useProfile();
+  const { user } = useAuth();
+  const mobileTiName = profile?.full_name || user?.email || "";
   const { data: items = [] } = useInventoryItems();
   const { data: assets = [] } = useInventoryAssets();
   const { data: movements = [] } = useInventoryMovements();
@@ -565,17 +572,26 @@ export default function Almoxarifado() {
       transition={{ type: "spring", stiffness: 260, damping: 30 }}
       className="mx-auto w-full space-y-6 [&_thead_th]:bg-[#002366] [&_thead_th]:!text-white [&_thead_th_*]:!text-white"
     >
+      <div className={viewMode === "mobile" ? "hidden" : undefined}>
       <PageHeader
         title="Almoxarifado TI"
         description="Entrada, saída e controle de equipamentos, peças e materiais"
         icon={<Package className="h-6 w-6" />}
       />
+      </div>
 
       <div className="flex justify-center">
         <ViewModeToggle value={viewMode} onChange={setViewMode} />
       </div>
 
-      <Tabs value={tab} onValueChange={setTab}>
+      {/* Botão Mobile do topo: formulário no tamanho de celular. */}
+      {viewMode === "mobile" && (
+        <div className="mb-4">
+          <MobileEntryForm categories={categories} tiName={mobileTiName} />
+        </div>
+      )}
+
+      <Tabs value={tab} onValueChange={setTab} className={viewMode === "mobile" ? "hidden" : undefined}>
         {/* No celular as abas rolam na horizontal: alinhadas à esquerda para a primeira não ficar cortada. */}
         <TabsList className="flex h-auto w-full max-w-full justify-start overflow-x-auto scrollbar-thin md:flex-wrap md:justify-center">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
@@ -1535,7 +1551,7 @@ export default function Almoxarifado() {
           <ContainerPanel canArchive={canZerar} />
         </TabsContent>
         <TabsContent value="mobile" className="space-y-3">
-          <div className="text-center text-muted-foreground py-12 border border-dashed rounded-lg">Aba Mobile — conteúdo em construção.</div>
+          <PendingList items={items} collaborators={collaborators} canWrite={canWrite} />
         </TabsContent>
       </Tabs>
 
