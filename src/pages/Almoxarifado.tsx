@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { PageHeader } from "@/components/PageHeader";
 import { Package, Plus, AlertTriangle, Boxes, DollarSign, Wrench, Trash2, Search, ShoppingCart, Send, Settings, Download, History, ChevronDown, Grid3x3 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -168,6 +169,40 @@ const OUT_COLUMN_LABELS: Record<OutColumn, string> = {
   item: "Item", qtd: "Qtd", responsavel: "Responsável", departamento: "Departamento", patrimonio: "Patrimônio", motivo: "Motivo",
 };
 
+type ViewMode = "desktop" | "mobile";
+
+// Alterna a prévia do layout: Desktop (largura total) ou Mobile (largura de celular).
+function ViewModeToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMode) => void }) {
+  const modes: { key: ViewMode; label: string }[] = [
+    { key: "desktop", label: "Desktop" },
+    { key: "mobile", label: "Mobile" },
+  ];
+  return (
+    <div className="relative inline-flex rounded-full border bg-muted p-1">
+      {modes.map((m) => {
+        const active = value === m.key;
+        return (
+          <button
+            key={m.key}
+            type="button"
+            onClick={() => onChange(m.key)}
+            className={`relative rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${active ? "text-white" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            {active && (
+              <motion.span
+                layoutId="almox-view-mode"
+                className="absolute inset-0 -z-10 rounded-full bg-blue-600"
+                transition={{ type: "spring", stiffness: 500, damping: 35 }}
+              />
+            )}
+            {m.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Almoxarifado() {
   usePageTheme("almoxarifado");
   const canWrite = useCanWriteInventory();
@@ -185,6 +220,7 @@ export default function Almoxarifado() {
   const delAsset = useDeleteAsset();
 
   const [tab, setTab] = useState("dashboard");
+  const [viewMode, setViewMode] = useState<ViewMode>("desktop");
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [collabFilter, setCollabFilter] = useState("all");
@@ -524,12 +560,20 @@ export default function Almoxarifado() {
   const discardedItems = items.filter((i) => i.discarded_quantity > 0);
 
   return (
-    <div className="space-y-6 [&_thead_th]:bg-[#002366] [&_thead_th]:!text-white [&_thead_th_*]:!text-white">
+    <motion.div
+      animate={{ maxWidth: viewMode === "mobile" ? 390 : 2400 }}
+      transition={{ type: "spring", stiffness: 260, damping: 30 }}
+      className="mx-auto w-full space-y-6 [&_thead_th]:bg-[#002366] [&_thead_th]:!text-white [&_thead_th_*]:!text-white"
+    >
       <PageHeader
         title="Almoxarifado TI"
         description="Entrada, saída e controle de equipamentos, peças e materiais"
         icon={<Package className="h-6 w-6" />}
       />
+
+      <div className="flex justify-center">
+        <ViewModeToggle value={viewMode} onChange={setViewMode} />
+      </div>
 
       <Tabs value={tab} onValueChange={setTab}>
         {/* No celular as abas rolam na horizontal: alinhadas à esquerda para a primeira não ficar cortada. */}
@@ -548,6 +592,7 @@ export default function Almoxarifado() {
           <TabsTrigger value="settings">Configurações</TabsTrigger>
           <TabsTrigger value="estoque">Estoque</TabsTrigger>
           <TabsTrigger value="container">Container</TabsTrigger>
+          <TabsTrigger value="mobile">Mobile</TabsTrigger>
         </TabsList>
 
         {/* ---------------- DASHBOARD ---------------- */}
@@ -1489,6 +1534,9 @@ export default function Almoxarifado() {
         <TabsContent value="container" className="space-y-3">
           <ContainerPanel canArchive={canZerar} />
         </TabsContent>
+        <TabsContent value="mobile" className="space-y-3">
+          <div className="text-center text-muted-foreground py-12 border border-dashed rounded-lg">Aba Mobile — conteúdo em construção.</div>
+        </TabsContent>
       </Tabs>
 
       <ExitDialog open={exitDlg.open} onOpenChange={(v) => setExitDlg({ open: v, item: v ? exitDlg.item : null })} item={exitDlg.item} />
@@ -1537,7 +1585,7 @@ export default function Almoxarifado() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   );
 }
 

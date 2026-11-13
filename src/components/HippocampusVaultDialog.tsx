@@ -206,9 +206,9 @@ export function HippocampusVaultDialog({ open, onOpenChange }: { open: boolean; 
                 {items.map((it) => {
                   const show = !!revealed[it.id];
                   return (
-                    <div key={it.id} className="rounded-lg border p-3 space-y-2">
+                    <div key={it.id} className="rounded-lg border border-red-800 bg-red-900 text-white p-3 space-y-2">
                       {it.title && <h3 className="font-semibold text-sm break-words">{it.title}</h3>}
-                      <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+                      <div className="text-sm text-red-100 whitespace-pre-wrap break-words">
                         {show ? it.content : "••••••••••••"}
                       </div>
                       <div className="flex gap-2">
