@@ -1,8 +1,8 @@
 # Roadmap — Gestor de Demandas M7
 
 ## Paginação de /tasks
-- [ ] Buscar dez tarefas por página com filtros e totais no servidor.
-- [ ] Verificar navegação, filtros e abertura de tarefas com sessão autenticada.
+- [x] Buscar dez tarefas por página com filtros e totais no servidor; testes dos intervalos passaram.
+- [ ] Verificar navegação, filtros e abertura de tarefas com sessão autenticada — bloqueado: sem permissão para preparar a sessão; usuário precisa entrar no preview.
 
 ## Chat de acompanhamento (12/11)
 - [x] Publicar e verificar envio de imagens e emojis pelo solicitante.
