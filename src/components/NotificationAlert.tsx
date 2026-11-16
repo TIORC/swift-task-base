@@ -51,7 +51,8 @@ function AlertCard({ alert, onDismiss }: { alert: AlertItem; onDismiss: (id: str
   return (
     <div
       className={cn(
-        "flex items-start gap-3 w-[340px] max-w-[90vw] rounded-xl border border-border bg-card shadow-2xl",
+        // Cores fixas: o alerta fica no body, fora do tema da página (ex.: Almoxarifado deixa o texto escuro).
+        "flex items-start gap-3 w-[340px] max-w-[90vw] rounded-xl border border-slate-700 bg-slate-900 shadow-2xl",
         "animate-[slideIn_0.3s_ease-out] ring-1 ring-white/5"
       )}
       role="alert"
@@ -64,20 +65,20 @@ function AlertCard({ alert, onDismiss }: { alert: AlertItem; onDismiss: (id: str
         onClick={open}
         title={alert.href ? "Abrir" : undefined}
       >
-        <p className="text-sm font-semibold text-foreground leading-snug">{alert.title}</p>
-        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{alert.description}</p>
+        <p className="text-sm font-semibold text-slate-50 leading-snug">{alert.title}</p>
+        <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">{alert.description}</p>
         <div className="mt-2.5 flex items-center gap-2">
           <Button size="sm" className="h-7 text-xs px-3" onClick={() => onDismiss(alert.id)}>
             OK
           </Button>
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-[10px] text-slate-400">
             {new Date(alert.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
           </span>
         </div>
       </div>
       <button
         onClick={() => onDismiss(alert.id)}
-        className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+        className="flex h-8 w-8 shrink-0 items-center justify-center text-slate-400 hover:text-white transition-colors"
         aria-label="Fechar"
       >
         <X className="h-4 w-4" />

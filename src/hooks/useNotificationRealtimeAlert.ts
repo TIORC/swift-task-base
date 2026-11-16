@@ -83,6 +83,14 @@ function buildAlertMessage(notif: JsonRow): { title: string; description: string
         title: "Você foi mencionado",
         description: message,
       };
+    case "assigned": {
+      // Chamados do cliente Windows chegam como "assigned" com a mensagem "Novo chamado sem responsável: ...".
+      const prefix = "Novo chamado sem responsável: ";
+      if (message.startsWith(prefix)) {
+        return { title: "Novo chamado sem responsável", description: message.slice(prefix.length) };
+      }
+      return { title: "Nova atribuição", description: message };
+    }
     default:
       return {
         title: "Nova notificação",

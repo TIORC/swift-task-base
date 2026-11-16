@@ -25,11 +25,13 @@ interface Props {
   items: InventoryItem[];
   collaborators: InventoryCollaborator[];
   categories: InventoryCategory[];
+  // Coluna de seleção da tabela (exclusão em massa): a linha de digitação deixa ela vazia.
+  leading?: boolean;
 }
 
 // Linha de digitação no topo da tabela Entradas e Saídas: preencha e confirme (Enter ou Adicionar).
 // Entrada cria o item/patrimônio pelo lote de entradas; saída usa o lote de saídas.
-export function NewLedgerRow({ items, collaborators, categories }: Props) {
+export function NewLedgerRow({ items, collaborators, categories, leading = false }: Props) {
   const saveEntry = useSaveEntryBatch();
   const saveExit = useSaveExitBatch();
   const updateItem = useUpdateItem();
@@ -117,6 +119,7 @@ export function NewLedgerRow({ items, collaborators, categories }: Props) {
 
   return (
     <TableRow className="bg-blue-50/60 hover:bg-blue-50/60">
+      {leading && <TableCell className="px-2" />}
       <TableCell>
         <div className="flex items-center gap-1">
           {kind === "out" ? (

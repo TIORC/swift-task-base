@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Archive, Download, RotateCcw } from "lucide-react";
+import { Archive, ChevronDown, ChevronRight, Download, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useArquivarAlmoxarifado, useInventoryContainer, useRecuperarAlmoxarifado, type InventoryContainerBatch } from "@/hooks/useInventory";
+import { useArquivarAlmoxarifado, useInventoryContainer, useRecuperarAlmoxarifado, useRecuperarColaboradores, useRecuperarDepartamentos, type InventoryContainerBatch } from "@/hooks/useInventory";
 import { OLD_ASSETS } from "@/data/ativos-antigos";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -77,9 +77,15 @@ function downloadCsv(rows: Record<string, unknown>[], filename: string) {
 
 function BatchCard({ batch, index, canRestore }: { batch: InventoryContainerBatch; index: number; canRestore: boolean }) {
   const [open, setOpen] = useState(index === 0);
+  // Cada tabela (Itens, Colaboradores…) começa recolhida; abre pelo título.
+  const [openTables, setOpenTables] = useState<Record<string, boolean>>({});
   const recuperar = useRecuperarAlmoxarifado();
+  const recuperarColab = useRecuperarColaboradores();
+  const recuperarDepto = useRecuperarDepartamentos();
   const tables = Object.keys(TABLE_LABELS).filter((t) => (batch.snapshot?.[t] ?? []).length > 0 || batch.counts?.[t] !== undefined);
   const stamp = batch.created_at.slice(0, 10);
+  const colabCount = batch.counts?.inventory_collaborators ?? (batch.snapshot?.inventory_collaborators ?? []).length;
+  const deptoCount = batch.counts?.inventory_departments ?? (batch.snapshot?.inventory_departments ?? []).length;
 
   return (
     <Card>
@@ -98,6 +104,26 @@ function BatchCard({ batch, index, canRestore }: { batch: InventoryContainerBatc
           >
             <Download className="mr-2 h-4 w-4" /> Resumo
           </Button>
+          {canRestore && colabCount > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={recuperarColab.isPending}
+              onClick={() => recuperarColab.mutate(batch.id)}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" /> Recuperar colaboradores ({colabCount})
+            </Button>
+          )}
+          {canRestore && deptoCount > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={recuperarDepto.isPending}
+              onClick={() => recuperarDepto.mutate(batch.id)}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" /> Recuperar departamentos ({deptoCount})
+            </Button>
+          )}
           {canRestore && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -136,15 +162,23 @@ function BatchCard({ batch, index, canRestore }: { batch: InventoryContainerBatc
           </div>
           {tables.map((t) => {
             const rows = (batch.snapshot?.[t] ?? []) as Record<string, unknown>[];
+            const isOpen = !!openTables[t];
             return (
               <div key={t} className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium">{TABLE_LABELS[t]} ({rows.length})</p>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-left text-sm font-medium"
+                    onClick={() => setOpenTables((prev) => ({ ...prev, [t]: !prev[t] }))}
+                  >
+                    {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    {TABLE_LABELS[t]} ({rows.length})
+                  </button>
                   <Button size="sm" variant="ghost" disabled={rows.length === 0} onClick={() => downloadCsv(rows, `container-${stamp}-${TABLE_LABELS[t].toLowerCase()}.csv`)}>
                     <Download className="mr-2 h-4 w-4" /> CSV
                   </Button>
                 </div>
-                {rows.length > 0 && (
+                {isOpen && rows.length > 0 && (
                   <div className="overflow-x-auto rounded-md border">
                     <Table>
                       <TableHeader>
@@ -166,7 +200,7 @@ function BatchCard({ batch, index, canRestore }: { batch: InventoryContainerBatc
                     </Table>
                   </div>
                 )}
-                {rows.length > LEGACY_PREVIEW_LIMIT && (
+                {isOpen && rows.length > LEGACY_PREVIEW_LIMIT && (
                   <p className="text-xs text-muted-foreground">Mostrando {LEGACY_PREVIEW_LIMIT} de {rows.length}. Baixe o CSV para ver tudo.</p>
                 )}
               </div>

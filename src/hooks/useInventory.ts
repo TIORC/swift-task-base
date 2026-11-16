@@ -542,6 +542,26 @@ export function useDeleteMovement() {
   });
 }
 
+/** Exclui várias movimentações de uma vez (em lotes de 100 ids por requisição). */
+export function useDeleteMovements() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      for (let i = 0; i < ids.length; i += 100) {
+        const chunk = ids.slice(i, i + 100);
+        const { error } = await supabase.from("inventory_movements").delete().in("id", chunk);
+        if (error) throw error;
+      }
+      return ids.length;
+    },
+    onSuccess: (n) => {
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+      toast.success(`${n} movimentação(ões) excluída(s) e estoque estornado`);
+    },
+    onError: (e: Error) => toast.error(e.message || "Não foi possível excluir as movimentações"),
+  });
+}
+
 export function useCreateCategory() {
   const qc = useQueryClient();
   return useMutation({
@@ -1434,6 +1454,36 @@ export function useArquivarAlmoxarifado() {
       toast.success("Almoxarifado limpo. Os dados foram guardados no Container.");
     },
     onError: (e: any) => toast.error(e.message ?? "Não foi possível limpar o almoxarifado"),
+  });
+}
+
+/** Restaura só os colaboradores de um lote do Container (pula os que já existem). */
+export function useRecuperarColaboradores() {
+  return useRecuperarParcialContainer("recuperar_colaboradores", "colaborador(es)", "colaboradores");
+}
+
+/** Restaura só os departamentos de um lote do Container (pula os que já existem). */
+export function useRecuperarDepartamentos() {
+  return useRecuperarParcialContainer("recuperar_departamentos", "departamento(s)", "departamentos");
+}
+
+function useRecuperarParcialContainer(rpc: string, unidade: string, plural: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (batchId: string) => {
+      const { data, error } = await supabase.rpc(rpc as never, { _batch: batchId } as never);
+      if (error) throw error;
+      return data as unknown as { id: string; restaurados: number };
+    },
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+      toast.success(
+        res.restaurados > 0
+          ? `${res.restaurados} ${unidade} recuperado(s).`
+          : `Nenhum ${plural.replace(/s$/, "")} novo: todos já existem no banco.`,
+      );
+    },
+    onError: (e: Error) => toast.error(e.message || `Não foi possível recuperar os ${plural}`),
   });
 }
 

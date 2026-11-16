@@ -24,7 +24,7 @@ import {
   useCreateCategory, useCreateLocation, useCreateRequest, useUpdateRequest,
   useInventoryDepartments, useSaveDepartment,
   useInventoryCollaborators, useInventorySettings, useUpdateInventorySettings, useRecoverDamaged,
-  useDeactivateItem, useDeleteMovement, useDeleteAsset, useDeleteRequest,
+  useDeactivateItem, useDeleteMovement, useDeleteMovements, useDeleteAsset, useDeleteRequest,
   useCanZerarEstoque, useZerarEstoque,
   useUpdateCategory, useDeleteCategory, useUpdateLocation, useDeleteLocation, useDeleteDepartment,
   useSaveEntryBatch, useSaveExitBatch, useUpdateItem,
@@ -33,6 +33,8 @@ import { ItemFormDialog } from "@/components/almoxarifado/ItemFormDialog";
 import { ColumnFilter } from "@/components/almoxarifado/ColumnFilter";
 import { type OldAsset } from "@/data/ativos-antigos";
 import { ContainerPanel } from "@/components/almoxarifado/ContainerPanel";
+import { AdmTiSheet } from "@/components/almoxarifado/AdmTiSheet";
+import { LedgerPasteImport } from "@/components/almoxarifado/LedgerPasteImport";
 import { PURCHASED_NOTE } from "@/components/almoxarifado/EntryDialog";
 import { EditableCell } from "@/components/almoxarifado/EditableCell";
 import { MobileEntryForm, PendingList } from "@/components/almoxarifado/MobileEntryPanel";
@@ -56,7 +58,7 @@ import { StockBadge, StatusTag, ItemStatusTags } from "@/components/almoxarifado
 import { MovementTextCell } from "@/components/almoxarifado/MovementTextCell";
 import { NewLedgerRow } from "@/components/almoxarifado/NewLedgerRow";
 import { CategoryCell } from "@/components/almoxarifado/CategoryCell";
-import type { InventoryItem, InventoryAsset, InventoryMovement, InventoryRequest, InventoryLocation, InventoryCollaborator, MovementType } from "@/hooks/useInventory";
+import type { InventoryItem, InventoryAsset, InventoryMovement, InventoryRequest, InventoryLocation, InventoryCollaborator, InventoryCategory, MovementType } from "@/hooks/useInventory";
 import { SECTORS } from "@/types/sectors";
 import { agruparPorTipo, resumoEstoque } from "@/lib/inventory-stock";
 import { usePageTheme } from "@/hooks/usePageTheme";
@@ -224,6 +226,9 @@ export default function Almoxarifado() {
   const recover = useRecoverDamaged();
   const deactivate = useDeactivateItem();
   const delMovement = useDeleteMovement();
+  const delMovements = useDeleteMovements();
+  // Movimentações marcadas na tabela Entradas e Saídas para exclusão em massa.
+  const [ledgerSelected, setLedgerSelected] = useState<Set<string>>(new Set());
   const delAsset = useDeleteAsset();
 
   const [tab, setTab] = useState("dashboard");
@@ -598,13 +603,15 @@ export default function Almoxarifado() {
       {/* Botão Mobile do topo: formulário no tamanho de celular. */}
       {/* Em tela de celular o formulário ocupa a tela inteira; no desktop aparece só com o toggle Mobile. */}
       <div className={viewMode === "mobile" ? "mb-4" : "hidden max-md:block"}>
-        <MobileEntryForm categories={categories} tiName={mobileTiName} />
+        <MobileEntryForm categories={categories} collaborators={collaborators} tiName={mobileTiName} />
       </div>
 
       <Tabs value={tab} onValueChange={setTab} className={viewMode === "mobile" ? "hidden" : "max-md:hidden"}>
         {/* No celular as abas rolam na horizontal: alinhadas à esquerda para a primeira não ficar cortada. */}
         <TabsList className="flex h-auto w-full max-w-full justify-start overflow-x-auto scrollbar-thin md:flex-wrap md:justify-center">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="ativos">Ativos</TabsTrigger>
+          <TabsTrigger value="adm-ti">ADM TI</TabsTrigger>
           <TabsTrigger value="items" className="hidden">Itens</TabsTrigger>
           <TabsTrigger value="in">Entradas e Saídas</TabsTrigger>
           <TabsTrigger value="out" className="hidden">Saídas</TabsTrigger>
@@ -648,6 +655,14 @@ export default function Almoxarifado() {
         </TabsContent>
 
         {/* ---------------- ITENS ---------------- */}
+        <TabsContent value="ativos" className="space-y-3">
+          <AtivosPanel assets={assets} items={items} categories={categories} collaborators={collaborators} movements={movements} />
+        </TabsContent>
+
+        <TabsContent value="adm-ti" className="space-y-3">
+          <AdmTiSheet canWrite={canWrite} />
+        </TabsContent>
+
         <TabsContent value="items" className="space-y-3">
           <div className="flex flex-wrap gap-2 items-center">
             <div className="relative flex-1 min-w-[220px]">
@@ -847,13 +862,47 @@ export default function Almoxarifado() {
 
         {/* ---------------- ENTRADAS ---------------- */}
         <TabsContent value="in" className="space-y-3">
+          <LedgerPasteImport items={items} categories={categories} collaborators={collaborators} />
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-sm text-muted-foreground">Histórico de entradas</h2>
               <p className="text-xs text-muted-foreground">Entradas são somente para itens comprados. A data da chegada fica registrada e o item entra em estoque.</p>
             </div>
             {canWrite && (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                {canManage && ledgerSelected.size > 0 && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" variant="destructive" disabled={delMovements.isPending}>
+                        <Trash2 className="mr-2 h-4 w-4" /> Excluir selecionadas ({ledgerSelected.size})
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir {ledgerSelected.size} movimentação(ões)?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          As quantidades dessas linhas voltam para o estoque. Essa ação não pode ser desfeita.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={async () => {
+                            try {
+                              await delMovements.mutateAsync([...ledgerSelected]);
+                              setLedgerSelected(new Set());
+                            } catch {
+                              // o hook já mostra o erro
+                            }
+                          }}
+                        >
+                          Excluir
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
                 <div className="flex items-center gap-2 rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-sm text-blue-900">
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">!</span>
                   Clique na célula para modificar
@@ -943,6 +992,17 @@ export default function Almoxarifado() {
             {/* Grade de planilha: bordas em todas as células, como no Excel. */}
             <Table className="[&_td]:border [&_td]:border-slate-300 [&_th]:border [&_th]:border-slate-500">
               <TableHeader><TableRow>
+                {canManage && (
+                  <TableHead className="w-8 px-2">
+                    <input
+                      type="checkbox"
+                      aria-label="Selecionar todas as movimentações filtradas"
+                      className="h-4 w-4 cursor-pointer"
+                      checked={ledgerRows.length > 0 && ledgerRows.every((m) => ledgerSelected.has(m.id))}
+                      onChange={(e) => setLedgerSelected(e.target.checked ? new Set(ledgerRows.map((m) => m.id)) : new Set())}
+                    />
+                  </TableHead>
+                )}
                 {LEDGER_COLUMNS.map((col) => (
                   <ColumnFilter
                     key={col}
@@ -957,7 +1017,7 @@ export default function Almoxarifado() {
               </TableRow></TableHeader>
               <TableBody>
                 {canWrite && (
-                  <NewLedgerRow items={items} collaborators={collaborators} categories={categories} />
+                  <NewLedgerRow items={items} collaborators={collaborators} categories={categories} leading={canManage} />
                 )}
                 {pageLedgerRows.map((m) => {
                   const isIn = m.type === "in";
@@ -965,6 +1025,21 @@ export default function Almoxarifado() {
                   const obs = ledgerObs(m);
                   return (
                     <TableRow key={m.id}>
+                      {canManage && (
+                        <TableCell className="px-2">
+                          <input
+                            type="checkbox"
+                            aria-label="Selecionar movimentação"
+                            className="h-4 w-4 cursor-pointer"
+                            checked={ledgerSelected.has(m.id)}
+                            onChange={(e) => setLedgerSelected((prev) => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(m.id); else next.delete(m.id);
+                              return next;
+                            })}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="font-medium">
                         <EditableCell disabled={!canWrite} value={itemName(m.item_id)} display={itemName(m.item_id)}
                           onSave={(v) => (isIn ? saveEntryCell(m, "name", v) : saveExitCell(m, "name", v))} />
@@ -1037,7 +1112,7 @@ export default function Almoxarifado() {
                   );
                 })}
                 {ledgerRows.length === 0 && (
-                  <TableRow><TableCell colSpan={showLedgerActions ? 10 : 9} className="text-center text-muted-foreground py-6">
+                  <TableRow><TableCell colSpan={9 + (showLedgerActions ? 1 : 0) + (canManage ? 1 : 0)} className="text-center text-muted-foreground py-6">
                     {ledgerAll.length === 0 ? "Nenhuma movimentação registrada." : "Nenhuma movimentação encontrada com esses filtros."}
                   </TableCell></TableRow>
                 )}
@@ -1561,7 +1636,7 @@ export default function Almoxarifado() {
           <ContainerPanel canArchive={canZerar} />
         </TabsContent>
         <TabsContent value="mobile" className="space-y-3">
-          <PendingList items={items} collaborators={collaborators} canWrite={canWrite} />
+          <PendingList items={items} categories={categories} collaborators={collaborators} canWrite={canWrite} />
         </TabsContent>
       </Tabs>
 
@@ -1635,6 +1710,57 @@ function Kpi({ icon, label, value, accent }: { icon?: React.ReactNode; label: st
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// Aba Ativos: uma linha por patrimônio, com item, categoria, descrição e histórico.
+function AtivosPanel({ assets, items, categories, collaborators, movements, emptyText = "Nenhum ativo." }: {
+  assets: InventoryAsset[]; items: InventoryItem[]; categories: InventoryCategory[];
+  collaborators: InventoryCollaborator[]; movements: InventoryMovement[]; emptyText?: string;
+}) {
+  const itemOf = (id: string) => items.find((i) => i.id === id);
+  const catName = (id: string | null) => categories.find((c) => c.id === id)?.name ?? "—";
+  const collabName = (id: string | null) => collaborators.find((c) => c.id === id)?.full_name ?? "—";
+  const historyOf = (assetId: string) =>
+    movements.filter((m) => m.asset_id === assetId).sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
+  const rows = [...assets].sort((a, b) => a.patrimony_number.localeCompare(b.patrimony_number, "pt-BR", { numeric: true }));
+
+  return (
+    <Card><CardContent className="p-0 overflow-x-auto">
+      <Table>
+        <TableHeader><TableRow>
+          <TableHead>Ativos</TableHead><TableHead>Categoria</TableHead><TableHead>Patrimônio</TableHead>
+          <TableHead>Status</TableHead><TableHead>Descrição</TableHead><TableHead>Departamento</TableHead>
+          <TableHead>Colaborador Responsável</TableHead><TableHead>Histórico</TableHead><TableHead>Observação</TableHead>
+        </TableRow></TableHeader>
+        <TableBody>
+          {rows.map((a) => {
+            const item = itemOf(a.item_id);
+            const hist = historyOf(a.id);
+            return (
+              <TableRow key={a.id}>
+                <TableCell>{item?.name ?? "—"}</TableCell>
+                <TableCell>{catName(item?.category_id ?? null)}</TableCell>
+                <TableCell className="font-mono font-medium">{a.patrimony_number}</TableCell>
+                <TableCell><StatusTag status={a.status} /></TableCell>
+                <TableCell className="max-w-[220px] text-xs">{item?.description || "—"}</TableCell>
+                <TableCell>{a.department ?? "—"}</TableCell>
+                <TableCell>{collabName(a.collaborator_id)}</TableCell>
+                <TableCell className="text-xs">
+                  {hist.length === 0 && "Sem movimentações"}
+                  {hist.slice(0, 3).map((m) => (
+                    <div key={m.id}>{new Date(m.occurred_at).toLocaleDateString("pt-BR")} · {MOV_LABELS[m.type]}</div>
+                  ))}
+                  {hist.length > 3 && <div className="text-muted-foreground">+{hist.length - 3} anteriores</div>}
+                </TableCell>
+                <TableCell className="max-w-[220px] text-xs">{a.notes || "—"}</TableCell>
+              </TableRow>
+            );
+          })}
+          {rows.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">{emptyText}</TableCell></TableRow>}
+        </TableBody>
+      </Table>
+    </CardContent></Card>
   );
 }
 

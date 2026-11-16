@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
-export type MobileEntryKind = "in" | "out";
+export type MobileEntryKind = "in" | "out" | "patrimonio" | "ativos";
 
 export interface MobileEntry {
   id: string;
@@ -11,6 +11,7 @@ export interface MobileEntry {
   ti_name: string;
   equipamento: string;
   categoria_id: string | null;
+  collaborator_id: string | null;
   patrimonio: string | null;
   tipo: MobileEntryKind;
   data: string; // yyyy-mm-dd
@@ -20,7 +21,7 @@ export interface MobileEntry {
 }
 
 export type MobileEntryInput = Pick<
-  MobileEntry, "ti_name" | "equipamento" | "categoria_id" | "patrimonio" | "tipo" | "data" | "es_text"
+  MobileEntry, "ti_name" | "equipamento" | "categoria_id" | "collaborator_id" | "patrimonio" | "tipo" | "data" | "es_text"
 >;
 
 // A tabela é nova e ainda não está nos tipos gerados do Supabase.
@@ -50,6 +51,21 @@ export function useCreateMobileEntry() {
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
     onError: (e: Error) => toast.error(e.message || "Erro ao enviar o lançamento"),
+  });
+}
+
+export function useUpdateMobileEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...input }: Partial<MobileEntryInput> & { id: string }) => {
+      const { error } = await table().update(input).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Lançamento atualizado");
+      return qc.invalidateQueries({ queryKey: QUERY_KEY });
+    },
+    onError: (e: Error) => toast.error(e.message || "Erro ao atualizar o lançamento"),
   });
 }
 
