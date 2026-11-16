@@ -1,7 +1,9 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useTasks, useDeleteTask, useUpdateTask, Task, COLUMNS } from "@/hooks/useTasks";
+import { useDeleteTask, useUpdateTask, Task, COLUMNS } from "@/hooks/useTasks";
 import { useMarkTaskMentionsRead, useUnreadMentionsByTask } from "@/hooks/useNotifications";
+import { useTasksPage, useLinkedTask } from "@/hooks/useTasksPage";
+import { taskPageCount } from "@/lib/task-pagination";
 import { useTaskFilter } from "@/hooks/useTaskFilter";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useGlobalTimer } from "@/hooks/useGlobalTimer";
@@ -24,7 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import {
   Plus, Loader2, Trash2, Clock, ListTodo,
-  Play, Square, CheckCircle, CalendarDays, Filter, Repeat,
+  Play, Square, CheckCircle, CalendarDays, Filter, Repeat, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -59,13 +61,9 @@ const WEEKDAY_CHIPS = [
   { key: "DOM", label: "DOM", code: "DOM" },
 ];
 
-const isRecurringTask = (t: any) =>
-  !!(t?.is_recurring_template || t?.recurrence_type || (Array.isArray(t?.recurrence_days) && t.recurrence_days.length > 0));
-
 const Tasks = () => {
-  const { data: tasks, isLoading } = useTasks();
-  const { filteredTasks, selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(tasks);
-  const { isGestor } = useUserRole();
+  const { selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(undefined);
+  const { isGestor, loading: roleLoading } = useUserRole();
   const deleteTask = useDeleteTask();
   const updateTask = useUpdateTask();
   const { user } = useAuth();
@@ -75,13 +73,10 @@ const Tasks = () => {
   const [recurringOpen, setRecurringOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Abre a tarefa indicada em "?task=<id>" (vindo de uma notificação de menção).
+  const { data: linkedTask } = useLinkedTask(searchParams.get("task"));
   useEffect(() => {
-    const id = searchParams.get("task");
-    if (!id || !tasks) return;
-    const found = tasks.find((t) => t.id === id);
-    if (found) setSelectedTask(found);
-  }, [searchParams, tasks]);
+    if (linkedTask) setSelectedTask(linkedTask);
+  }, [linkedTask]);
 
   const closeTask = () => {
     setSelectedTask(null);
@@ -104,69 +99,27 @@ const Tasks = () => {
   const [recurringOnly, setRecurringOnly] = useState(false);
   const [weekdayFilter, setWeekdayFilter] = useState<string>("all");
 
-  // Chamados ("[Chamado] ...") têm página própria e não aparecem em Tarefas
-  const tasksOnly = useMemo(
-    () => filteredTasks.filter((t) => !/^\s*\[Chamado\]/i.test(t.title || "")),
-    [filteredTasks]
-  );
-
-  // Apply advanced filters on top of user filter
-  const advancedFiltered = useMemo(() => {
-    let result = tasksOnly;
-
-    // Status chip filter
-    if (statusChip !== "all") {
-      const chip = STATUS_CHIPS.find(c => c.key === statusChip);
-      if (chip) result = result.filter(t => chip.statuses.includes(t.status));
-    }
-
-    // Priority filter
-    if (priorityFilter !== "all") {
-      result = result.filter(t => t.priority === priorityFilter);
-    }
-
-    // Date range filter
-    if (dateFrom) {
-      result = result.filter(t => new Date(t.created_at) >= dateFrom);
-    }
-    if (dateTo) {
-      const endOfDay = new Date(dateTo);
-      endOfDay.setHours(23, 59, 59, 999);
-      result = result.filter(t => new Date(t.created_at) <= endOfDay);
-    }
-
-    // Recurring only
-    if (recurringOnly) {
-      result = result.filter((t) => isRecurringTask(t));
-    }
-
-    // Weekday filter (matches recurrence_days OR due_date weekday)
-    if (weekdayFilter !== "all") {
-      const codeMap = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"];
-      result = result.filter((t: any) => {
-        const days: string[] = Array.isArray(t.recurrence_days) ? t.recurrence_days : [];
-        if (days.length > 0) return days.includes(weekdayFilter);
-        if (t.due_date) {
-          const d = new Date(t.due_date);
-          return codeMap[d.getDay()] === weekdayFilter;
-        }
-        return false;
-      });
-    }
-
-    return result;
-  }, [tasksOnly, statusChip, priorityFilter, dateFrom, dateTo, recurringOnly, weekdayFilter]);
-
-  // Count per status chip
-  const chipCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: tasksOnly.length };
-    STATUS_CHIPS.forEach(chip => {
-      if (chip.key !== "all") {
-        counts[chip.key] = tasksOnly.filter(t => chip.statuses.includes(t.status)).length;
-      }
-    });
-    return counts;
-  }, [tasksOnly]);
+  const filterKey = JSON.stringify([selectedUserId, statusChip, priorityFilter, dateFrom, dateTo, recurringOnly, weekdayFilter]);
+  const [pagination, setPagination] = useState({ key: filterKey, page: 1 });
+  const page = pagination.key === filterKey ? pagination.page : 1;
+  const endOfDay = dateTo ? new Date(dateTo) : undefined;
+  endOfDay?.setHours(23, 59, 59, 999);
+  const { data: taskPage, isLoading, isError, refetch } = useTasksPage({
+    page,
+    selectedUserId,
+    statuses: statusChip === "all" ? undefined : STATUS_CHIPS.find(c => c.key === statusChip)?.statuses,
+    priority: priorityFilter === "all" ? undefined : priorityFilter,
+    dateFrom: dateFrom?.toISOString(),
+    dateTo: endOfDay?.toISOString(),
+    recurring: recurringOnly,
+    weekday: weekdayFilter === "all" ? undefined : weekdayFilter,
+  }, !roleLoading);
+  const advancedFiltered = taskPage?.tasks ?? [];
+  const chipCounts = taskPage?.counts ?? {};
+  const totalPages = taskPageCount(taskPage?.total ?? 0);
+  useEffect(() => {
+    if (taskPage && page > totalPages) setPagination({ key: filterKey, page: totalPages });
+  }, [taskPage, page, totalPages, filterKey]);
 
   const handleComplete = (task: Task) => {
     if (activeTaskId === task.id && isRunning) stop();
@@ -176,13 +129,20 @@ const Tasks = () => {
   const clearDateFilters = () => { setDateFrom(undefined); setDateTo(undefined); };
   const hasDateFilter = dateFrom || dateTo;
 
-  if (isLoading) {
+  if (isLoading || roleLoading) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
+
+  if (isError) return (
+    <div className="space-y-3 py-10 text-center">
+      <p className="text-muted-foreground">Não foi possível carregar as tarefas.</p>
+      <Button variant="outline" onClick={() => void refetch()}>Tentar novamente</Button>
+    </div>
+  );
 
   return (
     <div className="space-y-4 max-w-5xl">
@@ -474,6 +434,14 @@ const Tasks = () => {
           })}
         </div>
       )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="text-sm text-muted-foreground">{taskPage?.total ?? 0} tarefas · Página {page} de {totalPages}</span>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" aria-label="Página anterior" title="Página anterior" disabled={page <= 1} onClick={() => setPagination({ key: filterKey, page: page - 1 })}><ChevronLeft className="h-4 w-4" /></Button>
+          <Button variant="outline" size="icon" aria-label="Próxima página" title="Próxima página" disabled={page >= totalPages} onClick={() => setPagination({ key: filterKey, page: page + 1 })}><ChevronRight className="h-4 w-4" /></Button>
+        </div>
+      </div>
 
       {!isGestor && <CreateTaskDialog open={createOpen} onOpenChange={setCreateOpen} />}
       <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && closeTask()} isReadOnly={isGestor} />
