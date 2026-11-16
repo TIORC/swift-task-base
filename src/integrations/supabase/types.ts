@@ -3935,6 +3935,19 @@ export type Database = {
           total_minutes: number
         }[]
       }
+      tasks_page: {
+        Args: {
+          _date_from?: string
+          _date_to?: string
+          _page?: number
+          _priority?: string
+          _recurring?: boolean
+          _selected_user?: string
+          _statuses?: string[]
+          _weekday?: string
+        }
+        Returns: Json
+      }
       user_client_ids: { Args: { _user_id: string }; Returns: string[] }
       user_sector_codes: { Args: { _user_id: string }; Returns: string[] }
       zerar_estoque: { Args: never; Returns: number }
