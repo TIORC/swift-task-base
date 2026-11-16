@@ -907,6 +907,54 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_adm_ti: {
+        Row: {
+          ativo: string
+          categoria: string
+          colaborador: string
+          created_at: string
+          created_by: string | null
+          departamento: string
+          descricao: string
+          historico: string
+          id: string
+          observacao: string
+          patrimonio: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: string
+          categoria?: string
+          colaborador?: string
+          created_at?: string
+          created_by?: string | null
+          departamento?: string
+          descricao?: string
+          historico?: string
+          id: string
+          observacao?: string
+          patrimonio?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: string
+          categoria?: string
+          colaborador?: string
+          created_at?: string
+          created_by?: string | null
+          departamento?: string
+          descricao?: string
+          historico?: string
+          id?: string
+          observacao?: string
+          patrimonio?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory_assets: {
         Row: {
           acquired_at: string | null
@@ -1230,6 +1278,51 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      inventory_mobile_entries: {
+        Row: {
+          categoria_id: string | null
+          collaborator_id: string | null
+          created_at: string
+          created_by: string
+          data: string
+          equipamento: string
+          es_text: string | null
+          id: string
+          patrimonio: string | null
+          status: string
+          ti_name: string
+          tipo: string
+        }
+        Insert: {
+          categoria_id?: string | null
+          collaborator_id?: string | null
+          created_at?: string
+          created_by?: string
+          data?: string
+          equipamento: string
+          es_text?: string | null
+          id?: string
+          patrimonio?: string | null
+          status?: string
+          ti_name: string
+          tipo: string
+        }
+        Update: {
+          categoria_id?: string | null
+          collaborator_id?: string | null
+          created_at?: string
+          created_by?: string
+          data?: string
+          equipamento?: string
+          es_text?: string | null
+          id?: string
+          patrimonio?: string | null
+          status?: string
+          ti_name?: string
+          tipo?: string
         }
         Relationships: []
       }
@@ -3815,6 +3908,8 @@ export type Database = {
         }[]
       }
       recuperar_almoxarifado: { Args: { _batch: string }; Returns: Json }
+      recuperar_colaboradores: { Args: { _batch: string }; Returns: Json }
+      recuperar_departamentos: { Args: { _batch: string }; Returns: Json }
       rename_automation: {
         Args: { _automation_id: string; _new_title: string }
         Returns: Json
@@ -3830,6 +3925,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      salvar_adm_ti: { Args: { _rows: Json }; Returns: number }
       save_entry_batch: { Args: { _rows: Json }; Returns: Json }
       save_exit_batch: { Args: { _rows: Json }; Returns: Json }
       task_time_totals: {
