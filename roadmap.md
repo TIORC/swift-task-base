@@ -1,5 +1,9 @@
 # Roadmap — Gestor de Demandas M7
 
+## Paginação de /tasks
+- [ ] Buscar dez tarefas por página com filtros e totais no servidor.
+- [ ] Verificar navegação, filtros e abertura de tarefas com sessão autenticada.
+
 ## Chat de acompanhamento (12/11)
 - [x] Publicar e verificar envio de imagens e emojis pelo solicitante.
 - [x] Atualizar somente mensagens novas na conversa aberta, pausando consultas na aba oculta.
