@@ -61,6 +61,9 @@ const WEEKDAY_CHIPS = [
   { key: "DOM", label: "DOM", code: "DOM" },
 ];
 
+const isRecurringTask = (t: Task) =>
+  !!(t.is_recurring_template || t.recurrence_type || t.recurrence_days?.length);
+
 const Tasks = () => {
   const { selectedUserId, setSelectedUserId, canFilter } = useTaskFilter(undefined);
   const { isGestor, loading: roleLoading } = useUserRole();
