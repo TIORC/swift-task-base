@@ -263,7 +263,7 @@ export default function PublicAutomationRequestPage() {
   // Identificação do solicitante via SERVIDOR (Edge Function "solicitacoes").
   // Aqui não existe sessão do Supabase Auth: quem confere o e-mail contra a
   // tabela de solicitantes é a função, que devolve o token curto.
-  const { solicitante, isLoadingSolicitante, identify } = useSolicitante();
+  const { solicitante, isLoadingSolicitante, identify, signOutSolicitante } = useSolicitante();
   const [requestType, setRequestType] = useState<RequestType | null>(null);
   const [cardsVisible, setCardsVisible] = useState(false);
   // Manutenção: escolhe o sistema existente antes de abrir o formulário.
@@ -472,6 +472,24 @@ export default function PublicAutomationRequestPage() {
               <div className="flex justify-center">
                 <button type="button" onClick={() => navigate("/k7f3q9x2/solicitacoes/acompanhar-minha-solicitacao")} className="cursor-pointer text-sm font-medium text-amber-300 underline-offset-4 transition-colors hover:text-amber-200 hover:underline focus-visible:outline-none focus-visible:underline">
                   Já fez sua solicitação? Clique aqui!
+                </button>
+              </div>
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Encerra a identificação e volta para a tela de login do portal.
+                    signOutSolicitante();
+                    setRequestType(null);
+                    setMaintenanceSystem(null);
+                    setSystemPickerOpen(false);
+                    setEmail("");
+                    setError(null);
+                    setStage("identify");
+                  }}
+                  className="cursor-pointer rounded-lg bg-red-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_-12px_rgba(220,38,38,0.8)] transition-colors hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                >
+                  Sair
                 </button>
               </div>
               </>

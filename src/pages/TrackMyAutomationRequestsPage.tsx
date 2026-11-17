@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SolicitanteChat } from "@/components/automations/SolicitanteChat";
-import { Loader2, ClipboardList, CircleDot, Code2, Headset, User, MonitorSmartphone, Workflow } from "lucide-react";
+import { Loader2, ClipboardList, CircleDot, Code2, Headset, User, MonitorSmartphone, Workflow, Search } from "lucide-react";
 import {
   PRIORITY_LABELS,
   STATUS_LABELS,
@@ -423,6 +423,7 @@ export default function TrackMyAutomationRequestsPage() {
   const isTeamMember = !!solicitante && solicitante.role != null && SEE_ALL_ROLES.has(solicitante.role);
   const [activeView, setActiveView] = useState<"tracking" | "developers" | "support">("tracking");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [systemSearch, setSystemSearch] = useState("");
   const { data: requests = [], isLoading, error } = useQuery({
     queryKey: ["solicitante-requests", solicitante?.id],
     enabled: !!solicitante?.id,
@@ -449,6 +450,14 @@ export default function TrackMyAutomationRequestsPage() {
     },
   });
   const assigneeName: Record<string, string> = teamNames;
+
+  // Busca por nome do sistema (título), sem diferenciar maiúsculas nem acentos.
+  const normalizeSearch = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+  const visibleRequests = useMemo(() => {
+    const term = normalizeSearch(systemSearch);
+    if (!term) return requests;
+    return requests.filter((request) => normalizeSearch(request.title).includes(term));
+  }, [requests, systemSearch]);
 
   return (
     <main
@@ -479,7 +488,21 @@ export default function TrackMyAutomationRequestsPage() {
           <p className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-white/65">{isTeamMember ? "Nenhuma solicitação no momento." : "Você ainda não enviou solicitações."}</p>
         ) : (
           <div className="space-y-4">
-            {requests.map((request) => {
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" aria-hidden="true" />
+              <input
+                type="search"
+                value={systemSearch}
+                onChange={(e) => setSystemSearch(e.target.value)}
+                placeholder="Procurar sistema pelo nome..."
+                aria-label="Procurar sistema pelo nome"
+                className="w-full rounded-lg border border-white/15 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-white/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+              />
+            </div>
+            {visibleRequests.length === 0 && (
+              <p className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/65">Nenhum sistema encontrado para "{systemSearch}".</p>
+            )}
+            {visibleRequests.map((request) => {
               const status = request.status as AutomationStatus;
               const percent = computeExecutionPercent(request);
               const assignee = request.assigned_to ? assigneeName[request.assigned_to] : null;

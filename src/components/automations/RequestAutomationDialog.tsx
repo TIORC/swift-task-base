@@ -44,6 +44,16 @@ function FieldError({ message }: { message?: string }) {
 
 const invalidInput = "border-red-500/70 focus-visible:ring-red-500/40";
 
+/** "jonatas.braga@orcoma.com.br" -> "Jonatas Braga" (sem acentos no e-mail; separadores . _ -). */
+function nameFromEmail(email: string): string {
+  return email
+    .split("@")[0]
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
 export function RequestAutomationDialog({ openOnMount = false, hideTrigger = false, requestType = "Automação", maintenanceSystem, solicitanteEmail = "", solicitanteSector = "", onClose, onSubmitted }: { openOnMount?: boolean; hideTrigger?: boolean; requestType?: "Sistema" | "Automação"; maintenanceSystem?: string; solicitanteEmail?: string; solicitanteSector?: string; onClose?: () => void; onSubmitted?: (id: string) => void }) {
   // Manutenção de sistema existente: usa o formulário do Sistema, em índigo.
   const isMaintenance = !!maintenanceSystem;
@@ -59,7 +69,10 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
   // "solicitacoes". Nesse fluxo nada é gravado direto no banco — o insert
   // acontece no servidor e os anexos ficam indisponíveis, porque o Storage
   // exige o dono autenticado.
-  const isPortal = !user;
+  // No portal a identidade é o token do solicitante (solicitanteEmail). O navegador
+  // pode ter uma sessão do Supabase Auth de outra pessoa (ex.: um dev logado), e
+  // ela não pode virar o solicitante nem o autor da solicitação.
+  const isPortal = !user || !!solicitanteEmail;
 
   const [open, setOpen] = useState(openOnMount);
   const [title, setTitle] = useState("");
@@ -214,9 +227,16 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
   };
 
   useEffect(() => {
+    if (isPortal) {
+      // Portal: o e-mail e o nome vêm da identificação do solicitante. O token não traz o nome,
+      // então ele é derivado do e-mail (jonatas.braga@ -> Jonatas Braga); o usuário pode editar.
+      if (!requesterEmail && solicitanteEmail) setRequesterEmail(solicitanteEmail);
+      if (!requesterName && solicitanteEmail) setRequesterName(nameFromEmail(solicitanteEmail));
+      return;
+    }
     if (!requesterName && profile?.full_name) setRequesterName(profile.full_name);
-    if (!requesterEmail && (user?.email ?? solicitanteEmail)) setRequesterEmail(user?.email ?? solicitanteEmail);
-  }, [profile?.full_name, user?.email, solicitanteEmail, requesterName, requesterEmail]);
+    if (!requesterEmail && user?.email) setRequesterEmail(user.email);
+  }, [isPortal, profile?.full_name, user?.email, solicitanteEmail, requesterName, requesterEmail]);
 
   const reset = () => {
     setTitle(""); setRequesterName(""); setRequesterEmail(""); setSelectedSectors([]); setOtherSector("");
