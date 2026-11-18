@@ -3,6 +3,7 @@ import { AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { RequestDescription } from "@/components/automations/RequestDescription";
 
 interface PendingChangeAlert {
   event_id: string;
@@ -67,7 +68,7 @@ export function ChangeAlertGate() {
               <p className="text-xs text-white/60">
                 Solicitado por {alert.requester || "solicitante"} em {new Date(alert.created_at).toLocaleString("pt-BR")}
               </p>
-              <p className="mt-3 whitespace-pre-wrap text-sm text-white/85">{alert.description}</p>
+              <RequestDescription text={alert.description ?? ""} />
             </article>
           ))}
         </div>

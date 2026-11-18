@@ -290,6 +290,26 @@ Deno.serve(async (req) => {
       return json({ requests: data ?? [] });
     }
 
+    // Nomes dos sistemas que o solicitante pode alterar (seletor da Manutenção).
+    // Vem da função, não de leitura direta da tabela: o visitante é anônimo e o
+    // RLS de automations devolvia lista vazia. Mesmo critério de "create" com
+    // maintenance_system: a equipe vê tudo; o solicitante vê só o próprio setor.
+    if (action === "list-systems") {
+      const canSeeAll = claims.role != null && SEE_ALL_ROLES.has(claims.role);
+      let systemsQuery = admin.from("automations").select("title, sector");
+      if (!canSeeAll) systemsQuery = systemsQuery.eq("sector", currentSector);
+      const { data, error } = await systemsQuery;
+      if (error) throw error;
+      const titles = [
+        ...new Set(
+          ((data ?? []) as { title: string | null }[])
+            .map((r) => (r.title ?? "").trim())
+            .filter(Boolean),
+        ),
+      ].sort((x, y) => x.localeCompare(y, "pt-BR"));
+      return json({ systems: titles });
+    }
+
     if (action === "comments:list") {
       const automationIds = Array.isArray(body.automation_ids)
         ? (body.automation_ids as string[])
@@ -499,16 +519,22 @@ Deno.serve(async (req) => {
             .from("automations")
             .update({ status: "change_requested" })
             .eq("id", system.id);
-          if (updateError) throw updateError;
+          if (updateError) {
+            // Mensagem técnica (ex.: trigger de campos administrativos) vai só para o log;
+            // o solicitante recebe um texto que ele consegue entender e reportar.
+            console.error("[solicitacoes] falha ao marcar alteração no sistema", updateError);
+            return json({ error: "Não foi possível registrar a alteração deste sistema. Acione a equipe de TI." }, 500);
+          }
         }
 
-        await admin.from("automation_events").insert({
+        const { error: eventError } = await admin.from("automation_events").insert({
           automation_id: system.id,
           event_type: moved ? "status_changed" : "change_requested",
           description: `Alteração solicitada por ${senderName}:\n${description ?? title}`,
           user_id: solicitanteId,
           metadata: { new_status: moved ? "change_requested" : system.status, old_status: system.status },
         });
+        if (eventError) console.error("[solicitacoes] falha ao registrar evento de alteração", eventError);
 
         try {
           const { data: gestorIds } = await admin.rpc("get_gestor_user_ids");
