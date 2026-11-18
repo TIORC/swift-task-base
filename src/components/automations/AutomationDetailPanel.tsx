@@ -44,6 +44,19 @@ const TIMELINE_META: Record<string, { label: string; color: string; Icon: Lucide
   subtask_completed: { label: "concluiu uma etapa", color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", Icon: CheckCircle2 },
 };
 
+// Eventos que registram um pedido de alteração feito pelo solicitante.
+// Mudanças manuais de status ("Status alterado para ...") também usam status_changed,
+// mas não trazem o texto do pedido, então ficam de fora.
+function isChangeEvent(ev: { event_type: string; metadata?: unknown; description?: string | null }): boolean {
+  if (ev.event_type === "change_requested") return true;
+  const newStatus = (ev.metadata as { new_status?: string } | null | undefined)?.new_status;
+  return (
+    ev.event_type === "status_changed" &&
+    newStatus === "change_requested" &&
+    !!ev.description?.startsWith("Alteração solicitada")
+  );
+}
+
 const MODAL_TABS: { value: string; label: string; Icon: LucideIcon }[] = [
   { value: "details", label: "Dados", Icon: FileText },
   { value: "responsaveis", label: "Responsáveis", Icon: Users },
@@ -56,6 +69,8 @@ const MODAL_TABS: { value: string; label: string; Icon: LucideIcon }[] = [
 ];
 
 import { AutomationComments } from "@/components/automations/AutomationComments";
+import { ChangeRequestsCard } from "@/components/automations/ChangeRequestsCard";
+import { RequestDescription } from "@/components/automations/RequestDescription";
 import { AutomationAttachments } from "@/components/automations/AutomationAttachments";
 import { useAuth } from "@/hooks/useAuth";
 import { useAssignableDevelopers } from "@/hooks/useAssignableDevelopers";
@@ -107,6 +122,11 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
   if (!automation) return null;
 
   const a = automation;
+
+  // Pedidos de alteração registrados na timeline, do mais recente para o mais antigo.
+  const changeRequests = events
+    .filter(isChangeEvent)
+    .sort((x, y) => y.created_at.localeCompare(x.created_at));
 
   // ── Papéis ──
   // Equipe técnica (dev) pode mudar status, tarefas, horas etc.
@@ -274,6 +294,17 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-thin px-5 pb-5">
             {/* ─── Details Tab ─── */}
             <TabsContent value="details" className="mt-4 space-y-4">
+              {changeRequests.length > 0 && (
+                <ChangeRequestsCard
+                  pending={a.status === "change_requested"}
+                  items={changeRequests.map((ev) => ({
+                    id: ev.id,
+                    requester: profileMap[ev.user_id] || "Solicitante",
+                    when: format(new Date(ev.created_at), "dd/MM/yy HH:mm", { locale: ptBR }),
+                    description: ev.description ?? "",
+                  }))}
+                />
+              )}
               {a.description && (
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Descrição</label>
@@ -736,9 +767,11 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
                                 {format(new Date(ev.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}
                               </span>
                             </div>
-                            {ev.description && (
+                            {ev.description && (isChangeEvent(ev) ? (
+                              <RequestDescription text={ev.description} />
+                            ) : (
                               <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{ev.description}</p>
-                            )}
+                            ))}
                           </div>
                         </div>
                       );

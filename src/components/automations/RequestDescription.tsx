@@ -114,7 +114,7 @@ export function RequestDescription({ text }: { text: string }) {
             </h3>
           )}
           {section.notes.map((note, j) => (
-            <p key={`n-${j}`} className="whitespace-pre-wrap text-white/65">
+            <p key={`n-${j}`} className="whitespace-pre-wrap break-words text-white/65">
               {note}
             </p>
           ))}
@@ -123,7 +123,7 @@ export function RequestDescription({ text }: { text: string }) {
               {section.fields.map((field, j) => (
                 <div key={`f-${j}`} className="space-y-0.5">
                   <dt className="text-xs font-semibold text-red-200/80">{field.label}</dt>
-                  <dd className="whitespace-pre-wrap rounded-md bg-white/5 px-2.5 py-1.5 text-white">
+                  <dd className="whitespace-pre-wrap break-words rounded-md bg-white/5 px-2.5 py-1.5 text-white">
                     {field.value || <span className="text-white/40">Não respondido</span>}
                   </dd>
                 </div>
