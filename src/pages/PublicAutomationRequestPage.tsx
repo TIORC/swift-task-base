@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Loader2, CheckCircle2, AlertTriangle, UserCheck } from "lucide-react";
@@ -17,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { SECTORS, SECTOR_LABELS } from "@/types/sectors";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { useAutomations } from "@/hooks/useAutomationsData";
+import { solicitanteCall, type SolicitanteRequest } from "@/lib/solicitacoesApi";
 
 type RequestType = "Sistema" | "Automação";
 
@@ -270,11 +271,18 @@ export default function PublicAutomationRequestPage() {
   const [systemPickerOpen, setSystemPickerOpen] = useState(false);
   const [manualSystemName, setManualSystemName] = useState("");
   const [maintenanceSystem, setMaintenanceSystem] = useState<string | null>(null);
-  // Sistemas = automações cadastradas em /automacoes (qualquer status) do setor do solicitante, sem repetir o título.
-  // Equipe (dev/admin/gestor) vê os sistemas de todos os setores, igual à função "solicitacoes".
-  const { data: automationsList = [], isLoading: isLoadingSystems } = useAutomations();
-  const seesAllSystems = !!solicitante?.role && ["dev", "admin", "gestor"].includes(solicitante.role);
-  const existingSystems = [...new Set(automationsList.filter((a) => seesAllSystems || (!!solicitante?.sector && a.sector === solicitante.sector)).map((a) => a.title))]
+  // A função valida o token e limita os resultados no servidor; não consultar tabelas com a sessão da Gestão.
+  const { data: automationsList = [], isLoading: isLoadingSystems, error: systemsError } = useQuery({
+    queryKey: ["solicitante-requests", "maintenance", solicitante?.id, solicitante?.sector],
+    queryFn: async () => {
+      const { requests } = await solicitanteCall<{ requests: SolicitanteRequest[] }>("list");
+      return requests;
+    },
+    enabled: !!solicitante && systemPickerOpen,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const existingSystems = [...new Set(automationsList.map((a) => a.title))]
     .sort((x, y) => x.localeCompare(y, "pt-BR"))
     .map((name) => ({ id: name, name }));
 
@@ -414,6 +422,8 @@ export default function PublicAutomationRequestPage() {
                     <div className="max-h-[60vh] space-y-2 overflow-y-auto [scrollbar-color:#7f1d1d_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-red-800 [&::-webkit-scrollbar-thumb:hover]:bg-red-700">
                       {isLoadingSystems ? (
                         <Loader2 className="mx-auto h-6 w-6 animate-spin text-red-300" aria-hidden="true" />
+                      ) : systemsError ? (
+                        <p role="alert" className="py-4 text-center text-sm text-destructive">{systemsError.message}</p>
                       ) : existingSystems.length === 0 ? (
                         <p className="py-4 text-center text-sm text-slate-400">Nenhum sistema cadastrado.</p>
                       ) : (
