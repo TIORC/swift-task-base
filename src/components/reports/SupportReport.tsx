@@ -41,6 +41,27 @@ function extractRequester(description: string | null): string {
 
 const fmtMin = (m: number) => (m < 60 ? `${m}min` : `${Math.floor(m / 60)}h ${m % 60}min`);
 
+// O banco entrega no máximo 1000 linhas por consulta. Sem paginar, o relatório perde os chamados mais antigos (ou mais novos, sem ordem).
+const REPORT_PAGE_SIZE = 1000;
+
+async function fetchAllSupportTasks(): Promise<any[]> {
+  const rows: any[] = [];
+  for (let from = 0; ; from += REPORT_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("tasks")
+      .select("*")
+      .like("title", "[Chamado]%")
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, from + REPORT_PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < REPORT_PAGE_SIZE) break;
+  }
+  return rows;
+}
+
 export function SupportReport() {
   const [period, setPeriod] = useState<Period>("month");
   const [monthFilter, setMonthFilter] = useState<string>("all"); // "YYYY-MM" or "all"
@@ -60,11 +81,11 @@ export function SupportReport() {
   const { data, isLoading } = useQuery({
     queryKey: ["support-report"],
     queryFn: async () => {
-      const [tasksRes, profilesRes] = await Promise.all([
-        supabase.from("tasks").select("*").like("title", "[Chamado]%"),
+      const [tasks, profilesRes] = await Promise.all([
+        fetchAllSupportTasks(),
         supabase.from("profiles").select("id, full_name"),
       ]);
-      return { tasks: tasksRes.data || [], profiles: profilesRes.data || [] };
+      return { tasks, profiles: profilesRes.data || [] };
     },
   });
 
@@ -198,12 +219,23 @@ export function SupportReport() {
       }))
       .sort((a, b) => b.total - a.total);
   }, [filtered]);
+  // Todos os motivos do cadastro aparecem, mesmo sem chamados no período (com 0); motivos antigos fora do cadastro também.
+  const flowRows = useMemo(() => {
+    const known = new Set<string>(SUPPORT_REAL_REASONS);
+    const reasons = [...SUPPORT_REAL_REASONS, ...flow.map((f) => f.reason).filter((r) => !known.has(r))];
+    return reasons
+      .map((reason) => {
+        const found = flow.find((f) => f.reason === reason);
+        return { reason, total: found?.total ?? 0, details: found?.details ?? [] };
+      })
+      .sort((a, b) => b.total - a.total);
+  }, [flow]);
   // Motivo e detalhe em destaque: o escolhido, ou o primeiro da lista.
-  const activeReasonData = flow.find((f) => f.reason === flowReason) ?? flow[0] ?? null;
-  const activeDetail = activeReasonData
-    ? (activeReasonData.details.find((d) => d.name === flowDetail) ?? activeReasonData.details[0])
-    : undefined;
-  const maxSolution = Math.max(1, ...(activeDetail?.solutions.map(([, c]) => c) ?? []));
+  const activeReasonData = flowRows.find((f) => f.reason === flowReason) ?? flowRows[0];
+  const activeDetail = activeReasonData.details.find((d) => d.name === flowDetail)
+    ?? activeReasonData.details[0]
+    ?? { name: "Sem chamados", kind: "", total: 0, solutions: [] as [string, number][] };
+  const maxSolution = Math.max(1, ...activeDetail.solutions.map(([, c]) => c));
   const machineCounts = useMemo(() => countBy((t) => extractMachine(t.description)), [filtered]);
 
   const systemOptions = useMemo(
@@ -589,19 +621,17 @@ ${perRequester.map((r, i) => `<tr>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {!activeReasonData || !activeDetail ? (
-            <EmptyState icon={Wrench} title="Sem dados" description="Nenhum chamado com motivo real no período." />
-          ) : (
+          {(
             <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr_auto_1.1fr] md:items-start">
               {/* Coluna 1: motivos */}
               <div className="space-y-1.5">
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Motivo real</p>
-                {flow.map((f) => (
+                {flowRows.map((f) => (
                   <button
                     key={f.reason}
                     type="button"
                     onClick={() => { setFlowReason(f.reason); setFlowDetail(null); }}
-                    className={`flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors ${f.reason === activeReasonData.reason ? "border-primary bg-primary/10 font-medium" : "hover:bg-muted/50"}`}
+                    className={`flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors ${f.reason === activeReasonData.reason ? "border-primary bg-primary/10 font-medium" : "hover:bg-muted/50"} ${f.total === 0 ? "text-muted-foreground" : ""}`}
                   >
                     <span className="truncate">{f.reason}</span>
                     <Badge variant="secondary" className="shrink-0">{f.total}</Badge>
@@ -616,6 +646,9 @@ ${perRequester.map((r, i) => `<tr>
               {/* Coluna 2: sistema, site ou equipamento do motivo escolhido */}
               <div className="space-y-1.5">
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Sistema / site / equipamento</p>
+                {activeReasonData.details.length === 0 && (
+                  <p className="text-xs text-muted-foreground">Nenhum chamado com este motivo no período.</p>
+                )}
                 {activeReasonData.details.map((d) => (
                   <button
                     key={d.name}
@@ -643,12 +676,12 @@ ${perRequester.map((r, i) => `<tr>
                   <p className="text-3xl font-bold tabular-nums">{activeDetail.total}</p>
                   <p className="text-xs text-muted-foreground">chamados</p>
                 </div>
-                <div className="space-y-2">
+                <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
                   <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Soluções mais recorrentes</p>
                   {activeDetail.solutions.length === 0 ? (
                     <p className="text-xs text-muted-foreground">Nenhuma solução registrada.</p>
                   ) : (
-                    activeDetail.solutions.slice(0, 5).map(([solution, count]) => (
+                    activeDetail.solutions.map(([solution, count]) => (
                       <div key={solution}>
                         <div className="flex justify-between gap-2 text-xs">
                           <span className="truncate">{solution}</span>
