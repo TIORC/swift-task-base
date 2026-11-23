@@ -36,6 +36,26 @@ const emptyRow = (): AdmTiRow => ({
   departamento: DEFAULT_DEPARTAMENTO, colaborador: "", historico: "", observacao: "",
 });
 
+type Filters = Record<Field, string>;
+
+// Valor especial do filtro de Status/Departamento para mostrar só as linhas sem valor.
+const EMPTY_VALUE = "__vazio__";
+
+const emptyFilters = (): Filters => Object.fromEntries(COLUMNS.map((c) => [c.key, ""])) as Filters;
+
+// Sem acento e sem diferença de maiúsculas, para o filtro "contém" funcionar com digitação em português.
+const normalizeText = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+const matchesFilter = (row: AdmTiRow, key: Field, filter: string) => {
+  if (!filter) return true;
+  if (key === "status" || key === "departamento") {
+    return filter === EMPTY_VALUE ? !row[key] : row[key] === filter;
+  }
+  return normalizeText(row[key]).includes(normalizeText(filter.trim()));
+};
+
+const FILTER_INPUT = "h-7 w-full min-w-[90px] rounded border border-input bg-background px-1.5 text-xs font-normal text-foreground outline-none focus:border-primary";
+
 // Aba ADM TI: tabela de consulta, e o "Modo Excel" para digitar e gravar tudo de uma vez.
 export function AdmTiSheet({ canWrite }: { canWrite: boolean }) {
   const { data: saved = [], isLoading } = useAdmTiRows();
@@ -45,6 +65,7 @@ export function AdmTiSheet({ canWrite }: { canWrite: boolean }) {
   const deptOptions = Array.from(new Set([DEFAULT_DEPARTAMENTO, ...departments.filter((d) => d.active).map((d) => d.name)]));
   const [excel, setExcel] = useState(false);
   const [draft, setDraft] = useState<AdmTiRow[]>([]);
+  const [filters, setFilters] = useState<Filters>(emptyFilters);
 
   const startExcel = () => {
     setDraft(saved.length ? saved.map((r) => ({ ...r })) : [emptyRow()]);
@@ -60,6 +81,9 @@ export function AdmTiSheet({ canWrite }: { canWrite: boolean }) {
     setDraft((prev) => prev.map((r) => (r.id === id ? { ...r, [key]: value } : r)));
 
   const removeRow = (id: string) => setDraft((prev) => prev.filter((r) => r.id !== id));
+
+  const setFilter = (key: Field, value: string) => setFilters((prev) => ({ ...prev, [key]: value }));
+  const hasFilter = COLUMNS.some((c) => filters[c.key] !== "");
 
   const onSave = async () => {
     // Linhas totalmente em branco não são gravadas; os textos são limpos de espaços nas pontas.
@@ -87,18 +111,27 @@ export function AdmTiSheet({ canWrite }: { canWrite: boolean }) {
   };
 
   const rows = excel ? draft : saved;
+  const visibleRows = rows.filter((r) => COLUMNS.every((c) => matchesFilter(r, c.key, filters[c.key])));
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">
-          {excel
-            ? "Modo Excel: Tab vai para a próxima célula e Enter desce uma linha. Ao terminar, clique em Gravar."
-            : `${saved.length} registro(s)`}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm text-muted-foreground">
+            {excel
+              ? "Modo Excel: Tab vai para a próxima célula e Enter desce uma linha. Ao terminar, clique em Gravar."
+              : hasFilter ? `${visibleRows.length} de ${saved.length} registro(s)` : `${saved.length} registro(s)`}
+          </p>
+          {hasFilter && (
+            <Button size="sm" variant="ghost" onClick={() => setFilters(emptyFilters())}>
+              <X className="mr-2 h-4 w-4" /> Limpar filtros
+            </Button>
+          )}
+        </div>
         {canWrite && (excel ? (
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => setDraft((prev) => [...prev, emptyRow()])} disabled={save.isPending}>
+            {/* Novas linhas aparecem sempre: ao adicionar, os filtros são limpos. */}
+            <Button size="sm" variant="outline" onClick={() => { setFilters(emptyFilters()); setDraft((prev) => [...prev, emptyRow()]); }} disabled={save.isPending}>
               <Plus className="mr-2 h-4 w-4" /> Adicionar linha
             </Button>
             <Button size="sm" variant="outline" onClick={cancel} disabled={save.isPending}>
@@ -123,9 +156,36 @@ export function AdmTiSheet({ canWrite }: { canWrite: boolean }) {
                 {COLUMNS.map((c) => <TableHead key={c.key} className="whitespace-nowrap">{c.label}</TableHead>)}
                 {excel && <TableHead className="w-10" />}
               </TableRow>
+              <TableRow>
+                {COLUMNS.map((c) => (
+                  <TableHead key={c.key} className="p-1">
+                    {c.key === "status" || c.key === "departamento" ? (
+                      <select
+                        aria-label={`Filtrar ${c.label}`}
+                        value={filters[c.key]}
+                        onChange={(e) => setFilter(c.key, e.target.value)}
+                        className={FILTER_INPUT}
+                      >
+                        <option value="">Todos</option>
+                        <option value={EMPTY_VALUE}>(vazio)</option>
+                        {(c.key === "status" ? STATUS_OPTIONS : deptOptions).map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    ) : (
+                      <input
+                        aria-label={`Filtrar ${c.label}`}
+                        placeholder="Filtrar…"
+                        value={filters[c.key]}
+                        onChange={(e) => setFilter(c.key, e.target.value)}
+                        className={FILTER_INPUT}
+                      />
+                    )}
+                  </TableHead>
+                ))}
+                {excel && <TableHead />}
+              </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((r, ri) => (
+              {visibleRows.map((r, ri) => (
                 <TableRow key={r.id}>
                   {COLUMNS.map((c, ci) => (
                     <TableCell key={c.key} className="p-0">
@@ -177,10 +237,14 @@ export function AdmTiSheet({ canWrite }: { canWrite: boolean }) {
                   )}
                 </TableRow>
               ))}
-              {rows.length === 0 && (
+              {visibleRows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={COLUMNS.length} className="py-6 text-center text-muted-foreground">
-                    {isLoading ? "Carregando…" : "Nenhum registro. Clique em Modo Excel para começar."}
+                    {isLoading
+                      ? "Carregando…"
+                      : rows.length > 0
+                        ? "Nenhum registro encontrado com esses filtros."
+                        : "Nenhum registro. Clique em Modo Excel para começar."}
                   </TableCell>
                 </TableRow>
               )}

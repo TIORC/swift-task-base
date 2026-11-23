@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  LifeBuoy, CheckCircle2, Clock, AlertTriangle, Users, Loader2, Wrench, GitCompareArrows, Tag, UserCheck, Printer,
+  LifeBuoy, CheckCircle2, Clock, AlertTriangle, Users, Loader2, Wrench, GitCompareArrows, Tag, UserCheck, Printer, ChevronRight,
   MonitorSmartphone, Globe, HardDrive, Laptop,
 } from "lucide-react";
 import {
@@ -18,7 +18,7 @@ import {
 import { subDays, subMonths, differenceInMinutes, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  SUPPORT_REAL_REASONS, ALL_SUPPORT_TAGS, INITIAL_CATEGORIES, extractInitialCategory, extractMachine,
+  SUPPORT_REAL_REASONS, INITIAL_CATEGORIES, extractInitialCategory, extractMachine,
 } from "@/lib/support-reasons";
 
 const PIE_COLORS = [
@@ -47,12 +47,15 @@ export function SupportReport() {
   const [requesterFilter, setRequesterFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [reasonFilter, setReasonFilter] = useState<string>("all");
-  const [tagFilter, setTagFilter] = useState<string>("all");
+  const [solutionFilter, setSolutionFilter] = useState<string>("all");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [systemFilter, setSystemFilter] = useState<string>("all");
   const [siteFilter, setSiteFilter] = useState<string>("all");
   const [equipmentFilter, setEquipmentFilter] = useState<string>("all");
+  // Caminho dos chamados: motivo escolhido e, dentro dele, sistema/site/equipamento escolhido.
+  const [flowReason, setFlowReason] = useState<string | null>(null);
+  const [flowDetail, setFlowDetail] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["support-report"],
@@ -92,7 +95,7 @@ export function SupportReport() {
       }
       if (categoryFilter !== "all" && extractInitialCategory(t.title) !== categoryFilter) return false;
       if (reasonFilter !== "all" && t.support_real_reason !== reasonFilter) return false;
-      if (tagFilter !== "all" && !(t.support_tags ?? []).includes(tagFilter)) return false;
+      if (solutionFilter !== "all" && t.support_solution !== solutionFilter) return false;
       if (assigneeFilter !== "all" && t.assigned_to !== assigneeFilter) return false;
       if (statusFilter !== "all" && t.status !== statusFilter) return false;
       if (systemFilter !== "all" && t.support_system !== systemFilter) return false;
@@ -100,7 +103,7 @@ export function SupportReport() {
       if (equipmentFilter !== "all" && t.support_equipment !== equipmentFilter) return false;
       return true;
     });
-  }, [data, period, monthFilter, requesterFilter, categoryFilter, reasonFilter, tagFilter, assigneeFilter, statusFilter, systemFilter, siteFilter, equipmentFilter]);
+  }, [data, period, monthFilter, requesterFilter, categoryFilter, reasonFilter, solutionFilter, assigneeFilter, statusFilter, systemFilter, siteFilter, equipmentFilter]);
 
 
 
@@ -144,9 +147,9 @@ export function SupportReport() {
     return [...map.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [filtered]);
 
-  const tagCounts = useMemo(() => {
+  const solutionCounts = useMemo(() => {
     const map = new Map<string, number>();
-    filtered.forEach((t: any) => (t.support_tags ?? []).forEach((tg: string) => map.set(tg, (map.get(tg) || 0) + 1)));
+    filtered.forEach((t: any) => { if (t.support_solution) map.set(t.support_solution, (map.get(t.support_solution) || 0) + 1); });
     return [...map.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 12);
   }, [filtered]);
 
@@ -163,6 +166,44 @@ export function SupportReport() {
   const systemCounts = useMemo(() => countBy((t) => t.support_system), [filtered]);
   const siteCounts = useMemo(() => countBy((t) => t.support_site), [filtered]);
   const equipmentCounts = useMemo(() => countBy((t) => t.support_equipment), [filtered]);
+  const solutionOptions = useMemo(
+    () => [...new Set((data?.tasks ?? []).map((t: any) => t.support_solution).filter(Boolean))].sort() as string[],
+    [data],
+  );
+
+  // Motivo -> sistema/site/equipamento -> quantidade e soluções mais recorrentes.
+  const flow = useMemo(() => {
+    type Detail = { kind: string; total: number; solutions: Map<string, number> };
+    const map = new Map<string, { total: number; details: Map<string, Detail> }>();
+    filtered.forEach((t: any) => {
+      if (!t.support_real_reason) return;
+      const reason = t.support_real_reason as string;
+      const entry = map.get(reason) || { total: 0, details: new Map<string, Detail>() };
+      entry.total++;
+      const name = t.support_system || t.support_site || t.support_equipment || "Sem detalhe informado";
+      const kind = t.support_system ? "Sistema" : t.support_site ? "Site / Portal" : t.support_equipment ? "Equipamento" : "";
+      const detail = entry.details.get(name) || { kind, total: 0, solutions: new Map<string, number>() };
+      detail.total++;
+      if (t.support_solution) detail.solutions.set(t.support_solution, (detail.solutions.get(t.support_solution) || 0) + 1);
+      entry.details.set(name, detail);
+      map.set(reason, entry);
+    });
+    return [...map.entries()]
+      .map(([reason, entry]) => ({
+        reason,
+        total: entry.total,
+        details: [...entry.details.entries()]
+          .map(([name, d]) => ({ name, kind: d.kind, total: d.total, solutions: [...d.solutions.entries()].sort((a, b) => b[1] - a[1]) }))
+          .sort((a, b) => b.total - a.total),
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [filtered]);
+  // Motivo e detalhe em destaque: o escolhido, ou o primeiro da lista.
+  const activeReasonData = flow.find((f) => f.reason === flowReason) ?? flow[0] ?? null;
+  const activeDetail = activeReasonData
+    ? (activeReasonData.details.find((d) => d.name === flowDetail) ?? activeReasonData.details[0])
+    : undefined;
+  const maxSolution = Math.max(1, ...(activeDetail?.solutions.map(([, c]) => c) ?? []));
   const machineCounts = useMemo(() => countBy((t) => extractMachine(t.description)), [filtered]);
 
   const systemOptions = useMemo(
@@ -219,16 +260,16 @@ export function SupportReport() {
 
   // Tabela por colaborador
   const perRequester = useMemo(() => {
-    const map = new Map<string, { name: string; total: number; done: number; open: number; reasons: Map<string, number>; tags: Map<string, number>; last: Date }>();
+    const map = new Map<string, { name: string; total: number; done: number; open: number; reasons: Map<string, number>; solutions: Map<string, number>; last: Date }>();
     filtered.forEach((t: any) => {
       const name = extractRequester(t.description) || profileName(t.created_by);
       if (!name || name === "—") return;
-      const entry = map.get(name) || { name, total: 0, done: 0, open: 0, reasons: new Map(), tags: new Map(), last: new Date(t.created_at) };
+      const entry = map.get(name) || { name, total: 0, done: 0, open: 0, reasons: new Map(), solutions: new Map(), last: new Date(t.created_at) };
       entry.total++;
       if (t.status === "done") entry.done++;
       else if (t.status !== "discarded") entry.open++;
       if (t.support_real_reason) entry.reasons.set(t.support_real_reason, (entry.reasons.get(t.support_real_reason) || 0) + 1);
-      (t.support_tags ?? []).forEach((tg: string) => entry.tags.set(tg, (entry.tags.get(tg) || 0) + 1));
+      if (t.support_solution) entry.solutions.set(t.support_solution, (entry.solutions.get(t.support_solution) || 0) + 1);
       const createdAt = new Date(t.created_at);
       if (createdAt > entry.last) entry.last = createdAt;
       map.set(name, entry);
@@ -241,7 +282,7 @@ export function SupportReport() {
         open: e.open,
         rate: e.total ? Math.round((e.done / e.total) * 100) : 0,
         reasons: [...e.reasons.entries()].sort((a, b) => b[1] - a[1]),
-        tags: [...e.tags.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4),
+        solutions: [...e.solutions.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4),
         last: e.last,
       }))
       .sort((a, b) => b.total - a.total);
@@ -287,7 +328,7 @@ export function SupportReport() {
     if (requesterFilter !== "all") filtersUsed.push(`Solicitante: ${requesterFilter}`);
     if (categoryFilter !== "all") filtersUsed.push(`Categoria inicial: ${categoryFilter}`);
     if (reasonFilter !== "all") filtersUsed.push(`Motivo real: ${reasonFilter}`);
-    if (tagFilter !== "all") filtersUsed.push(`Tag: ${tagFilter}`);
+    if (solutionFilter !== "all") filtersUsed.push(`Solução: ${solutionFilter}`);
     if (assigneeFilter !== "all") filtersUsed.push(`Responsável TI: ${profileName(assigneeFilter)}`);
     if (statusFilter !== "all") filtersUsed.push(`Status: ${statusFilter}`);
     if (systemFilter !== "all") filtersUsed.push(`Sistema: ${systemFilter}`);
@@ -338,9 +379,9 @@ export function SupportReport() {
     </tbody></table>
   </div>
   <div>
-    <h2>Tags mais recorrentes</h2>
-    <table><thead><tr><th>Tag</th><th class="num">Qtd</th></tr></thead><tbody>
-    ${tagCounts.map((t) => `<tr><td>${esc(t.name)}</td><td class="num">${t.value}</td></tr>`).join("") || `<tr><td colspan="2" style="color:#94a3b8">Sem dados</td></tr>`}
+    <h2>Soluções mais recorrentes</h2>
+    <table><thead><tr><th>Solução</th><th class="num">Qtd</th></tr></thead><tbody>
+    ${solutionCounts.map((t) => `<tr><td>${esc(t.name)}</td><td class="num">${t.value}</td></tr>`).join("") || `<tr><td colspan="2" style="color:#94a3b8">Sem dados</td></tr>`}
     </tbody></table>
   </div>
 </div>
@@ -397,7 +438,7 @@ ${comparison.map((r) => `<tr><td style="text-transform:capitalize">${esc(r.initi
 </div>
 
 <h2>Detalhamento por colaborador</h2>
-<table><thead><tr><th>#</th><th>Colaborador</th><th class="num">Total</th><th class="num">Resolvidos</th><th class="num">Em aberto</th><th class="num">% Resolução</th><th>Motivos reais</th><th>Tags frequentes</th><th class="num">Último</th></tr></thead><tbody>
+<table><thead><tr><th>#</th><th>Colaborador</th><th class="num">Total</th><th class="num">Resolvidos</th><th class="num">Em aberto</th><th class="num">% Resolução</th><th>Motivos reais</th><th>Soluções frequentes</th><th class="num">Último</th></tr></thead><tbody>
 ${perRequester.map((r, i) => `<tr>
   <td class="num">${i + 1}</td>
   <td><strong>${esc(r.name)}</strong></td>
@@ -406,7 +447,7 @@ ${perRequester.map((r, i) => `<tr>
   <td class="num">${r.open}</td>
   <td class="num">${r.rate}%</td>
   <td>${r.reasons.length ? r.reasons.map(([n, c]) => `<span class="badge">${esc(n)}: ${c}</span>`).join("") : "—"}</td>
-  <td>${r.tags.length ? r.tags.map(([n, c]) => `<span class="badge">${esc(n)}: ${c}</span>`).join("") : "—"}</td>
+  <td>${r.solutions.length ? r.solutions.map(([n, c]) => `<span class="badge">${esc(n)}: ${c}</span>`).join("") : "—"}</td>
   <td class="num">${esc(format(r.last, "dd/MM/yy", { locale: ptBR }))}</td>
 </tr>`).join("") || `<tr><td colspan="9" style="color:#94a3b8">Sem dados</td></tr>`}
 </tbody></table>
@@ -467,11 +508,11 @@ ${perRequester.map((r, i) => `<tr>
                 {SUPPORT_REAL_REASONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Select value={tagFilter} onValueChange={setTagFilter}>
-              <SelectTrigger className="w-[170px] h-9 text-xs"><SelectValue placeholder="Tag" /></SelectTrigger>
+            <Select value={solutionFilter} onValueChange={setSolutionFilter}>
+              <SelectTrigger className="w-[170px] h-9 text-xs"><SelectValue placeholder="Solução" /></SelectTrigger>
               <SelectContent className="max-h-72">
-                <SelectItem value="all">Todas tags</SelectItem>
-                {ALL_SUPPORT_TAGS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                <SelectItem value="all">Todas soluções</SelectItem>
+                {solutionOptions.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
@@ -540,7 +581,93 @@ ${perRequester.map((r, i) => `<tr>
         ))}
       </div>
 
-      {/* Motivos reais + Tags */}
+      {/* Caminho dos chamados: motivo → sistema/site/equipamento → quantidade → soluções */}
+      <Card className="shadow-card">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <GitCompareArrows className="h-4 w-4 text-primary" />Caminho dos chamados
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!activeReasonData || !activeDetail ? (
+            <EmptyState icon={Wrench} title="Sem dados" description="Nenhum chamado com motivo real no período." />
+          ) : (
+            <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr_auto_1.1fr] md:items-start">
+              {/* Coluna 1: motivos */}
+              <div className="space-y-1.5">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Motivo real</p>
+                {flow.map((f) => (
+                  <button
+                    key={f.reason}
+                    type="button"
+                    onClick={() => { setFlowReason(f.reason); setFlowDetail(null); }}
+                    className={`flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors ${f.reason === activeReasonData.reason ? "border-primary bg-primary/10 font-medium" : "hover:bg-muted/50"}`}
+                  >
+                    <span className="truncate">{f.reason}</span>
+                    <Badge variant="secondary" className="shrink-0">{f.total}</Badge>
+                  </button>
+                ))}
+              </div>
+
+              <div className="hidden md:flex items-center justify-center pt-7">
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </div>
+
+              {/* Coluna 2: sistema, site ou equipamento do motivo escolhido */}
+              <div className="space-y-1.5">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Sistema / site / equipamento</p>
+                {activeReasonData.details.map((d) => (
+                  <button
+                    key={d.name}
+                    type="button"
+                    onClick={() => setFlowDetail(d.name)}
+                    className={`flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors ${d.name === activeDetail.name ? "border-primary bg-primary/10 font-medium" : "hover:bg-muted/50"}`}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate">{d.name}</span>
+                      {d.kind && <span className="block text-[10px] text-muted-foreground">{d.kind}</span>}
+                    </span>
+                    <Badge variant="secondary" className="shrink-0">{d.total}</Badge>
+                  </button>
+                ))}
+              </div>
+
+              <div className="hidden md:flex items-center justify-center pt-7">
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </div>
+
+              {/* Coluna 3: quantidade e soluções mais recorrentes */}
+              <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">{activeDetail.name}</p>
+                  <p className="text-3xl font-bold tabular-nums">{activeDetail.total}</p>
+                  <p className="text-xs text-muted-foreground">chamados</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Soluções mais recorrentes</p>
+                  {activeDetail.solutions.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Nenhuma solução registrada.</p>
+                  ) : (
+                    activeDetail.solutions.slice(0, 5).map(([solution, count]) => (
+                      <div key={solution}>
+                        <div className="flex justify-between gap-2 text-xs">
+                          <span className="truncate">{solution}</span>
+                          <span className="font-semibold tabular-nums">{count}</span>
+                        </div>
+                        <div className="mt-0.5 h-1.5 rounded bg-muted">
+                          <div className="h-1.5 rounded bg-indigo-500" style={{ width: `${(count / maxSolution) * 100}%` }} />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Motivos reais + Soluções */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="shadow-card">
           <CardHeader className="pb-2">
@@ -567,15 +694,15 @@ ${perRequester.map((r, i) => `<tr>
         <Card className="shadow-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <Tag className="h-4 w-4 text-indigo-500" />Tags mais recorrentes
+              <Tag className="h-4 w-4 text-indigo-500" />Soluções mais recorrentes
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {tagCounts.length === 0 ? (
-              <EmptyState icon={Tag} title="Sem tags registradas" />
+            {solutionCounts.length === 0 ? (
+              <EmptyState icon={Tag} title="Sem soluções registradas" />
             ) : (
               <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={tagCounts} layout="vertical" margin={{ left: 12 }}>
+                <BarChart data={solutionCounts} layout="vertical" margin={{ left: 12 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                   <YAxis type="category" dataKey="name" tick={{ fill: "hsl(var(--foreground))", fontSize: 11 }} width={110} />
@@ -744,7 +871,7 @@ ${perRequester.map((r, i) => `<tr>
                     <TableHead className="text-xs text-center w-24">Em aberto</TableHead>
                     <TableHead className="text-xs w-32">% Resolução</TableHead>
                     <TableHead className="text-xs">Motivos reais</TableHead>
-                    <TableHead className="text-xs">Tags mais frequentes</TableHead>
+                    <TableHead className="text-xs">Soluções mais frequentes</TableHead>
                     <TableHead className="text-xs text-right w-28">Último chamado</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -776,10 +903,10 @@ ${perRequester.map((r, i) => `<tr>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1 max-w-[220px]">
-                          {r.tags.length === 0
+                          {r.solutions.length === 0
                             ? <span className="text-xs text-muted-foreground">—</span>
-                            : r.tags.map(([tag, count]) => (
-                                <Badge key={tag} variant="outline" className="text-[10px]">{tag}: {count}</Badge>
+                            : r.solutions.map(([solution, count]) => (
+                                <Badge key={solution} variant="outline" className="text-[10px]">{solution}: {count}</Badge>
                               ))}
                         </div>
                       </TableCell>

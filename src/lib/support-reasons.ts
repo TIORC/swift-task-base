@@ -3,7 +3,6 @@ export const SUPPORT_REAL_REASONS = [
   "Sistema",
   "Site / Portal",
   "Rede / Internet",
-  "Software",
   "Externo — Sistema com erro",
   "Elétrica",
   "Impressão / Digitalização",
@@ -19,7 +18,7 @@ export const SUPPORT_REAL_REASONS = [
 export type SupportRealReason = (typeof SUPPORT_REAL_REASONS)[number];
 
 /** Motivos que exigem informar qual sistema recebeu suporte */
-export const REASONS_WITH_SYSTEM: string[] = ["Sistema", "Software", "Externo — Sistema com erro"];
+export const REASONS_WITH_SYSTEM: string[] = ["Sistema", "Externo — Sistema com erro"];
 /** Motivos que exigem informar qual site/portal recebeu suporte */
 export const REASONS_WITH_SITE: string[] = ["Site / Portal", "Externo — Sistema com erro"];
 /** Motivos que exigem informar qual equipamento recebeu suporte */
@@ -56,11 +55,6 @@ export const SUPPORT_TAGS_BY_REASON: Record<SupportRealReason, string[]> = {
     "Sem internet", "Lentidão", "Cabo de rede", "Wi-Fi", "Switch", "Roteador",
     "IP/DNS", "Queda de conexão", "VPN", "Compartilhamento de pasta",
     "Acesso remoto", "Servidor inacessível", "Firewall / Bloqueio",
-  ],
-  "Software": [
-    "Instalação", "Atualização", "Configuração", "Travamento", "Erro de licença",
-    "Permissão de acesso", "Lentidão", "Desinstalação", "Compatibilidade",
-    "Erro de driver", "Windows / Sistema operacional", "Office / Pacote",
   ],
   "Externo — Sistema com erro": [
     "Domínio", "Thomson Reuters", "M7", "Gestão TI", "Sistema bancário",

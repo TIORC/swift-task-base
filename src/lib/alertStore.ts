@@ -16,6 +16,9 @@ const listeners = new Set<AlertListener>();
 let queue: AlertItem[] = [];
 let counter = 0;
 
+// No máximo 2 alertos na tela; ao chegar um terceiro, o mais antigo sai.
+const MAX_VISIBLE_ALERTS = 2;
+
 function notify() {
   for (const l of listeners) l(queue);
 }
@@ -23,7 +26,7 @@ function notify() {
 export function showAlert(alert: Omit<AlertItem, "id" | "createdAt">): string {
   const id = `alert-${++counter}-${Date.now()}`;
   const item: AlertItem = { ...alert, id, createdAt: Date.now() };
-  queue = [...queue, item];
+  queue = [...queue, item].slice(-MAX_VISIBLE_ALERTS);
   notify();
   return id;
 }

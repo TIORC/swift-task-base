@@ -164,6 +164,9 @@ export function AutomationsReport() {
       return data?.profiles.find((p: any) => p.id === id)?.full_name || "N/A";
     };
 
+    // Tempo no mesmo formato do resumo (ex.: 2h 24m); automação sem tempo lançado fica "—".
+    const formatTempo = (minutes: number) => (minutes > 0 ? formatMinutes(minutes) : "—");
+
     const doc = new jsPDF({ orientation: "landscape" });
     doc.setFontSize(14);
     doc.text("Relatório de Automações", 14, 16);
@@ -189,38 +192,110 @@ export function AutomationsReport() {
     const sectorRows = countBy(a => SECTOR_LABELS[a.sector] || a.sector || "—");
     const ownerRows = countBy(a => profileName(a.assigned_to));
 
-    const drawBars = (x: number, y: number, w: number, title: string, rows: { label: string; value: number; done?: number }[]) => {
+    // withSplit: barra verde = concluídas e azul = em aberto, com o texto "X de Y concluídas".
+    const drawBars = (x: number, y: number, title: string, rows: { label: string; value: number; done?: number }[], withSplit: boolean) => {
       doc.setFontSize(10);
       doc.setTextColor(30);
       doc.text(title, x, y);
+      let top = y + 6;
+      if (withSplit) {
+        doc.setFillColor(16, 185, 129);
+        doc.rect(x, top - 3, 3, 3, "F");
+        doc.setFontSize(7);
+        doc.setTextColor(60);
+        doc.text("Concluídas", x + 4, top - 0.5);
+        doc.setFillColor(79, 70, 229);
+        doc.rect(x + 28, top - 3, 3, 3, "F");
+        doc.text("Em aberto", x + 32, top - 0.5);
+        top += 5;
+      }
       const max = Math.max(1, ...rows.map(r => r.value));
-      const labelW = 40;
-      const barMax = w - labelW - 22;
+      const labelW = 36;
+      const barMax = 24;
       rows.slice(0, 10).forEach((r, i) => {
-        const yy = y + 6 + i * 8;
+        const yy = top + i * 8;
         const len = barMax * (r.value / max);
+        const done = r.done ?? 0;
         doc.setFontSize(8);
         doc.setTextColor(60);
         doc.text(r.label.slice(0, 30), x, yy + 3.5);
         doc.setFillColor(79, 70, 229);
         doc.rect(x + labelW, yy, Math.max(0.6, len), 4.5, "F");
-        if (r.done !== undefined) {
+        if (withSplit && done > 0) {
           doc.setFillColor(16, 185, 129);
-          doc.rect(x + labelW, yy, Math.max(0.6, barMax * (r.done / max)), 4.5, "F");
+          doc.rect(x + labelW, yy, Math.max(0.6, barMax * (done / max)), 4.5, "F");
         }
         doc.setTextColor(30);
-        doc.text(r.done !== undefined ? `${r.done}/${r.value}` : String(r.value), x + labelW + len + 2, yy + 3.5);
+        const text = withSplit
+          ? `${done} de ${r.value} ${r.value === 1 ? "concluída" : "concluídas"}`
+          : String(r.value);
+        doc.text(text, x + labelW + len + 2, yy + 3.5);
       });
     };
 
-    drawBars(14, 42, 84, "Por status", statusRows);
-    drawBars(108, 42, 84, "Por setor (concluídas em verde)", sectorRows);
-    drawBars(202, 42, 84, "Por responsável (concluídas em verde)", ownerRows);
+    drawBars(14, 42, "Por status", statusRows.map(r => ({ label: r.label, value: r.value })), false);
+    drawBars(108, 42, "Por setor", sectorRows, true);
+    // Responsáveis em pizza: cada fatia é um responsável (pela quantidade de automações).
+    const PIE_COLORS_PDF: [number, number, number][] = [
+      [79, 70, 229], [16, 185, 129], [245, 158, 11], [239, 68, 68],
+      [14, 165, 233], [168, 85, 247], [107, 114, 128], [236, 72, 153],
+    ];
+    const pieCx = 240;
+    const pieCy = 88;
+    const pieR = 34;
+    const pieTotal = ownerRows.reduce((s, r) => s + r.value, 0);
+    doc.setFontSize(12);
+    doc.setTextColor(30);
+    doc.text("Por responsável", 202, 42);
+    doc.setFontSize(8);
+    doc.setTextColor(60);
+    doc.text(`${pieTotal} automações no período`, 202, 48);
+
+    let angle = -Math.PI / 2;
+    ownerRows.forEach((r, i) => {
+      if (r.value <= 0 || pieTotal <= 0) return;
+      const sweep = (r.value / pieTotal) * Math.PI * 2;
+      const steps = Math.max(2, Math.ceil(sweep * 24));
+      // Contorno da fatia: centro, arco e volta ao centro (jsPDF usa deltas entre pontos).
+      const pts: [number, number][] = [[pieCx, pieCy]];
+      for (let s = 0; s <= steps; s++) {
+        const a = angle + (sweep * s) / steps;
+        pts.push([pieCx + pieR * Math.cos(a), pieCy + pieR * Math.sin(a)]);
+      }
+      const deltas: [number, number][] = [];
+      let px = pieCx;
+      let py = pieCy;
+      pts.slice(1).forEach(([qx, qy]) => {
+        deltas.push([qx - px, qy - py]);
+        px = qx;
+        py = qy;
+      });
+      const [cr, cg, cb] = PIE_COLORS_PDF[i % PIE_COLORS_PDF.length];
+      doc.setFillColor(cr, cg, cb);
+      doc.lines(deltas, pieCx, pieCy, [1, 1], "F", true);
+      angle += sweep;
+    });
+
+    // Legenda: cor, responsável, quantidade e concluídas.
+    ownerRows.slice(0, 8).forEach((r, i) => {
+      const yy = 130 + i * 7;
+      const [cr, cg, cb] = PIE_COLORS_PDF[i % PIE_COLORS_PDF.length];
+      doc.setFillColor(cr, cg, cb);
+      doc.rect(202, yy, 3, 3, "F");
+      doc.setFontSize(8);
+      doc.setTextColor(30);
+      doc.text(r.label.slice(0, 20), 207, yy + 2.5);
+      const pct = pieTotal ? Math.round((r.value / pieTotal) * 100) : 0;
+      doc.setTextColor(60);
+      doc.text(`${r.done ?? 0} de ${r.value} concluídas (${pct}%)`, 240, yy + 2.5);
+    });
 
     doc.addPage();
     autoTable(doc, {
       startY: 20,
-      head: [["Automação", "Status", "Setor", "Responsável", "Criada em", "Concluída em", "Horas"]],
+      head: [["Automação", "Status", "Setor", "Responsável", "Criada em", "Concluída em", "Tempo gasto"]],
+      foot: [["Total", "", "", "", "", "", formatMinutes(kpis.minutes)]],
+      footStyles: { fontStyle: "bold", fillColor: [243, 244, 246], textColor: 30 },
       body: filtered.map((a: any) => [
         a.title,
         STATUS_LABELS[a.status as keyof typeof STATUS_LABELS] || a.status,
@@ -228,7 +303,7 @@ export function AutomationsReport() {
         profileName(a.assigned_to),
         a.created_at ? format(new Date(a.created_at), "dd/MM/yyyy") : "",
         a.completed_at ? format(new Date(a.completed_at), "dd/MM/yyyy") : "",
-        ((minutesByAuto.get(a.id) || 0) / 60).toFixed(1).replace(".", ","),
+        formatTempo(minutesByAuto.get(a.id) || 0),
       ]),
       styles: { fontSize: 8 },
       headStyles: { fillColor: [79, 70, 229] },

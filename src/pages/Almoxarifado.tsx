@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { PageHeader } from "@/components/PageHeader";
 import { Package, Plus, AlertTriangle, Boxes, DollarSign, Wrench, Trash2, Search, ShoppingCart, Send, Settings, Download, History, ChevronDown, Grid3x3 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -168,7 +168,7 @@ type LedgerColumn = "item" | "categoria" | "patrimonio" | "tipo" | "data" | "dep
 const LEDGER_COLUMNS: LedgerColumn[] = ["item", "categoria", "patrimonio", "tipo", "data", "departamento", "es", "observacao"];
 const LEDGER_COLUMN_LABELS: Record<LedgerColumn, string> = {
   item: "Equipamento", categoria: "Categoria", patrimonio: "Patrimônio", tipo: "Tipo de controle",
-  data: "Data", departamento: "Departamento/Saídas", es: "E&S", observacao: "Observação",
+  data: "Data", departamento: "Departamento/Saídas", es: "Responsável", observacao: "Observação",
 };
 const OUT_COLUMN_LABELS: Record<OutColumn, string> = {
   item: "Item", qtd: "Qtd", responsavel: "Responsável", departamento: "Departamento", patrimonio: "Patrimônio", motivo: "Motivo",
@@ -580,6 +580,15 @@ export default function Almoxarifado() {
   });
 
   const damagedItems = activeItems.filter((i) => i.damaged_quantity > 0);
+  // Log de controle: danos, descartes, atribuições, devoluções e transferências, do mais recente ao mais antigo.
+  const CONTROL_TYPES: MovementType[] = ["damage", "discard", "transfer", "assign", "return"];
+  const controlRows = movements
+    .filter((m) => CONTROL_TYPES.includes(m.type))
+    .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at))
+    .map((m) => {
+      const d = new Date(m.occurred_at);
+      return { m, year: d.getFullYear(), month: d.toLocaleDateString("pt-BR", { month: "long" }) };
+    });
   const discardedItems = items.filter((i) => i.discarded_quantity > 0);
 
   return (
@@ -616,7 +625,7 @@ export default function Almoxarifado() {
           <TabsTrigger value="in">Entradas e Saídas</TabsTrigger>
           <TabsTrigger value="out" className="hidden">Saídas</TabsTrigger>
           <TabsTrigger value="assets" className="hidden">Patrimônios</TabsTrigger>
-          <TabsTrigger value="damaged">Danificados</TabsTrigger>
+          <TabsTrigger value="damaged">Controle</TabsTrigger>
           <TabsTrigger value="discarded" className="hidden">Descartados</TabsTrigger>
           <TabsTrigger value="restock" className="hidden">Reposição</TabsTrigger>
           <TabsTrigger value="history" className="hidden">Histórico</TabsTrigger>
@@ -1400,6 +1409,43 @@ export default function Almoxarifado() {
               </div>
             </div>
           )}
+          <h2 className="text-sm text-muted-foreground">Histórico de controle</h2>
+          <Card><CardContent className="p-0 overflow-x-auto">
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Equipamento</TableHead><TableHead>Patrimônio</TableHead><TableHead>Tipo de Controle</TableHead>
+                <TableHead>Ano</TableHead><TableHead>Mês</TableHead><TableHead>Motivo</TableHead>
+                <TableHead>Departamento</TableHead><TableHead>Colaborador Responsável</TableHead>
+                <TableHead>De quem</TableHead><TableHead>Para quem</TableHead><TableHead>Observação</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {controlRows.map(({ m, year, month }, idx) => (
+                  <Fragment key={m.id}>
+                    {(idx === 0 || controlRows[idx - 1].year !== year) && (
+                      <TableRow className="bg-muted/50">
+                        <TableCell colSpan={11} className="font-semibold">{year}</TableCell>
+                      </TableRow>
+                    )}
+                    <TableRow>
+                      <TableCell className="font-medium">{itemName(m.item_id)}</TableCell>
+                      <TableCell className="font-mono text-xs">{m.patrimony_number ?? "—"}</TableCell>
+                      <TableCell>{MOV_LABELS[m.type]}</TableCell>
+                      <TableCell>{year}</TableCell>
+                      <TableCell className="capitalize">{month}</TableCell>
+                      <TableCell>{m.reason ?? "—"}</TableCell>
+                      <TableCell>{m.department ?? "—"}</TableCell>
+                      <TableCell>{collabName(m.collaborator_id)}</TableCell>
+                      <TableCell>{locName(m.from_location_id)}</TableCell>
+                      <TableCell>{locName(m.to_location_id)}</TableCell>
+                      <TableCell>{m.notes ?? "—"}</TableCell>
+                    </TableRow>
+                  </Fragment>
+                ))}
+                {controlRows.length === 0 && <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-6">Nenhum registro de controle.</TableCell></TableRow>}
+              </TableBody>
+            </Table>
+          </CardContent></Card>
+          <h2 className="text-sm text-muted-foreground">Itens danificados</h2>
           <Card><CardContent className="p-0">
             <Table>
               <TableHeader><TableRow>
@@ -2190,131 +2236,78 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
           )}
         </div>
       </div>
-      <div className="space-y-2 md:hidden">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {rows.map((r) => {
           const abertoRow = !!aberto[r.tipo];
           return (
-            <Card key={r.tipo}>
-              <CardContent className="p-0">
+            <motion.div key={r.tipo} layout className="min-w-0">
+              <Card className="h-full overflow-hidden">
                 <button
                   type="button"
-                  disabled={!canManage}
-                  onClick={canManage ? () => setAberto({ ...aberto, [r.tipo]: !abertoRow }) : undefined}
-                  className="flex w-full items-center justify-between gap-3 p-3 text-left disabled:cursor-default"
+                  aria-expanded={abertoRow}
+                  onClick={() => setAberto({ ...aberto, [r.tipo]: !abertoRow })}
+                  className="flex w-full items-start justify-between gap-2 p-3 text-left transition-colors hover:bg-muted/50"
                 >
-                  <span className="min-w-0 break-words font-medium">{r.tipo}</span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    {r.quantidade === 0 ? (
-                      <Badge variant="outline" className="border-red-500/50 bg-red-400 text-black font-normal">Sem estoque</Badge>
-                    ) : (
-                      <span className="font-semibold">{r.quantidade}</span>
-                    )}
-                    {canManage && <ChevronDown className={`h-4 w-4 transition-transform ${abertoRow ? "rotate-180" : ""}`} />}
+                  <span className="flex min-w-0 flex-col gap-2">
+                    <Package className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                    <span className="break-words text-sm font-medium">{r.tipo}</span>
                   </span>
+                  <ChevronDown className={`mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform ${abertoRow ? "rotate-180" : ""}`} />
                 </button>
-                {canManage && abertoRow && (
-                  <div className="space-y-2 border-t p-3">
-                    {agruparPorNome(r.itens).map((g) => (
-                      <div key={g.key} className="flex items-center justify-between gap-2 text-sm">
-                        <div className="min-w-0">
-                          <p className="break-words">{g.name}</p>
-                          <p className="text-xs text-muted-foreground">disp. {g.disponivel} · em uso {g.emUso}</p>
-                        </div>
-                        {g.itens.length === 1 && (
-                          <RowActions
-                            editTitle="Editar item"
-                            onEdit={() => onEditItem(g.itens[0])}
-                            deleteTitle="Desativar item"
-                            deleteDescription={`"${g.name}" deixa de aparecer no estoque e nas listas. O histórico é mantido.`}
-                            deleteLabel="Desativar"
-                            pending={pending}
-                            onDelete={() => onToggleItem(g.itens[0])}
-                          />
+                <AnimatePresence initial={false}>
+                  {abertoRow && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden border-t"
+                    >
+                      <div className="space-y-2 p-3">
+                        <p className="text-xs text-muted-foreground">Disponível</p>
+                        {r.quantidade === 0 ? (
+                          <Badge variant="outline" className="border-red-500/50 bg-red-400 text-black font-normal">Sem estoque</Badge>
+                        ) : (
+                          <motion.p
+                            initial={{ scale: 0.6, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                            className="text-2xl font-semibold"
+                          >
+                            {r.quantidade}
+                          </motion.p>
                         )}
+                        {canManage && agruparPorNome(r.itens).map((g) => (
+                          <div key={g.key} className="flex items-center justify-between gap-2 border-t pt-2 text-sm">
+                            <div className="min-w-0">
+                              <p className="break-words">{g.name}</p>
+                              <p className="text-xs text-muted-foreground">disp. {g.disponivel} · em uso {g.emUso}</p>
+                            </div>
+                            {g.itens.length === 1 && (
+                              <RowActions
+                                editTitle="Editar item"
+                                onEdit={() => onEditItem(g.itens[0])}
+                                deleteTitle="Desativar item"
+                                deleteDescription={`"${g.name}" deixa de aparecer no estoque e nas listas. O histórico é mantido.`}
+                                deleteLabel="Desativar"
+                                pending={pending}
+                                onDelete={() => onToggleItem(g.itens[0])}
+                              />
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </Card>
+            </motion.div>
           );
         })}
         {rows.length === 0 && (
-          <p className="py-6 text-center text-sm text-muted-foreground">Nenhum item cadastrado. Registre uma entrada para começar.</p>
+          <p className="col-span-full py-6 text-center text-sm text-muted-foreground">Nenhum item cadastrado. Registre uma entrada para começar.</p>
         )}
       </div>
-
-      <div className="hidden md:block"><Card><CardContent className="p-0 overflow-x-auto">
-        <Table>
-          <TableHeader><TableRow>
-            <TableHead>Tipo</TableHead>
-            <TableHead className="text-right">Estoque Atual</TableHead>
-            {canManage && <TableHead className="w-10" />}
-          </TableRow></TableHeader>
-          <TableBody>
-            {rows.map((r) => {
-              const abertoRow = !!aberto[r.tipo];
-              return (
-                <Fragment key={r.tipo}>
-                  <TableRow
-                    className={canManage ? "cursor-pointer hover:bg-muted/50" : undefined}
-                    onClick={canManage ? () => setAberto({ ...aberto, [r.tipo]: !abertoRow }) : undefined}
-                  >
-                    <TableCell className="font-medium">{r.tipo}</TableCell>
-                    <TableCell className="text-right">
-                      {r.quantidade === 0 ? (
-                        <Badge variant="outline" className="border-red-500/50 bg-red-400 text-black font-normal">Sem estoque</Badge>
-                      ) : (
-                        <span className="font-semibold">{r.quantidade}</span>
-                      )}
-                    </TableCell>
-                    {canManage && (
-                      <TableCell>
-                        <Button
-                          size="sm" variant="ghost" className="h-7 w-7"
-                          title={abertoRow ? "Fechar" : "Ver itens deste tipo"}
-                        >
-                          <ChevronDown className={`h-4 w-4 transition-transform ${abertoRow ? "rotate-180" : ""}`} />
-                        </Button>
-                      </TableCell>
-                    )}
-                  </TableRow>
-
-                  {canManage && abertoRow && agruparPorNome(r.itens).map((g) => (
-                    <TableRow key={g.key} className="bg-muted/30">
-                      <TableCell className="pl-8">
-                        <span className="text-sm">{g.name}</span>
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          disp. {g.disponivel} · em uso {g.emUso}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right text-sm text-muted-foreground">
-                        {g.disponivel}
-                      </TableCell>
-                      <TableCell>
-                        {g.itens.length === 1 && (
-                          <RowActions
-                            editTitle="Editar item"
-                            onEdit={() => onEditItem(g.itens[0])}
-                            deleteTitle="Desativar item"
-                            deleteDescription={`"${g.name}" deixa de aparecer no estoque e nas listas. O histórico é mantido.`}
-                            deleteLabel="Desativar"
-                            pending={pending}
-                            onDelete={() => onToggleItem(g.itens[0])}
-                          />
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </Fragment>
-              );
-            })}
-            {rows.length === 0 && (
-              <TableRow><TableCell colSpan={canManage ? 3 : 2} className="text-center text-muted-foreground py-6">Nenhum item cadastrado. Registre uma entrada para começar.</TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </CardContent></Card></div>
     </div>
   );
 }

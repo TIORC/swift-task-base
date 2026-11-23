@@ -1,5 +1,6 @@
 import { useState, useEffect, ReactNode, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { X, Construction, MessageSquare, AtSign, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,9 @@ import type { AlertItem, AlertKind } from "@/lib/alertStore";
 import { showAlert, dismissAlert, dismissAllAlerts, subscribeAlerts } from "@/lib/alertStore";
 
 export type { AlertKind, AlertItem } from "@/lib/alertStore";
+
+// Tempo que o alerta fica na tela antes de sumir sozinho (a barrinha mostra o tempo restante).
+const ALERT_DURATION_MS = 8000;
 
 const KIND_CONFIG: Record<AlertKind, { icon: typeof Bell; iconBg: string; iconColor: string; iconRing: string }> = {
   request: {
@@ -53,7 +57,7 @@ function AlertCard({ alert, onDismiss }: { alert: AlertItem; onDismiss: (id: str
       className={cn(
         // Cores fixas: o alerta fica no body, fora do tema da página (ex.: Almoxarifado deixa o texto escuro).
         "flex items-start gap-3 w-[340px] max-w-[90vw] rounded-xl border border-slate-700 bg-slate-900 shadow-2xl",
-        "animate-[slideIn_0.3s_ease-out] ring-1 ring-white/5"
+        "animate-[slideIn_0.3s_ease-out] ring-1 ring-white/5 relative overflow-hidden"
       )}
       role="alert"
     >
@@ -83,6 +87,14 @@ function AlertCard({ alert, onDismiss }: { alert: AlertItem; onDismiss: (id: str
       >
         <X className="h-4 w-4" />
       </button>
+      <motion.div
+        className="absolute bottom-0 left-0 h-1 w-full origin-left bg-primary"
+        initial={{ scaleX: 1 }}
+        animate={{ scaleX: 0 }}
+        transition={{ duration: ALERT_DURATION_MS / 1000, ease: "linear" }}
+        onAnimationComplete={() => onDismiss(alert.id)}
+        aria-hidden="true"
+      />
     </div>
   );
 }

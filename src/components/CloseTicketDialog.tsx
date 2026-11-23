@@ -1,17 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CheckCircle2, X } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import {
-  SUPPORT_REAL_REASONS, SUPPORT_TAGS_BY_REASON, REASONS_WITH_SYSTEM, REASONS_WITH_SITE,
+  SUPPORT_REAL_REASONS, REASONS_WITH_SYSTEM, REASONS_WITH_SITE,
   REASONS_WITH_EQUIPMENT, type SupportRealReason,
 } from "@/lib/support-reasons";
 import { CatalogSelect } from "@/components/support/CatalogSelect";
@@ -28,7 +27,7 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [reason, setReason] = useState<SupportRealReason | "">("");
-  const [tags, setTags] = useState<string[]>([]);
+  const [solution, setSolution] = useState("");
   const [notes, setNotes] = useState("");
   const [system, setSystem] = useState("");
   const [site, setSite] = useState("");
@@ -38,7 +37,7 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
   useEffect(() => {
     if (open) {
       setReason("");
-      setTags([]);
+      setSolution("");
       setNotes("");
       setSystem("");
       setSite("");
@@ -46,17 +45,9 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
     }
   }, [open, taskId]);
 
-  const availableTags = useMemo(
-    () => (reason ? SUPPORT_TAGS_BY_REASON[reason] : []),
-    [reason]
-  );
-
   const showSystem = !!reason && REASONS_WITH_SYSTEM.includes(reason);
   const showSite = !!reason && REASONS_WITH_SITE.includes(reason);
   const showEquipment = !!reason && REASONS_WITH_EQUIPMENT.includes(reason);
-
-  const toggleTag = (t: string) =>
-    setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
 
   const handleConfirm = async () => {
     if (!taskId) return;
@@ -80,7 +71,7 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
         .update({
           status: "done",
           support_real_reason: reason,
-          support_tags: tags,
+          support_solution: solution || null,
           support_technical_notes: notes.trim() || null,
           support_system: showSystem ? system || null : null,
           support_site: showSite ? site || null : null,
@@ -101,10 +92,10 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
         task_id: taskId,
         user_id: user?.id ?? null,
         event_type: "support_closed",
-        description: `Chamado concluído • Motivo real: ${reason}${details ? ` • ${details}` : ""}${tags.length ? ` • Tags: ${tags.join(", ")}` : ""}`,
+        description: `Chamado concluído • Motivo real: ${reason}${details ? ` • ${details}` : ""}${solution ? ` • Solução: ${solution}` : ""}`,
         metadata: {
           support_real_reason: reason,
-          support_tags: tags,
+          support_solution: solution || null,
           support_technical_notes: notes.trim() || null,
           support_system: showSystem ? system || null : null,
           support_site: showSite ? site || null : null,
@@ -145,7 +136,7 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
             <Label>
               Motivo real do suporte <span className="text-destructive">*</span>
             </Label>
-            <Select value={reason} onValueChange={(v) => { setReason(v as SupportRealReason); setTags([]); setSystem(""); setSite(""); setEquipment(""); }}>
+            <Select value={reason} onValueChange={(v) => { setReason(v as SupportRealReason); setSolution(""); setSystem(""); setSite(""); setEquipment(""); }}>
               <SelectTrigger><SelectValue placeholder="Selecione o motivo real..." /></SelectTrigger>
               <SelectContent className="max-h-72">
                 {SUPPORT_REAL_REASONS.map((r) => (
@@ -189,28 +180,14 @@ export function CloseTicketDialog({ taskId, taskTitle, open, onOpenChange, onClo
 
 
           {reason && (
-            <div className="space-y-2">
-              <Label>Tags / submotivos (opcional)</Label>
-              <div className="flex flex-wrap gap-2 rounded-lg border border-border bg-muted/30 p-2">
-                {availableTags.map((t) => {
-                  const active = tags.includes(t);
-                  return (
-                    <Badge
-                      key={t}
-                      variant={active ? "default" : "outline"}
-                      onClick={() => toggleTag(t)}
-                      className="cursor-pointer select-none"
-                    >
-                      {t}
-                      {active && <X className="ml-1 h-3 w-3" />}
-                    </Badge>
-                  );
-                })}
-              </div>
-              {tags.length > 0 && (
-                <p className="text-xs text-muted-foreground">{tags.length} tag(s) selecionada(s)</p>
-              )}
-            </div>
+            <CatalogSelect
+              kind="solution"
+              label="O que foi feito para solucionar esse caso?"
+              placeholder="Selecione o que foi feito..."
+              newPlaceholder="Ex.: Troca de memória RAM"
+              value={solution}
+              onChange={setSolution}
+            />
           )}
 
           <div className="space-y-2">
