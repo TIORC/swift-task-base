@@ -20,6 +20,7 @@ import { useSmTasks, useSmClients, useSocialMutations } from "@/hooks/useSocial"
 import { useSocialAssignableProfiles } from "@/hooks/useTasks";
 import { useAuth } from "@/hooks/useAuth";
 import { SM_PRIORITY_LABEL } from "@/types/social";
+import { canViewSmTeamTasks } from "@/hooks/useSmTaskExtras";
 import type { SmPriority } from "@/types/social";
 import { EmptyState } from "@/components/EmptyState";
 import { SM_NATURES, SM_NATURE_LABEL, SM_NATURE_CLS, SM_BILLABLE_OPTIONS, SM_DISCARD_REASONS, slaLabel, type SmNature } from "@/lib/sm-demands";
@@ -29,6 +30,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { SmRecurrenceFields, emptySmRecurrence, smRecurrencePayload, type SmRecurrenceState } from "@/components/social/SmRecurrenceFields";
+import { SM_GREEN_DIALOG_STYLE, SM_GREEN_SCROLLBAR_CLASS } from "@/components/social/smGreenDialog";
 
 const sb = supabase as any;
 
@@ -113,6 +115,9 @@ export default function SocialTasks() {
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
+  const canViewTeam = canViewSmTeamTasks(user?.email);
+  // Sem permissão de equipe, o filtro fica sempre em "Minhas tarefas".
+  const effectiveAssigneeFilter = canViewTeam ? assigneeFilter : "mine";
   const [clientFilter, setClientFilter] = useState<string>("all");
   const [natureFilter, setNatureFilter] = useState<string>("all");
   const [discardFor, setDiscardFor] = useState<string | null>(null);
@@ -144,15 +149,15 @@ export default function SocialTasks() {
       seen.add(t.id);
       return true;
     });
-    if (assigneeFilter === "mine") list = list.filter(t => t.assigned_to === user?.id);
-    else if (assigneeFilter !== "all") list = list.filter(t => t.assigned_to === assigneeFilter);
+    if (effectiveAssigneeFilter === "mine") list = list.filter(t => t.assigned_to === user?.id);
+    else if (effectiveAssigneeFilter !== "all") list = list.filter(t => t.assigned_to === effectiveAssigneeFilter);
     if (natureFilter !== "all") list = list.filter(t => ((t as any).nature ?? "avulsa") === natureFilter);
     if (clientFilter !== "all") {
       if (clientFilter === "none") list = list.filter(t => !t.client_id);
       else list = list.filter(t => t.client_id === clientFilter);
     }
     return list;
-  }, [data, assigneeFilter, user?.id, clientFilter, natureFilter]);
+  }, [data, effectiveAssigneeFilter, user?.id, clientFilter, natureFilter]);
 
   const advancedFiltered = useMemo(() => {
     let result = assigneeFiltered;
@@ -277,19 +282,21 @@ export default function SocialTasks() {
                 {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
-              <SelectTrigger className="h-9 w-[170px]">
-                <User className="h-4 w-4 mr-1 text-muted-foreground"/>
-                <SelectValue/>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="mine">Minhas tarefas</SelectItem>
-                <SelectItem value="all">Toda equipe</SelectItem>
-                {assignableProfiles?.map(p => (
-                  <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {canViewTeam && (
+              <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+                <SelectTrigger className="h-9 w-[170px]">
+                  <User className="h-4 w-4 mr-1 text-muted-foreground"/>
+                  <SelectValue/>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mine">Minhas tarefas</SelectItem>
+                  <SelectItem value="all">Toda equipe</SelectItem>
+                  {assignableProfiles?.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button asChild variant="outline" className="h-9">
               <Link to="/social/foco"><Target className="h-4 w-4 mr-1"/>Modo Foco</Link>
             </Button>
@@ -447,7 +454,7 @@ export default function SocialTasks() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent className={`max-w-md max-h-[90vh] overflow-y-auto text-white ${SM_GREEN_SCROLLBAR_CLASS}`} style={SM_GREEN_DIALOG_STYLE}>
           <DialogHeader><DialogTitle>Nova tarefa</DialogTitle></DialogHeader>
           <div className="space-y-3">
             {templates.length > 0 && (
@@ -455,7 +462,7 @@ export default function SocialTasks() {
                 <Label className="text-xs flex items-center gap-1.5"><Bookmark className="h-3 w-3"/>Usar modelo</Label>
                 <Select onValueChange={applyTemplate}>
                   <SelectTrigger className="mt-1.5"><SelectValue placeholder="Escolha um modelo..."/></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent style={SM_GREEN_DIALOG_STYLE}>
                     {templates.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -467,7 +474,7 @@ export default function SocialTasks() {
               <Label>Cliente</Label>
               <Select value={form.client_id || "_none"} onValueChange={v => setForm({...form, client_id: v === "_none" ? "" : v})}>
                 <SelectTrigger><SelectValue placeholder="Sem cliente"/></SelectTrigger>
-                <SelectContent>
+                <SelectContent style={SM_GREEN_DIALOG_STYLE}>
                   <SelectItem value="_none">—</SelectItem>
                   {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
@@ -478,7 +485,7 @@ export default function SocialTasks() {
                 <Label>Natureza da demanda *</Label>
                 <Select value={form.nature} onValueChange={v => setForm({...form, nature: v as SmNature})}>
                   <SelectTrigger><SelectValue/></SelectTrigger>
-                  <SelectContent>{SM_NATURES.map(n => <SelectItem key={n} value={n}>{SM_NATURE_LABEL[n]}</SelectItem>)}</SelectContent>
+                  <SelectContent style={SM_GREEN_DIALOG_STYLE}>{SM_NATURES.map(n => <SelectItem key={n} value={n}>{SM_NATURE_LABEL[n]}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               {form.nature === "avulsa" && (
@@ -486,7 +493,7 @@ export default function SocialTasks() {
                   <Label>Cobrança *</Label>
                   <Select value={form.billable} onValueChange={v => setForm({...form, billable: v})}>
                     <SelectTrigger><SelectValue/></SelectTrigger>
-                    <SelectContent>{SM_BILLABLE_OPTIONS.map(o => <SelectItem key={o.key} value={o.key}>{o.label}</SelectItem>)}</SelectContent>
+                    <SelectContent style={SM_GREEN_DIALOG_STYLE}>{SM_BILLABLE_OPTIONS.map(o => <SelectItem key={o.key} value={o.key}>{o.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
               )}
@@ -496,7 +503,7 @@ export default function SocialTasks() {
                 <Label>Prioridade</Label>
                 <Select value={form.priority} onValueChange={v => setForm({...form, priority: v as SmPriority})}>
                   <SelectTrigger><SelectValue/></SelectTrigger>
-                  <SelectContent>{(["low","medium","high","urgent"] as SmPriority[]).map(p => <SelectItem key={p} value={p}>{SM_PRIORITY_LABEL[p]}</SelectItem>)}</SelectContent>
+                  <SelectContent style={SM_GREEN_DIALOG_STYLE}>{(["low","medium","high","urgent"] as SmPriority[]).map(p => <SelectItem key={p} value={p}>{SM_PRIORITY_LABEL[p]}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div><Label>Prazo</Label><Input type="date" value={form.due_date} onChange={e => setForm({...form, due_date: e.target.value})}/></div>
@@ -505,7 +512,7 @@ export default function SocialTasks() {
               <Label>Responsável</Label>
               <Select value={form.assigned_to || "none"} onValueChange={v => setForm({...form, assigned_to: v === "none" ? "" : v})}>
                 <SelectTrigger><SelectValue placeholder="Sem responsável"/></SelectTrigger>
-                <SelectContent>
+                <SelectContent style={SM_GREEN_DIALOG_STYLE}>
                   <SelectItem value="none">Sem responsável</SelectItem>
                   {assignableProfiles?.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>)}
                 </SelectContent>

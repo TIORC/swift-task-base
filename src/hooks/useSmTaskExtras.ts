@@ -4,6 +4,76 @@ import { useAuth } from "@/hooks/useAuth";
 
 const sb = supabase as any;
 
+/** Só estes usuários veem as tarefas de toda a equipe no M7; os demais veem só as próprias. */
+export const SM_TEAM_VIEWER_EMAILS = ["timaracas@orcoma.com.br", "patrick.leite@orcoma.com.br"];
+
+export function canViewSmTeamTasks(email: string | null | undefined): boolean {
+  return SM_TEAM_VIEWER_EMAILS.includes((email ?? "").trim().toLowerCase());
+}
+
+/** Só estes usuários podem excluir registros de tempo das tarefas M7 (os demais só iniciam/param o próprio tempo). */
+export const SM_TIME_LOG_DELETER_EMAILS = ["timaracas@orcoma.com.br", "patrick.leite@orcoma.com.br"];
+
+export function canDeleteSmTimeLogs(email: string | null | undefined): boolean {
+  return SM_TIME_LOG_DELETER_EMAILS.includes((email ?? "").trim().toLowerCase());
+}
+
+/** Conclusão de tarefa exige todos os itens do checklist marcados. Retorna o motivo do bloqueio ou null. */
+export async function checklistBlockReason(taskId: string): Promise<string | null> {
+  const { count, error } = await sb
+    .from("sm_task_checklist_items")
+    .select("id", { count: "exact", head: true })
+    .eq("task_id", taskId)
+    .eq("done", false);
+  if (error) return error.message;
+  return (count ?? 0) > 0 ? "Conclua todos os itens do checklist antes de concluir a tarefa." : null;
+}
+
+const hasTaskValue = (v: unknown) => v !== null && v !== undefined && String(v).trim() !== "";
+
+/** Campos que tinham valor e ficaram vazios. Usado para impedir apagar informações de tarefas (podem só ser alteradas). */
+export function clearedTaskFields(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+  labels: Record<string, string>,
+): string[] {
+  return Object.keys(labels)
+    .filter((k) => hasTaskValue(before[k]) && !hasTaskValue(after[k]))
+    .map((k) => labels[k]);
+}
+
+/** Só estes usuários veem a lista de tarefas aguardando aprovação. */
+export const SM_APPROVAL_VIEWER_EMAILS = ["timaracas@orcoma.com.br", "patrick.leite@orcoma.com.br"];
+
+export function canViewSmApprovalTasks(email: string | null | undefined): boolean {
+  return SM_APPROVAL_VIEWER_EMAILS.includes((email ?? "").trim().toLowerCase());
+}
+
+export function isValidHttpUrl(value: string): boolean {
+  try {
+    const u = new URL(value);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** Tarefa que exige aprovação só pode ser concluída depois de aprovada. Retorna o motivo do bloqueio ou null. */
+export async function approvalBlockReason(taskId: string): Promise<string | null> {
+  const { data, error } = await sb
+    .from("sm_tasks").select("requires_approval, approval_status").eq("id", taskId).maybeSingle();
+  if (error) return error.message;
+  if (data?.requires_approval && data?.approval_status !== "aprovado") {
+    return "Esta tarefa precisa ser aprovada antes de ser concluída.";
+  }
+  return null;
+}
+
+/** Checklist completo e, quando exigida, aprovação. Usar em toda tentativa de concluir uma tarefa. */
+export async function conclusionBlockReason(taskId: string): Promise<string | null> {
+  return (await checklistBlockReason(taskId)) ?? (await approvalBlockReason(taskId));
+}
+
 export interface SmTaskComment {
   id: string;
   task_id: string;
@@ -121,6 +191,7 @@ export function useSmTaskTime(taskId: string | null) {
   }, [taskId, user, refresh]);
 
   const removeLog = useCallback(async (id: string) => {
+    if (!canDeleteSmTimeLogs(user?.email)) return;
     await sb.from("sm_task_time_logs").delete().eq("id", id);
     await refresh();
   }, [refresh]);

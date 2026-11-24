@@ -1,0 +1,95 @@
+/* Impressão dos relatórios de Social Media: só o relatório, em papel branco, sem quebrar tabelas/cards no meio. */
+
+@page {
+  size: A4 landscape;
+  margin: 12mm;
+}
+
+@media print {
+  /* Esconde o restante do app (menu lateral, cabeçalho) sem deixar espaço vazio. */
+  body * {
+    visibility: hidden;
+  }
+
+  .social-report-print,
+  .social-report-print * {
+    visibility: visible;
+  }
+
+  .social-report-print {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+
+  .social-report-print * {
+    color: #111111 !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    border-color: #cccccc !important;
+    text-shadow: none !important;
+  }
+
+  /* Tooltip só aparece com o mouse em cima do gráfico: não pode sair no papel. */
+  .social-report-print .recharts-tooltip-wrapper,
+  .social-report-print .recharts-active-dot,
+  .social-report-print .recharts-cursor {
+    display: none !important;
+  }
+
+  /* Grade mais leve e contínua no papel (sem tracejado pesado). */
+  .social-report-print .recharts-cartesian-grid line {
+    stroke: #dddddd !important;
+    stroke-dasharray: none !important;
+  }
+
+  /* Textos dos gráficos (eixos e legendas) são SVG: precisam de fill escuro. */
+  .social-report-print .recharts-text,
+  .social-report-print .recharts-text tspan {
+    fill: #111111 !important;
+  }
+
+  /* Evita que cards, linhas de tabela e blocos sejam cortados entre páginas. */
+  .social-report-print .rounded-xl,
+  .social-report-print .rounded-lg,
+  .social-report-print table,
+  .social-report-print tr,
+  .social-report-print td,
+  .social-report-print th {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .social-report-print thead {
+    display: table-header-group;
+  }
+
+  /* Gráficos em uma coluna no papel: o grid de duas colunas quebrava cards no meio da página. */
+  .social-report-print .social-report-charts {
+    display: block !important;
+  }
+
+  .social-report-print .social-report-charts > * {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 16px;
+  }
+
+  /* Gráficos (SVG) não podem ser cortados ao meio pela quebra de página. */
+  .social-report-print .recharts-responsive-container,
+  .social-report-print .recharts-wrapper,
+  .social-report-print svg {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    overflow: visible !important;
+  }
+
+  /* Mantém cores de fatias e barras ao imprimir (sem o navegador remover fundo). */
+  .social-report-print {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

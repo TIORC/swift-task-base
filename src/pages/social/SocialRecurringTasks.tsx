@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Repeat, Search, Trash2, Pencil, Clock, Calendar as CalendarIcon, User, History, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { clearedTaskFields } from "@/hooks/useSmTaskExtras";
 import { supabase } from "@/integrations/supabase/client";
 import { useSmClients } from "@/hooks/useSocial";
 import { useSocialAssignableProfiles } from "@/hooks/useTasks";
@@ -93,6 +94,12 @@ export default function SocialRecurringTasks() {
   const handleSave = async () => {
     if (!editing) return;
     if (!title.trim()) return toast.error("Título obrigatório");
+    const cleared = clearedTaskFields(
+      { title: editing.title, description: editing.description, assigned_to: editing.assigned_to, client_id: editing.client_id },
+      { title: title.trim(), description, assigned_to: assignedTo === "none" ? null : assignedTo, client_id: clientId === "none" ? null : clientId },
+      { title: "título", description: "descrição", assigned_to: "responsável", client_id: "cliente" },
+    );
+    if (cleared.length) return toast.error(`Não é possível remover: ${cleared.join(", ")}.`);
     setSaving(true);
     const { error } = await sb.from("sm_tasks").update({
       title: title.trim(),

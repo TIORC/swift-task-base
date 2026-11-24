@@ -20,6 +20,7 @@ import {
 import { generateTasksFromWorkflow, seedOnboardingChecklist, useSmWorkflows, useSmDemands } from "@/hooks/useSmDemands";
 import { SM_PRIORITY_LABEL } from "@/types/social";
 import { toast } from "sonner";
+import { conclusionBlockReason } from "@/hooks/useSmTaskExtras";
 import { format } from "date-fns";
 
 const sb = supabase as any;
@@ -106,6 +107,10 @@ export default function SocialCommercial() {
   };
 
   const advance = async (d: any, next: string) => {
+    if (next === "onboarding_concluido") {
+      const blocked = await conclusionBlockReason(d.id);
+      if (blocked) return toast.error(blocked);
+    }
     const { error } = await sb.from("sm_tasks").update({
       stage: next,
       nature: next === "onboarding" || next === "onboarding_concluido" ? "onboarding" : "comercial",

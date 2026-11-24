@@ -11,6 +11,7 @@ import { SM_POST_STATUS_LABEL, SM_PRIORITY_LABEL, type SmPriority } from "@/type
 import { EmptyState } from "@/components/EmptyState";
 import { Target, Play, Pause, RotateCcw, ArrowLeft, Check } from "lucide-react";
 import { toast } from "sonner";
+import { conclusionBlockReason } from "@/hooks/useSmTaskExtras";
 
 const PRIORITY_ORDER: SmPriority[] = ["urgent", "high", "medium", "low"];
 const PRIORITY_VARIANT: Record<SmPriority, "destructive" | "default" | "secondary" | "outline"> = {
@@ -92,6 +93,10 @@ export default function SocialFocusMode() {
 
   const updateTaskStatus = async (status: string) => {
     if (!focusedTask) return;
+    if (status === "concluido" && focusedTask.status !== "concluido") {
+      const blocked = await conclusionBlockReason(focusedTask.id);
+      if (blocked) return toast.error(blocked);
+    }
     const { error } = await m.updateTask(focusedTask.id, { status });
     if (error) return toast.error(error.message);
     toast.success("Status atualizado");
@@ -100,6 +105,8 @@ export default function SocialFocusMode() {
 
   const completeTask = async () => {
     if (!focusedTask) return;
+    const blocked = await conclusionBlockReason(focusedTask.id);
+    if (blocked) return toast.error(blocked);
     const { error } = await m.updateTask(focusedTask.id, { status: "concluido" });
     if (error) return toast.error(error.message);
     toast.success(`Tarefa concluída em ${fmt(seconds)}`);

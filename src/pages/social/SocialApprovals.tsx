@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle2, XCircle, ListTodo } from "lucide-react";
+import { CheckCircle2, XCircle, ListTodo, ExternalLink } from "lucide-react";
 import { useSmPosts, useSmClients, useSocialMutations } from "@/hooks/useSocial";
 import { useSocialAssignableProfiles } from "@/hooks/useTasks";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +12,7 @@ import { SM_POST_STATUS_LABEL } from "@/types/social";
 import { EmptyState } from "@/components/EmptyState";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { checklistBlockReason, canViewSmApprovalTasks } from "@/hooks/useSmTaskExtras";
 
 const sb = supabase as any;
 
@@ -23,13 +24,18 @@ export default function SocialApprovals() {
   const m = useSocialMutations();
 
   const [tasks, setTasks] = useState<any[]>([]);
+  // Só Patrick e TI Maracas veem as tarefas aguardando aprovação.
+  const canViewTasks = canViewSmApprovalTasks(user?.email);
 
   const loadTasks = useCallback(async () => {
     const { data } = await sb.from("sm_tasks").select("*")
       .eq("approval_status", "pendente").order("created_at", { ascending: false });
     setTasks(data ?? []);
   }, []);
-  useEffect(() => { loadTasks(); }, [loadTasks]);
+  useEffect(() => {
+    if (canViewTasks) loadTasks();
+    else setTasks([]);
+  }, [canViewTasks, loadTasks]);
 
   const pending = posts.filter(p => p.status === "revisao_interna" || p.status === "aprovacao_cliente");
   const clientName = (id: string | null) => clients.find(c => c.id === id)?.name ?? "—";
@@ -46,6 +52,10 @@ export default function SocialApprovals() {
   };
 
   const decideTask = async (t: any, approved: boolean) => {
+    if (approved) {
+      const blocked = await checklistBlockReason(t.id);
+      if (blocked) return toast.error(blocked);
+    }
     const { error } = await sb.from("sm_tasks").update({
       approval_status: approved ? "aprovado" : "reprovado",
       approver_id: user?.id ?? null,
@@ -74,12 +84,14 @@ export default function SocialApprovals() {
 
       <Tabs defaultValue="tarefas">
         <TabsList>
-          <TabsTrigger value="tarefas">Tarefas ({tasks.length})</TabsTrigger>
+          <TabsTrigger value="tarefas">{canViewTasks ? `Tarefas (${tasks.length})` : "Tarefas"}</TabsTrigger>
           <TabsTrigger value="posts">Posts ({pending.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tarefas" className="pt-4">
-          {tasks.length === 0 ? (
+          {!canViewTasks ? (
+            <EmptyState icon={ListTodo} title="Sem acesso" description="Apenas Patrick e TI Maracas visualizam as tarefas aguardando aprovação." />
+          ) : tasks.length === 0 ? (
             <EmptyState icon={ListTodo} title="Nenhuma tarefa aguardando aprovação" description="Tudo em dia por aqui." />
           ) : (
             <div className="space-y-3">
@@ -95,6 +107,13 @@ export default function SocialApprovals() {
                       {t.is_approval_step && <Badge variant="outline" className="text-[10px] mt-1">Etapa de aprovação do fluxo</Badge>}
                     </div>
                     <div className="flex gap-2 shrink-0">
+                      {t.approval_link && (
+                        <Button asChild size="sm" variant="outline">
+                          <a href={t.approval_link} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-4 w-4 mr-1" />Abrir conteúdo
+                          </a>
+                        </Button>
+                      )}
                       <Button size="sm" variant="outline" className="text-destructive" onClick={() => decideTask(t, false)}>
                         <XCircle className="h-4 w-4 mr-1" />Reprovar
                       </Button>

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 const sb = supabase as any;
@@ -46,12 +46,6 @@ export function SocialTaskChecklist({ taskId }: { taskId: string }) {
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, done: !i.done } : i));
   };
 
-  const del = async (id: string) => {
-    const { error } = await sb.from("sm_task_checklist_items").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    setItems(prev => prev.filter(i => i.id !== id));
-  };
-
   const total = items.length;
   const done = items.filter(i => i.done).length;
   const pct = total ? Math.round((done / total) * 100) : 0;
@@ -74,9 +68,6 @@ export function SocialTaskChecklist({ taskId }: { taskId: string }) {
             <li key={i.id} className="flex items-center gap-2 group">
               <Checkbox checked={i.done} onCheckedChange={() => toggle(i)} />
               <span className={`flex-1 text-sm ${i.done ? "line-through text-muted-foreground" : ""}`}>{i.title}</span>
-              <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive" onClick={() => del(i.id)}>
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
             </li>
           ))}
           {items.length === 0 && <p className="text-xs text-muted-foreground">Nenhum item ainda.</p>}

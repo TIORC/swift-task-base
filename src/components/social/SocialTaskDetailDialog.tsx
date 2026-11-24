@@ -13,11 +13,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocialAssignableProfiles } from "@/hooks/useTasks";
 import { SocialTaskChecklist } from "@/components/social/SocialTaskChecklist";
-import { useSmTaskComments, useSmTaskTime, formatMinutes } from "@/hooks/useSmTaskExtras";
+import { useSmTaskComments, useSmTaskTime, formatMinutes, canDeleteSmTimeLogs, conclusionBlockReason, clearedTaskFields, isValidHttpUrl } from "@/hooks/useSmTaskExtras";
 import { SM_PRIORITY_LABEL } from "@/types/social";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { SM_GREEN_DIALOG_STYLE, SM_GREEN_SCROLLBAR_CLASS } from "@/components/social/smGreenDialog";
 
 const sb = supabase as any;
 
@@ -56,6 +57,7 @@ export function SocialTaskDetailDialog({ task, onOpenChange, onChanged }: Props)
       priority: task.priority ?? "medium",
       assigned_to: task.assigned_to ?? "",
       due_date: task.due_date ? String(task.due_date).slice(0, 10) : "",
+      approval_link: task.approval_link ?? "",
     });
     setComment(""); setMentions([]);
   }, [task?.id]);
@@ -80,8 +82,21 @@ export function SocialTaskDetailDialog({ task, onOpenChange, onChanged }: Props)
   if (!task) return null;
 
   const save = async () => {
+    const cleared = clearedTaskFields(
+      { title: task.title, description: task.description, assigned_to: task.assigned_to, due_date: task.due_date, approval_link: task.approval_link },
+      { title: form.title, description: form.description, assigned_to: form.assigned_to, due_date: form.due_date, approval_link: form.approval_link },
+      { title: "título", description: "descrição", assigned_to: "responsável", due_date: "prazo", approval_link: "link para aprovação" },
+    );
+    if (cleared.length) return toast.error(`Não é possível remover: ${cleared.join(", ")}.`);
+    const link = (form.approval_link ?? "").trim();
+    if (link && !isValidHttpUrl(link)) return toast.error("Link para aprovação inválido. Use um endereço que comece com https://");
+    if (form.status === "concluido" && task.status !== "concluido") {
+      const blocked = await conclusionBlockReason(task.id);
+      if (blocked) return toast.error(blocked);
+    }
     const payload: any = {
       title: form.title,
+      approval_link: link || null,
       description: form.description || null,
       status: form.status,
       priority: form.priority,
@@ -103,8 +118,11 @@ export function SocialTaskDetailDialog({ task, onOpenChange, onChanged }: Props)
   };
 
   const sendForApproval = async () => {
+    const link = (form.approval_link ?? "").trim();
+    if (!link) return toast.error("Informe o link para aprovação antes de enviar.");
+    if (!isValidHttpUrl(link)) return toast.error("Link para aprovação inválido. Use um endereço que comece com https://");
     const { error } = await sb.from("sm_tasks")
-      .update({ requires_approval: true, approval_status: "pendente", status: "pendente" })
+      .update({ requires_approval: true, approval_status: "pendente", status: "pendente", approval_link: link })
       .eq("id", task.id);
     if (error) return toast.error(error.message);
     toast.success("Enviada para aprovação do gestor");
@@ -120,7 +138,7 @@ export function SocialTaskDetailDialog({ task, onOpenChange, onChanged }: Props)
 
   return (
     <Dialog open={!!task} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto">
+      <DialogContent className={`max-w-2xl max-h-[88vh] overflow-y-auto text-white ${SM_GREEN_SCROLLBAR_CLASS}`} style={SM_GREEN_DIALOG_STYLE}>
         <DialogHeader>
           <DialogTitle className="pr-6 leading-snug">{task.title}</DialogTitle>
         </DialogHeader>
@@ -153,17 +171,20 @@ export function SocialTaskDetailDialog({ task, onOpenChange, onChanged }: Props)
             <div><Label>Descrição</Label>
               <Textarea rows={4} value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             </div>
+            <div><Label>Link para aprovação</Label>
+              <Input type="url" placeholder="https://..." value={form.approval_link ?? ""} onChange={(e) => setForm({ ...form, approval_link: e.target.value })} />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Status</Label>
                 <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{STATUS_OPTIONS.map((s) => <SelectItem key={s.v} value={s.v}>{s.l}</SelectItem>)}</SelectContent>
+                  <SelectContent style={SM_GREEN_DIALOG_STYLE}>{STATUS_OPTIONS.map((s) => <SelectItem key={s.v} value={s.v}>{s.l}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div><Label>Prioridade</Label>
                 <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent style={SM_GREEN_DIALOG_STYLE}>
                     {Object.entries(SM_PRIORITY_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -171,7 +192,7 @@ export function SocialTaskDetailDialog({ task, onOpenChange, onChanged }: Props)
               <div><Label>Responsável (transferir)</Label>
                 <Select value={form.assigned_to || "none"} onValueChange={(v) => setForm({ ...form, assigned_to: v === "none" ? "" : v })}>
                   <SelectTrigger><SelectValue placeholder="Sem responsável" /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent style={SM_GREEN_DIALOG_STYLE}>
                     <SelectItem value="none">Sem responsável</SelectItem>
                     {profiles?.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>)}
                   </SelectContent>
@@ -226,7 +247,7 @@ export function SocialTaskDetailDialog({ task, onOpenChange, onChanged }: Props)
                     {nameOf(l.user_id)} · {format(new Date(l.started_at), "dd/MM HH:mm", { locale: ptBR })}
                     {l.ended_at ? ` — ${formatMinutes(l.duration_minutes ?? 0)}` : " — em andamento"}
                   </span>
-                  {l.user_id === user?.id && (
+                  {canDeleteSmTimeLogs(user?.email) && (
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"
                       onClick={() => time.removeLog(l.id)}><Trash2 className="h-3 w-3" /></Button>
                   )}
@@ -249,10 +270,6 @@ export function SocialTaskDetailDialog({ task, onOpenChange, onChanged }: Props)
                     </p>
                     <p className="text-sm whitespace-pre-wrap break-words">{c.content}</p>
                   </div>
-                  {c.user_id === user?.id && (
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"
-                      onClick={() => comments.remove(c.id)}><Trash2 className="h-3 w-3" /></Button>
-                  )}
                 </div>
               ))}
             </div>
@@ -266,7 +283,7 @@ export function SocialTaskDetailDialog({ task, onOpenChange, onChanged }: Props)
                   setComment((c) => `${c}${c && !c.endsWith(" ") ? " " : ""}@${nameOf(v)} `);
                 }}>
                   <SelectTrigger className="w-48 h-9"><SelectValue placeholder="Mencionar pessoa" /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent style={SM_GREEN_DIALOG_STYLE}>
                     {profiles?.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name || "Sem nome"}</SelectItem>)}
                   </SelectContent>
                 </Select>
