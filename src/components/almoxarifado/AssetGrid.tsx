@@ -245,11 +245,11 @@ export function AssetGrid({ assets, items, locations, collaborators, onExit }: P
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          Enter desce para a linha de baixo. Nada é gravado até clicar em "Completar edições".
+          Modo Excel: Enter desce para a linha de baixo. Nada é gravado até clicar em "Gravar".
         </p>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={cancel} disabled={saveBatch.isPending}>Cancelar</Button>
-          <Button size="sm" onClick={save} disabled={saveBatch.isPending}>Completar edições</Button>
+          <Button size="sm" onClick={save} disabled={saveBatch.isPending}>{saveBatch.isPending ? "Gravando…" : "Gravar"}</Button>
         </div>
       </div>
 

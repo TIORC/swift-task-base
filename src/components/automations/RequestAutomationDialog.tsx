@@ -37,6 +37,26 @@ const DEMO_OPTIONS = ["Sim", "Sim, com outra pessoa", "Ainda preciso indicar res
 
 type RequiredCheck = { field: string; isEmpty: () => boolean; message: string };
 
+// Portal do solicitante: PDF, Word, Excel, PowerPoint e vídeo MP4. O tipo sai da extensão,
+// porque o navegador nem sempre informa o MIME de documentos do Office.
+const PORTAL_ATTACHMENT_MAX_MB = 80;
+const PORTAL_ATTACHMENT_ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.mp4";
+const PORTAL_ATTACHMENT_MIME: Record<string, string> = {
+  pdf: "application/pdf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  mp4: "video/mp4",
+};
+
+function portalAttachmentType(file: File): string | null {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return PORTAL_ATTACHMENT_MIME[ext] ?? null;
+}
+
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return <p className="mt-1 text-xs text-red-400">{message}</p>;
@@ -260,12 +280,16 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
   const addFiles = (list: FileList | null) => {
     if (!list) return;
     Array.from(list).forEach((file) => {
-      if (!isAllowedAttachment(file, { office: requestType === "Sistema" })) {
-        toast.error(`"${file.name}": apenas imagens, vídeos, PDF${requestType === "Sistema" ? ", Word ou Excel" : ""}.`);
+      const allowed = isPortal ? !!portalAttachmentType(file) : isAllowedAttachment(file, { office: requestType === "Sistema" });
+      if (!allowed) {
+        toast.error(isPortal
+          ? `"${file.name}": envie PDF, Word, Excel, PowerPoint ou vídeo MP4.`
+          : `"${file.name}": apenas imagens, vídeos, PDF${requestType === "Sistema" ? ", Word ou Excel" : ""}.`);
         return;
       }
-      if (file.size > MAX_ATTACHMENT_MB * 1024 * 1024) {
-        toast.error(`"${file.name}": arquivo muito grande (limite de ${MAX_ATTACHMENT_MB} MB).`);
+      const maxMb = isPortal ? PORTAL_ATTACHMENT_MAX_MB : MAX_ATTACHMENT_MB;
+      if (file.size > maxMb * 1024 * 1024) {
+        toast.error(`"${file.name}": arquivo muito grande (limite de ${maxMb} MB).`);
         return;
       }
       setFiles((prev) => [...prev, file]);
@@ -306,8 +330,26 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
         // Portal público: o front não toca o banco. A função preenche
         // created_by/requester_id a partir do token, grava o evento e notifica
         // os gestores.
+        // Os anexos vão direto ao bucket por URL assinada emitida pela função (o visitante não tem sessão).
+        const requestAttachments: { path: string; file_name: string; file_size: number; mime_type: string }[] = [];
+        for (const file of files) {
+          const mimeType = portalAttachmentType(file);
+          if (!mimeType) throw new Error(`"${file.name}": formato não permitido.`);
+          const { path, token } = await solicitanteCall<{ path: string; token: string }>("attachments:upload-url", {
+            file_name: file.name,
+            file_type: mimeType,
+            file_size: file.size,
+          });
+          const { error: upErr } = await supabase.storage
+            .from("task-attachments")
+            .uploadToSignedUrl(path, token, file, { contentType: mimeType });
+          if (upErr) throw new Error(`Falha no envio de "${file.name}": ${upErr.message}`);
+          requestAttachments.push({ path, file_name: file.name, file_size: file.size, mime_type: mimeType });
+        }
+
         const { id } = await solicitanteCall<{ id: string }>("create", {
           request: {
+            attachments: requestAttachments,
             title: isMaintenance ? maintenanceSystem! : title.trim(),
             maintenance_system: isMaintenance ? maintenanceSystem : undefined,
             description: completeDescription,
@@ -425,19 +467,13 @@ export function RequestAutomationDialog({ openOnMount = false, hideTrigger = fal
 
   const uploading = create.isPending;
 
-  const attachmentsField = isPortal ? (
-    <p className="flex items-start gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs leading-relaxed text-white/60">
-      <Paperclip className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-      Anexos (imagem, vídeo ou PDF) exigem login no sistema. Se precisar
-      enviar arquivos, mencione no chat da solicitação após o envio.
-    </p>
-  ) : (
+  const attachmentsField = (
     <>
     <Label className="block">Anexos (opcional)</Label>
     <div className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed ${accent.border} ${accent.bg} px-4 py-5 text-center`} onClick={() => inputRef.current?.click()} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files); }}>
-      <Paperclip className={`h-5 w-5 ${accent.active}`} /><p className="text-xs text-white/65">{requestType === "Sistema" ? "Anexe documentos, imagens, vídeos, PDF, Word ou Excel para contextualizar." : "Anexe documentos, imagens, vídeos ou PDF para contextualizar."}</p>
+      <Paperclip className={`h-5 w-5 ${accent.active}`} /><p className="text-xs text-white/65">{isPortal ? "Arraste os arquivos para cá ou clique para escolher. Aceitos: PDF, Word, Excel, PowerPoint e vídeo MP4." : requestType === "Sistema" ? "Anexe documentos, imagens, vídeos, PDF, Word ou Excel para contextualizar." : "Anexe documentos, imagens, vídeos ou PDF para contextualizar."}</p>
       <Button size="sm" variant="outline" type="button" className={`pointer-events-none h-7 text-xs ${isMaintenance ? "border-red-400/40 bg-red-950/60 text-white hover:bg-red-900 hover:text-white" : ""}`}>Escolher arquivos</Button>
-      <input ref={inputRef} type="file" multiple accept={requestType === "Sistema" ? "image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx" : "image/*,video/*,application/pdf"} hidden onChange={(e) => addFiles(e.target.files)} />
+      <input ref={inputRef} type="file" multiple accept={isPortal ? PORTAL_ATTACHMENT_ACCEPT : requestType === "Sistema" ? "image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx" : "image/*,video/*,application/pdf"} hidden onChange={(e) => addFiles(e.target.files)} />
     </div>
     {files.length > 0 && <ul className="space-y-1">{files.map((f, i) => <li key={i} className="flex items-center gap-2 rounded-md border border-white/10 bg-black/10 px-2.5 py-1.5"><Paperclip className="h-3 w-3 shrink-0" /><span className="min-w-0 flex-1 truncate text-xs">{f.name}</span><span className="shrink-0 text-[10px]">{(f.size / 1024 / 1024).toFixed(1)} MB</span><button type="button" onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))} className="shrink-0 hover:text-red-300" aria-label={`Remover ${f.name}`}><X className="h-3.5 w-3.5" /></button></li>)}</ul>}
     </>

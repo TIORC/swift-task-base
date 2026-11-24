@@ -665,7 +665,7 @@ export default function Almoxarifado() {
 
         {/* ---------------- ITENS ---------------- */}
         <TabsContent value="ativos" className="space-y-3">
-          <AtivosPanel assets={assets} items={items} categories={categories} collaborators={collaborators} movements={movements} />
+          <AtivosPanel assets={assets} items={items} locations={locations} categories={categories} collaborators={collaborators} movements={movements} canWrite={canWrite} />
         </TabsContent>
 
         <TabsContent value="adm-ti" className="space-y-3">
@@ -1760,10 +1760,11 @@ function Kpi({ icon, label, value, accent }: { icon?: React.ReactNode; label: st
 }
 
 // Aba Ativos: uma linha por patrimônio, com item, categoria, descrição e histórico.
-function AtivosPanel({ assets, items, categories, collaborators, movements, emptyText = "Nenhum ativo." }: {
-  assets: InventoryAsset[]; items: InventoryItem[]; categories: InventoryCategory[];
-  collaborators: InventoryCollaborator[]; movements: InventoryMovement[]; emptyText?: string;
+function AtivosPanel({ assets, items, locations, categories, collaborators, movements, canWrite, emptyText = "Nenhum ativo." }: {
+  assets: InventoryAsset[]; items: InventoryItem[]; locations: InventoryLocation[]; categories: InventoryCategory[];
+  collaborators: InventoryCollaborator[]; movements: InventoryMovement[]; canWrite: boolean; emptyText?: string;
 }) {
+  const [excel, setExcel] = useState(false);
   const itemOf = (id: string) => items.find((i) => i.id === id);
   const catName = (id: string | null) => categories.find((c) => c.id === id)?.name ?? "—";
   const collabName = (id: string | null) => collaborators.find((c) => c.id === id)?.full_name ?? "—";
@@ -1771,7 +1772,29 @@ function AtivosPanel({ assets, items, categories, collaborators, movements, empt
     movements.filter((m) => m.asset_id === assetId).sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
   const rows = [...assets].sort((a, b) => a.patrimony_number.localeCompare(b.patrimony_number, "pt-BR", { numeric: true }));
 
+  // Modo Excel: a mesma planilha de patrimônios, digitada e gravada de uma vez (como na aba ADM TI).
+  if (excel && canWrite) {
+    return (
+      <AssetGrid
+        assets={assets}
+        items={items}
+        locations={locations}
+        collaborators={collaborators}
+        onExit={() => setExcel(false)}
+      />
+    );
+  }
+
   return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">{rows.length} ativo(s)</p>
+        {canWrite && (
+          <Button size="sm" variant="outline" onClick={() => setExcel(true)}>
+            <Grid3x3 className="mr-2 h-4 w-4" /> Modo Excel
+          </Button>
+        )}
+      </div>
     <Card><CardContent className="p-0 overflow-x-auto">
       <Table>
         <TableHeader><TableRow>
@@ -1807,6 +1830,7 @@ function AtivosPanel({ assets, items, categories, collaborators, movements, empt
         </TableBody>
       </Table>
     </CardContent></Card>
+    </div>
   );
 }
 

@@ -11,6 +11,14 @@ import { EmptyState } from "@/components/EmptyState";
 import { Trophy, Medal, Star, Loader2, Zap, TrendingUp, Users, CheckCircle2, Bot, Clock, Building2 } from "lucide-react";
 import { SECTOR_COLORS, SECTOR_LABELS } from "@/types/sectors";
 
+// Quem tem imagem própria no ranking aparece com ela no lugar das iniciais.
+const AVATAR_IMAGES: Record<string, { src: string; alt: string }> = {
+  "Welder Silva Santos": { src: "/mamute.png", alt: "Mamute" },
+  "Angel Kauan": { src: "/lince.png", alt: "Lince" },
+  "Gabriel Anacleto": { src: "/corvo.png", alt: "Corvo" },
+  "Sofia Nardes": { src: "/calopsita.png", alt: "Calopsita" },
+};
+
 const Ranking = () => {
   const { data: ranking, isLoading } = useRanking();
   const { data: myData } = useMyGamification();
@@ -72,9 +80,13 @@ const Ranking = () => {
                   <Card key={entry.user_id} className={`shadow-card transition-all duration-150 hover:shadow-card-hover ${i === 0 ? "ring-1 ring-primary/20" : ""}`}>
                     <CardContent className="flex items-center gap-4 py-4 px-5">
                       <span className="text-lg font-bold w-8 text-center shrink-0">{podium || `${i + 1}`}</span>
-                      <Avatar className="h-10 w-10 shrink-0">
-                        <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">{initials}</AvatarFallback>
-                      </Avatar>
+                      {AVATAR_IMAGES[entry.full_name] ? (
+                        <img src={AVATAR_IMAGES[entry.full_name].src} alt={AVATAR_IMAGES[entry.full_name].alt} className="h-[90px] w-[90px] shrink-0 object-contain [image-rendering:pixelated]" />
+                      ) : (
+                        <Avatar className="h-10 w-10 shrink-0">
+                          <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">{initials}</AvatarFallback>
+                        </Avatar>
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-semibold text-foreground truncate">{entry.full_name}</p>
@@ -173,7 +185,11 @@ const Ranking = () => {
                               <TableCell className="font-bold text-muted-foreground">{i + 1}</TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
-                                  <Avatar className="h-7 w-7"><AvatarFallback className="bg-primary/10 text-primary text-xs">{initials}</AvatarFallback></Avatar>
+                                  {AVATAR_IMAGES[u.full_name] ? (
+                                    <img src={AVATAR_IMAGES[u.full_name].src} alt={AVATAR_IMAGES[u.full_name].alt} className="h-[63px] w-[63px] shrink-0 object-contain [image-rendering:pixelated]" />
+                                  ) : (
+                                    <Avatar className="h-7 w-7"><AvatarFallback className="bg-primary/10 text-primary text-xs">{initials}</AvatarFallback></Avatar>
+                                  )}
                                   <span className="text-sm font-medium">{u.full_name}</span>
                                 </div>
                               </TableCell>

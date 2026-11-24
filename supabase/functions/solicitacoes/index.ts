@@ -126,6 +126,34 @@ async function verifyToken(token: string, secret: string): Promise<SolicitanteCl
   }
 }
 
+// Anexos da solicitação enviados pelo visitante: PDF, Word, Excel, PowerPoint e vídeo MP4.
+const REQUEST_ATTACHMENT_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "video/mp4",
+]);
+const REQUEST_ATTACHMENT_MAX_BYTES = 80 * 1024 * 1024;
+
+// Só entram arquivos da pasta do próprio solicitante, de tipos permitidos e até o limite (máximo de 10).
+function validRequestAttachments(raw: unknown, solicitanteId: string) {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, 10).flatMap((entry) => {
+    const item = (entry ?? {}) as Record<string, unknown>;
+    const filePath = typeof item.path === "string" ? item.path : "";
+    const mimeType = typeof item.mime_type === "string" ? item.mime_type : "";
+    const fileSize = typeof item.file_size === "number" ? item.file_size : 0;
+    if (!filePath.startsWith(`${solicitanteId}/requests/`) || filePath.includes("..")) return [];
+    if (!REQUEST_ATTACHMENT_TYPES.has(mimeType) || fileSize <= 0 || fileSize > REQUEST_ATTACHMENT_MAX_BYTES) return [];
+    const fileName = typeof item.file_name === "string" && item.file_name.trim() ? item.file_name.trim().slice(0, 200) : "arquivo";
+    return [{ file_path: filePath, file_name: fileName, file_size: fileSize, mime_type: mimeType }];
+  });
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -372,6 +400,21 @@ Deno.serve(async (req) => {
       return json({ comments: rows, summaries: enriched });
     }
 
+    // Anexo da própria solicitação (antes de ela existir): URL assinada, presa à pasta do solicitante.
+    if (action === "attachments:upload-url") {
+      const fileName = typeof body.file_name === "string" ? body.file_name : "arquivo";
+      const fileType = typeof body.file_type === "string" ? body.file_type : "";
+      if (!REQUEST_ATTACHMENT_TYPES.has(fileType)) return bad("Formato não permitido. Envie PDF, Word, Excel, PowerPoint ou vídeo MP4.");
+      if (typeof body.file_size !== "number" || !Number.isFinite(body.file_size) || body.file_size <= 0 || body.file_size > REQUEST_ATTACHMENT_MAX_BYTES) {
+        return bad("Cada arquivo pode ter no máximo 80MB.");
+      }
+      const safeName = fileName.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/_+/g, "_").slice(-80) || "arquivo";
+      const path = `${solicitanteId}/requests/${Date.now()}_${crypto.randomUUID().slice(0, 8)}_${safeName}`;
+      const { data: signed, error: signError } = await admin.storage.from("task-attachments").createSignedUploadUrl(path);
+      if (signError || !signed) return json({ error: "Não foi possível preparar o envio do anexo." }, 500);
+      return json({ path: signed.path, token: signed.token });
+    }
+
     // Prepara um envio direto ao bucket (URL assinada): o visitante não tem sessão,
     // então quem grava no storage é a função. O caminho fica preso à pasta do solicitante.
     if (action === "comments:upload-url") {
@@ -494,6 +537,7 @@ Deno.serve(async (req) => {
         : null;
       const senderName = typeof req.sender_name === "string" ? req.sender_name.trim().slice(0, 120) : claims.email;
       const description = typeof req.description === "string" ? req.description : null;
+      const requestFiles = validRequestAttachments(req.attachments, solicitanteId);
 
       // Manutenção: não cria automação nova. Sistema concluído volta para
       // "Alteração solicitada" (o XP já ganho fica). Sistema em andamento
@@ -535,6 +579,20 @@ Deno.serve(async (req) => {
           metadata: { new_status: moved ? "change_requested" : system.status, old_status: system.status },
         });
         if (eventError) console.error("[solicitacoes] falha ao registrar evento de alteração", eventError);
+
+        if (requestFiles.length > 0) {
+          const { error: maintFilesError } = await admin.from("automation_attachments").insert(
+            requestFiles.map((f) => ({
+              automation_id: system.id,
+              user_id: solicitanteId,
+              file_name: f.file_name,
+              file_path: f.file_path,
+              file_size: f.file_size,
+              mime_type: f.mime_type,
+            })),
+          );
+          if (maintFilesError) console.error("[solicitacoes] falha ao gravar anexos da alteração", maintFilesError);
+        }
 
         try {
           const { data: gestorIds } = await admin.rpc("get_gestor_user_ids");
@@ -578,6 +636,20 @@ Deno.serve(async (req) => {
         .single();
       if (error) throw error;
       const automationId = ((inserted as unknown) as { id: string }).id;
+
+      if (requestFiles.length > 0) {
+        const { error: filesError } = await admin.from("automation_attachments").insert(
+          requestFiles.map((f) => ({
+            automation_id: automationId,
+            user_id: solicitanteId,
+            file_name: f.file_name,
+            file_path: f.file_path,
+            file_size: f.file_size,
+            mime_type: f.mime_type,
+          })),
+        );
+        if (filesError) console.error("[solicitacoes] falha ao gravar anexos da solicitação", filesError);
+      }
 
       await admin.from("automation_events").insert({
         automation_id: automationId,
