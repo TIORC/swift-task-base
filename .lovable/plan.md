@@ -11,14 +11,13 @@
   6. Leitura de cargos do usuário: 2.257 chamadas (repetida em muitos lugares).
 - O servidor é do menor tamanho (Tiny) e trava quando essas consultas se acumulam.
 
-## Proposta (só executo com sua autorização)
+## O que será executado (Mini fica em espera)
 1. Reiniciar o backend agora para destravar o carregamento.
 2. Ranking: servir sempre do cache já existente e recalcular no máximo a cada poucos minutos.
 3. Tarefas M7: paginar a lista (como na /tasks).
 4. Dashboards/outras telas: buscar só os campos e o período necessários, em vez de todas as tarefas.
 5. Status dos devs: índice em tarefas por responsável + status + atualização.
 6. Cargos do usuário: carregar uma vez por sessão e reaproveitar.
-7. Opcional: subir para Mini (~0,02 crédito/hora a mais), só se você aprovar.
 
 ## Detalhes técnicos
 - Índice `tasks(assigned_to, status, updated_at desc)`.
