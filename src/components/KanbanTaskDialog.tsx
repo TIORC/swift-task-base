@@ -29,7 +29,8 @@ import { KanbanAttachments } from "@/components/KanbanAttachments";
 import { KanbanChecklist, PendingChecklistItem } from "@/components/KanbanChecklist";
 import { KanbanCoverPicker } from "@/components/KanbanCoverPicker";
 import { labelFor } from "@/lib/kanban-labels";
-import { ImagePlus, Smile, Trash2, X } from "lucide-react";
+import { ImagePlus, Play, Smile, Square, Trash2, X } from "lucide-react";
+import { useGlobalTimer } from "@/hooks/useGlobalTimer";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 
@@ -124,6 +125,7 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
 
   // Chat: sempre mostra o comentário mais recente e evita envio duplicado.
   const [sending, setSending] = useState(false);
+  const timer = useGlobalTimer();
   const [commentImages, setCommentImages] = useState<File[]>([]);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const imagePreviews = useMemo(() => commentImages.map((f) => URL.createObjectURL(f)), [commentImages]);
@@ -269,6 +271,20 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
         {task && <KanbanCoverPicker task={task} readOnly={readOnly} />}
         <div className="space-y-4 p-6">
         <DialogHeader><DialogTitle>{task ? "Tarefa do Kanban" : "Nova tarefa do Kanban"}</DialogTitle></DialogHeader>
+        {task && (
+          <div className="flex items-center gap-3">
+            {timer.activeKanbanId === task.id ? (
+              <Button size="sm" variant="destructive" onClick={() => timer.stop()}>
+                <Square className="mr-2 h-4 w-4" /> Parar ({Math.floor(timer.elapsed / 60)}:{String(timer.elapsed % 60).padStart(2, "0")})
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => timer.startKanban(task.id)}>
+                <Play className="mr-2 h-4 w-4" /> Iniciar cronômetro
+              </Button>
+            )}
+            <span className="text-xs text-muted-foreground">Ao iniciar, para o cronômetro que estiver rodando em outra tarefa.</span>
+          </div>
+        )}
         <div className={task ? "grid gap-6 lg:grid-cols-[minmax(0,1fr)_clamp(340px,34%,540px)]" : ""}>
         <div className="min-w-0 space-y-4">
         <fieldset disabled={readOnly} className="space-y-3">

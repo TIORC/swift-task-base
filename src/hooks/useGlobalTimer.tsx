@@ -4,27 +4,38 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-type TimerTarget = { type: "task"; id: string } | { type: "automation"; id: string; subtaskId?: string | null };
+type TimerTarget =
+  | { type: "task"; id: string }
+  | { type: "automation"; id: string; subtaskId?: string | null }
+  | { type: "kanban"; id: string };
+
+// Tabela onde o tempo de cada tipo de tarefa é gravado.
+const tableFor = (t: TimerTarget) =>
+  t.type === "task" ? "time_logs" : t.type === "automation" ? "automation_time_logs" : "kanban_time_logs";
 
 interface GlobalTimerContextType {
   activeTaskId: string | null;
   activeAutomationId: string | null;
+  activeKanbanId: string | null;
   activeTarget: TimerTarget | null;
   isRunning: boolean;
   elapsed: number;
   start: (taskId: string) => Promise<void>;
   startAutomation: (automationId: string, subtaskId?: string | null) => Promise<void>;
+  startKanban: (kanbanTaskId: string) => Promise<void>;
   stop: () => Promise<void>;
 }
 
 const GlobalTimerContext = createContext<GlobalTimerContextType>({
   activeTaskId: null,
   activeAutomationId: null,
+  activeKanbanId: null,
   activeTarget: null,
   isRunning: false,
   elapsed: 0,
   start: async () => {},
   startAutomation: async () => {},
+  startKanban: async () => {},
   stop: async () => {},
 });
 
@@ -48,8 +59,8 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
     const now = new Date();
     const diffMs = now.getTime() - startTimeRef.current.getTime();
     const durationMinutes = Math.round((diffMs / 60000) * 100) / 100;
-    const table = activeTargetRef.current.type === "task" ? "time_logs" : "automation_time_logs";
-    const { error } = await supabase.from(table).update({ ended_at: now.toISOString(), duration_minutes: durationMinutes }).eq("id", activeLogIdRef.current);
+    const table = tableFor(activeTargetRef.current);
+    const { error } = await (supabase as any).from(table).update({ ended_at: now.toISOString(), duration_minutes: durationMinutes }).eq("id", activeLogIdRef.current);
     if (error) toast.error(`Não foi possível salvar o tempo trabalhado: ${error.message}`);
   }, []);
 
@@ -91,6 +102,25 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
     setIsRunning(true);
   }, [user, isRunning, stopCurrent]);
 
+  const startKanban = useCallback(async (kanbanTaskId: string) => {
+    if (!user) return;
+    if (isRunning) await stopCurrent();
+    const now = new Date().toISOString();
+    const { data, error } = await (supabase as any)
+      .from("kanban_time_logs")
+      .insert({ task_id: kanbanTaskId, user_id: user.id, started_at: now, duration_minutes: 0 })
+      .select().single();
+    if (error || !data) {
+      toast.error(`Não foi possível iniciar o cronômetro: ${error?.message ?? "erro desconhecido"}`);
+      return;
+    }
+    setActiveTarget({ type: "kanban", id: kanbanTaskId });
+    setActiveLogId(data.id);
+    startTimeRef.current = new Date(now);
+    setElapsed(0);
+    setIsRunning(true);
+  }, [user, isRunning, stopCurrent]);
+
   const stop = useCallback(async () => {
     await stopCurrent();
     const prev = activeTargetRef.current;
@@ -102,8 +132,10 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
     queryClient.invalidateQueries({ queryKey: ["tasks"] });
     queryClient.invalidateQueries({ queryKey: ["automations"] });
     queryClient.invalidateQueries({ queryKey: ["automation_time_logs"] });
+    queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] });
     if (prev?.type === "task") queryClient.invalidateQueries({ queryKey: ["time-logs", prev.id] });
     if (prev?.type === "automation") queryClient.invalidateQueries({ queryKey: ["automation_time_logs", prev.id] });
+    if (prev?.type === "kanban") queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] });
   }, [queryClient, stopCurrent]);
 
   // Tick
@@ -127,11 +159,12 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
       if (!logId || !startedAt || !target) return;
 
       const durationMinutes = Math.round(((Date.now() - startedAt.getTime()) / 60000) * 100) / 100;
-      const table = target.type === "task" ? "time_logs" : "automation_time_logs";
-      const { error } = await supabase.from(table).update({ duration_minutes: durationMinutes }).eq("id", logId);
+      const table = tableFor(target);
+      const { error } = await (supabase as any).from(table).update({ duration_minutes: durationMinutes }).eq("id", logId);
       if (error) return;
       if (target.type === "task") queryClient.invalidateQueries({ queryKey: ["time-logs", target.id] });
-      else queryClient.invalidateQueries({ queryKey: ["automation_time_logs", target.id] });
+      else if (target.type === "automation") queryClient.invalidateQueries({ queryKey: ["automation_time_logs", target.id] });
+      else queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] });
     };
 
     void persistElapsed();
@@ -146,8 +179,8 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
         const now = new Date();
         const diffMs = now.getTime() - startTimeRef.current.getTime();
         const durationMinutes = Math.round((diffMs / 60000) * 100) / 100;
-        const table = activeTargetRef.current.type === "task" ? "time_logs" : "automation_time_logs";
-        supabase.from(table).update({ ended_at: now.toISOString(), duration_minutes: durationMinutes })
+        const table = tableFor(activeTargetRef.current);
+        (supabase as any).from(table).update({ ended_at: now.toISOString(), duration_minutes: durationMinutes })
           .eq("id", activeLogIdRef.current)
           .then(() => queryClient.invalidateQueries({ queryKey: ["tasks"] }));
       }
@@ -156,9 +189,10 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
 
   const activeTaskId = activeTarget?.type === "task" ? activeTarget.id : null;
   const activeAutomationId = activeTarget?.type === "automation" ? activeTarget.id : null;
+  const activeKanbanId = activeTarget?.type === "kanban" ? activeTarget.id : null;
 
   return (
-    <GlobalTimerContext.Provider value={{ activeTaskId, activeAutomationId, activeTarget, isRunning, elapsed, start, startAutomation, stop }}>
+    <GlobalTimerContext.Provider value={{ activeTaskId, activeAutomationId, activeKanbanId, activeTarget, isRunning, elapsed, start, startAutomation, startKanban, stop }}>
       {children}
     </GlobalTimerContext.Provider>
   );

@@ -52,7 +52,7 @@ export function KanbanCoverPicker({ task, readOnly }: Props) {
   const cover = presetStyle ? (
     <div className="h-44 w-full sm:h-52" style={presetStyle} />
   ) : task.cover_path ? (
-    <img src={getKanbanFileUrl(task.cover_path)} alt="" className="block h-44 w-full object-cover sm:h-52" />
+    <img src={getKanbanFileUrl(task.cover_path)} alt="" className="block h-[26rem] w-full object-cover sm:h-[34rem]" />
   ) : (
     <div className="h-24 w-full bg-muted/40" />
   );

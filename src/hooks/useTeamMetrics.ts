@@ -29,7 +29,7 @@ export function useTeamMetrics() {
   return useQuery({
     queryKey: ["team-metrics"],
     queryFn: async () => {
-      const [tasksRes, autosRes, timeRes, autoTimeRes, profilesRes, commentsRes, subsRes] = await Promise.all([
+      const [tasksRes, autosRes, timeRes, autoTimeRes, profilesRes, commentsRes, subsRes, kanbanRes, kanbanAssigneesRes, kanbanTimeRes] = await Promise.all([
         supabase.from("tasks").select("id, assigned_to, status, updated_at, title"),
         supabase.from("automations").select("id, assigned_to, sector, status, updated_at, completed_at"),
         supabase.from("time_logs").select("user_id, duration_minutes"),
@@ -37,6 +37,10 @@ export function useTeamMetrics() {
         supabase.from("profiles").select("id, full_name"),
         supabase.from("comments").select("user_id"),
         supabase.from("automation_subtasks").select("id, assigned_to, completed_by, status, completed, completed_at, created_at"),
+        // Tarefas do Kanban: "Concluído" conta como tarefa concluída de cada responsável.
+        supabase.from("kanban_tasks").select("id, status, completed_at, updated_at"),
+        supabase.from("kanban_task_assignees").select("task_id, user_id"),
+        (supabase as any).from("kanban_time_logs").select("user_id, duration_minutes"),
       ]);
 
       const profiles = profilesRes.data || [];
@@ -143,6 +147,26 @@ export function useTeamMetrics() {
         }
       });
 
+      // Tarefas do Kanban: cada responsável conta a tarefa; a conclusão é o status "done".
+      const kanbanAssignees = new Map<string, string[]>();
+      (kanbanAssigneesRes.data || []).forEach((l: any) => {
+        kanbanAssignees.set(l.task_id, [...(kanbanAssignees.get(l.task_id) || []), l.user_id]);
+      });
+      (kanbanRes.data || []).forEach((k: any) => {
+        (kanbanAssignees.get(k.id) || []).forEach((uid) => {
+          const u = ensureUser(uid);
+          if (!u) return;
+          u.tasks_total += 1;
+          if (k.status === "done") {
+            u.tasks_done += 1;
+            const d = new Date(k.completed_at || k.updated_at);
+            if (d.getFullYear() === curY && d.getMonth() === curM) {
+              monthTasksByUser.set(uid, (monthTasksByUser.get(uid) || 0) + 1);
+            }
+          }
+        });
+      });
+
       (autosRes.data || []).forEach((a: any) => {
         const u = ensureUser(a.assigned_to);
         if (!u) return;
@@ -163,6 +187,10 @@ export function useTeamMetrics() {
         if (u) u.minutes += l.duration_minutes || 0;
       });
       (autoTimeRes.data || []).forEach((l: any) => {
+        const u = ensureUser(l.user_id);
+        if (u) u.minutes += l.duration_minutes || 0;
+      });
+      (kanbanTimeRes.data || []).forEach((l: any) => {
         const u = ensureUser(l.user_id);
         if (u) u.minutes += l.duration_minutes || 0;
       });
