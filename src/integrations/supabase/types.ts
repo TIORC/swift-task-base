@@ -1124,6 +1124,66 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_damage_history: {
+        Row: {
+          collaborator_id: string | null
+          created_at: string
+          created_by: string | null
+          department: string | null
+          id: string
+          item_id: string | null
+          item_name: string
+          month: number
+          notes: string | null
+          quantity: number
+          reason: string | null
+          year: number
+        }
+        Insert: {
+          collaborator_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          id?: string
+          item_id?: string | null
+          item_name: string
+          month: number
+          notes?: string | null
+          quantity?: number
+          reason?: string | null
+          year: number
+        }
+        Update: {
+          collaborator_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          id?: string
+          item_id?: string | null
+          item_name?: string
+          month?: number
+          notes?: string | null
+          quantity?: number
+          reason?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_damage_history_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_collaborators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_damage_history_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_departments: {
         Row: {
           active: boolean
@@ -3930,6 +3990,7 @@ export type Database = {
         Returns: undefined
       }
       salvar_adm_ti: { Args: { _rows: Json }; Returns: number }
+      save_asset_batch: { Args: { _rows: Json }; Returns: Json }
       save_entry_batch: { Args: { _rows: Json }; Returns: Json }
       save_exit_batch: { Args: { _rows: Json }; Returns: Json }
       task_time_totals: {
