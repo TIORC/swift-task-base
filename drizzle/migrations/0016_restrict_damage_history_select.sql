@@ -1,0 +1,2 @@
+DROP POLICY IF EXISTS "damage_history_select" ON public.inventory_damage_history;
+CREATE POLICY "damage_history_select" ON public.inventory_damage_history FOR SELECT TO authenticated USING (public.is_staff(auth.uid()));
