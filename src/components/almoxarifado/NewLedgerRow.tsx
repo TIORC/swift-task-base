@@ -185,13 +185,13 @@ export function NewLedgerRow({ items, collaborators, categories, leading = false
       </TableCell>
       <TableCell className="min-w-[180px]">
         <Textarea
-          rows={2}
+          rows={1}
           maxLength={1000}
           aria-label="E&S"
           placeholder={kind === "out" ? "E&S (ex.: Bárbara Geisa)" : "E&S (ex.: Estoque)"}
           value={esText}
           onChange={(e) => setEsText(e.target.value)}
-          className="min-h-[48px] text-xs"
+          className="h-8 min-h-8 resize-none py-1 text-xs"
         />
         <div className="mt-1">
           {kind === "out" ? (

@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserSystems } from "@/hooks/useUserSystems";
 import { toast } from "sonner";
+import { normalizeText } from "@/lib/assetImport";
 
 export type MovementType =
   | "in" | "out" | "transfer" | "damage" | "discard" | "adjust" | "assign" | "return"
@@ -559,6 +560,265 @@ export function useDeleteMovements() {
       toast.success(`${n} movimentação(ões) excluída(s) e estoque estornado`);
     },
     onError: (e: Error) => toast.error(e.message || "Não foi possível excluir as movimentações"),
+  });
+}
+
+/** Importa ativos colados da planilha: cria os itens que faltam e grava os patrimônios num único lote. */
+export function useImportAssets() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (plan: {
+      newItems: { key: string; name: string; category_id: string | null; description: string | null }[];
+      rows: { patrimony: string; status: AssetStatus; department: string | null; collaboratorId: string | null; itemId: string | null; newItemKey: string | null }[];
+    }) => {
+      const createdIds = new Map<string, string>();
+      if (plan.newItems.length > 0) {
+        const { data, error } = await (supabase as any)
+          .from("inventory_items")
+          .insert(plan.newItems.map((i) => ({
+            name: i.name,
+            category_id: i.category_id,
+            description: i.description,
+            unit_price: 0,
+            quantity: 0,
+            tracked_individually: false,
+            min_stock: 0,
+            ideal_stock: 0,
+            status: "active",
+            created_by: user?.id ?? null,
+          })))
+          .select("id, name");
+        if (error) throw error;
+        for (const row of (data ?? []) as { id: string; name: string }[]) {
+          createdIds.set(normalizeText(row.name), row.id);
+        }
+      }
+
+      const batch = plan.rows.map((r) => ({
+        kind: "new",
+        item_id: r.itemId ?? (r.newItemKey ? createdIds.get(r.newItemKey) ?? null : null),
+        patrimony_number: r.patrimony,
+        serial_number: null,
+        value: 0,
+        status: r.status,
+        location_id: null,
+        collaborator_id: r.collaboratorId,
+        department: r.department,
+      }));
+      if (batch.some((b) => !b.item_id)) throw new Error("Alguns ativos ficaram sem item. Nada de patrimônio foi gravado.");
+
+      const { data, error } = await (supabase as any).rpc("save_asset_batch", { _rows: batch as unknown as Json });
+      if (error) throw error;
+      const res = data as unknown as EntryBatchResult;
+      if (!res.ok) throw new Error("Não foi possível cadastrar: há conflito nos patrimônios. Recarregue e tente de novo.");
+      return { items: plan.newItems.length, assets: res.count };
+    },
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+      toast.success(`${r.assets} ativo(s) cadastrado(s)${r.items ? `; ${r.items} item(ns) novo(s) criado(s)` : ""}.`);
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao importar os ativos"),
+  });
+}
+
+/** Registra a movimentação de dano de patrimônios, com a data (mês/ano) em que foram danificados. */
+export function useRecordDamage() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (rows: { assetId: string | null; patrimony: string; itemId: string; occurredAt: string; statusFrom: string }[]) => {
+      if (!user) throw new Error("Não autenticado");
+      const missing = rows.filter((r) => !r.assetId).map((r) => r.patrimony);
+      const idByPatrimony = new Map<string, string>();
+      if (missing.length > 0) {
+        const { data, error } = await supabase
+          .from("inventory_assets")
+          .select("id, patrimony_number")
+          .in("patrimony_number", missing);
+        if (error) throw error;
+        for (const a of data ?? []) idByPatrimony.set(a.patrimony_number, a.id);
+      }
+      const { error } = await supabase.from("inventory_movements").insert(
+        rows.map((r) => ({
+          item_id: r.itemId,
+          asset_id: r.assetId ?? idByPatrimony.get(r.patrimony) ?? null,
+          type: "damage",
+          quantity: 1,
+          patrimony_number: r.patrimony,
+          occurred_at: r.occurredAt,
+          status_from: r.statusFrom,
+          status_to: "damaged",
+          performed_by: user.id,
+        })) as any,
+      );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao registrar a data do dano"),
+  });
+}
+
+/** Importa danos colados da planilha: marca os patrimônios como danificados e registra cada dano com o mês/ano. */
+export function useImportDamage() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (rows: {
+      assetId: string; itemId: string; patrimony: string; year: number; month: number;
+      reason: string | null; notes: string | null; department: string | null; collaboratorId: string | null; statusFrom: string;
+    }[]) => {
+      if (!user) throw new Error("Não autenticado");
+      const toMark = [...new Set(rows.filter((r) => r.statusFrom !== "damaged").map((r) => r.assetId))];
+      for (const id of toMark) {
+        const { error } = await supabase.from("inventory_assets").update({ status: "damaged" }).eq("id", id);
+        if (error) throw error;
+      }
+      const { error } = await supabase.from("inventory_movements").insert(
+        rows.map((r) => ({
+          item_id: r.itemId,
+          asset_id: r.assetId,
+          type: "damage",
+          quantity: 1,
+          patrimony_number: r.patrimony,
+          reason: r.reason,
+          notes: r.notes,
+          department: r.department,
+          collaborator_id: r.collaboratorId,
+          occurred_at: new Date(`${r.year}-${String(r.month).padStart(2, "0")}-01T12:00:00`).toISOString(),
+          status_from: r.statusFrom,
+          status_to: "damaged",
+          performed_by: user.id,
+        })) as any,
+      );
+      if (error) throw error;
+      return rows.length;
+    },
+    onSuccess: (count) => {
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+      toast.success(`${count} dano(s) registrado(s).`);
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao importar os danos"),
+  });
+}
+
+export interface DamageHistoryRow {
+  id: string;
+  item_name: string;
+  item_id: string | null;
+  quantity: number;
+  year: number;
+  month: number;
+  reason: string | null;
+  department: string | null;
+  collaborator_id: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+/** Danos sem patrimônio (só histórico, não mexe no estoque). */
+export function useDamageHistory() {
+  return useQuery({
+    queryKey: ["inventory", "damage_history"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("inventory_damage_history")
+        .select("*")
+        .order("year", { ascending: false })
+        .order("month", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as DamageHistoryRow[];
+    },
+  });
+}
+
+export function useImportDamageHistory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: Omit<DamageHistoryRow, "id" | "created_at">[]) => {
+      if (rows.length === 0) return 0;
+      const { error } = await (supabase as any).from("inventory_damage_history").insert(rows);
+      if (error) throw error;
+      return rows.length;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventory", "damage_history"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao registrar o histórico de danos"),
+  });
+}
+
+export function useDeleteDamageHistory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from("inventory_damage_history").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventory", "damage_history"] });
+      toast.success("Registro removido.");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao remover"),
+  });
+}
+
+/** Troca a categoria de itens (vale para todos os patrimônios desses itens). */
+export function useSetItemCategories() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (changes: { id: string; category_id: string | null }[]) => {
+      for (const c of changes) {
+        const { error } = await supabase.from("inventory_items").update({ category_id: c.category_id }).eq("id", c.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao atualizar a categoria"),
+  });
+}
+
+/** Cadastra itens novos e soma quantidades a itens já existentes (cadastro em massa). */
+export function useSaveItemsPlan() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async ({ create, add }: { create: Partial<InventoryItem>[]; add: { id: string; quantity: number }[] }) => {
+      if (create.length > 0) {
+        const { error } = await supabase.from("inventory_items").insert(
+          create.map((p) => ({
+            name: p.name ?? "",
+            category_id: p.category_id ?? null,
+            brand: p.brand ?? null,
+            model: p.model ?? null,
+            unit_price: p.unit_price ?? 0,
+            quantity: p.quantity ?? 0,
+            tracked_individually: false,
+            min_stock: 0,
+            ideal_stock: 0,
+            status: "active" as const,
+            created_by: user?.id ?? null,
+          })),
+        );
+        if (error) throw error;
+      }
+      for (const a of add) {
+        const { error } = await supabase.from("inventory_items").update({ quantity: a.quantity }).eq("id", a.id);
+        if (error) throw error;
+      }
+      return { created: create.length, updated: add.length };
+    },
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+      const parts = [`${r.created} item(ns) cadastrado(s)`];
+      if (r.updated > 0) parts.push(`${r.updated} somado(s) a item já existente`);
+      toast.success(`${parts.join("; ")}.`);
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao cadastrar os itens"),
   });
 }
 

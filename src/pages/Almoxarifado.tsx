@@ -20,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   useInventoryItems, useInventoryAssets, useInventoryMovements, useInventoryRequests,
-  useInventoryCategories, useInventoryLocations, useCanWriteInventory, useCanManageInventory,
+  useInventoryCategories, useInventoryLocations, useCanWriteInventory, useCanManageInventory, useDamageHistory, useDeleteDamageHistory,
   useCreateCategory, useCreateLocation, useCreateRequest, useUpdateRequest,
   useInventoryDepartments, useSaveDepartment,
   useInventoryCollaborators, useInventorySettings, useUpdateInventorySettings, useRecoverDamaged,
@@ -44,6 +44,9 @@ import { SendToExitDialog } from "@/components/almoxarifado/SendToExitDialog";
 import { toast } from "sonner";
 import { EntryFilters, EMPTY_ENTRY_FILTERS, filterEntries, hasActiveEntryFilters, type EntryFilterState } from "@/components/almoxarifado/EntryFilters";
 import { AssetGrid } from "@/components/almoxarifado/AssetGrid";
+import { ItemsBulkCard } from "@/components/almoxarifado/ItemsBulkCard";
+import { AssetsBulkCard } from "@/components/almoxarifado/AssetsBulkCard";
+import { DamageBulkCard } from "@/components/almoxarifado/DamageBulkCard";
 import { DashboardCharts } from "@/components/almoxarifado/DashboardCharts";
 import { ExitFilters, EMPTY_EXIT_FILTERS, filterExits, hasActiveExitFilters, type ExitFilterState } from "@/components/almoxarifado/ExitFilters";
 import { ExitDialog } from "@/components/almoxarifado/ExitDialog";
@@ -58,7 +61,7 @@ import { StockBadge, StatusTag, ItemStatusTags } from "@/components/almoxarifado
 import { MovementTextCell } from "@/components/almoxarifado/MovementTextCell";
 import { NewLedgerRow } from "@/components/almoxarifado/NewLedgerRow";
 import { CategoryCell } from "@/components/almoxarifado/CategoryCell";
-import type { InventoryItem, InventoryAsset, InventoryMovement, InventoryRequest, InventoryLocation, InventoryCollaborator, InventoryCategory, MovementType } from "@/hooks/useInventory";
+import type { InventoryItem, InventoryAsset, InventoryMovement, InventoryRequest, InventoryLocation, InventoryCollaborator, InventoryCategory, MovementType, DamageHistoryRow } from "@/hooks/useInventory";
 import { SECTORS } from "@/types/sectors";
 import { agruparPorTipo, resumoEstoque } from "@/lib/inventory-stock";
 import { usePageTheme } from "@/hooks/usePageTheme";
@@ -219,6 +222,8 @@ export default function Almoxarifado() {
   const { data: items = [] } = useInventoryItems();
   const { data: assets = [] } = useInventoryAssets();
   const { data: movements = [] } = useInventoryMovements();
+  const { data: damageHistory = [] } = useDamageHistory();
+  const delDamageHistory = useDeleteDamageHistory();
   const { data: categories = [] } = useInventoryCategories();
   const { data: locations = [] } = useInventoryLocations();
   const { data: collaborators = [] } = useInventoryCollaborators();
@@ -256,6 +261,8 @@ export default function Almoxarifado() {
   const saveExitBatch = useSaveExitBatch();
   const updateItem = useUpdateItem();
   const [assetGridOpen, setAssetGridOpen] = useState(false);
+  const [damagedExcel, setDamagedExcel] = useState(false);
+  const [damageBulkOpen, setDamageBulkOpen] = useState(false);
   // Saídas: rascunho digitado e filtro pesquisado (mesmo padrão das entradas).
   const [exitDraft, setExitDraft] = useState<ExitFilterState>(EMPTY_EXIT_FILTERS);
   const [exitFilters, setExitFilters] = useState<ExitFilterState>(EMPTY_EXIT_FILTERS);
@@ -580,15 +587,6 @@ export default function Almoxarifado() {
   });
 
   const damagedItems = activeItems.filter((i) => i.damaged_quantity > 0);
-  // Log de controle: danos, descartes, atribuições, devoluções e transferências, do mais recente ao mais antigo.
-  const CONTROL_TYPES: MovementType[] = ["damage", "discard", "transfer", "assign", "return"];
-  const controlRows = movements
-    .filter((m) => CONTROL_TYPES.includes(m.type))
-    .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at))
-    .map((m) => {
-      const d = new Date(m.occurred_at);
-      return { m, year: d.getFullYear(), month: d.toLocaleDateString("pt-BR", { month: "long" }) };
-    });
   const discardedItems = items.filter((i) => i.discarded_quantity > 0);
 
   return (
@@ -999,19 +997,8 @@ export default function Almoxarifado() {
 
           <div className="hidden md:block"><Card><CardContent className="p-0 overflow-x-auto">
             {/* Grade de planilha: bordas em todas as células, como no Excel. */}
-            <Table className="[&_td]:border [&_td]:border-slate-300 [&_th]:border [&_th]:border-slate-500">
+            <Table>
               <TableHeader><TableRow>
-                {canManage && (
-                  <TableHead className="w-8 px-2">
-                    <input
-                      type="checkbox"
-                      aria-label="Selecionar todas as movimentações filtradas"
-                      className="h-4 w-4 cursor-pointer"
-                      checked={ledgerRows.length > 0 && ledgerRows.every((m) => ledgerSelected.has(m.id))}
-                      onChange={(e) => setLedgerSelected(e.target.checked ? new Set(ledgerRows.map((m) => m.id)) : new Set())}
-                    />
-                  </TableHead>
-                )}
                 {LEDGER_COLUMNS.map((col) => (
                   <ColumnFilter
                     key={col}
@@ -1022,11 +1009,11 @@ export default function Almoxarifado() {
                   />
                 ))}
                 <TableHead className="min-w-[260px]">Entrega</TableHead>
-                {showLedgerActions && <TableHead className="text-right">Ações</TableHead>}
+                {showLedgerActions && <TableHead className="sticky right-0 z-20 w-1 min-w-0 border-l text-right">Ações</TableHead>}
               </TableRow></TableHeader>
               <TableBody>
                 {canWrite && (
-                  <NewLedgerRow items={items} collaborators={collaborators} categories={categories} leading={canManage} />
+                  <NewLedgerRow items={items} collaborators={collaborators} categories={categories} leading={false} />
                 )}
                 {pageLedgerRows.map((m) => {
                   const isIn = m.type === "in";
@@ -1034,21 +1021,6 @@ export default function Almoxarifado() {
                   const obs = ledgerObs(m);
                   return (
                     <TableRow key={m.id}>
-                      {canManage && (
-                        <TableCell className="px-2">
-                          <input
-                            type="checkbox"
-                            aria-label="Selecionar movimentação"
-                            className="h-4 w-4 cursor-pointer"
-                            checked={ledgerSelected.has(m.id)}
-                            onChange={(e) => setLedgerSelected((prev) => {
-                              const next = new Set(prev);
-                              if (e.target.checked) next.add(m.id); else next.delete(m.id);
-                              return next;
-                            })}
-                          />
-                        </TableCell>
-                      )}
                       <TableCell className="font-medium">
                         <EditableCell disabled={!canWrite} value={itemName(m.item_id)} display={itemName(m.item_id)}
                           onSave={(v) => (isIn ? saveEntryCell(m, "name", v) : saveExitCell(m, "name", v))} />
@@ -1090,7 +1062,7 @@ export default function Almoxarifado() {
                         <MovementTextCell movementId={m.id} field="delivery_text" value={m.delivery_text ?? ""} disabled={!canWrite} />
                       </TableCell>
                       {showLedgerActions && (
-                        <TableCell>
+                        <TableCell className="sticky right-0 z-10 w-1 min-w-0 border-l bg-card">
                           <div className="flex items-center justify-end gap-1">
                             {canManage && isIn && (
                               <button
@@ -1121,7 +1093,7 @@ export default function Almoxarifado() {
                   );
                 })}
                 {ledgerRows.length === 0 && (
-                  <TableRow><TableCell colSpan={9 + (showLedgerActions ? 1 : 0) + (canManage ? 1 : 0)} className="text-center text-muted-foreground py-6">
+                  <TableRow><TableCell colSpan={9 + (showLedgerActions ? 1 : 0)} className="text-center text-muted-foreground py-6">
                     {ledgerAll.length === 0 ? "Nenhuma movimentação registrada." : "Nenhuma movimentação encontrada com esses filtros."}
                   </TableCell></TableRow>
                 )}
@@ -1409,89 +1381,47 @@ export default function Almoxarifado() {
               </div>
             </div>
           )}
-          <h2 className="text-sm text-muted-foreground">Histórico de controle</h2>
-          <Card><CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader><TableRow>
-                <TableHead>Equipamento</TableHead><TableHead>Patrimônio</TableHead><TableHead>Tipo de Controle</TableHead>
-                <TableHead>Ano</TableHead><TableHead>Mês</TableHead><TableHead>Motivo</TableHead>
-                <TableHead>Departamento</TableHead><TableHead>Colaborador Responsável</TableHead>
-                <TableHead>De quem</TableHead><TableHead>Para quem</TableHead><TableHead>Observação</TableHead>
-              </TableRow></TableHeader>
-              <TableBody>
-                {controlRows.map(({ m, year, month }, idx) => (
-                  <Fragment key={m.id}>
-                    {(idx === 0 || controlRows[idx - 1].year !== year) && (
-                      <TableRow className="bg-muted/50">
-                        <TableCell colSpan={11} className="font-semibold">{year}</TableCell>
-                      </TableRow>
-                    )}
-                    <TableRow>
-                      <TableCell className="font-medium">{itemName(m.item_id)}</TableCell>
-                      <TableCell className="font-mono text-xs">{m.patrimony_number ?? "—"}</TableCell>
-                      <TableCell>{MOV_LABELS[m.type]}</TableCell>
-                      <TableCell>{year}</TableCell>
-                      <TableCell className="capitalize">{month}</TableCell>
-                      <TableCell>{m.reason ?? "—"}</TableCell>
-                      <TableCell>{m.department ?? "—"}</TableCell>
-                      <TableCell>{collabName(m.collaborator_id)}</TableCell>
-                      <TableCell>{locName(m.from_location_id)}</TableCell>
-                      <TableCell>{locName(m.to_location_id)}</TableCell>
-                      <TableCell>{m.notes ?? "—"}</TableCell>
-                    </TableRow>
-                  </Fragment>
-                ))}
-                {controlRows.length === 0 && <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-6">Nenhum registro de controle.</TableCell></TableRow>}
-              </TableBody>
-            </Table>
-          </CardContent></Card>
-          <h2 className="text-sm text-muted-foreground">Itens danificados</h2>
-          <Card><CardContent className="p-0">
-            <Table>
-              <TableHeader><TableRow>
-<TableHead>Item</TableHead><TableHead>Qtd danificada</TableHead><TableHead>Responsável</TableHead>
-            <TableHead>Status</TableHead>
-            {(canWrite || canManage) && <TableHead className="text-right">Ações</TableHead>}
-          </TableRow></TableHeader>
-          <TableBody>
-            {damagedItems.map((i) => (
-              <TableRow key={i.id}>
-                <TableCell className="font-medium">
-                  <EditableCell disabled={!canWrite} value={i.name} display={i.name} onSave={(v) => saveDamagedName(i, v)} />
-                </TableCell>
-                <TableCell>{i.damaged_quantity}</TableCell>
-                <TableCell>{collabName(i.responsible_collaborator_id)}</TableCell>
-                <TableCell><StatusTag status="damaged" /></TableCell>
-                {(canWrite || canManage) && (
-                  <TableCell>
-                    <div className="flex justify-end gap-1.5">
-                      {canWrite && (
-                        <>
-                          <Button size="sm" variant="ghost" onClick={() => recover.mutate({ item: i, quantity: 1 })}>Recuperar 1</Button>
-                          <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setStatusDlg({ open: true, item: i, mode: "discard" })}>Descartar</Button>
-                        </>
-                      )}
-                      {canManage && (
-                        <RowActions
-                          editTitle="Editar item"
-                          onEdit={() => setItemDlg({ open: true, item: i })}
-                          deleteTitle="Desativar item"
-                          deleteDescription={`"${i.name}" deixa de aparecer no estoque e nas listas. O histórico é mantido.`}
-                          deleteLabel="Desativar"
-                          pending={deactivate.isPending}
-                          onDelete={() => deactivate.mutateAsync({ id: i.id })}
-                        />
-                      )}
-                    </div>
-                  </TableCell>
-                )}
-              </TableRow>
-            ))}
-            {damagedItems.length === 0 && <TableRow><TableCell colSpan={(canWrite || canManage) ? 5 : 4} className="text-center text-muted-foreground py-6">Nenhum item danificado.</TableCell></TableRow>}
-              </TableBody>
-            </Table>
-          </CardContent></Card>
-          <AssetTable assets={assets.filter((a) => a.status === "damaged")} items={items} locations={locations} collaborators={collaborators} canWrite={canWrite} canManage={canManage} onEdit={(a) => setAssetDlg({ open: true, asset: a })} onDelete={(a) => delAsset.mutate(a.id)} />
+          <div className="flex justify-end gap-2">
+            {canWrite && !damagedExcel && (
+              <>
+                <Button size="sm" variant="outline" onClick={() => setDamageBulkOpen((v) => !v)}>
+                  <AlertTriangle className="mr-2 h-4 w-4" /> {damageBulkOpen ? "Fechar colagem" : "Colar em massa"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setDamagedExcel(true)}>
+                  <Grid3x3 className="mr-2 h-4 w-4" /> Modo Excel
+                </Button>
+              </>
+            )}
+          </div>
+          {canWrite && damageBulkOpen && !damagedExcel && (
+            <DamageBulkCard assets={assets} items={items} collaborators={collaborators} movements={movements} damageHistory={damageHistory} />
+          )}
+          {damagedExcel && canWrite ? (
+            <AssetGrid
+              assets={assets.filter((a) => a.status === "damaged")}
+              items={items}
+              locations={locations}
+              collaborators={collaborators}
+              defaultStatus="damaged"
+              showDamageMonth
+              movements={movements}
+              onDeleteAsset={canManage ? (a) => delAsset.mutate(a.id) : undefined}
+              onExit={() => setDamagedExcel(false)}
+            />
+          ) : (
+            <DamagedAssetTable assets={assets.filter((a) => a.status === "damaged")} items={items} collaborators={collaborators} movements={movements} canWrite={canWrite} canManage={canManage} onEdit={(a) => setAssetDlg({ open: true, asset: a })} onDelete={(a) => delAsset.mutate(a.id)} />
+          )}
+          {!damagedExcel && (
+            <>
+              <h2 className="text-sm text-muted-foreground">Danos sem patrimônio (histórico)</h2>
+              <DamageHistoryTable
+                rows={damageHistory}
+                collaborators={collaborators}
+                canWrite={canWrite}
+                onDelete={(id) => delDamageHistory.mutate(id)}
+              />
+            </>
+          )}
         </TabsContent>
 
         {/* DESCARTADOS */}
@@ -1760,17 +1690,65 @@ function Kpi({ icon, label, value, accent }: { icon?: React.ReactNode; label: st
 }
 
 // Aba Ativos: uma linha por patrimônio, com item, categoria, descrição e histórico.
+type AtivoCol = "ativo" | "categoria" | "patrimonio" | "status" | "descricao" | "departamento" | "colaborador" | "historico" | "observacao";
+const ATIVO_COLUMNS: AtivoCol[] = ["ativo", "categoria", "patrimonio", "status", "descricao", "departamento", "colaborador", "historico", "observacao"];
+const ATIVO_COLUMN_LABELS: Record<AtivoCol, string> = {
+  ativo: "Ativos", categoria: "Categoria", patrimonio: "Patrimônio", status: "Status", descricao: "Descrição",
+  departamento: "Departamento", colaborador: "Colaborador Responsável", historico: "Histórico", observacao: "Observação",
+};
+const ATIVO_STATUS_TEXT: Record<string, string> = {
+  available: "Disponível", in_use: "Em uso", damaged: "Danificado", discarded: "Descartado", maintenance: "Manutenção",
+};
+const EMPTY_ATIVO_FILTERS: Record<AtivoCol, string[]> = {
+  ativo: [], categoria: [], patrimonio: [], status: [], descricao: [], departamento: [], colaborador: [], historico: [], observacao: [],
+};
+
+const ATIVOS_PAGE_SIZE = 25;
+
 function AtivosPanel({ assets, items, locations, categories, collaborators, movements, canWrite, emptyText = "Nenhum ativo." }: {
   assets: InventoryAsset[]; items: InventoryItem[]; locations: InventoryLocation[]; categories: InventoryCategory[];
   collaborators: InventoryCollaborator[]; movements: InventoryMovement[]; canWrite: boolean; emptyText?: string;
 }) {
   const [excel, setExcel] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [colFilters, setColFilters] = useState<Record<AtivoCol, string[]>>(EMPTY_ATIVO_FILTERS);
   const itemOf = (id: string) => items.find((i) => i.id === id);
   const catName = (id: string | null) => categories.find((c) => c.id === id)?.name ?? "—";
   const collabName = (id: string | null) => collaborators.find((c) => c.id === id)?.full_name ?? "—";
   const historyOf = (assetId: string) =>
     movements.filter((m) => m.asset_id === assetId).sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
-  const rows = [...assets].sort((a, b) => a.patrimony_number.localeCompare(b.patrimony_number, "pt-BR", { numeric: true }));
+  // Valor de cada coluna para o filtro (mesmo texto que aparece na tabela).
+  const ativoValue = (col: AtivoCol, a: InventoryAsset): string => {
+    const item = itemOf(a.item_id);
+    switch (col) {
+      case "ativo": return item?.name ?? "—";
+      case "categoria": return catName(item?.category_id ?? null);
+      case "patrimonio": return a.patrimony_number;
+      case "status": return ATIVO_STATUS_TEXT[a.status] ?? a.status;
+      case "descricao": return item?.description || "—";
+      case "departamento": return a.department ?? "—";
+      case "colaborador": return collabName(a.collaborator_id);
+      case "historico": return historyOf(a.id).length === 0 ? "Sem movimentações" : "Com movimentações";
+      case "observacao": return a.notes || "—";
+    }
+  };
+  const ativoOptions = (col: AtivoCol) =>
+    [...new Set(assets.map((a) => ativoValue(col, a)))].sort((x, y) => x.localeCompare(y, "pt-BR"));
+  const setColFilter = (col: AtivoCol, next: string[]) => {
+    setColFilters((prev) => ({ ...prev, [col]: next }));
+    setPage(1);
+  };
+
+  // Ordem: departamento (A-Z), depois colaborador (A-Z), depois patrimônio. Filtros do cabeçalho antes.
+  const rows = assets.filter((a) => ATIVO_COLUMNS.every((c) => colFilters[c].length === 0 || colFilters[c].includes(ativoValue(c, a)))).sort((a, b) =>
+    (a.department ?? "").localeCompare(b.department ?? "", "pt-BR", { sensitivity: "base" })
+    || collabName(a.collaborator_id).localeCompare(collabName(b.collaborator_id), "pt-BR", { sensitivity: "base" })
+    || a.patrimony_number.localeCompare(b.patrimony_number, "pt-BR", { numeric: true }),
+  );
+  const totalPages = Math.max(1, Math.ceil(rows.length / ATIVOS_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageRows = rows.slice((currentPage - 1) * ATIVOS_PAGE_SIZE, currentPage * ATIVOS_PAGE_SIZE);
 
   // Modo Excel: a mesma planilha de patrimônios, digitada e gravada de uma vez (como na aba ADM TI).
   if (excel && canWrite) {
@@ -1780,6 +1758,9 @@ function AtivosPanel({ assets, items, locations, categories, collaborators, move
         items={items}
         locations={locations}
         collaborators={collaborators}
+        layout="ativos"
+        categories={categories}
+        movements={movements}
         onExit={() => setExcel(false)}
       />
     );
@@ -1790,20 +1771,34 @@ function AtivosPanel({ assets, items, locations, categories, collaborators, move
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">{rows.length} ativo(s)</p>
         {canWrite && (
-          <Button size="sm" variant="outline" onClick={() => setExcel(true)}>
-            <Grid3x3 className="mr-2 h-4 w-4" /> Modo Excel
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setBulkOpen((v) => !v)}>
+              <Package className="mr-2 h-4 w-4" /> {bulkOpen ? "Fechar colagem" : "Colar em massa"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setExcel(true)}>
+              <Grid3x3 className="mr-2 h-4 w-4" /> Modo Excel
+            </Button>
+          </div>
         )}
       </div>
+      {canWrite && bulkOpen && (
+        <AssetsBulkCard assets={assets} items={items} categories={categories} collaborators={collaborators} />
+      )}
     <Card><CardContent className="p-0 overflow-x-auto">
       <Table>
         <TableHeader><TableRow>
-          <TableHead>Ativos</TableHead><TableHead>Categoria</TableHead><TableHead>Patrimônio</TableHead>
-          <TableHead>Status</TableHead><TableHead>Descrição</TableHead><TableHead>Departamento</TableHead>
-          <TableHead>Colaborador Responsável</TableHead><TableHead>Histórico</TableHead><TableHead>Observação</TableHead>
+          {ATIVO_COLUMNS.map((c) => (
+            <ColumnFilter
+              key={c}
+              label={ATIVO_COLUMN_LABELS[c]}
+              options={ativoOptions(c)}
+              selected={colFilters[c]}
+              onChange={(next) => setColFilter(c, next)}
+            />
+          ))}
         </TableRow></TableHeader>
         <TableBody>
-          {rows.map((a) => {
+          {pageRows.map((a) => {
             const item = itemOf(a.item_id);
             const hist = historyOf(a.id);
             return (
@@ -1830,6 +1825,18 @@ function AtivosPanel({ assets, items, locations, categories, collaborators, move
         </TableBody>
       </Table>
     </CardContent></Card>
+      {rows.length > ATIVOS_PAGE_SIZE && (
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+          <span className="text-muted-foreground">
+            Mostrando {(currentPage - 1) * ATIVOS_PAGE_SIZE + 1}–{Math.min(currentPage * ATIVOS_PAGE_SIZE, rows.length)} de {rows.length}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setPage(currentPage - 1)} disabled={currentPage <= 1}>Anterior</Button>
+            <span>Página {currentPage} de {totalPages}</span>
+            <Button size="sm" variant="outline" onClick={() => setPage(currentPage + 1)} disabled={currentPage >= totalPages}>Próxima</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1886,6 +1893,130 @@ function AssetTable({ assets, items, locations, collaborators, canWrite, canMana
             </TableRow>
           ))}
           {assets.length === 0 && <TableRow><TableCell colSpan={showActions ? 9 : 8} className="text-center text-muted-foreground py-6">Nenhum patrimônio.</TableCell></TableRow>}
+        </TableBody>
+      </Table>
+    </CardContent></Card>
+  );
+}
+
+// Controle: patrimônios danificados com as mesmas colunas da planilha de controle.
+function DamagedAssetTable({ assets, items, collaborators, movements, canWrite, canManage, onEdit, onDelete }: {
+  assets: InventoryAsset[]; items: InventoryItem[]; collaborators: InventoryCollaborator[]; movements: InventoryMovement[];
+  canWrite: boolean; canManage: boolean;
+  onEdit: (a: InventoryAsset) => void; onDelete: (a: InventoryAsset) => void;
+}) {
+  const itemName = (id: string) => items.find((i) => i.id === id)?.name ?? "—";
+  const collabName = (id: string | null) => collaborators.find((c) => c.id === id)?.full_name ?? "—";
+  // Dano mais recente do patrimônio: traz a data (mês/ano) e o motivo.
+  const lastDamage = (assetId: string) =>
+    movements
+      .filter((m) => m.asset_id === assetId && m.type === "damage")
+      .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at))[0] ?? null;
+  const showActions = canWrite || canManage;
+  const sorted = [...assets].sort((a, b) =>
+    (a.department ?? "").localeCompare(b.department ?? "", "pt-BR", { sensitivity: "base" })
+    || collabName(a.collaborator_id).localeCompare(collabName(b.collaborator_id), "pt-BR", { sensitivity: "base" })
+    || a.patrimony_number.localeCompare(b.patrimony_number, "pt-BR", { numeric: true }),
+  );
+  return (
+    <Card><CardContent className="p-0 overflow-x-auto">
+      <Table>
+        <TableHeader><TableRow>
+          <TableHead>Equipamento</TableHead><TableHead>Patrimônio</TableHead><TableHead>Tipo de Controle</TableHead>
+          <TableHead>Ano</TableHead><TableHead>Mês</TableHead><TableHead>Motivo</TableHead>
+          <TableHead>Departamento</TableHead><TableHead>Colaborador Responsável</TableHead>
+          <TableHead>De quem</TableHead><TableHead>Para quem</TableHead><TableHead>Observação</TableHead>
+          {showActions && <TableHead className="text-right">Ações</TableHead>}
+        </TableRow></TableHeader>
+        <TableBody>
+          {sorted.map((a) => {
+            const dano = lastDamage(a.id);
+            const when = dano ? new Date(dano.occurred_at) : null;
+            return (
+              <TableRow key={a.id}>
+                <TableCell className="font-medium">{itemName(a.item_id)}</TableCell>
+                <TableCell className="font-mono font-medium">{a.patrimony_number}</TableCell>
+                <TableCell className="bg-red-600 text-center font-semibold text-white">Dano</TableCell>
+                <TableCell>{when ? when.getFullYear() : "—"}</TableCell>
+                <TableCell className="capitalize">{when ? when.toLocaleDateString("pt-BR", { month: "long" }) : "—"}</TableCell>
+                <TableCell className="max-w-[220px] text-xs">{dano?.reason ?? "—"}</TableCell>
+                <TableCell>{a.department ?? "—"}</TableCell>
+                <TableCell>{collabName(a.collaborator_id)}</TableCell>
+                <TableCell>—</TableCell>
+                <TableCell>—</TableCell>
+                <TableCell className="max-w-[220px] text-xs">{a.notes || "—"}</TableCell>
+                {showActions && (
+                  <TableCell>
+                    <div className="flex justify-end">
+                      <RowActions
+                        onEdit={canWrite ? () => onEdit(a) : undefined}
+                        editTitle="Editar patrimônio"
+                        deleteTitle="Excluir patrimônio"
+                        deleteDescription={`O patrimônio ${a.patrimony_number} será removido. As movimentações dele no histórico são mantidas.`}
+                        deleteLabel="Excluir"
+                        onDelete={canManage ? () => onDelete(a) : undefined}
+                      />
+                    </div>
+                  </TableCell>
+                )}
+              </TableRow>
+            );
+          })}
+          {assets.length === 0 && <TableRow><TableCell colSpan={showActions ? 12 : 11} className="text-center text-muted-foreground py-6">Nenhum patrimônio danificado.</TableCell></TableRow>}
+        </TableBody>
+      </Table>
+    </CardContent></Card>
+  );
+}
+
+// Controle: danos sem patrimônio (só histórico), com as colunas da planilha de controle.
+function DamageHistoryTable({ rows, collaborators, canWrite, onDelete }: {
+  rows: DamageHistoryRow[]; collaborators: InventoryCollaborator[]; canWrite: boolean; onDelete: (id: string) => void;
+}) {
+  const collabName = (id: string | null) => collaborators.find((c) => c.id === id)?.full_name ?? "—";
+  const monthName = (m: number) => new Date(2000, m - 1, 1).toLocaleDateString("pt-BR", { month: "long" });
+  return (
+    <Card><CardContent className="p-0 overflow-x-auto">
+      <Table>
+        <TableHeader><TableRow>
+          <TableHead>Equipamento</TableHead><TableHead>Patrimônio</TableHead><TableHead>Tipo de Controle</TableHead>
+          <TableHead>Ano</TableHead><TableHead>Mês</TableHead><TableHead>Motivo</TableHead>
+          <TableHead>Departamento</TableHead><TableHead>Colaborador Responsável</TableHead>
+          <TableHead>De quem</TableHead><TableHead>Para quem</TableHead><TableHead>Observação</TableHead>
+          {canWrite && <TableHead className="text-right">Ações</TableHead>}
+        </TableRow></TableHeader>
+        <TableBody>
+          {rows.map((h) => (
+            <TableRow key={h.id}>
+              <TableCell className="font-medium">{h.item_name}</TableCell>
+              <TableCell>—</TableCell>
+              <TableCell className="bg-red-600 text-center font-semibold text-white">Dano</TableCell>
+              <TableCell>{h.year}</TableCell>
+              <TableCell className="capitalize">{monthName(h.month)}</TableCell>
+              <TableCell className="max-w-[220px] text-xs">{h.reason ?? "—"}</TableCell>
+              <TableCell>{h.department ?? "—"}</TableCell>
+              <TableCell>{collabName(h.collaborator_id)}</TableCell>
+              <TableCell>—</TableCell>
+              <TableCell>—</TableCell>
+              <TableCell className="max-w-[220px] text-xs">{h.notes ?? "—"}</TableCell>
+              {canWrite && (
+                <TableCell>
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      aria-label="Excluir registro"
+                      title="Excluir registro"
+                      className="flex h-7 w-7 items-center justify-center rounded text-destructive hover:bg-muted"
+                      onClick={() => { if (window.confirm(`Excluir o registro de dano de "${h.item_name}"?`)) onDelete(h.id); }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </TableCell>
+              )}
+            </TableRow>
+          ))}
+          {rows.length === 0 && <TableRow><TableCell colSpan={canWrite ? 12 : 11} className="text-center text-muted-foreground py-6">Nenhum dano sem patrimônio registrado.</TableCell></TableRow>}
         </TableBody>
       </Table>
     </CardContent></Card>
@@ -2059,6 +2190,8 @@ function SettingsPanel({ canWrite, canManage }: { canWrite: boolean; canManage: 
           </div>
         </CardContent>
       </Card>
+
+      {canWrite && <ItemsBulkCard categories={categories} />}
 
       <div className="grid md:grid-cols-2 gap-4">
         <Card>

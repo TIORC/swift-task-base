@@ -26,14 +26,16 @@ export function MovementTextCell({
         value={text}
         maxLength={max}
         disabled={disabled}
-        rows={2}
+        rows={1}
         placeholder={placeholder}
         aria-label={field === "es_text" ? "E&S" : "Entrega"}
         onChange={(e) => setText(e.target.value)}
         onBlur={commit}
-        className="min-h-[56px] resize-y text-xs"
+        className="h-8 min-h-8 resize-none py-1 text-xs"
       />
-      <p className="mt-0.5 text-right text-[10px] text-muted-foreground">{text.length}/{max}</p>
+      {text.length >= max * 0.9 && (
+        <p className="mt-0.5 text-right text-[10px] text-muted-foreground">{text.length}/{max}</p>
+      )}
     </div>
   );
 }

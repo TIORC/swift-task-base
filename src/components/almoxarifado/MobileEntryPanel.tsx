@@ -177,7 +177,6 @@ export function MobileEntryForm({ categories, collaborators, tiName }: Pick<Prop
                 <SelectContent>
                   <SelectItem value="in">Entrada</SelectItem>
                   <SelectItem value="out">Saída</SelectItem>
-                  <SelectItem value="patrimonio">Patrimônio</SelectItem>
                   <SelectItem value="ativos">Ativos</SelectItem>
                 </SelectContent>
               </Select>
@@ -287,7 +286,8 @@ function EntryDialog({ entry, startEditing, categories, collaborators, canWrite,
                 <SelectContent>
                   <SelectItem value="in">Entrada</SelectItem>
                   <SelectItem value="out">Saída</SelectItem>
-                  <SelectItem value="patrimonio">Patrimônio</SelectItem>
+                  {/* Patrimônio saiu do dropdown; lançamentos antigos desse tipo continuam visíveis na edição. */}
+                  {tipo === "patrimonio" && <SelectItem value="patrimonio">Patrimônio</SelectItem>}
                   <SelectItem value="ativos">Ativos</SelectItem>
                 </SelectContent>
               </Select>

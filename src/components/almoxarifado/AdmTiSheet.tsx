@@ -20,6 +20,8 @@ const COLUMNS: { key: Field; label: string }[] = [
   { key: "observacao", label: "Observação" },
 ];
 
+const ADM_PAGE_SIZE = 25;
+
 // A aba é do TI; os outros setores podem ser escolhidos na lista de departamentos.
 const DEFAULT_DEPARTAMENTO = "TI";
 
@@ -65,6 +67,7 @@ export function AdmTiSheet({ canWrite }: { canWrite: boolean }) {
   const deptOptions = Array.from(new Set([DEFAULT_DEPARTAMENTO, ...departments.filter((d) => d.active).map((d) => d.name)]));
   const [excel, setExcel] = useState(false);
   const [draft, setDraft] = useState<AdmTiRow[]>([]);
+  const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<Filters>(emptyFilters);
 
   const startExcel = () => {
@@ -112,6 +115,10 @@ export function AdmTiSheet({ canWrite }: { canWrite: boolean }) {
 
   const rows = excel ? draft : saved;
   const visibleRows = rows.filter((r) => COLUMNS.every((c) => matchesFilter(r, c.key, filters[c.key])));
+  // Consulta com 25 por página, sobre as linhas filtradas; no Modo Excel todas ficam na tela para digitar.
+  const totalPages = Math.max(1, Math.ceil(visibleRows.length / ADM_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedRows = excel ? visibleRows : visibleRows.slice((currentPage - 1) * ADM_PAGE_SIZE, currentPage * ADM_PAGE_SIZE);
 
   return (
     <div className="space-y-3">
@@ -185,7 +192,7 @@ export function AdmTiSheet({ canWrite }: { canWrite: boolean }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {visibleRows.map((r, ri) => (
+              {pagedRows.map((r, ri) => (
                 <TableRow key={r.id}>
                   {COLUMNS.map((c, ci) => (
                     <TableCell key={c.key} className="p-0">
@@ -252,6 +259,18 @@ export function AdmTiSheet({ canWrite }: { canWrite: boolean }) {
           </Table>
         </CardContent>
       </Card>
+      {!excel && visibleRows.length > ADM_PAGE_SIZE && (
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+          <span className="text-muted-foreground">
+            Mostrando {(currentPage - 1) * ADM_PAGE_SIZE + 1}–{Math.min(currentPage * ADM_PAGE_SIZE, visibleRows.length)} de {visibleRows.length}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setPage(currentPage - 1)} disabled={currentPage <= 1}>Anterior</Button>
+            <span>Página {currentPage} de {totalPages}</span>
+            <Button size="sm" variant="outline" onClick={() => setPage(currentPage + 1)} disabled={currentPage >= totalPages}>Próxima</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

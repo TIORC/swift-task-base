@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
-  useSaveAssetBatch, type AssetBatchRow, type AssetStatus, type InventoryAsset, type InventoryCollaborator,
-  type InventoryItem, type InventoryLocation,
+  useSaveAssetBatch, useSetItemCategories, useRecordDamage, type AssetBatchRow, type AssetStatus, type InventoryAsset, type InventoryCategory,
+  type InventoryCollaborator, type InventoryItem, type InventoryLocation, type InventoryMovement,
 } from "@/hooks/useInventory";
 
 // Planilha de patrimônios: nada é gravado enquanto a pessoa digita.
-// "Completar edições" envia todas as linhas alteradas num único lote.
+// "Gravar" envia todas as linhas alteradas num único lote.
+// layout "ativos" mostra as mesmas colunas da aba Ativos; as que não são editáveis aparecem só como texto.
 
 const STATUS_LABELS: Record<AssetStatus, string> = {
   available: "Disponível", in_use: "Em uso", damaged: "Danificado", discarded: "Descartado", maintenance: "Manutenção",
@@ -37,6 +38,10 @@ interface GridRow {
   locationId: string;
   collaboratorId: string;
   department: string;
+  notes: string; // só leitura na planilha
+  damageMonth: string; // "01".."12" ou "" (mês do dano)
+  damageYear: string; // "2026" ou ""
+  damageOriginal: string; // "YYYY-MM" do dano já registrado ("" se nenhum)
   original: Original | null;
 }
 
@@ -44,15 +49,21 @@ type Column = "patrimony" | "serial" | "value" | "department";
 
 const orNull = (s: string) => s.trim() || null;
 
-const blankRow = (): GridRow => ({
+const currentMonth = () => String(new Date().getMonth() + 1).padStart(2, "0");
+const currentYear = () => String(new Date().getFullYear());
+const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+const blankRow = (status: AssetStatus = "available"): GridRow => ({
   key: crypto.randomUUID(), assetId: null, itemId: "", patrimony: "", serial: "", value: "0",
-  status: "available", locationId: "", collaboratorId: "", department: "", original: null,
+  status, locationId: "", collaboratorId: "", department: "", notes: "", original: null,
+  damageMonth: currentMonth(), damageYear: currentYear(), damageOriginal: "",
 });
 
-const existingRow = (a: InventoryAsset): GridRow => ({
+const existingRow = (a: InventoryAsset, lastDamage: string): GridRow => ({
   key: a.id, assetId: a.id, itemId: a.item_id, patrimony: a.patrimony_number, serial: a.serial_number ?? "",
   value: String(a.value ?? 0), status: a.status, locationId: a.location_id ?? "",
-  collaboratorId: a.collaborator_id ?? "", department: a.department ?? "",
+  collaboratorId: a.collaborator_id ?? "", department: a.department ?? "", notes: a.notes ?? "",
+  damageMonth: lastDamage ? lastDamage.slice(5, 7) : "", damageYear: lastDamage ? lastDamage.slice(0, 4) : "", damageOriginal: lastDamage,
   original: {
     itemId: a.item_id, patrimony: a.patrimony_number, serial: a.serial_number ?? null, value: a.value ?? 0,
     status: a.status, locationId: a.location_id ?? null, collaboratorId: a.collaborator_id ?? null,
@@ -60,7 +71,7 @@ const existingRow = (a: InventoryAsset): GridRow => ({
   },
 });
 
-// Uma linha existente mudou se algum campo for diferente do original.
+// Uma linha existente mudou se algum campo editável for diferente do original.
 function isChanged(r: GridRow): boolean {
   const o = r.original;
   if (!o) return false;
@@ -76,16 +87,54 @@ function isChanged(r: GridRow): boolean {
 
 const isBlankNew = (r: GridRow) => r.assetId === null && !r.itemId && !r.patrimony.trim() && !r.serial.trim();
 
+// "YYYY-MM" do dano mais recente do patrimônio ("" se nunca foi marcado como danificado).
+const lastDamageMonth = (movements: InventoryMovement[], assetId: string): string => {
+  const last = movements
+    .filter((m) => m.asset_id === assetId && m.type === "damage")
+    .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at))[0];
+  if (!last) return "";
+  const d = new Date(last.occurred_at);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
+
+// Linha danificada com mês/ano diferente do registrado: gera a movimentação de dano ao gravar.
+const isDamageToRecord = (r: GridRow) =>
+  r.status === "damaged"
+  && /^\d{4}$/.test(r.damageYear)
+  && /^(0[1-9]|1[0-2])$/.test(r.damageMonth)
+  && `${r.damageYear}-${r.damageMonth}` !== r.damageOriginal
+  && (r.assetId !== null || !isBlankNew(r));
+
 interface Props {
   assets: InventoryAsset[];
   items: InventoryItem[];
   locations: InventoryLocation[];
   collaborators: InventoryCollaborator[];
   onExit: () => void;
+  layout?: "patrimonios" | "ativos";
+  categories?: InventoryCategory[];
+  movements?: InventoryMovement[];
+  // Status já marcado nas linhas novas (ex.: "damaged" na aba Controle).
+  defaultStatus?: AssetStatus;
+  // Quando informado, cada patrimônio existente ganha o botão de excluir na coluna Ações.
+  onDeleteAsset?: (a: InventoryAsset) => void;
+  // Mostra as colunas Mês e Ano do dano (data em que o patrimônio foi danificado).
+  showDamageMonth?: boolean;
 }
 
-export function AssetGrid({ assets, items, locations, collaborators, onExit }: Props) {
+const ATIVOS_HEADERS = ["Ativos", "Categoria", "Patrimônio", "Status", "Descrição", "Departamento", "Colaborador Responsável", "Histórico", "Observação"];
+const PATRIMONIO_HEADERS = ["Patrimônio", "Item", "Série", "Valor (R$)", "Status", "Local", "Responsável", "Departamento"];
+
+export function AssetGrid({
+  assets, items, locations, collaborators, onExit, layout = "patrimonios", categories = [], movements = [],
+  defaultStatus = "available", onDeleteAsset, showDamageMonth = false,
+}: Props) {
+  const ativos = layout === "ativos";
   const saveBatch = useSaveAssetBatch();
+  const saveCategories = useSetItemCategories();
+  const recordDamage = useRecordDamage();
+  // Categoria é do item: a troca vale para todos os patrimônios dele. Guarda item id -> categoria escolhida.
+  const [categoryChanges, setCategoryChanges] = useState<Record<string, string>>({});
   const collabName = (id: string) => collaborators.find((c) => c.id === id)?.full_name ?? "";
   const [rows, setRows] = useState<GridRow[]>(() =>
     // Mesma ordem da tabela: setor, responsável, patrimônio.
@@ -94,22 +143,46 @@ export function AssetGrid({ assets, items, locations, collaborators, onExit }: P
         (a.department ?? "").localeCompare(b.department ?? "", "pt-BR", { sensitivity: "base" })
         || collabName(a.collaborator_id ?? "").localeCompare(collabName(b.collaborator_id ?? ""), "pt-BR", { sensitivity: "base" })
         || a.patrimony_number.localeCompare(b.patrimony_number, "pt-BR", { numeric: true }))
-      .map(existingRow),
+      .map((a) => existingRow(a, lastDamageMonth(movements, a.id))),
   );
   const [errors, setErrors] = useState<string[]>([]);
 
   const activeItems = items.filter((i) => i.status === "active").sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  // Um item por combinação de nome, marca e modelo: cadastros repetidos aparecem uma vez só na lista.
+  const itemKey = (it: InventoryItem) =>
+    [it.name, it.brand ?? "", it.model ?? ""].map((s) => s.trim().toLowerCase().replace(/\s+/g, " ")).join("|");
+  const itemLabel = (it: InventoryItem) => [it.name, it.brand, it.model].filter(Boolean).join(" · ");
+  const itemOptions = new Map<string, InventoryItem>();
+  activeItems.forEach((it) => {
+    const key = itemKey(it);
+    if (!itemOptions.has(key)) itemOptions.set(key, it);
+  });
   const sortedCollabs = [...collaborators].sort((a, b) => a.full_name.localeCompare(b.full_name, "pt-BR"));
   const sortedLocs = [...locations].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-  const itemName = (id: string) => items.find((i) => i.id === id)?.name ?? "—";
+  const itemOf = (id: string) => items.find((i) => i.id === id);
+  const itemName = (id: string) => itemOf(id)?.name ?? "—";
+  const descriptionOf = (itemId: string) => itemOf(itemId)?.description || "—";
+  const historyText = (assetId: string | null) => {
+    if (!assetId) return "—";
+    const hist = movements
+      .filter((m) => m.asset_id === assetId)
+      .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
+    if (hist.length === 0) return "Sem movimentações";
+    return `${hist.length} mov. · última ${new Date(hist[0].occurred_at).toLocaleDateString("pt-BR")}`;
+  };
 
-  const dirty = rows.some((r) => (r.assetId === null ? !isBlankNew(r) : isChanged(r)));
+  const itemCategoryId = (itemId: string) => categoryChanges[itemId] ?? (itemOf(itemId)?.category_id ?? "");
+  const categoryUpdates = Object.entries(categoryChanges)
+    .filter(([id, cat]) => cat !== (itemOf(id)?.category_id ?? ""))
+    .map(([id, cat]) => ({ id, category_id: cat || null }));
+  const damages = rows.filter(isDamageToRecord);
+  const dirty = rows.some((r) => (r.assetId === null ? !isBlankNew(r) : isChanged(r))) || categoryUpdates.length > 0 || damages.length > 0;
 
   const updateRow = (key: string, patch: Partial<GridRow>) =>
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
 
   const insertRowAfter = (index: number) => {
-    const row = blankRow();
+    const row = blankRow(defaultStatus);
     setRows((prev) => [...prev.slice(0, index + 1), row, ...prev.slice(index + 1)]);
     return row.key;
   };
@@ -187,32 +260,58 @@ export function AssetGrid({ assets, items, locations, collaborators, onExit }: P
     const { payload, errors: errs } = validateAndBuild();
     setErrors(errs);
     if (errs.length) {
-      toast.error(`${errs.length} erro(s) na planilha. Corrija antes de completar.`);
+      toast.error(`${errs.length} erro(s) na planilha. Corrija antes de gravar.`);
       return;
     }
-    if (!payload.length) {
+    if (!payload.length && categoryUpdates.length === 0 && damages.length === 0) {
       toast.info("Nenhuma alteração para salvar.");
       return;
     }
 
-    let res;
-    try {
-      res = await saveBatch.mutateAsync(payload); // erro de banco já aparece como toast pelo hook
-    } catch {
-      return;
-    }
-    if (!res.ok) {
-      const names = (res.conflicts ?? []).map((c) => {
-        const row = rows.find((r) => r.assetId === c.id);
-        return row ? `${row.patrimony || "linha"} (${c.reason})` : c.id;
-      });
-      const msg = `Nada foi salvo. Patrimônios alterados por outra pessoa: ${names.join(", ")}. Recarregue a tela e refaça as edições.`;
-      setErrors([msg]);
-      toast.error(msg);
-      return;
+    let count = 0;
+    if (payload.length > 0) {
+      let res;
+      try {
+        res = await saveBatch.mutateAsync(payload); // erro de banco já aparece como toast pelo hook
+      } catch {
+        return;
+      }
+      if (!res.ok) {
+        const names = (res.conflicts ?? []).map((c) => {
+          const row = rows.find((r) => r.assetId === c.id);
+          return row ? `${row.patrimony || "linha"} (${c.reason})` : c.id;
+        });
+        const msg = `Nada foi salvo. Patrimônios alterados por outra pessoa: ${names.join(", ")}. Recarregue a tela e refaça as edições.`;
+        setErrors([msg]);
+        toast.error(msg);
+        return;
+      }
+      count = res.count;
     }
 
-    toast.success(`${res.count} linha(s) salvas.`);
+    if (damages.length > 0) {
+      try {
+        await recordDamage.mutateAsync(damages.map((r) => ({
+          assetId: r.assetId,
+          patrimony: r.patrimony.trim(),
+          itemId: r.itemId,
+          occurredAt: new Date(`${r.damageYear}-${r.damageMonth}-01T12:00:00`).toISOString(),
+          statusFrom: r.original?.status ?? "available",
+        })));
+      } catch {
+        return; // erro já exibido pelo hook
+      }
+    }
+
+    if (categoryUpdates.length > 0) {
+      try {
+        await saveCategories.mutateAsync(categoryUpdates);
+      } catch {
+        return; // erro já exibido pelo hook; os patrimônios já gravados continuam salvos
+      }
+    }
+
+    toast.success(`${count || categoryUpdates.length} alteração(ões) salvas.`);
     onExit();
   };
 
@@ -240,6 +339,8 @@ export function AssetGrid({ assets, items, locations, collaborators, onExit }: P
   };
 
   const selectClass = "h-8 w-full rounded-md border border-input bg-background px-2 text-sm";
+  const readOnlyClass = "block px-2 py-1 text-xs";
+  const headers = ativos ? ATIVOS_HEADERS : showDamageMonth ? [...PATRIMONIO_HEADERS, "Mês", "Ano"] : PATRIMONIO_HEADERS;
 
   return (
     <div className="space-y-3">
@@ -260,19 +361,12 @@ export function AssetGrid({ assets, items, locations, collaborators, onExit }: P
       )}
 
       <div className="overflow-x-auto rounded-md border">
-        <table className="w-full min-w-[1300px] text-sm">
+        <table className={`w-full text-sm ${ativos ? "min-w-[1100px]" : "min-w-[1300px]"}`}>
           <thead className="bg-muted/50 text-left text-xs">
             <tr>
               <th className="w-10 px-2 py-2" aria-label="Adicionar linha" />
-              <th className="px-2 py-2">Patrimônio</th>
-              <th className="px-2 py-2">Item</th>
-              <th className="px-2 py-2">Série</th>
-              <th className="px-2 py-2">Valor (R$)</th>
-              <th className="px-2 py-2">Status</th>
-              <th className="px-2 py-2">Local</th>
-              <th className="px-2 py-2">Responsável</th>
-              <th className="px-2 py-2">Departamento</th>
-              <th className="w-10 px-2 py-2" />
+              {headers.map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
+              <th className="px-2 py-2">{!ativos && onDeleteAsset ? "Ações" : ""}</th>
             </tr>
           </thead>
           <tbody>
@@ -289,6 +383,41 @@ export function AssetGrid({ assets, items, locations, collaborators, onExit }: P
                   onKeyDown={(e) => onEnter(e, i, col)}
                 />
               );
+              const currentItem = r.itemId ? itemOf(r.itemId) : undefined;
+              const currentKey = currentItem ? itemKey(currentItem) : "";
+              const itemSelect = (
+                <select aria-label="Item" className={selectClass} value={currentKey}
+                  onChange={(e) => updateRow(r.key, { itemId: itemOptions.get(e.target.value)?.id ?? "" })}>
+                  {currentItem && !itemOptions.has(currentKey) && (
+                    <option value={currentKey}>{itemLabel(currentItem)}</option>
+                  )}
+                  <option value="">Selecione o item</option>
+                  {[...itemOptions.entries()].map(([key, it]) => <option key={key} value={key}>{itemLabel(it)}</option>)}
+                </select>
+              );
+              const statusSelect = (
+                <select aria-label="Status" className={selectClass} value={r.status}
+                  onChange={(e) => updateRow(r.key, { status: e.target.value as AssetStatus })}>
+                  {(Object.keys(STATUS_LABELS) as AssetStatus[]).map((s) => (
+                    <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                  ))}
+                </select>
+              );
+              const collabSelect = (
+                <select aria-label="Responsável" className={selectClass} value={r.collaboratorId}
+                  onChange={(e) => pickCollaborator(r, e.target.value)}>
+                  <option value="">Sem responsável</option>
+                  {sortedCollabs.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+                </select>
+              );
+              const locationSelect = (
+                <select aria-label="Local" className={selectClass} value={r.locationId}
+                  onChange={(e) => updateRow(r.key, { locationId: e.target.value })}>
+                  <option value="">—</option>
+                  {sortedLocs.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+              );
+
               return (
                 <tr key={r.key} className="border-t">
                   <td className="px-2 py-1">
@@ -302,42 +431,53 @@ export function AssetGrid({ assets, items, locations, collaborators, onExit }: P
                       <Plus className="h-4 w-4" />
                     </button>
                   </td>
-                  <td className="px-2 py-1">{cell("patrimony", { placeholder: "nº patrimônio", className: "w-32" })}</td>
-                  <td className="px-2 py-1">
-                    <select aria-label="Item" className={selectClass} value={r.itemId}
-                      onChange={(e) => updateRow(r.key, { itemId: e.target.value })}>
-                      {r.assetId !== null && !activeItems.some((it) => it.id === r.itemId) && (
-                        <option value={r.itemId}>{itemName(r.itemId)}</option>
+                  {ativos ? (
+                    <>
+                      <td className="px-2 py-1">{itemSelect}</td>
+                      <td className="px-2 py-1">
+                        <select aria-label="Categoria" className={selectClass} value={itemCategoryId(r.itemId)} disabled={!r.itemId}
+                          onChange={(e) => setCategoryChanges((prev) => ({ ...prev, [r.itemId]: e.target.value }))}>
+                          <option value="">Sem categoria</option>
+                          {[...categories].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")).map((c) => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-2 py-1">{cell("patrimony", { placeholder: "nº patrimônio", className: "w-32" })}</td>
+                      <td className="px-2 py-1">{statusSelect}</td>
+                      <td className="px-2 py-1"><span className={`${readOnlyClass} max-w-[220px]`}>{r.itemId ? descriptionOf(r.itemId) : "—"}</span></td>
+                      <td className="px-2 py-1">{cell("department", { placeholder: "opcional" })}</td>
+                      <td className="px-2 py-1">{collabSelect}</td>
+                      <td className="px-2 py-1"><span className={readOnlyClass}>{historyText(r.assetId)}</span></td>
+                      <td className="px-2 py-1"><span className={`${readOnlyClass} max-w-[220px]`}>{r.notes || "—"}</span></td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-2 py-1">{cell("patrimony", { placeholder: "nº patrimônio", className: "w-32" })}</td>
+                      <td className="px-2 py-1">{itemSelect}</td>
+                      <td className="px-2 py-1">{cell("serial", { placeholder: "opcional" })}</td>
+                      <td className="px-2 py-1">{cell("value", { type: "number", min: 0, className: "w-28" })}</td>
+                      <td className="px-2 py-1">{statusSelect}</td>
+                      <td className="px-2 py-1">{locationSelect}</td>
+                      <td className="px-2 py-1">{collabSelect}</td>
+                      <td className="px-2 py-1">{cell("department", { placeholder: "opcional" })}</td>
+                      {showDamageMonth && (
+                        <>
+                          <td className="px-2 py-1">
+                            <select aria-label="Mês do dano" className={selectClass} value={r.damageMonth} disabled={r.status !== "damaged"}
+                              onChange={(e) => updateRow(r.key, { damageMonth: e.target.value })}>
+                              <option value="">—</option>
+                              {MONTHS.map((m, idx) => <option key={m} value={String(idx + 1).padStart(2, "0")}>{m}</option>)}
+                            </select>
+                          </td>
+                          <td className="px-2 py-1">
+                            <Input aria-label="Ano do dano" type="number" className="h-8 w-24 text-xs" value={r.damageYear}
+                              disabled={r.status !== "damaged"} onChange={(e) => updateRow(r.key, { damageYear: e.target.value })} />
+                          </td>
+                        </>
                       )}
-                      <option value="">Selecione o item</option>
-                      {activeItems.map((it) => <option key={it.id} value={it.id}>{it.name}</option>)}
-                    </select>
-                  </td>
-                  <td className="px-2 py-1">{cell("serial", { placeholder: "opcional" })}</td>
-                  <td className="px-2 py-1">{cell("value", { type: "number", min: 0, className: "w-28" })}</td>
-                  <td className="px-2 py-1">
-                    <select aria-label="Status" className={selectClass} value={r.status}
-                      onChange={(e) => updateRow(r.key, { status: e.target.value as AssetStatus })}>
-                      {(Object.keys(STATUS_LABELS) as AssetStatus[]).map((s) => (
-                        <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-2 py-1">
-                    <select aria-label="Local" className={selectClass} value={r.locationId}
-                      onChange={(e) => updateRow(r.key, { locationId: e.target.value })}>
-                      <option value="">—</option>
-                      {sortedLocs.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-                    </select>
-                  </td>
-                  <td className="px-2 py-1">
-                    <select aria-label="Responsável" className={selectClass} value={r.collaboratorId}
-                      onChange={(e) => pickCollaborator(r, e.target.value)}>
-                      <option value="">Sem responsável</option>
-                      {sortedCollabs.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-                    </select>
-                  </td>
-                  <td className="px-2 py-1">{cell("department", { placeholder: "opcional" })}</td>
+                    </>
+                  )}
                   <td className="px-2 py-1">
                     {r.assetId === null && (
                       <button
@@ -348,6 +488,22 @@ export function AssetGrid({ assets, items, locations, collaborators, onExit }: P
                         className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-muted"
                       >
                         <X className="h-4 w-4" />
+                      </button>
+                    )}
+                    {r.assetId !== null && !ativos && (
+                      <button
+                        type="button"
+                        aria-label="Excluir patrimônio"
+                        title="Excluir patrimônio"
+                        onClick={() => {
+                          const asset = assets.find((x) => x.id === r.assetId);
+                          if (!asset || !onDeleteAsset || !window.confirm(`Excluir o patrimônio ${asset.patrimony_number}? O histórico é mantido.`)) return;
+                          onDeleteAsset(asset);
+                          removeRow(r.key);
+                        }}
+                        className="flex h-7 w-7 items-center justify-center rounded text-destructive hover:bg-muted"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     )}
                   </td>
