@@ -3276,6 +3276,7 @@ export type Database = {
           support_equipment: string | null
           support_real_reason: string | null
           support_site: string | null
+          support_solution: string | null
           support_system: string | null
           support_tags: string[]
           support_technical_notes: string | null
@@ -3313,6 +3314,7 @@ export type Database = {
           support_equipment?: string | null
           support_real_reason?: string | null
           support_site?: string | null
+          support_solution?: string | null
           support_system?: string | null
           support_tags?: string[]
           support_technical_notes?: string | null
@@ -3350,6 +3352,7 @@ export type Database = {
           support_equipment?: string | null
           support_real_reason?: string | null
           support_site?: string | null
+          support_solution?: string | null
           support_system?: string | null
           support_tags?: string[]
           support_technical_notes?: string | null
@@ -3890,6 +3893,7 @@ export type Database = {
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       is_super_deleter: { Args: never; Returns: boolean }
+      is_support_catalog_editor: { Args: never; Returns: boolean }
       kanban_can_delete: { Args: { _task_id: string }; Returns: boolean }
       kanban_can_edit: { Args: { _task_id: string }; Returns: boolean }
       kanban_set_assignees: {
