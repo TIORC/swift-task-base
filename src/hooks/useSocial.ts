@@ -1,3 +1,4 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -68,17 +69,22 @@ export function useSmPosts(filter?: { clientId?: string; status?: string }) {
   return { data, loading, refresh };
 }
 
+// Cache compartilhado: todas as telas M7 reaproveitam uma única busca.
 export function useSmTasks() {
-  const [data, setData] = useState<SmTask[]>([]);
-  const [loading, setLoading] = useState(true);
+  const qc = useQueryClient();
+  const q = useQuery({
+    queryKey: ["sm_tasks"],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await sb.from("sm_tasks").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data as SmTask[]) ?? [];
+    },
+  });
   const refresh = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await sb.from("sm_tasks").select("*").order("created_at", { ascending: false });
-    if (!error) setData((data as SmTask[]) ?? []);
-    setLoading(false);
-  }, []);
-  useEffect(() => { refresh(); }, [refresh]);
-  return { data, loading, refresh };
+    await qc.invalidateQueries({ queryKey: ["sm_tasks"] });
+  }, [qc]);
+  return { data: q.data ?? [], loading: q.isLoading, refresh };
 }
 
 export function useSmRefData() {

@@ -1802,6 +1802,47 @@ export type Database = {
         }
         Relationships: []
       }
+      kanban_time_logs: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          ended_at: string | null
+          id: string
+          started_at: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kanban_time_logs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "kanban_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string

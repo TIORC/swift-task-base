@@ -28,6 +28,7 @@ export interface SectorMetric {
 export function useTeamMetrics() {
   return useQuery({
     queryKey: ["team-metrics"],
+    staleTime: 120_000,
     queryFn: async () => {
       const [tasksRes, autosRes, timeRes, autoTimeRes, profilesRes, commentsRes, subsRes, kanbanRes, kanbanAssigneesRes, kanbanTimeRes] = await Promise.all([
         supabase.from("tasks").select("id, assigned_to, status, updated_at, title"),

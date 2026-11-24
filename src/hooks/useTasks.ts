@@ -44,6 +44,7 @@ async function fetchAllPages<T>(
 export function useTasks() {
   return useQuery({
     queryKey: ["tasks"],
+    staleTime: 120_000,
     queryFn: async () => {
       const tasks = await fetchAllPages((from, to) =>
         supabase

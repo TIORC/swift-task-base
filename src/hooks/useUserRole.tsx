@@ -97,12 +97,6 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
     setRoles([]);
     void fetchRoles(true);
 
-    const handleWindowFocus = () => {
-      void fetchRoles(false);
-    };
-
-    window.addEventListener("focus", handleWindowFocus);
-
     const channel = supabase
       .channel(`user-role-changes-${user.id}`)
       .on(
@@ -116,7 +110,6 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
-      window.removeEventListener("focus", handleWindowFocus);
       supabase.removeChannel(channel);
     };
   }, [user?.id]);
