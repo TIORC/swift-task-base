@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import {
   Lock, User, Play, Square, Building2,
   Code2, MessageSquare, Activity, Pencil, Check, X, ArrowRight,
-  MonitorSmartphone, Workflow,
+  MonitorSmartphone, Workflow, Trash2,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -32,9 +32,15 @@ import {
   useLatestAutomationComments,
   useAllAutomationSteps,
   useRenameAutomation,
+  useDeleteAutomation,
+  useCanDeleteAutomation,
 } from "@/hooks/useAutomationsData";
 import { useGlobalTimer } from "@/hooks/useGlobalTimer";
 import { formatMinutes, formatTime } from "@/hooks/useTimeTracker";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Props {
   automation: Automation;
@@ -103,9 +109,19 @@ export function AutomationCard({ automation: a, onClick, profileName, assigneeNa
   const { data: steps } = useAllAutomationSteps();
   const { activeAutomationId, isRunning, elapsed, startAutomation, stop } = useGlobalTimer();
   const renameAutomation = useRenameAutomation();
+  const deleteAutomation = useDeleteAutomation();
+  const canDelete = useCanDeleteAutomation();
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState(a.title);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  // Exclusão só libera com o nome exato da automação digitado.
+  const deleteNameMatches = deleteConfirmText.trim() === a.title.trim();
+  const confirmDelete = () => {
+    if (!deleteNameMatches || deleteAutomation.isPending) return;
+    deleteAutomation.mutate(a.id, { onSuccess: () => setDeleteOpen(false) });
+  };
 
   const isTimerOnThis = isRunning && activeAutomationId === a.id;
   const baseMinutes = totals?.[a.id] || 0;
@@ -271,6 +287,64 @@ export function AutomationCard({ automation: a, onClick, profileName, assigneeNa
               >
                 <Pencil className="h-3 w-3" />
               </button>
+            )}
+            {canDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteConfirmText("");
+                  setDeleteOpen(true);
+                }}
+                disabled={deleteAutomation.isPending}
+                className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 mt-0.5 transition-colors disabled:opacity-50"
+                title="Excluir automação"
+                aria-label="Excluir automação"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
+            {canDelete && (
+              // Wrapper só para isolar cliques: o diálogo é um portal, mas o evento ainda sobe pela árvore React até o card.
+              <div onClick={(e) => e.stopPropagation()}>
+                <AlertDialog
+                  open={deleteOpen}
+                  onOpenChange={(open) => {
+                    setDeleteOpen(open);
+                    if (!open) setDeleteConfirmText("");
+                  }}
+                >
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir automação?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta ação não pode ser desfeita. Etapas, comentários e tempos também serão apagados.
+                        Para confirmar, digite o nome da automação abaixo.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold break-words">{a.title}</p>
+                      <Input
+                        autoFocus
+                        value={deleteConfirmText}
+                        onChange={(e) => setDeleteConfirmText(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") confirmDelete(); }}
+                        placeholder="Digite o nome exatamente como está acima"
+                        aria-label="Nome da automação para confirmar a exclusão"
+                      />
+                    </div>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        disabled={!deleteNameMatches || deleteAutomation.isPending}
+                        onClick={(e) => { e.preventDefault(); confirmDelete(); }}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {deleteAutomation.isPending ? "Excluindo..." : "Excluir"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             )}
           </>
         )}

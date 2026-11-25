@@ -62,7 +62,8 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
     const table = tableFor(activeTargetRef.current);
     const { error } = await (supabase as any).from(table).update({ ended_at: now.toISOString(), duration_minutes: durationMinutes }).eq("id", activeLogIdRef.current);
     if (error) toast.error(`Não foi possível salvar o tempo trabalhado: ${error.message}`);
-  }, []);
+    if (table === "kanban_time_logs") queryClient.invalidateQueries({ queryKey: ["kanban-time-logs", activeTargetRef.current?.id] });
+  }, [queryClient]);
 
   const start = useCallback(async (taskId: string) => {
     if (!user) return;
@@ -119,7 +120,8 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
     startTimeRef.current = new Date(now);
     setElapsed(0);
     setIsRunning(true);
-  }, [user, isRunning, stopCurrent]);
+    queryClient.invalidateQueries({ queryKey: ["kanban-time-logs", kanbanTaskId] });
+  }, [user, isRunning, stopCurrent, queryClient]);
 
   const stop = useCallback(async () => {
     await stopCurrent();
@@ -135,7 +137,10 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
     queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] });
     if (prev?.type === "task") queryClient.invalidateQueries({ queryKey: ["time-logs", prev.id] });
     if (prev?.type === "automation") queryClient.invalidateQueries({ queryKey: ["automation_time_logs", prev.id] });
-    if (prev?.type === "kanban") queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] });
+    if (prev?.type === "kanban") {
+      queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["kanban-time-logs", prev.id] });
+    }
   }, [queryClient, stopCurrent]);
 
   // Tick
@@ -164,7 +169,10 @@ export function GlobalTimerProvider({ children }: { children: ReactNode }) {
       if (error) return;
       if (target.type === "task") queryClient.invalidateQueries({ queryKey: ["time-logs", target.id] });
       else if (target.type === "automation") queryClient.invalidateQueries({ queryKey: ["automation_time_logs", target.id] });
-      else queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] });
+      else {
+        queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["kanban-time-logs", target.id] });
+      }
     };
 
     void persistElapsed();

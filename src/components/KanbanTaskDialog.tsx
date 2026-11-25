@@ -29,8 +29,9 @@ import { KanbanAttachments } from "@/components/KanbanAttachments";
 import { KanbanChecklist, PendingChecklistItem } from "@/components/KanbanChecklist";
 import { KanbanCoverPicker } from "@/components/KanbanCoverPicker";
 import { labelFor } from "@/lib/kanban-labels";
-import { ImagePlus, Play, Smile, Square, Trash2, X } from "lucide-react";
+import { Clock, ImagePlus, Play, Smile, Square, Trash2, X } from "lucide-react";
 import { useGlobalTimer } from "@/hooks/useGlobalTimer";
+import { formatMinutes } from "@/hooks/useTimeTracker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 
@@ -109,6 +110,31 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
       return data ?? [];
     },
   });
+  // Sessões do cronômetro desta tarefa (quem trabalhou, início, fim e tempo).
+  const { data: timeLogs = [] } = useQuery({
+    queryKey: ["kanban-time-logs", task?.id],
+    enabled: !!task?.id && open,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("kanban_time_logs")
+        .select("id, user_id, started_at, ended_at, duration_minutes")
+        .eq("task_id", task!.id)
+        .order("started_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as { id: string; user_id: string; started_at: string; ended_at: string | null; duration_minutes: number }[];
+    },
+  });
+  const totalTrackedMinutes = timeLogs.reduce((s, l) => s + (l.duration_minutes || 0), 0);
+  // Mostra a data só quando a sessão começou e terminou em dias diferentes.
+  const fmtSessionRange = (startIso: string, endIso: string | null) => {
+    const start = new Date(startIso);
+    const startText = format(start, "dd/MM HH:mm");
+    if (!endIso) return `${startText} → em andamento`;
+    const end = new Date(endIso);
+    const sameDay = format(start, "dd/MM") === format(end, "dd/MM");
+    return `${startText} → ${format(end, sameDay ? "HH:mm" : "dd/MM HH:mm")}`;
+  };
+
   // Todos os perfis (quem comenta ou é mencionado não precisa ser responsável pela tarefa).
   const { data: profileList = [] } = useQuery({
     queryKey: ["kanban-profile-names"],
@@ -365,11 +391,31 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
 
         {task && (
           <aside className="space-y-3 border-t border-border pt-4 lg:-mr-6 lg:border-l lg:border-t-0 lg:pt-0 lg:pl-6">
+            <section className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="flex items-center gap-1.5 text-sm font-semibold">
+                  <Clock className="h-4 w-4 text-muted-foreground" />Registro de horários
+                </h4>
+                <span className="text-xs text-muted-foreground">Total: <b className="text-foreground">{formatMinutes(totalTrackedMinutes)}</b></span>
+              </div>
+              <div className="h-[6.5rem] space-y-1.5 overflow-y-auto pr-1">
+                {timeLogs.length === 0 && <p className="text-xs text-muted-foreground">Nenhum registro do cronômetro ainda.</p>}
+                {timeLogs.map((l) => (
+                  <div key={l.id} className="flex items-center justify-between gap-2 rounded-lg bg-muted/30 px-3 py-1.5 text-xs">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-foreground">{nameOf(l.user_id)}</p>
+                      <p className="text-muted-foreground">{fmtSessionRange(l.started_at, l.ended_at)}</p>
+                    </div>
+                    <span className="shrink-0 font-medium text-foreground">{formatMinutes(l.duration_minutes)}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
             <h4 className="text-sm font-semibold">
               Comentários e atividade
               <span className="ml-1 text-xs font-normal text-muted-foreground">({comments.length}/{MAX_COMMENTS})</span>
             </h4>
-            <div ref={listRef} className="max-h-[60vh] space-y-3 overflow-y-auto pr-1 lg:max-h-none lg:h-[calc(90vh-14rem)]">
+            <div ref={listRef} className="max-h-[60vh] space-y-3 overflow-y-auto pr-1 lg:max-h-none lg:h-[calc(90vh-22rem)]">
               {comments.map((c) => (
                 <div key={c.id} className="flex gap-2">
                   <div

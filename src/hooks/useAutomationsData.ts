@@ -237,6 +237,26 @@ export function useCanRenameAutomation(): boolean {
   return canRenameAutomationName(userProfile?.full_name);
 }
 
+// Exclusão pela tela: só Gabriel e Welder (o banco libera o mesmo grupo na migração de exclusão).
+const AUTOMATION_DELETERS = ["gabriel anacleto", "welder"];
+
+export function canDeleteAutomationName(fullName: string | null | undefined): boolean {
+  if (!fullName) return false;
+  const name = fullName.toLowerCase();
+  return AUTOMATION_DELETERS.some((editor) => name === editor || name.startsWith(editor + " "));
+}
+
+// E-mails do mesmo grupo: a conta logada pode não ter o nome do perfil na lista acima.
+const AUTOMATION_DELETER_EMAILS = ["timaracas@orcoma.com.br", "gabriel.anacleto@orcoma.com.br", "welder@orcoma.com.br"];
+
+export function useCanDeleteAutomation(): boolean {
+  const { user } = useAuth();
+  const { profile: userProfile } = useProfile();
+  if (!user) return false;
+  if (AUTOMATION_DELETER_EMAILS.includes((user.email ?? "").toLowerCase())) return true;
+  return canDeleteAutomationName(userProfile?.full_name);
+}
+
 export function useRenameAutomation() {
   const qc = useQueryClient();
   return useMutation({
