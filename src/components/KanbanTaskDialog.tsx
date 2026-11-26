@@ -16,6 +16,7 @@ import {
   KanbanTask,
   PENDING_KANBAN_PEOPLE,
   canDeleteKanbanTaskName,
+  firstNameKey,
   isKanbanResponsible,
   toColumnStatus,
   useKanbanCreateTask,
@@ -37,6 +38,11 @@ import { format } from "date-fns";
 
 // Limite por tarefa; o banco também impede a partir do mesmo número (ver migração de comentários).
 const MAX_COMMENTS = 1000;
+
+// "@TodosdoTI" marca o time de TI de uma vez (Gabriel, Welder, Angel e Sofia).
+const TODOS_TI_LABEL = "TodosdoTI";
+const TI_TEAM_FIRST_NAMES = ["gabriel", "welder", "angel", "sofia"];
+const isTiTeamMember = (fullName: string | null) => !!fullName && TI_TEAM_FIRST_NAMES.includes(firstNameKey(fullName));
 
 const MAX_COMMENT_IMAGES = 5;
 const MAX_COMMENT_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -181,7 +187,9 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
   const suggestions = useMemo(() => {
     if (mentionQuery === null) return [];
     const q = mentionQuery.toLowerCase();
-    return profileList.filter((p) => (p.full_name ?? "").toLowerCase().includes(q)).slice(0, 6);
+    const people = profileList.filter((p) => (p.full_name ?? "").toLowerCase().includes(q)).slice(0, 6);
+    const showTodos = TODOS_TI_LABEL.toLowerCase().includes(q.replace(/\s+/g, ""));
+    return showTodos ? [{ id: "todos-ti", full_name: TODOS_TI_LABEL }, ...people] : people;
   }, [mentionQuery, profileList]);
 
   const onCommentChange = (value: string) => {
@@ -197,7 +205,9 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
 
   // Destaca "@Nome" no texto, só para pessoas que foram mencionadas no comentário.
   const renderContent = (text: string, ids: string[]) => {
-    const names = ids.map((id) => profileNames[id]).filter(Boolean).sort((a, b) => b.length - a.length);
+    const names = ids.map((id) => profileNames[id]).filter(Boolean);
+    if (text.includes(`@${TODOS_TI_LABEL}`)) names.push(TODOS_TI_LABEL);
+    names.sort((a, b) => b.length - a.length);
     if (names.length === 0) return text;
     const escaped = names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
     const parts = text.split(new RegExp(`(@(?:${escaped.join("|")}))`, "g"));
@@ -252,8 +262,9 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
       setSending(false);
       return;
     }
+    const mentionsTodosTi = content.includes(`@${TODOS_TI_LABEL}`);
     const mentions = profileList
-      .filter((p) => p.full_name && content.includes(`@${p.full_name}`))
+      .filter((p) => (p.full_name && content.includes(`@${p.full_name}`)) || (mentionsTodosTi && isTiTeamMember(p.full_name)))
       .map((p) => p.id);
     const { error } = await supabase
       .from("kanban_task_comments")
@@ -549,6 +560,9 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
                         className="w-full px-3 py-1.5 text-left text-sm hover:bg-muted"
                       >
                         @{p.full_name}
+                        {p.id === "todos-ti" && (
+                          <span className="ml-2 text-xs text-muted-foreground">Gabriel, Welder, Angel e Sofia</span>
+                        )}
                       </button>
                     </li>
                   ))}

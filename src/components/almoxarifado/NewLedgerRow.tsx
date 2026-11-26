@@ -168,6 +168,7 @@ export function NewLedgerRow({ items, collaborators, categories, leading = false
       <TableCell>
         <Input className="h-8 text-xs" placeholder="Patrimônio" value={patrimony} onChange={(e) => setPatrimony(e.target.value)} onKeyDown={onEnter} />
       </TableCell>
+      <TableCell className="text-center text-xs text-muted-foreground" title="Preencha o valor depois, na linha criada">—</TableCell>
       <TableCell>
         <Select value={kind} onValueChange={(v) => setKind(v as Kind)}>
           <SelectTrigger className="h-8 w-[120px] text-xs"><SelectValue /></SelectTrigger>
@@ -183,7 +184,7 @@ export function NewLedgerRow({ items, collaborators, categories, leading = false
       <TableCell>
         <Input className="h-8 text-xs" placeholder="Departamento" value={dept} onChange={(e) => setDept(e.target.value)} onKeyDown={onEnter} />
       </TableCell>
-      <TableCell className="min-w-[180px]">
+      <TableCell className="min-w-[150px]">
         <Textarea
           rows={1}
           maxLength={1000}

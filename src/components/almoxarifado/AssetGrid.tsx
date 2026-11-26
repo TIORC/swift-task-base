@@ -122,7 +122,7 @@ interface Props {
   showDamageMonth?: boolean;
 }
 
-const ATIVOS_HEADERS = ["Ativos", "Categoria", "Patrimônio", "Status", "Descrição", "Departamento", "Colaborador Responsável", "Histórico", "Observação"];
+const ATIVOS_HEADERS = ["Ativos", "Categoria", "Patrimônio", "Valor (R$)", "Status", "Descrição", "Departamento", "Colaborador Responsável", "Histórico", "Observação"];
 const PATRIMONIO_HEADERS = ["Patrimônio", "Item", "Série", "Valor (R$)", "Status", "Local", "Responsável", "Departamento"];
 
 export function AssetGrid({
@@ -444,6 +444,7 @@ export function AssetGrid({
                         </select>
                       </td>
                       <td className="px-2 py-1">{cell("patrimony", { placeholder: "nº patrimônio", className: "w-32" })}</td>
+                      <td className="px-2 py-1">{cell("value", { type: "number", min: 0, className: "w-28" })}</td>
                       <td className="px-2 py-1">{statusSelect}</td>
                       <td className="px-2 py-1"><span className={`${readOnlyClass} max-w-[220px]`}>{r.itemId ? descriptionOf(r.itemId) : "—"}</span></td>
                       <td className="px-2 py-1">{cell("department", { placeholder: "opcional" })}</td>

@@ -1,7 +1,10 @@
 import { useState, type KeyboardEvent } from "react";
-import { FileSpreadsheet, Plus, Save, Trash2, X } from "lucide-react";
+import { ChevronDown, FileSpreadsheet, Plus, Save, Search, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAdmTiRows, useSaveAdmTi, type AdmTiRow } from "@/hooks/useAdmTi";
 import { useInventoryDepartments } from "@/hooks/useInventory";
@@ -38,25 +41,119 @@ const emptyRow = (): AdmTiRow => ({
   departamento: DEFAULT_DEPARTAMENTO, colaborador: "", historico: "", observacao: "",
 });
 
-type Filters = Record<Field, string>;
+// Filtro estilo Excel: para cada coluna filtrada, o conjunto de valores marcados. Coluna sem chave = sem filtro.
+type Filters = Partial<Record<Field, Set<string>>>;
 
-// Valor especial do filtro de Status/Departamento para mostrar só as linhas sem valor.
-const EMPTY_VALUE = "__vazio__";
-
-const emptyFilters = (): Filters => Object.fromEntries(COLUMNS.map((c) => [c.key, ""])) as Filters;
-
-// Sem acento e sem diferença de maiúsculas, para o filtro "contém" funcionar com digitação em português.
+// Sem acento e sem diferença de maiúsculas, para a pesquisa dentro da lista de valores funcionar com português.
 const normalizeText = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
-const matchesFilter = (row: AdmTiRow, key: Field, filter: string) => {
-  if (!filter) return true;
-  if (key === "status" || key === "departamento") {
-    return filter === EMPTY_VALUE ? !row[key] : row[key] === filter;
-  }
-  return normalizeText(row[key]).includes(normalizeText(filter.trim()));
+// Texto mostrado para uma célula; célula vazia aparece como "(Vazio)" na lista de valores.
+const labelOf = (value: string) => (value === "" ? "(Vazio)" : value);
+
+const passesFilter = (row: AdmTiRow, key: Field, filters: Filters) => {
+  const selected = filters[key];
+  return !selected || selected.has(row[key]);
 };
 
-const FILTER_INPUT = "h-7 w-full min-w-[90px] rounded border border-input bg-background px-1.5 text-xs font-normal text-foreground outline-none focus:border-primary";
+// Valores distintos de uma coluna, em ordem alfabética, com as células vazias por último.
+const distinctValues = (rows: AdmTiRow[], key: Field) =>
+  Array.from(new Set(rows.map((r) => r[key]))).sort((a, b) => {
+    if (a === "") return 1;
+    if (b === "") return -1;
+    return a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" });
+  });
+
+type ColumnFilterProps = {
+  label: string;
+  // Valores distintos da coluna nas linhas que ainda aparecem com os outros filtros.
+  options: string[];
+  // Valores marcados; undefined quando a coluna não tem filtro (todos aparecem marcados).
+  selected: Set<string> | undefined;
+  onChange: (selected: Set<string> | null) => void;
+};
+
+// Nome da coluna com seta no cabeçalho, igual ao filtro da aba Ativos: a lista aplica na hora.
+function ColumnFilter({ label, options, selected, onChange }: ColumnFilterProps) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const active = selected !== undefined;
+  const isChecked = (value: string) => !selected || selected.has(value);
+  const visibleOptions = options.filter((v) => normalizeText(labelOf(v)).includes(normalizeText(search.trim())));
+  const shownChecked = visibleOptions.filter(isChecked).length;
+  const allShownChecked = visibleOptions.length > 0 && shownChecked === visibleOptions.length;
+
+  // Com todos os valores marcados a coluna volta a não ter filtro.
+  const commit = (next: Set<string>) => onChange(options.every((v) => next.has(v)) ? null : next);
+  const current = () => new Set(selected ?? options);
+
+  const toggleOne = (value: string, checked: boolean) => {
+    const next = current();
+    if (checked) next.add(value);
+    else next.delete(value);
+    commit(next);
+  };
+
+  // "Selecionar tudo" atua só sobre os valores que a pesquisa está mostrando.
+  const toggleAll = (checked: boolean) => {
+    const next = current();
+    visibleOptions.forEach((v) => (checked ? next.add(v) : next.delete(v)));
+    commit(next);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (o) setSearch(""); }}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Filtrar ${label}`}
+          className={`inline-flex items-center gap-1 whitespace-nowrap ${active ? "font-semibold text-blue-700" : ""}`}
+        >
+          {label}
+          <ChevronDown className="h-3 w-3" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 p-2">
+        <div className="relative mb-2">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Pesquisar…"
+            aria-label={`Pesquisar em ${label}`}
+            className="h-8 pl-7 text-sm"
+          />
+        </div>
+        <label className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm font-medium hover:bg-muted">
+          <Checkbox
+            checked={allShownChecked ? true : shownChecked > 0 ? "indeterminate" : false}
+            onCheckedChange={(c) => toggleAll(c === true)}
+            disabled={visibleOptions.length === 0}
+          />
+          Selecionar tudo
+        </label>
+        <div className="max-h-64 space-y-1 overflow-y-auto border-b py-1 pb-2">
+          {visibleOptions.map((v) => (
+            <label key={v} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-muted">
+              <Checkbox checked={isChecked(v)} onCheckedChange={(c) => toggleOne(v, c === true)} />
+              <span className="truncate">{labelOf(v)}</span>
+            </label>
+          ))}
+          {visibleOptions.length === 0 && (
+            <p className="px-2 py-1 text-sm text-muted-foreground">
+              {options.length === 0 ? "Sem valores" : "Nenhum valor encontrado."}
+            </p>
+          )}
+        </div>
+        <div className="mt-2 flex justify-end">
+          <Button type="button" variant="ghost" size="sm" disabled={!active} onClick={() => onChange(null)}>
+            Limpar
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 // Aba ADM TI: tabela de consulta, e o "Modo Excel" para digitar e gravar tudo de uma vez.
 export function AdmTiSheet({ canWrite }: { canWrite: boolean }) {
@@ -68,7 +165,7 @@ export function AdmTiSheet({ canWrite }: { canWrite: boolean }) {
   const [excel, setExcel] = useState(false);
   const [draft, setDraft] = useState<AdmTiRow[]>([]);
   const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState<Filters>(emptyFilters);
+  const [filters, setFilters] = useState<Filters>({});
 
   const startExcel = () => {
     setDraft(saved.length ? saved.map((r) => ({ ...r })) : [emptyRow()]);
@@ -85,8 +182,16 @@ export function AdmTiSheet({ canWrite }: { canWrite: boolean }) {
 
   const removeRow = (id: string) => setDraft((prev) => prev.filter((r) => r.id !== id));
 
-  const setFilter = (key: Field, value: string) => setFilters((prev) => ({ ...prev, [key]: value }));
-  const hasFilter = COLUMNS.some((c) => filters[c.key] !== "");
+  const setColumnFilter = (key: Field, selected: Set<string> | null) => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      if (selected) next[key] = selected;
+      else delete next[key];
+      return next;
+    });
+    setPage(1);
+  };
+  const hasFilter = Object.keys(filters).length > 0;
 
   const onSave = async () => {
     // Linhas totalmente em branco não são gravadas; os textos são limpos de espaços nas pontas.
@@ -114,7 +219,14 @@ export function AdmTiSheet({ canWrite }: { canWrite: boolean }) {
   };
 
   const rows = excel ? draft : saved;
-  const visibleRows = rows.filter((r) => COLUMNS.every((c) => matchesFilter(r, c.key, filters[c.key])));
+  // Uma linha aparece se passa em todos os filtros de coluna.
+  const passesAll = (r: AdmTiRow, skip?: Field) =>
+    COLUMNS.every((c) => c.key === skip || passesFilter(r, c.key, filters));
+  const visibleRows = rows.filter((r) => passesAll(r));
+  // Cada lista de valores só mostra o que sobra nas linhas filtradas pelas outras colunas.
+  const optionsByColumn = Object.fromEntries(
+    COLUMNS.map((c) => [c.key, distinctValues(rows.filter((r) => passesAll(r, c.key)), c.key)]),
+  ) as Record<Field, string[]>;
   // Consulta com 25 por página, sobre as linhas filtradas; no Modo Excel todas ficam na tela para digitar.
   const totalPages = Math.max(1, Math.ceil(visibleRows.length / ADM_PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -130,7 +242,7 @@ export function AdmTiSheet({ canWrite }: { canWrite: boolean }) {
               : hasFilter ? `${visibleRows.length} de ${saved.length} registro(s)` : `${saved.length} registro(s)`}
           </p>
           {hasFilter && (
-            <Button size="sm" variant="ghost" onClick={() => setFilters(emptyFilters())}>
+            <Button size="sm" variant="ghost" onClick={() => { setFilters({}); setPage(1); }}>
               <X className="mr-2 h-4 w-4" /> Limpar filtros
             </Button>
           )}
@@ -138,7 +250,7 @@ export function AdmTiSheet({ canWrite }: { canWrite: boolean }) {
         {canWrite && (excel ? (
           <div className="flex flex-wrap gap-2">
             {/* Novas linhas aparecem sempre: ao adicionar, os filtros são limpos. */}
-            <Button size="sm" variant="outline" onClick={() => { setFilters(emptyFilters()); setDraft((prev) => [...prev, emptyRow()]); }} disabled={save.isPending}>
+            <Button size="sm" variant="outline" onClick={() => { setFilters({}); setDraft((prev) => [...prev, emptyRow()]); }} disabled={save.isPending}>
               <Plus className="mr-2 h-4 w-4" /> Adicionar linha
             </Button>
             <Button size="sm" variant="outline" onClick={cancel} disabled={save.isPending}>
@@ -160,35 +272,17 @@ export function AdmTiSheet({ canWrite }: { canWrite: boolean }) {
           <Table>
             <TableHeader>
               <TableRow>
-                {COLUMNS.map((c) => <TableHead key={c.key} className="whitespace-nowrap">{c.label}</TableHead>)}
-                {excel && <TableHead className="w-10" />}
-              </TableRow>
-              <TableRow>
                 {COLUMNS.map((c) => (
-                  <TableHead key={c.key} className="p-1">
-                    {c.key === "status" || c.key === "departamento" ? (
-                      <select
-                        aria-label={`Filtrar ${c.label}`}
-                        value={filters[c.key]}
-                        onChange={(e) => setFilter(c.key, e.target.value)}
-                        className={FILTER_INPUT}
-                      >
-                        <option value="">Todos</option>
-                        <option value={EMPTY_VALUE}>(vazio)</option>
-                        {(c.key === "status" ? STATUS_OPTIONS : deptOptions).map((o) => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    ) : (
-                      <input
-                        aria-label={`Filtrar ${c.label}`}
-                        placeholder="Filtrar…"
-                        value={filters[c.key]}
-                        onChange={(e) => setFilter(c.key, e.target.value)}
-                        className={FILTER_INPUT}
-                      />
-                    )}
+                  <TableHead key={c.key} className="whitespace-nowrap">
+                    <ColumnFilter
+                      label={c.label}
+                      options={optionsByColumn[c.key]}
+                      selected={filters[c.key]}
+                      onChange={(selected) => setColumnFilter(c.key, selected)}
+                    />
                   </TableHead>
                 ))}
-                {excel && <TableHead />}
+                {excel && <TableHead className="w-10" />}
               </TableRow>
             </TableHeader>
             <TableBody>

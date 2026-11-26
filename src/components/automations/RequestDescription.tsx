@@ -1,4 +1,13 @@
 import { useMemo } from "react";
+import type { RequestKind } from "@/types/automation";
+
+// Cores por modalidade: Sistema em azul-claro e Automação em roxo, como na etiqueta do card.
+// Sem modalidade, mantém o vermelho do formato de modificações.
+const PALETTE: Record<RequestKind | "default", { heading: string; label: string; box: string }> = {
+  default: { heading: "border-red-400/25 text-red-200", label: "text-red-200/80", box: "" },
+  Sistema: { heading: "border-cyan-400/25 text-cyan-200", label: "text-cyan-200/80", box: "border-l-2 border-cyan-400/40" },
+  Automação: { heading: "border-violet-400/25 text-violet-200", label: "text-violet-200/80", box: "border-l-2 border-violet-400/40" },
+};
 
 export interface RequestField {
   /** Pergunta do formulário (ex.: "Nome da rotina"). */
@@ -101,15 +110,16 @@ export function parseRequestDescription(text: string): RequestSection[] {
   return sections.filter((s) => s.title || s.fields.length > 0 || s.notes.length > 0);
 }
 
-export function RequestDescription({ text }: { text: string }) {
+export function RequestDescription({ text, kind }: { text: string; kind?: RequestKind | null }) {
   const sections = useMemo(() => parseRequestDescription(text), [text]);
+  const palette = PALETTE[kind ?? "default"];
 
   return (
     <div className="mt-3 space-y-5 text-sm">
       {sections.map((section, i) => (
         <section key={i} className="space-y-2">
           {section.title && (
-            <h3 className="border-b border-red-400/25 pb-1 text-xs font-bold uppercase tracking-wide text-red-200">
+            <h3 className={`border-b pb-1 text-xs font-bold uppercase tracking-wide ${palette.heading}`}>
               {section.title}
             </h3>
           )}
@@ -122,8 +132,8 @@ export function RequestDescription({ text }: { text: string }) {
             <dl className="space-y-3">
               {section.fields.map((field, j) => (
                 <div key={`f-${j}`} className="space-y-0.5">
-                  <dt className="text-xs font-semibold text-red-200/80">{field.label}</dt>
-                  <dd className="whitespace-pre-wrap break-words rounded-md bg-white/5 px-2.5 py-1.5 text-white">
+                  <dt className={`text-xs font-semibold ${palette.label}`}>{field.label}</dt>
+                  <dd className={`whitespace-pre-wrap break-words rounded-md bg-white/5 px-2.5 py-1.5 text-white ${palette.box}`}>
                     {field.value || <span className="text-white/40">Não respondido</span>}
                   </dd>
                 </div>

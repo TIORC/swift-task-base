@@ -15,6 +15,7 @@ import { ptBR } from "date-fns/locale";
 import { useUpdateTask, useAssignableProfiles } from "@/hooks/useTasks";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useAuth } from "@/hooks/useAuth";
 import type { Task } from "@/hooks/useTasks";
 import { CloseTicketDialog } from "@/components/CloseTicketDialog";
 
@@ -57,7 +58,7 @@ function extractRequester(description: string | null): string {
 }
 
 export default function SupportTickets() {
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("pending");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -67,6 +68,9 @@ export default function SupportTickets() {
   const queryClient = useQueryClient();
   const { data: profiles } = useAssignableProfiles();
   const { isGestor } = useUserRole();
+  const { user } = useAuth();
+  // Só o TI Maracas edita e exclui chamados, mesmo que a conta tenha papel de gestor (que só lê).
+  const canEditTickets = (user?.email ?? "").trim().toLowerCase() === "timaracas@orcoma.com.br";
 
   const { data: tickets, isLoading } = useQuery({
     queryKey: ["support-tickets"],
@@ -389,7 +393,7 @@ export default function SupportTickets() {
           task={selectedTask}
           open={!!selectedTask}
           onOpenChange={(open) => !open && setSelectedTask(null)}
-          isReadOnly={isGestor}
+          isReadOnly={isGestor && !canEditTickets}
         />
       )}
 

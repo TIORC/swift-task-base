@@ -308,7 +308,7 @@ export function AutomationDetailPanel({ automation, open, onClose, profileMap, p
               {a.description && (
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Descrição</label>
-                  <p className="text-sm mt-1">{a.description}</p>
+                  <RequestDescription text={a.description} kind={kind} />
                 </div>
               )}
               {a.objective && (

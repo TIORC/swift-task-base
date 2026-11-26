@@ -27,7 +27,7 @@ import {
   useDeactivateItem, useDeleteMovement, useDeleteMovements, useDeleteAsset, useDeleteRequest,
   useCanZerarEstoque, useZerarEstoque,
   useUpdateCategory, useDeleteCategory, useUpdateLocation, useDeleteLocation, useDeleteDepartment,
-  useSaveEntryBatch, useSaveExitBatch, useUpdateItem,
+  useSaveEntryBatch, useSaveExitBatch, useUpdateItem, useUpdateAsset, useUpdateMovement,
 } from "@/hooks/useInventory";
 import { ItemFormDialog } from "@/components/almoxarifado/ItemFormDialog";
 import { ColumnFilter } from "@/components/almoxarifado/ColumnFilter";
@@ -59,7 +59,6 @@ import { RowActions } from "@/components/almoxarifado/RowActions";
 import { TablePagination } from "@/components/almoxarifado/TablePagination";
 import { StockBadge, StatusTag, ItemStatusTags } from "@/components/almoxarifado/StockBadge";
 import { MovementTextCell } from "@/components/almoxarifado/MovementTextCell";
-import { NewLedgerRow } from "@/components/almoxarifado/NewLedgerRow";
 import { CategoryCell } from "@/components/almoxarifado/CategoryCell";
 import type { InventoryItem, InventoryAsset, InventoryMovement, InventoryRequest, InventoryLocation, InventoryCollaborator, InventoryCategory, MovementType, DamageHistoryRow } from "@/hooks/useInventory";
 import { SECTORS } from "@/types/sectors";
@@ -67,6 +66,14 @@ import { agruparPorTipo, resumoEstoque } from "@/lib/inventory-stock";
 import { usePageTheme } from "@/hooks/usePageTheme";
 
 const currency = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+// Valor digitado (vírgula ou ponto como decimal): vazio vira 0; negativo ou inválido vira null e não é gravado.
+const parseValor = (raw: string): number | null => {
+  const t = raw.trim();
+  if (t === "") return 0;
+  const n = Number(t.includes(",") ? t.replace(/\./g, "").replace(",", ".") : t);
+  return Number.isNaN(n) || n < 0 ? null : n;
+};
 const dateFmt = (s: string) => new Date(s).toLocaleString("pt-BR");
 // Data/hora no formato da célula editável: dd/mm/aaaa hh:mm (hora local).
 const brDateTime = (iso: string) => {
@@ -167,10 +174,10 @@ const ENTRY_COLUMNS: EntryColumn[] = ["item", "qtd", "valorUnit", "valorTotal", 
 const ENTRY_COLUMN_LABELS: Record<EntryColumn, string> = {
   item: "Item", qtd: "Qtd", valorUnit: "Valor unit.", valorTotal: "Valor total", patrimonio: "Patrimônio", local: "Local",
 };
-type LedgerColumn = "item" | "categoria" | "patrimonio" | "tipo" | "data" | "departamento" | "es" | "observacao";
-const LEDGER_COLUMNS: LedgerColumn[] = ["item", "categoria", "patrimonio", "tipo", "data", "departamento", "es", "observacao"];
+type LedgerColumn = "item" | "categoria" | "patrimonio" | "valor" | "tipo" | "data" | "departamento" | "es" | "observacao";
+const LEDGER_COLUMNS: LedgerColumn[] = ["item", "categoria", "patrimonio", "valor", "tipo", "data", "departamento", "es", "observacao"];
 const LEDGER_COLUMN_LABELS: Record<LedgerColumn, string> = {
-  item: "Equipamento", categoria: "Categoria", patrimonio: "Patrimônio", tipo: "Tipo de controle",
+  item: "Equipamento", categoria: "Categoria", patrimonio: "Patrimônio", valor: "Valor unit.", tipo: "Tipo de controle",
   data: "Data", departamento: "Departamento/Saídas", es: "Responsável", observacao: "Observação",
 };
 const OUT_COLUMN_LABELS: Record<OutColumn, string> = {
@@ -260,6 +267,7 @@ export default function Almoxarifado() {
   const saveEntryBatch = useSaveEntryBatch();
   const saveExitBatch = useSaveExitBatch();
   const updateItem = useUpdateItem();
+  const updateMovement = useUpdateMovement();
   const [assetGridOpen, setAssetGridOpen] = useState(false);
   const [damagedExcel, setDamagedExcel] = useState(false);
   const [damageBulkOpen, setDamageBulkOpen] = useState(false);
@@ -375,6 +383,7 @@ export default function Almoxarifado() {
       case "data": return dateFmt(m.occurred_at ?? m.created_at);
       case "departamento": return m.department ?? collabDept(m.collaborator_id);
       case "es": return m.es_text || (isIn ? "Estoque" : collabName(m.collaborator_id));
+      case "valor": return currency(m.unit_price ?? 0);
       case "observacao": return ledgerObs(m);
     }
   };
@@ -489,6 +498,18 @@ export default function Almoxarifado() {
       return; // o hook já mostra o erro do banco
     }
     if (!res.ok) toast.error("Esta saída foi alterada por outra pessoa. Recarregue a tela e tente de novo.");
+  };
+  // Valor unitário de uma saída: só essa linha muda (o estoque não é recalculado pelo preço).
+  const saveExitValue = (m: InventoryMovement, raw: string) => {
+    const price = parseValor(raw);
+    if (price === null) { toast.error("Valor unitário inválido"); return; }
+    updateMovement.mutate({
+      id: m.id, type: m.type, quantity: m.quantity, unit_price: price,
+      reason: m.reason, notes: m.notes, supplier: m.supplier, invoice_number: m.invoice_number,
+      from_location_id: m.from_location_id, to_location_id: m.to_location_id,
+      collaborator_id: m.collaborator_id, department: m.department,
+      patrimony_number: m.patrimony_number, serial_number: m.serial_number, occurred_at: m.occurred_at,
+    });
   };
   const outMovements = useMemo(() => movements
     .filter((m) => m.type === "out" || m.type === "assign")
@@ -1008,13 +1029,10 @@ export default function Almoxarifado() {
                     onChange={(next) => setLedgerColFilter(col, next)}
                   />
                 ))}
-                <TableHead className="min-w-[260px]">Entrega</TableHead>
-                {showLedgerActions && <TableHead className="sticky right-0 z-20 w-1 min-w-0 border-l text-right">Ações</TableHead>}
+                <TableHead className="min-w-[200px]">Entrega</TableHead>
+                {showLedgerActions && <TableHead className="sticky right-0 z-20 w-1 min-w-0 border-l text-right" style={{ backgroundColor: "#0c1d3d", backgroundImage: "var(--card-gradient)" }}>Ações</TableHead>}
               </TableRow></TableHeader>
               <TableBody>
-                {canWrite && (
-                  <NewLedgerRow items={items} collaborators={collaborators} categories={categories} leading={false} />
-                )}
                 {pageLedgerRows.map((m) => {
                   const isIn = m.type === "in";
                   const item = items.find((i) => i.id === m.item_id);
@@ -1031,6 +1049,10 @@ export default function Almoxarifado() {
                       <TableCell>
                         <EditableCell disabled={!canWrite} className="font-mono text-xs" value={m.patrimony_number ?? ""} display={m.patrimony_number || "N/A"}
                           onSave={(v) => (isIn ? saveEntryCell(m, "patrimony", v) : saveExitCell(m, "patrimony", v))} />
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-right">
+                        <EditableCell disabled={!canWrite} value={String(m.unit_price ?? 0)} display={currency(m.unit_price ?? 0)}
+                          onSave={(v) => (isIn ? saveEntryCell(m, "unit_price", v) : saveExitValue(m, v))} />
                       </TableCell>
                       <TableCell className={`text-center font-semibold text-white ${isIn ? "bg-green-600" : "bg-red-600"}`}>
                         {isIn ? "Entradas" : "Saídas"}
@@ -1093,7 +1115,7 @@ export default function Almoxarifado() {
                   );
                 })}
                 {ledgerRows.length === 0 && (
-                  <TableRow><TableCell colSpan={9 + (showLedgerActions ? 1 : 0)} className="text-center text-muted-foreground py-6">
+                  <TableRow><TableCell colSpan={10 + (showLedgerActions ? 1 : 0)} className="text-center text-muted-foreground py-6">
                     {ledgerAll.length === 0 ? "Nenhuma movimentação registrada." : "Nenhuma movimentação encontrada com esses filtros."}
                   </TableCell></TableRow>
                 )}
@@ -1690,17 +1712,17 @@ function Kpi({ icon, label, value, accent }: { icon?: React.ReactNode; label: st
 }
 
 // Aba Ativos: uma linha por patrimônio, com item, categoria, descrição e histórico.
-type AtivoCol = "ativo" | "categoria" | "patrimonio" | "status" | "descricao" | "departamento" | "colaborador" | "historico" | "observacao";
-const ATIVO_COLUMNS: AtivoCol[] = ["ativo", "categoria", "patrimonio", "status", "descricao", "departamento", "colaborador", "historico", "observacao"];
+type AtivoCol = "ativo" | "categoria" | "patrimonio" | "valor" | "status" | "descricao" | "departamento" | "colaborador" | "historico" | "observacao";
+const ATIVO_COLUMNS: AtivoCol[] = ["ativo", "categoria", "patrimonio", "valor", "status", "descricao", "departamento", "colaborador", "historico", "observacao"];
 const ATIVO_COLUMN_LABELS: Record<AtivoCol, string> = {
-  ativo: "Ativos", categoria: "Categoria", patrimonio: "Patrimônio", status: "Status", descricao: "Descrição",
+  ativo: "Ativos", categoria: "Categoria", patrimonio: "Patrimônio", valor: "Valor (R$)", status: "Status", descricao: "Descrição",
   departamento: "Departamento", colaborador: "Colaborador Responsável", historico: "Histórico", observacao: "Observação",
 };
 const ATIVO_STATUS_TEXT: Record<string, string> = {
   available: "Disponível", in_use: "Em uso", damaged: "Danificado", discarded: "Descartado", maintenance: "Manutenção",
 };
 const EMPTY_ATIVO_FILTERS: Record<AtivoCol, string[]> = {
-  ativo: [], categoria: [], patrimonio: [], status: [], descricao: [], departamento: [], colaborador: [], historico: [], observacao: [],
+  ativo: [], categoria: [], patrimonio: [], valor: [], status: [], descricao: [], departamento: [], colaborador: [], historico: [], observacao: [],
 };
 
 const ATIVOS_PAGE_SIZE = 25;
@@ -1713,6 +1735,7 @@ function AtivosPanel({ assets, items, locations, categories, collaborators, move
   const [bulkOpen, setBulkOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [colFilters, setColFilters] = useState<Record<AtivoCol, string[]>>(EMPTY_ATIVO_FILTERS);
+  const updateAsset = useUpdateAsset();
   const itemOf = (id: string) => items.find((i) => i.id === id);
   const catName = (id: string | null) => categories.find((c) => c.id === id)?.name ?? "—";
   const collabName = (id: string | null) => collaborators.find((c) => c.id === id)?.full_name ?? "—";
@@ -1725,6 +1748,7 @@ function AtivosPanel({ assets, items, locations, categories, collaborators, move
       case "ativo": return item?.name ?? "—";
       case "categoria": return catName(item?.category_id ?? null);
       case "patrimonio": return a.patrimony_number;
+      case "valor": return currency(a.value ?? 0);
       case "status": return ATIVO_STATUS_TEXT[a.status] ?? a.status;
       case "descricao": return item?.description || "—";
       case "departamento": return a.department ?? "—";
@@ -1806,6 +1830,14 @@ function AtivosPanel({ assets, items, locations, categories, collaborators, move
                 <TableCell>{item?.name ?? "—"}</TableCell>
                 <TableCell>{catName(item?.category_id ?? null)}</TableCell>
                 <TableCell className="font-mono font-medium">{a.patrimony_number}</TableCell>
+                <TableCell className="whitespace-nowrap">
+                  <EditableCell disabled={!canWrite} value={String(a.value ?? 0)} display={currency(a.value ?? 0)}
+                    onSave={(v) => {
+                      const price = parseValor(v);
+                      if (price === null) toast.error("Valor inválido");
+                      else updateAsset.mutate({ id: a.id, value: price });
+                    }} />
+                </TableCell>
                 <TableCell><StatusTag status={a.status} /></TableCell>
                 <TableCell className="max-w-[220px] text-xs">{item?.description || "—"}</TableCell>
                 <TableCell>{a.department ?? "—"}</TableCell>
@@ -1821,7 +1853,7 @@ function AtivosPanel({ assets, items, locations, categories, collaborators, move
               </TableRow>
             );
           })}
-          {rows.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">{emptyText}</TableCell></TableRow>}
+          {rows.length === 0 && <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">{emptyText}</TableCell></TableRow>}
         </TableBody>
       </Table>
     </CardContent></Card>
@@ -1907,6 +1939,7 @@ function DamagedAssetTable({ assets, items, collaborators, movements, canWrite, 
 }) {
   const itemName = (id: string) => items.find((i) => i.id === id)?.name ?? "—";
   const collabName = (id: string | null) => collaborators.find((c) => c.id === id)?.full_name ?? "—";
+  const updateAsset = useUpdateAsset();
   // Dano mais recente do patrimônio: traz a data (mês/ano) e o motivo.
   const lastDamage = (assetId: string) =>
     movements
@@ -1922,11 +1955,11 @@ function DamagedAssetTable({ assets, items, collaborators, movements, canWrite, 
     <Card><CardContent className="p-0 overflow-x-auto">
       <Table>
         <TableHeader><TableRow>
-          <TableHead>Equipamento</TableHead><TableHead>Patrimônio</TableHead><TableHead>Tipo de Controle</TableHead>
+          <TableHead>Equipamento</TableHead><TableHead>Patrimônio</TableHead><TableHead>Valor (R$)</TableHead><TableHead>Tipo de Controle</TableHead>
           <TableHead>Ano</TableHead><TableHead>Mês</TableHead><TableHead>Motivo</TableHead>
           <TableHead>Departamento</TableHead><TableHead>Colaborador Responsável</TableHead>
           <TableHead>De quem</TableHead><TableHead>Para quem</TableHead><TableHead>Observação</TableHead>
-          {showActions && <TableHead className="text-right">Ações</TableHead>}
+          {showActions &&<TableHead className="text-right">Ações</TableHead>}
         </TableRow></TableHeader>
         <TableBody>
           {sorted.map((a) => {
@@ -1936,6 +1969,14 @@ function DamagedAssetTable({ assets, items, collaborators, movements, canWrite, 
               <TableRow key={a.id}>
                 <TableCell className="font-medium">{itemName(a.item_id)}</TableCell>
                 <TableCell className="font-mono font-medium">{a.patrimony_number}</TableCell>
+                <TableCell className="whitespace-nowrap">
+                  <EditableCell disabled={!canWrite} value={String(a.value ?? 0)} display={currency(a.value ?? 0)}
+                    onSave={(v) => {
+                      const price = parseValor(v);
+                      if (price === null) toast.error("Valor inválido");
+                      else updateAsset.mutate({ id: a.id, value: price });
+                    }} />
+                </TableCell>
                 <TableCell className="bg-red-600 text-center font-semibold text-white">Dano</TableCell>
                 <TableCell>{when ? when.getFullYear() : "—"}</TableCell>
                 <TableCell className="capitalize">{when ? when.toLocaleDateString("pt-BR", { month: "long" }) : "—"}</TableCell>
@@ -1962,7 +2003,7 @@ function DamagedAssetTable({ assets, items, collaborators, movements, canWrite, 
               </TableRow>
             );
           })}
-          {assets.length === 0 && <TableRow><TableCell colSpan={showActions ? 12 : 11} className="text-center text-muted-foreground py-6">Nenhum patrimônio danificado.</TableCell></TableRow>}
+          {assets.length === 0 && <TableRow><TableCell colSpan={showActions ? 13 : 12} className="text-center text-muted-foreground py-6">Nenhum patrimônio danificado.</TableCell></TableRow>}
         </TableBody>
       </Table>
     </CardContent></Card>
@@ -2352,12 +2393,31 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
   pending: boolean;
 }) {
   const { data: items = [] } = useInventoryItems();
+  // Mesmas movimentações da aba Entradas e Saídas: entradas somam ao estoque e saídas tiram, com a data.
+  const { data: movements = [] } = useInventoryMovements();
+  const { data: collaborators = [] } = useInventoryCollaborators();
+  const itemNameOf = (id: string) => items.find((i) => i.id === id)?.name ?? "—";
+  const collabNameOf = (id: string | null) => collaborators.find((c) => c.id === id)?.full_name ?? "—";
+  const movimentosDe = (itens: InventoryItem[]) => {
+    const ids = new Set(itens.map((i) => i.id));
+    return movements
+      .filter((m) => ids.has(m.item_id) && (m.type === "in" || m.type === "out" || m.type === "assign"))
+      .sort((a, b) => new Date(b.occurred_at ?? b.created_at).getTime() - new Date(a.occurred_at ?? a.created_at).getTime());
+  };
 
   const rows = useMemo(() => resumoEstoque(items), [items]);
-  const [aberto, setAberto] = useState<Record<string, boolean>>({});
+  // Só um tipo aberto por vez: ao abrir, os outros somem; ao fechar, todos voltam.
+  const [abertoTipo, setAbertoTipo] = useState<string | null>(null);
   const total = rows.reduce((acc, r) => acc + r.quantidade, 0);
   const canZerar = useCanZerarEstoque();
   const zerar = useZerarEstoque();
+  const updateItem = useUpdateItem();
+  // Valor unitário do item (cadastro): grava só esse campo.
+  const saveItemValue = (item: InventoryItem, raw: string) => {
+    const price = parseValor(raw);
+    if (price === null) { toast.error("Valor unitário inválido"); return; }
+    updateItem.mutate({ id: item.id, unit_price: price });
+  };
 
   return (
     <div className="space-y-3">
@@ -2394,15 +2454,24 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {rows.map((r) => {
-          const abertoRow = !!aberto[r.tipo];
+        <AnimatePresence mode="popLayout">
+        {(abertoTipo ? rows.filter((r) => r.tipo === abertoTipo) : rows).map((r) => {
+          const abertoRow = abertoTipo === r.tipo;
           return (
-            <motion.div key={r.tipo} layout className="min-w-0">
+            <motion.div
+              key={r.tipo}
+              layout
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className={`min-w-0 ${abertoRow ? "col-span-full" : ""}`}
+            >
               <Card className="h-full overflow-hidden">
                 <button
                   type="button"
                   aria-expanded={abertoRow}
-                  onClick={() => setAberto({ ...aberto, [r.tipo]: !abertoRow })}
+                  onClick={() => setAbertoTipo(abertoRow ? null : r.tipo)}
                   className="flex w-full items-start justify-between gap-2 p-3 text-left transition-colors hover:bg-muted/50"
                 >
                   <span className="flex min-w-0 flex-col gap-2">
@@ -2434,25 +2503,77 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
                             {r.quantidade}
                           </motion.p>
                         )}
-                        {canManage && agruparPorNome(r.itens).map((g) => (
-                          <div key={g.key} className="flex items-center justify-between gap-2 border-t pt-2 text-sm">
-                            <div className="min-w-0">
-                              <p className="break-words">{g.name}</p>
-                              <p className="text-xs text-muted-foreground">disp. {g.disponivel} · em uso {g.emUso}</p>
+                        {/* Entradas e saídas do tipo, com a data de cada uma (vêm da aba Entradas e Saídas). */}
+                        <div className="border-t pt-1.5">
+                          <p className="text-[11px] font-medium">Movimentações</p>
+                          {movimentosDe(r.itens).length === 0 ? (
+                            <p className="text-xs text-muted-foreground">Nenhuma entrada ou saída.</p>
+                          ) : (
+                            <ul className="max-h-24 overflow-y-auto text-[11px] leading-tight">
+                              {movimentosDe(r.itens).map((m) => {
+                                const isIn = m.type === "in";
+                                return (
+                                  <li key={m.id} className="flex items-center gap-2">
+                                    <span className={`w-6 shrink-0 font-semibold ${isIn ? "text-green-700" : "text-red-700"}`}>
+                                      {isIn ? "+" : "−"}{m.quantity}
+                                    </span>
+                                    <span className="whitespace-nowrap text-muted-foreground">{dateFmt(m.occurred_at ?? m.created_at)}</span>
+                                    <span className="min-w-0 truncate text-muted-foreground">
+                                      {r.itens.length > 1 && `${itemNameOf(m.item_id)} · `}
+                                      {isIn ? "Entrada" : `Saída · ${collabNameOf(m.collaborator_id)}`}
+                                    </span>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          )}
+                        </div>
+                        {/* Itens com o mesmo nome viram uma linha só: quantidades e valores somados. */}
+                        {agruparPorNome(r.itens).map((g) => {
+                          const unico = g.itens.length === 1;
+                          const valorTotal = g.itens.reduce((acc, i) => acc + (i.quantity ?? 0) * (i.unit_price ?? 0), 0);
+                          return (
+                            <div key={g.key} className="grid grid-cols-[minmax(0,1fr)_6.5rem_4.5rem] items-center gap-2 border-t py-1.5 text-sm">
+                              <div className="min-w-0">
+                                <p className="break-words">{g.name}</p>
+                                <p className="text-xs text-muted-foreground">disp. {g.disponivel} · em uso {g.emUso}</p>
+                              </div>
+                              <div className="text-right text-xs leading-tight">
+                                {unico ? (
+                                  <>
+                                    <p className="text-[10px] text-muted-foreground">Valor unit.</p>
+                                    <EditableCell
+                                      disabled={!canManage}
+                                      value={String(g.itens[0].unit_price ?? 0)}
+                                      display={currency(g.itens[0].unit_price ?? 0)}
+                                      onSave={(v) => saveItemValue(g.itens[0], v)}
+                                    />
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="text-[10px] text-muted-foreground">Valor total</p>
+                                    <p>{currency(valorTotal)}</p>
+                                  </>
+                                )}
+                              </div>
+                              <div className="flex justify-end">
+                                {canManage && (
+                                  <RowActions
+                                    editTitle="Editar item"
+                                    onEdit={unico ? () => onEditItem(g.itens[0]) : undefined}
+                                    deleteTitle={unico ? "Desativar item" : "Desativar itens"}
+                                    deleteDescription={unico
+                                      ? `"${g.name}" deixa de aparecer no estoque e nas listas. O histórico é mantido.`
+                                      : `${g.itens.length} itens "${g.name}" deixam de aparecer no estoque e nas listas. O histórico é mantido.`}
+                                    deleteLabel="Desativar"
+                                    pending={pending}
+                                    onDelete={() => g.itens.forEach((i) => onToggleItem(i))}
+                                  />
+                                )}
+                              </div>
                             </div>
-                            {g.itens.length === 1 && (
-                              <RowActions
-                                editTitle="Editar item"
-                                onEdit={() => onEditItem(g.itens[0])}
-                                deleteTitle="Desativar item"
-                                deleteDescription={`"${g.name}" deixa de aparecer no estoque e nas listas. O histórico é mantido.`}
-                                deleteLabel="Desativar"
-                                pending={pending}
-                                onDelete={() => onToggleItem(g.itens[0])}
-                              />
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </motion.div>
                   )}
@@ -2461,6 +2582,7 @@ function EstoquePanel({ canManage, onEditItem, onToggleItem, pending }: {
             </motion.div>
           );
         })}
+        </AnimatePresence>
         {rows.length === 0 && (
           <p className="col-span-full py-6 text-center text-sm text-muted-foreground">Nenhum item cadastrado. Registre uma entrada para começar.</p>
         )}
