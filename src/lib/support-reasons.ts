@@ -124,6 +124,13 @@ export function extractInitialCategory(title: string | null | undefined): string
   return "outro";
 }
 
+/** Extrai o problema descrito pelo solicitante (campo "Descrição" do chamado), sem a linha de prazo que o cliente Windows acrescenta */
+export function extractProblem(description: string | null | undefined): string {
+  if (!description) return "";
+  const m = description.match(/\*\*Descrição:\*\*\s*([\s\S]*)/);
+  return (m?.[1] ?? "").replace(/\[Prazo solicitado:[^\]]*\]/gi, "").trim();
+}
+
 /** Extrai o nome da máquina informado na descrição do chamado */
 export function extractMachine(description: string | null | undefined): string {
   if (!description) return "";

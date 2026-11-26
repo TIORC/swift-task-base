@@ -16,6 +16,7 @@ import {
   KanbanTask,
   PENDING_KANBAN_PEOPLE,
   canDeleteKanbanTaskName,
+  canMoveKanbanTaskToDone,
   firstNameKey,
   isKanbanResponsible,
   toColumnStatus,
@@ -69,6 +70,7 @@ interface Props {
 export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "backlog", readOnly }: Props) {
   const { user } = useAuth();
   const { profile: me } = useProfile();
+  const canMoveToDone = canMoveKanbanTaskToDone(me?.full_name);
   const qc = useQueryClient();
   const create = useKanbanCreateTask();
   const update = useKanbanUpdateTask();
@@ -331,7 +333,11 @@ export function KanbanTaskDialog({ open, onOpenChange, task, defaultStatus = "ba
             <div><Label>Coluna</Label>
               <Select value={status} onValueChange={(v) => setStatus(v as KanbanStatus)} disabled={readOnly}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{KANBAN_COLUMNS.map((c) => <SelectItem key={c.status} value={c.status}>{c.title}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {KANBAN_COLUMNS.filter((c) => c.status !== "done" || canMoveToDone || status === "done").map((c) => (
+                    <SelectItem key={c.status} value={c.status}>{c.title}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div><Label>Prioridade</Label>

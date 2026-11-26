@@ -9,7 +9,9 @@ export const MENU_ACCESS_ITEMS = [
   { key: "/automacoes", label: "Automações" },
   { key: "/focus", label: "Modo Foco" },
   { key: "/dependencies", label: "Dependências" },
-  { key: "/reports", label: "Relatórios" },
+  { key: "/reports", label: "Relatórios Gerais" },
+  { key: "/reports/chamados", label: "Relatório de Chamados" },
+  { key: "/reports/automacoes", label: "Relatório de Automações/Sistemas" },
   { key: "/ranking", label: "Ranking" },
   { key: "/notifications", label: "Notificações" },
   { key: "/hipocampo", label: "Hipocampo" },
@@ -19,10 +21,10 @@ export const MENU_ACCESS_ITEMS = [
 const MENU_ACCESS_KEYS = new Set<string>(MENU_ACCESS_ITEMS.map((item) => item.key));
 
 const FALLBACK_ROUTES_BY_PROFILE: Record<RoleProfile, string[]> = {
-  admin: ["/", "/manager", "/kanban", "/tasks", "/support", "/automacoes", "/focus", "/dependencies", "/reports", "/ranking", "/notifications", "/hipocampo", "/almoxarifado", "/admin"],
-  gestor: ["/manager", "/", "/kanban", "/tasks", "/automacoes", "/reports", "/ranking", "/notifications", "/hipocampo", "/almoxarifado"],
-  lider: ["/manager", "/", "/kanban", "/tasks", "/automacoes", "/support", "/reports", "/ranking", "/focus", "/dependencies", "/notifications", "/hipocampo", "/almoxarifado"],
-  membro: ["/kanban", "/tasks", "/automacoes", "/focus", "/dependencies", "/reports", "/notifications", "/hipocampo", "/almoxarifado", "/"],
+  admin: ["/", "/manager", "/kanban", "/tasks", "/support", "/automacoes", "/focus", "/dependencies", "/reports", "/reports/chamados", "/reports/automacoes", "/ranking", "/notifications", "/hipocampo", "/almoxarifado", "/admin"],
+  gestor: ["/manager", "/", "/kanban", "/tasks", "/automacoes", "/reports", "/reports/chamados", "/reports/automacoes", "/ranking", "/notifications", "/hipocampo", "/almoxarifado"],
+  lider: ["/manager", "/", "/kanban", "/tasks", "/automacoes", "/support", "/reports", "/reports/chamados", "/reports/automacoes", "/ranking", "/focus", "/dependencies", "/notifications", "/hipocampo", "/almoxarifado"],
+  membro: ["/kanban", "/tasks", "/automacoes", "/focus", "/dependencies", "/reports", "/reports/chamados", "/reports/automacoes", "/notifications", "/hipocampo", "/almoxarifado", "/"],
 };
 
 export function canAccessMenuRoute({

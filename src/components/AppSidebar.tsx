@@ -1,4 +1,5 @@
 import { LayoutDashboard, Columns3, ListTodo, LogOut, Zap, Trophy, Target, GitBranch, Gauge, ShieldCheck, BarChart3, Headset, Bot, Loader2, ArrowLeftRight, Brain, Package, Repeat } from "lucide-react";
+import { Fragment } from "react";
 import { useTheme } from "next-themes";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -42,9 +43,11 @@ const allNavItems = [
   { title: "Almoxarifado", url: "/almoxarifado", icon: Package, profiles: ["admin", "gestor", "lider", "membro"] as RoleProfile[] },
   { title: "Modo Foco", url: "/focus", icon: Target, profiles: ["admin", "lider", "membro"] as RoleProfile[] },
   { title: "Dependências", url: "/dependencies", icon: GitBranch, profiles: ["admin", "lider", "membro"] as RoleProfile[] },
-  { title: "Relatórios", url: "/reports", icon: BarChart3, profiles: ["admin", "gestor", "lider", "membro"] as RoleProfile[] },
-  { title: "Ranking", url: "/ranking", icon: Trophy, profiles: ["admin", "gestor", "lider"] as RoleProfile[] },
-  { title: "Administração", url: "/admin", icon: ShieldCheck, profiles: ["admin"] as RoleProfile[] },
+  { title: "Relatórios Gerais", url: "/reports", icon: BarChart3, section: "Relatórios", profiles: ["admin", "gestor", "lider", "membro"] as RoleProfile[] },
+  { title: "Chamados", url: "/reports/chamados", icon: Headset, profiles: ["admin", "gestor", "lider", "membro"] as RoleProfile[] },
+  { title: "Automações/Sistemas", url: "/reports/automacoes", icon: Bot, profiles: ["admin", "gestor", "lider", "membro"] as RoleProfile[] },
+  { title: "Ranking", url: "/ranking", icon: Trophy, section: "Gamificação", profiles: ["admin", "gestor", "lider"] as RoleProfile[] },
+  { title: "Administração", url: "/admin", icon: ShieldCheck, section: "Administração", profiles: ["admin"] as RoleProfile[] },
 ];
 
 const groupLabels: Record<string, string> = {
@@ -66,8 +69,9 @@ export function AppSidebar() {
   const { resolvedTheme } = useTheme();
   const currentLogo = resolvedTheme === "dark" ? logoOrcomaDark : logoOrcomaLight;
 
+  // "/" e "/reports" só ficam ativos na própria página, para não acender junto com "/reports/chamados".
   const isActive = (path: string) =>
-    path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
+    path === "/" || path === "/reports" ? location.pathname === path : location.pathname.startsWith(path);
 
   const initials = user?.user_metadata?.full_name
     ? user.user_metadata.full_name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
@@ -89,7 +93,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="px-4 py-5">
+      <SidebarHeader className="shrink-0 px-4 py-5">
         <div className="flex items-center gap-2.5">
           <img src={currentLogo} alt="Orcoma" className="h-8 w-8 shrink-0 rounded-lg object-contain" />
           {!collapsed && (
@@ -112,14 +116,24 @@ export function AppSidebar() {
               </div>
             ) : (
               <SidebarMenu>
-                {visibleItems.map((item) => {
+                {visibleItems.map((item, index) => {
                   const active = isActive(item.url);
+                  // Título de seção (ex.: "Relatórios") aparece antes do primeiro item dela; some ao recolher o menu.
+                  const novaSecao = !!item.section && item.section !== visibleItems[index - 1]?.section;
                   return (
-                    <SidebarMenuItem key={item.title}>
+                    <Fragment key={item.title}>
+                    {novaSecao && !collapsed && (
+                      <SidebarMenuItem>
+                        <p className="px-3 pb-1 pt-3 text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
+                          {item.section}
+                        </p>
+                      </SidebarMenuItem>
+                    )}
+                    <SidebarMenuItem>
                       <SidebarMenuButton asChild isActive={active}>
                         <NavLink
                           to={item.url === "/almoxarifado" ? "/almoxarifado?tela=cheia" : item.url}
-                          end={item.url === "/"}
+                          end={item.url === "/" || item.url === "/reports"}
                           {...(item.url === "/almoxarifado" ? { target: "_blank", rel: "noreferrer" } : {})}
                           className="rounded-lg transition-all duration-150 hover:bg-sidebar-accent"
                           activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
@@ -140,6 +154,7 @@ export function AppSidebar() {
                         </SidebarMenuSub>
                       )}
                     </SidebarMenuItem>
+                    </Fragment>
                   );
                 })}
               </SidebarMenu>
@@ -148,7 +163,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="shrink-0">
         <Separator className="bg-sidebar-border" />
         {systems.length > 1 && (
           <div className="px-2 pt-2">

@@ -32,6 +32,8 @@ import AdminPanel from "./pages/AdminPanel";
 import RecurringTasksAdmin from "./pages/RecurringTasksAdmin";
 import NotFound from "./pages/NotFound";
 import Reports from "./pages/Reports";
+import ReportsSupport from "./pages/ReportsSupport";
+import ReportsAutomations from "./pages/ReportsAutomations";
 import SupportTickets from "./pages/SupportTickets";
 import AutomacoesPage from "./pages/AutomacoesPage";
 import PublicAutomationRequestPage from "./pages/PublicAutomationRequestPage";
@@ -204,6 +206,8 @@ const AppRoutes = () => (
     <Route path="/admin" element={<ProtectedTI><RoleGate route="/admin"><AdminPanel /></RoleGate></ProtectedTI>} />
     <Route path="/admin/recorrentes" element={<ProtectedTI><RoleGate route="/admin"><RecurringTasksAdmin /></RoleGate></ProtectedTI>} />
     <Route path="/reports" element={<ProtectedTI><RoleGate route="/reports"><Reports /></RoleGate></ProtectedTI>} />
+    <Route path="/reports/chamados" element={<ProtectedTI><RoleGate route="/reports/chamados"><ReportsSupport /></RoleGate></ProtectedTI>} />
+    <Route path="/reports/automacoes" element={<ProtectedTI><RoleGate route="/reports/automacoes"><ReportsAutomations /></RoleGate></ProtectedTI>} />
     <Route path="/support" element={<ProtectedTI><RoleGate route="/support"><SupportTickets /></RoleGate></ProtectedTI>} />
     <Route path="/k7f3q9x2/solicitacoes/acompanhar-minha-solicitacao" element={<SolicitanteGate><TrackMyAutomationRequestsPage /></SolicitanteGate>} />
     <Route path="/k7f3q9x2/solicitacoes" element={<SolicitanteGate><PublicAutomationRequestPage /></SolicitanteGate>} />

@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DragDropContext, Droppable, DropResult } from "@hello-pangea/dnd";
-import { useKanbanTasks, useKanbanUpdateTask, KANBAN_COLUMNS, KanbanStatus, KanbanTask, toColumnStatus } from "@/hooks/useKanbanTasks";
+import { useKanbanTasks, useKanbanUpdateTask, KANBAN_COLUMNS, KanbanStatus, KanbanTask, toColumnStatus, canMoveKanbanTaskToDone } from "@/hooks/useKanbanTasks";
 import { useMarkTaskMentionsRead, useUnreadMentionsByTask } from "@/hooks/useNotifications";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useProfile } from "@/hooks/useProfile";
+import { toast } from "sonner";
 import { KanbanTaskCard } from "@/components/KanbanTaskCard";
 import { KanbanTaskDialog } from "@/components/KanbanTaskDialog";
 import { PageHeader } from "@/components/PageHeader";
@@ -14,6 +16,8 @@ const Kanban = () => {
     const { data: tasks, isLoading } = useKanbanTasks();
   const updateTask = useKanbanUpdateTask();
   const { isGestor } = useUserRole();
+  const { profile } = useProfile();
+  const canMoveToDone = canMoveKanbanTaskToDone(profile?.full_name);
   const [createOpen, setCreateOpen] = useState(false);
   const [createStatus, setCreateStatus] = useState<KanbanStatus>("backlog");
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null);
@@ -51,8 +55,12 @@ const Kanban = () => {
   const onDragEnd = (result: DropResult) => {
     if (isGestor) return; // read-only
     if (!result.destination) return;
-    const { draggableId, destination } = result;
+    const { draggableId, destination, source } = result;
     const newStatus = destination.droppableId as KanbanStatus;
+    if (newStatus === "done" && source.droppableId !== "done" && !canMoveToDone) {
+      toast.error("Só o Welder pode mover tarefas para Concluído.");
+      return;
+    }
     updateTask.mutate({ id: draggableId, status: newStatus as any });
   };
 
@@ -104,7 +112,7 @@ const Kanban = () => {
                     <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                       {colTasks.length}
                     </span>
-                    {!isGestor && (
+                    {!isGestor && (col.status !== "done" || canMoveToDone) && (
                       <button
                         onClick={() => handleAddToColumn(col.status)}
                         className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"

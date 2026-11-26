@@ -18,7 +18,7 @@ import {
 import { subDays, subMonths, differenceInMinutes, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  SUPPORT_REAL_REASONS, INITIAL_CATEGORIES, extractInitialCategory, extractMachine,
+  SUPPORT_REAL_REASONS, INITIAL_CATEGORIES, extractInitialCategory, extractMachine, extractProblem,
 } from "@/lib/support-reasons";
 
 const PIE_COLORS = [
@@ -262,22 +262,17 @@ export function SupportReport() {
     return [...map.entries()].map(([name, value]) => ({ name, value }));
   }, [filtered]);
 
-  // Comparativo: categoria inicial x motivo real
-  const comparison = useMemo(() => {
-    const rows: { initial: string; reason: string; count: number }[] = [];
-    const map = new Map<string, number>();
-    filtered.forEach((t: any) => {
-      const initial = extractInitialCategory(t.title);
-      const reason = t.support_real_reason || "Não informado";
-      const key = `${initial}|||${reason}`;
-      map.set(key, (map.get(key) || 0) + 1);
-    });
-    map.forEach((count, key) => {
-      const [initial, reason] = key.split("|||");
-      rows.push({ initial, reason, count });
-    });
-    return rows.sort((a, b) => b.count - a.count);
-  }, [filtered]);
+  // Comparativo chamado a chamado: categoria inicial, problema informado e motivo real (mantém a ordem do filtro: mais recentes primeiro).
+  const comparison = useMemo(
+    () =>
+      filtered.map((t: any) => ({
+        id: t.id as string,
+        initial: extractInitialCategory(t.title),
+        problem: extractProblem(t.description),
+        reason: (t.support_real_reason as string | null) || "Não informado",
+      })),
+    [filtered]
+  );
 
   const assigneeCounts = useMemo(() => {
     const map = new Map<string, number>();
@@ -449,9 +444,9 @@ export function SupportReport() {
 </div>
 
 
-<h2>Categoria inicial × Motivo real</h2>
-<table><thead><tr><th>Categoria inicial</th><th>Motivo real (TI)</th><th class="num">Qtd</th></tr></thead><tbody>
-${comparison.map((r) => `<tr><td style="text-transform:capitalize">${esc(r.initial)}</td><td>${esc(r.reason)}</td><td class="num">${r.count}</td></tr>`).join("") || `<tr><td colspan="3" style="color:#94a3b8">Sem dados</td></tr>`}
+<h2>Chamados: categoria inicial, problema e motivo real</h2>
+<table><thead><tr><th>Categoria inicial</th><th>Problema</th><th>Motivo real (TI)</th></tr></thead><tbody>
+${comparison.map((r) => `<tr><td style="text-transform:capitalize">${esc(r.initial)}</td><td style="white-space:pre-line">${esc(r.problem) || "—"}</td><td>${esc(r.reason)}</td></tr>`).join("") || `<tr><td colspan="3" style="color:#94a3b8">Sem dados</td></tr>`}
 </tbody></table>
 
 <div class="grid2">
@@ -786,14 +781,14 @@ ${perRequester.map((r, i) => `<tr>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
             <GitCompareArrows className="h-4 w-4 text-primary" />
-            Categoria inicial × Motivo real
+            Chamados: categoria inicial, problema e motivo real
           </CardTitle>
         </CardHeader>
         <CardContent>
           {comparison.length === 0 ? (
             <EmptyState icon={GitCompareArrows} title="Sem comparativos" />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-4">
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={categoryCounts}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -804,21 +799,23 @@ ${perRequester.map((r, i) => `<tr>
                   <Bar dataKey="value" name="Categoria inicial" fill="hsl(230,80%,60%)" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-              <div className="overflow-auto max-h-[260px] rounded-lg border border-border">
+              <div className="overflow-auto max-h-[420px] rounded-lg border border-border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-xs">Categoria inicial</TableHead>
-                      <TableHead className="text-xs">Motivo real</TableHead>
-                      <TableHead className="text-xs text-right">Qtd</TableHead>
+                      <TableHead className="text-xs w-40">Categoria inicial</TableHead>
+                      <TableHead className="text-xs">Problema</TableHead>
+                      <TableHead className="text-xs w-56">Motivo real</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {comparison.map((row, i) => (
-                      <TableRow key={i}>
+                    {comparison.map((row) => (
+                      <TableRow key={row.id} className="align-top">
                         <TableCell className="text-xs capitalize">{row.initial}</TableCell>
+                        <TableCell className="text-xs whitespace-pre-line line-clamp-3 max-w-[560px]" title={row.problem || undefined}>
+                          {row.problem || "—"}
+                        </TableCell>
                         <TableCell className="text-xs">{row.reason}</TableCell>
-                        <TableCell className="text-xs text-right font-semibold">{row.count}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

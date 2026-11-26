@@ -21,6 +21,13 @@ const tooltipTextStyle = { color: "hsl(var(--foreground))" };
 
 type Period = "week" | "month" | "quarter" | "specific" | "all";
 
+// Descrição do sistema no relatório: uma linha só, e cortada no PDF para não estourar a tabela.
+const descricaoLinha = (texto: string | null | undefined) => (texto ?? "").replace(/\s+/g, " ").trim();
+const descricaoCurta = (texto: string | null | undefined, limite = 260) => {
+  const linha = descricaoLinha(texto);
+  return linha.length > limite ? `${linha.slice(0, limite - 1)}…` : linha;
+};
+
 export function AutomationsReport() {
   const [period, setPeriod] = useState<Period>("month");
   const [specificMonth, setSpecificMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
@@ -132,9 +139,10 @@ export function AutomationsReport() {
     (data?.times || []).forEach((t: any) => {
       minutesByAuto.set(t.automation_id, (minutesByAuto.get(t.automation_id) || 0) + (t.duration_minutes || 0));
     });
-    const header = ["Automação", "Status", "Setor", "Responsável", "Criada em", "Concluída em", "Horas"];
+    const header = ["Automação", "Descrição", "Status", "Setor", "Responsável", "Criada em", "Concluída em", "Horas"];
     const rows = filtered.map((a: any) => [
       a.title,
+      descricaoLinha(a.description),
       STATUS_LABELS[a.status as keyof typeof STATUS_LABELS] || a.status,
       SECTOR_LABELS[a.sector] || a.sector || "",
       profileName(a.assigned_to),
@@ -293,11 +301,12 @@ export function AutomationsReport() {
     doc.addPage();
     autoTable(doc, {
       startY: 20,
-      head: [["Automação", "Status", "Setor", "Responsável", "Criada em", "Concluída em", "Tempo gasto"]],
-      foot: [["Total", "", "", "", "", "", formatMinutes(kpis.minutes)]],
+      head: [["Automação", "Descrição", "Status", "Setor", "Responsável", "Criada em", "Concluída em", "Tempo gasto"]],
+      foot: [["Total", "", "", "", "", "", "", formatMinutes(kpis.minutes)]],
       footStyles: { fontStyle: "bold", fillColor: [243, 244, 246], textColor: 30 },
       body: filtered.map((a: any) => [
         a.title,
+        descricaoCurta(a.description),
         STATUS_LABELS[a.status as keyof typeof STATUS_LABELS] || a.status,
         SECTOR_LABELS[a.sector] || a.sector || "",
         profileName(a.assigned_to),
@@ -306,6 +315,7 @@ export function AutomationsReport() {
         formatTempo(minutesByAuto.get(a.id) || 0),
       ]),
       styles: { fontSize: 8 },
+      columnStyles: { 1: { cellWidth: 80 } },
       headStyles: { fillColor: [79, 70, 229] },
     });
 

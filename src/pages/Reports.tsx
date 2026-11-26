@@ -12,7 +12,6 @@ import { Progress } from "@/components/ui/progress";
 import {
   BarChart3, Clock, TrendingUp, CheckCircle2, Timer, Activity,
   AlertTriangle, Users, FileDown, Loader2, Printer, FileSpreadsheet,
-  Bot, LifeBuoy,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -21,8 +20,6 @@ import {
 import { format, subDays, subMonths, startOfWeek, endOfWeek, eachWeekOfInterval, startOfMonth, endOfMonth, eachMonthOfInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { AutomationsReport } from "@/components/reports/AutomationsReport";
-import { SupportReport } from "@/components/reports/SupportReport";
 import { formatMinutes } from "@/lib/utils";
 
 const PIE_COLORS = [
@@ -643,21 +640,6 @@ const Reports = () => {
           </div>
         </section>
 
-        <section className="space-y-6 border-t border-border pt-8">
-          <div className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">Automações</h2>
-          </div>
-          <AutomationsReport />
-        </section>
-
-        <section className="space-y-6 border-t border-border pt-8">
-          <div className="flex items-center gap-2">
-            <LifeBuoy className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">Chamados</h2>
-          </div>
-          <SupportReport />
-        </section>
       </div>
     </div>
   );

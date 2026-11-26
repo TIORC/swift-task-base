@@ -24,18 +24,18 @@ export type KanbanTask = Tables<"kanban_tasks"> & {
 
 export type KanbanStatus = "backlog" | "pending" | "todo" | "in_progress" | "review" | "done" | "discarded";
 
-// Colunas no estilo Trello. "review" (Em Validação) saiu do quadro:
-// tarefas que ainda estão nesse status aparecem em "Em Andamento".
+// Colunas no estilo Trello. A última coluna é "Em Validação" (status "review");
+// tarefas antigas arquivadas ("discarded") aparecem nela também.
 export const KANBAN_COLUMNS: { status: KanbanStatus; title: string }[] = [
   { status: "backlog", title: "A Fazer" },
   { status: "todo", title: "Prioridade" },
   { status: "in_progress", title: "Em Andamento" },
   { status: "pending", title: "Pendente" },
+  { status: "review", title: "Em Validação" },
   { status: "done", title: "Concluído" },
-  { status: "discarded", title: "Arquivado" },
 ];
 
-export const toColumnStatus = (status: KanbanStatus): KanbanStatus => (status === "review" ? "in_progress" : status);
+export const toColumnStatus = (status: KanbanStatus): KanbanStatus => (status === "discarded" ? "review" : status);
 
 // Únicas pessoas que podem ser responsáveis por tarefas do Kanban (pelo primeiro nome).
 const KANBAN_RESPONSIBLE_FIRST_NAMES = ["welder", "angel", "sofia", "gabriel", "icaro"];
@@ -51,6 +51,11 @@ export const firstNameKey = (fullName: string) =>
 
 export const isKanbanResponsible = (fullName: string | null) =>
   !!fullName && KANBAN_RESPONSIBLE_FIRST_NAMES.includes(firstNameKey(fullName));
+
+// Só o Welder move tarefas do Kanban para "Concluído", depois da validação dele.
+// Espelha o trigger kanban_guard_done_status no banco.
+export const canMoveKanbanTaskToDone = (fullName: string | null | undefined) =>
+  !!fullName && firstNameKey(fullName) === "welder";
 
 // Colaboradores que ainda não têm login (sem linha em profiles). Aparecem em Responsáveis
 // com um id fixo. Quando a pessoa entrar no sistema, remova daqui para não duplicar.

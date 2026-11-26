@@ -17,8 +17,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
   // ?tela=cheia: página aberta em nova aba, em largura total e sem a barra lateral.
   const fullScreen = new URLSearchParams(useLocation().search).get("tela") === "cheia";
   const { isRunning } = useGlobalTimer();
+  // Notebooks e telas menores começam com o menu recolhido (só ícones), para sobrar espaço; o botão do cabeçalho abre.
+  // Celular (abaixo de 768px) usa o menu em painel, independente disso.
+  const startOpen = typeof window === "undefined" || window.innerWidth >= 1280;
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={startOpen}>
       <NotificationRealtimeAlert />
       <ChatRealtimeAlert />
       <div className="min-h-screen flex w-full">
@@ -93,7 +96,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </div>
           </header>
           {/* Tela cheia no celular: menos margem lateral para aproveitar os 360px de largura. */}
-          <main className={`flex-1 overflow-auto animate-fade-in ${fullScreen ? "p-3 sm:p-4 md:p-6" : "p-6"}`}>{children}</main>
+          <main className={`flex-1 overflow-auto animate-fade-in ${fullScreen ? "p-3 sm:p-4 md:p-6" : "p-3 sm:p-4 md:p-6 xl:p-6"}`}>{children}</main>
         </div>
         <ChatWidget context="ti" />
         <DevChatPills />
